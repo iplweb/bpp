@@ -6,7 +6,7 @@ from django.core.management.base import BaseCommand
 from bpp.models import Uczelnia
 from bpp.util import zaloguj_polkniety_wyjatek
 from ewaluacja_liczba_n.models import IloscUdzialowDlaAutoraZaCalosc
-from ewaluacja_liczba_n.utils import oblicz_liczby_n_dla_ewaluacji_2022_2025
+from ewaluacja_liczba_n.utils import oblicz_liczby_n_dla_okresu
 from ewaluacja_metryki.utils import generuj_metryki, rozstrzygnij_okres
 
 logger = logging.getLogger(__name__)
@@ -119,7 +119,7 @@ class Command(BaseCommand):
                 self.style.WARNING("Krok 1/2: Przeliczanie liczby N dla uczelni...")
             )
             try:
-                oblicz_liczby_n_dla_ewaluacji_2022_2025(uczelnia=uczelnia, okres=okres)
+                oblicz_liczby_n_dla_okresu(uczelnia=uczelnia, okres=okres)
                 self.stdout.write(
                     self.style.SUCCESS("✓ Przeliczono liczby N pomyślnie")
                 )

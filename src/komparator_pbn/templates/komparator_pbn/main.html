@@ -17,7 +17,7 @@
             <div class="panel callout secondary">
                 <h4><i class="fi-calendar"></i> Okres ewaluacyjny: {{ evaluation_start_year }}
                     - {{ evaluation_end_year }}</h4>
-                <p>Analizowane są tylko publikacje z okresu najnowszej ewaluacji
+                <p>Analizowane są tylko publikacje z okresu ewaluacji wybranego na pasku okresu
                     ({{ evaluation_start_year }}-{{ evaluation_end_year }}).</p>
                 <strong>UWAGA:</strong> ta funkcja wymaga pobrania świeżych danych z PBN. Analizy, które widzisz,
                 opierają się na <strong>LOKALNEJ KOPII</strong> danych z PBN.
@@ -127,7 +127,7 @@
                         <h4>Wydawnictwa ciągłe ({{ ciagle_not_sent }})</h4>
                         <p>Publikacje ciągłe z okresu {{ evaluation_start_year }}-{{ evaluation_end_year }} nie wysłane
                             do PBN.</p>
-                        <a href="/admin/bpp/wydawnictwo_ciagle/?q-l=on&q=rok+%3E%3D+2022+and+rok+%3C%3D+2025+and+pbn_uid+%3D+None+and+%28doi%21%3D%22%22+or+www%21%3D%22%22+or+public_www%21%3D%22%22%29+and+charakter_formalny.rodzaj_pbn+%21%3D+None{% if uczelnia.pbn_api_nie_wysylaj_prac_bez_pk %}+and+punkty_kbn+%3E+0{% endif %}"
+                        <a href="/admin/bpp/wydawnictwo_ciagle/?q-l=on&q=rok+%3E%3D+{{ evaluation_start_year }}+and+rok+%3C%3D+{{ evaluation_end_year }}+and+pbn_uid+%3D+None+and+%28doi%21%3D%22%22+or+www%21%3D%22%22+or+public_www%21%3D%22%22%29+and+charakter_formalny.rodzaj_pbn+%21%3D+None{% if uczelnia.pbn_api_nie_wysylaj_prac_bez_pk %}+and+punkty_kbn+%3E+0{% endif %}"
                            class="button expanded success" target="_blank">
                             <i class="fi-list"></i> Pokaż w module redagowania
                         </a>
@@ -138,7 +138,7 @@
                         <h4>Wydawnictwa zwarte ({{ zwarte_not_sent }})</h4>
                         <p>Publikacje zwarte z okresu {{ evaluation_start_year }}-{{ evaluation_end_year }} nie wysłane
                             do PBN.</p>
-                        <a href="/admin/bpp/wydawnictwo_zwarte/?q-l=on&q=rok+%3E%3D+2022+and+rok+%3C%3D+2025+and+pbn_uid+%3D+None+and+%28doi%21%3D%22%22+or+www%21%3D%22%22+or+public_www%21%3D%22%22%29+and+charakter_formalny.rodzaj_pbn+%21%3D+None{% if uczelnia.pbn_api_nie_wysylaj_prac_bez_pk %}+and+punkty_kbn+%3E+0{% endif %}"
+                        <a href="/admin/bpp/wydawnictwo_zwarte/?q-l=on&q=rok+%3E%3D+{{ evaluation_start_year }}+and+rok+%3C%3D+{{ evaluation_end_year }}+and+pbn_uid+%3D+None+and+%28doi%21%3D%22%22+or+www%21%3D%22%22+or+public_www%21%3D%22%22%29+and+charakter_formalny.rodzaj_pbn+%21%3D+None{% if uczelnia.pbn_api_nie_wysylaj_prac_bez_pk %}+and+punkty_kbn+%3E+0{% endif %}"
                            class="button expanded info" target="_blank">
                             <i class="fi-list"></i> Pokaż w module redagowania
                         </a>
@@ -167,7 +167,7 @@
                                 </ul>
                             </small>
                             <div class="komparator-pbn__action-wrapper">
-                                <a href="/admin/pbn_api/publication/?odpowiednik=brak&q=year+%3E%3D+2022+and+year+%3C%3D+2025+&q-l=on&status=ACTIVE"
+                                <a href="/admin/pbn_api/publication/?odpowiednik=brak&q=year+%3E%3D+{{ evaluation_start_year }}+and+year+%3C%3D+{{ evaluation_end_year }}+&q-l=on&status=ACTIVE"
                                    class="button expanded alert" target="_blank">
                                     <i class="fi-list"></i> Pokaż w module redagowania
                                 </a>

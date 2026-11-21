@@ -1,0 +1,1 @@
+Oświadczenia do prac z okresu ewaluacji 2026–2030 drukują się z osobnego szablonu treści (panel administracyjny → Szablony): z latami „2026-2030” i adnotacją „[stara podstawa prawna]” do uzupełnienia, gdy będzie obowiązujący tekst dla nowego okresu; oświadczenia za 2022–2025 bez zmian.

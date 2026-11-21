@@ -8485,6 +8485,7 @@ CREATE TABLE public.deduplikator_autorow_duplicatescanrun (
     celery_task_id character varying(255) NOT NULL,
     created_by_id integer,
     phase character varying(20) NOT NULL,
+    okres_id bigint,
     CONSTRAINT deduplikator_autorow_duplicatescanr_total_authors_to_scan_check CHECK ((total_authors_to_scan >= 0)),
     CONSTRAINT deduplikator_autorow_duplicatescanrun_authors_scanned_check CHECK ((authors_scanned >= 0)),
     CONSTRAINT deduplikator_autorow_duplicatescanrun_duplicates_found_check CHECK ((duplicates_found >= 0))
@@ -13375,7 +13376,8 @@ CREATE TABLE public.snapshot_odpiec_snapshotodpiec (
     id bigint NOT NULL,
     created_on timestamp with time zone NOT NULL,
     comment text,
-    owner_id integer
+    owner_id integer,
+    okres_id bigint
 );
 
 
@@ -16253,7 +16255,7 @@ COPY public.deduplikator_autorow_duplicatecandidate (id, confidence_score, confi
 -- Data for Name: deduplikator_autorow_duplicatescanrun; Type: TABLE DATA; Schema: public; Owner: -
 --
 
-COPY public.deduplikator_autorow_duplicatescanrun (id, started_at, finished_at, status, total_authors_to_scan, authors_scanned, duplicates_found, error_message, celery_task_id, created_by_id, phase) FROM stdin;
+COPY public.deduplikator_autorow_duplicatescanrun (id, started_at, finished_at, status, total_authors_to_scan, authors_scanned, duplicates_found, error_message, celery_task_id, created_by_id, phase, okres_id) FROM stdin;
 \.
 
 
@@ -16677,6 +16679,36 @@ COPY public.django_countdown_sitecountdown (id, countdown_time, message, long_de
 --
 
 COPY public.django_migrations (id, app, name, applied) FROM stdin;
+1190	bpp	0515_drop_kronika_views	2000-01-01 00:00:00+00
+361	bpp	0268_auto_20210519_0238	2000-01-01 00:00:00+00
+469	bpp	0362_rzeczownik	2000-01-01 00:00:00+00
+85	bpp	0008_auto_20141126_1802	2000-01-01 00:00:00+00
+257	bpp	0172_auto_20190806_2052	2000-01-01 00:00:00+00
+453	bpp	0346_rename_multiseek_searchform_data	2000-01-01 00:00:00+00
+753	import_list_if	0001_initial	2000-01-01 00:00:00+00
+704	favicon	0001_initial	2000-01-01 00:00:00+00
+838	password_policies	0002_passwordprofile	2000-01-01 00:00:00+00
+839	password_policies	0003_update_passwordprofile	2000-01-01 00:00:00+00
+840	pbn_downloader_app	0001_initial	2000-01-01 00:00:00+00
+841	pbn_downloader_app	0002_pbninstitutionpeopletask	2000-01-01 00:00:00+00
+842	pbn_downloader_app	0003_pbnjournalsdownloadtask	2000-01-01 00:00:00+00
+843	pbn_downloader_app	0004_alter_error_message_fields	2000-01-01 00:00:00+00
+934	test_bpp	0003_testreport	2000-01-01 00:00:00+00
+844	pbn_export_queue	0001_rename_table	2000-01-01 00:00:00+00
+845	pbn_export_queue	0002_initial	2000-01-01 00:00:00+00
+846	pbn_export_queue	0003_add_rodzaj_bledu	2000-01-01 00:00:00+00
+847	pbn_export_queue	0004_add_wykluczone_field	2000-01-01 00:00:00+00
+849	pbn_export_queue	0006_reclassify_list_format_validation_errors	2000-01-01 00:00:00+00
+850	pbn_export_queue	0007_reclassify_doiorwwwmissing_errors	2000-01-01 00:00:00+00
+867	pbn_wysylka_oswiadczen	0003_add_synchronized_count	2000-01-01 00:00:00+00
+868	pbn_wysylka_oswiadczen	0004_alter_pbnwysylkalog_content_type_and_more	2000-01-01 00:00:00+00
+869	powiazania_autorow	0001_initial	2000-01-01 00:00:00+00
+870	powiazania_autorow	0002_alter_authorconnection_primary_author_and_more	2000-01-01 00:00:00+00
+871	powiazania_autorow	0003_backfill_powiazania_istniejace	2000-01-01 00:00:00+00
+872	powiazania_autorow	0004_alter_authorconnection_primary_author	2000-01-01 00:00:00+00
+873	przemapuj_prace_autora	0001_initial	2000-01-01 00:00:00+00
+874	przemapuj_prace_autora	0002_przemapoaniepracautora_prace_ciagle_historia_and_more	2000-01-01 00:00:00+00
+897	raport_slotow	0018_alter_raportslotowuczelnia_do_roku	2000-01-01 00:00:00+00
 155	bpp	0074_django110	2000-01-01 00:00:00+00
 683	ewaluacja_metryki	0002_alter_metrykaautora_jednostka	2000-01-01 00:00:00+00
 898	raport_slotow	0019_alter_raportslotowuczelnia_do_roku	2000-01-01 00:00:00+00
@@ -16776,7 +16808,6 @@ COPY public.django_migrations (id, app, name, applied) FROM stdin;
 1187	bpp	0512_soft_delete_rekord_views	2000-01-01 00:00:00+00
 1188	bpp	0513_soft_delete_autorzy_przez_publikacje	2000-01-01 00:00:00+00
 1189	bpp	0514_nowe_sumy_bez_skasowanych_publikacji	2000-01-01 00:00:00+00
-1190	bpp	0515_drop_kronika_views	2000-01-01 00:00:00+00
 1191	bpp	0516_praca_habilitacyjna_warunkowy_unique_autora	2000-01-01 00:00:00+00
 1192	bpp	0517_soft_delete_protect_fk	2000-01-01 00:00:00+00
 1193	bpp	0518_autor_soft_delete	2000-01-01 00:00:00+00
@@ -16886,7 +16917,6 @@ COPY public.django_migrations (id, app, name, applied) FROM stdin;
 1005	bpp	0461_faza_b_iii1_usun_rodzaj_jednostki	2000-01-01 00:00:00+00
 1006	bpp	0462_faza_b_iv1_przelicz_aktualna	2000-01-01 00:00:00+00
 1062	oauth2_provider	0002_auto_20190406_1805	2000-01-01 00:00:00+00
-361	bpp	0268_auto_20210519_0238	2000-01-01 00:00:00+00
 20	axes	0001_initial	2000-01-01 00:00:00+00
 705	favicon	0002_favicon_site	2000-01-01 00:00:00+00
 945	zglos_publikacje	0011_auto_20220910_1646	2000-01-01 00:00:00+00
@@ -17072,7 +17102,6 @@ COPY public.django_migrations (id, app, name, applied) FROM stdin;
 448	multiseek	0001_initial	2000-01-01 00:00:00+00
 531	bpp	0418_merge_20260601_0954	2000-01-01 00:00:00+00
 535	bpp	0421_cache_trigger_pk_filter	2000-01-01 00:00:00+00
-469	bpp	0362_rzeczownik	2000-01-01 00:00:00+00
 533	bpp	0419_merge_20260601_1319	2000-01-01 00:00:00+00
 329	bpp	0236_merge_20210202_0850	2000-01-01 00:00:00+00
 104	bpp	0027_auto_20150921_2304	2000-01-01 00:00:00+00
@@ -17164,7 +17193,6 @@ COPY public.django_migrations (id, app, name, applied) FROM stdin;
 82	bpp	0005_auto_20141107_1950	2000-01-01 00:00:00+00
 83	bpp	0006_auto_20141112_1531	2000-01-01 00:00:00+00
 84	bpp	0007_charakter_formalny_nazwa_w_primo	2000-01-01 00:00:00+00
-85	bpp	0008_auto_20141126_1802	2000-01-01 00:00:00+00
 86	bpp	0009_auto_20141126_1804	2000-01-01 00:00:00+00
 87	bpp	0010_auto_20141126_1825	2000-01-01 00:00:00+00
 88	bpp	0011_auto_20150212_2203	2000-01-01 00:00:00+00
@@ -17278,7 +17306,6 @@ COPY public.django_migrations (id, app, name, applied) FROM stdin;
 208	bpp	0127_auto_20180416_1303	2000-01-01 00:00:00+00
 209	bpp	0128_zewnetrzne_bazy_view	2000-01-01 00:00:00+00
 210	bpp	0129_zewnetrznebazydanychview	2000-01-01 00:00:00+00
-257	bpp	0172_auto_20190806_2052	2000-01-01 00:00:00+00
 258	bpp	0173_auto_20190812_1412	2000-01-01 00:00:00+00
 259	bpp	0174_uczelnia_podpowiadaj_dyscypliny_konfig	2000-01-01 00:00:00+00
 260	bpp	0174_rodzaj_pbn_dla_charakteru	2000-01-01 00:00:00+00
@@ -17494,7 +17521,6 @@ COPY public.django_migrations (id, app, name, applied) FROM stdin;
 449	bpp	0342_remove_dyscyplina_naukowa_pbn_uid	2000-01-01 00:00:00+00
 450	bpp	0343_alter_typ_kbn_options_alter_patent_kc_punkty_kbn_and_more	2000-01-01 00:00:00+00
 451	bpp	0344_uczelnia_pbn_wysylaj_bez_oswiadczen	2000-01-01 00:00:00+00
-453	bpp	0346_rename_multiseek_searchform_data	2000-01-01 00:00:00+00
 454	bpp	0347_uczelnia_deklaracja_dostepnosci_tekst_and_more	2000-01-01 00:00:00+00
 455	bpp	0348_remove_uczelnia_pokazuj_raport_dla_komisji_centralnej_and_more	2000-01-01 00:00:00+00
 456	bpp	0349_uczelnia_ranking_autorow_bez_kol_naukowych	2000-01-01 00:00:00+00
@@ -17594,7 +17620,6 @@ COPY public.django_migrations (id, app, name, applied) FROM stdin;
 568	pbn_api	0057_osobazinstytucji	2000-01-01 00:00:00+00
 569	pbn_api	0058_alter_osobazinstytucji_title	2000-01-01 00:00:00+00
 570	pbn_api	0059_alter_osobazinstytucji__from	2000-01-01 00:00:00+00
-753	import_list_if	0001_initial	2000-01-01 00:00:00+00
 571	pbn_api	0060_alter_osobazinstytucji_personid	2000-01-01 00:00:00+00
 572	pbn_api	0061_remove_pbn_export_queue	2000-01-01 00:00:00+00
 573	pbn_api	0062_sent_data_success_tracking	2000-01-01 00:00:00+00
@@ -17774,7 +17799,6 @@ COPY public.django_migrations (id, app, name, applied) FROM stdin;
 759	import_list_ministerialnych	0003_rename_wierszimportudyscyplinzrodel_wierszimportulistyministerialnej	2000-01-01 00:00:00+00
 760	import_list_ministerialnych	0004_importlistministerialnych_ignoruj_zrodla_bez_odpowiednika	2000-01-01 00:00:00+00
 970	bpp	0417_ensure_uczelnia_site_not_null	2000-01-01 00:00:00+00
-704	favicon	0001_initial	2000-01-01 00:00:00+00
 761	import_list_ministerialnych	0005_add_duplicate_tracking_fields	2000-01-01 00:00:00+00
 762	import_list_ministerialnych	0006_importlistministerialnych_nie_porownuj_po_tytulach	2000-01-01 00:00:00+00
 763	import_list_ministerialnych	0007_move_files_to_protected	2000-01-01 00:00:00+00
@@ -17857,28 +17881,11 @@ COPY public.django_migrations (id, app, name, applied) FROM stdin;
 114	bpp	0037_auto_20160124_1336	2000-01-01 00:00:00+00
 836	oswiadczenia	0005_migrate_template_to_dbtemplate	2000-01-01 00:00:00+00
 837	password_policies	0001_initial	2000-01-01 00:00:00+00
-838	password_policies	0002_passwordprofile	2000-01-01 00:00:00+00
-839	password_policies	0003_update_passwordprofile	2000-01-01 00:00:00+00
-840	pbn_downloader_app	0001_initial	2000-01-01 00:00:00+00
-841	pbn_downloader_app	0002_pbninstitutionpeopletask	2000-01-01 00:00:00+00
-842	pbn_downloader_app	0003_pbnjournalsdownloadtask	2000-01-01 00:00:00+00
-843	pbn_downloader_app	0004_alter_error_message_fields	2000-01-01 00:00:00+00
-934	test_bpp	0003_testreport	2000-01-01 00:00:00+00
-844	pbn_export_queue	0001_rename_table	2000-01-01 00:00:00+00
-845	pbn_export_queue	0002_initial	2000-01-01 00:00:00+00
-846	pbn_export_queue	0003_add_rodzaj_bledu	2000-01-01 00:00:00+00
-847	pbn_export_queue	0004_add_wykluczone_field	2000-01-01 00:00:00+00
-849	pbn_export_queue	0006_reclassify_list_format_validation_errors	2000-01-01 00:00:00+00
-850	pbn_export_queue	0007_reclassify_doiorwwwmissing_errors	2000-01-01 00:00:00+00
-867	pbn_wysylka_oswiadczen	0003_add_synchronized_count	2000-01-01 00:00:00+00
-868	pbn_wysylka_oswiadczen	0004_alter_pbnwysylkalog_content_type_and_more	2000-01-01 00:00:00+00
-869	powiazania_autorow	0001_initial	2000-01-01 00:00:00+00
-870	powiazania_autorow	0002_alter_authorconnection_primary_author_and_more	2000-01-01 00:00:00+00
-871	powiazania_autorow	0003_backfill_powiazania_istniejace	2000-01-01 00:00:00+00
-872	powiazania_autorow	0004_alter_authorconnection_primary_author	2000-01-01 00:00:00+00
-873	przemapuj_prace_autora	0001_initial	2000-01-01 00:00:00+00
-874	przemapuj_prace_autora	0002_przemapoaniepracautora_prace_ciagle_historia_and_more	2000-01-01 00:00:00+00
-897	raport_slotow	0018_alter_raportslotowuczelnia_do_roku	2000-01-01 00:00:00+00
+1208	deduplikator_autorow	0013_okres_skanu	2000-01-01 00:00:00+00
+1209	ewaluacja_metryki	0014_status_generowania_per_okres	2000-01-01 00:00:00+00
+1210	oswiadczenia	0006_oswiadczenie_lata_z_okresu	2000-01-01 00:00:00+00
+1211	oswiadczenia	0007_szablon_oswiadczenia_2026_2030	2000-01-01 00:00:00+00
+1212	snapshot_odpiec	0003_snapshot_okres_ewaluacji	2000-01-01 00:00:00+00
 \.
 
 
@@ -17896,7 +17903,8 @@ COPY public.django_site (id, domain, name) FROM stdin;
 --
 
 COPY public.django_template (id, name, content, creation_date, last_changed) FROM stdin;
-3	oswiadczenia/tresc_jednego_oswiadczenia.html	<h1>Oświadczenie upoważaniające podmiot do wykazania osiągnięć w ewaluacji jakości działalności naukowej</h1>\n<hr>\n<h2>{{ autor.nazwisko }} {{ autor.imiona }}</h2>\n<p>ORCID: <strong>{{ autor.orcid }}</strong></p>\n<p>Dyscypliny:</p>\n<ul>\n    <li>{{ dyscyplina_naukowa }}</li>\n    {% if subdyscyplina_naukowa %}\n        <li>{{ subdyscyplina_naukowa }}</li>\n    {% endif %}\n</ul>\n<p>\n    Ja, <strong>{{ autor.nazwisko }} {{ autor.imiona }}</strong>, zgodnie z art. 265 ust. 13 ustawy z dnia\n    20 lipca 2018 r. – Prawo  o szkolnictwie\n    wyższym i nauce (Dz. U. z 2021 r. poz. 478, z późn. zm.) upoważniam do wykazania na potrzeby\n    ewaluacji jakości działalności naukowej za lata <strong>2022-2025</strong> moich, wymienionych w niniejszym\n    oświadczeniu osiągnięć przez <strong>{{ uczelnia.nazwa }}</strong> w dyscyplinie:\n    <strong>{{ dyscyplina_pracy }}</strong>.\n</p>\n<p>\n    Oświadczam, że osiągnięcia te powstały w związku z prowadzeniem przeze mnie działalności naukowej\n    w tym podmiocie (nie dotyczy osiągnięć artystycznych).\n</p>\n<div width="10%" style="text-align: center; width:50%; float: right;">\n    <p>{{ data_oswiadczenia|default:"" }}...........................................................</p>\n    <p>(data i podpis)</p>\n</div>\n<div style="clear:both;"></div>\n<strong>Dotyczy:</strong><br/>\n{{ object.opis_bibliograficzny_cache|safe }}\n	2000-01-01 00:00:00+00	2000-01-01 00:00:00+00
+3	oswiadczenia/tresc_jednego_oswiadczenia.html	{% load oswiadczenia_tags %}<h1>Oświadczenie upoważaniające podmiot do wykazania osiągnięć w ewaluacji jakości działalności naukowej</h1>\n<hr>\n<h2>{{ autor.nazwisko }} {{ autor.imiona }}</h2>\n<p>ORCID: <strong>{{ autor.orcid }}</strong></p>\n<p>Dyscypliny:</p>\n<ul>\n    <li>{{ dyscyplina_naukowa }}</li>\n    {% if subdyscyplina_naukowa %}\n        <li>{{ subdyscyplina_naukowa }}</li>\n    {% endif %}\n</ul>\n<p>\n    Ja, <strong>{{ autor.nazwisko }} {{ autor.imiona }}</strong>, zgodnie z art. 265 ust. 13 ustawy z dnia\n    20 lipca 2018 r. – Prawo  o szkolnictwie\n    wyższym i nauce (Dz. U. z 2021 r. poz. 478, z późn. zm.) upoważniam do wykazania na potrzeby\n    ewaluacji jakości działalności naukowej za lata <strong>{{ object.rok|lata_ewaluacji }}</strong> moich, wymienionych w niniejszym\n    oświadczeniu osiągnięć przez <strong>{{ uczelnia.nazwa }}</strong> w dyscyplinie:\n    <strong>{{ dyscyplina_pracy }}</strong>.\n</p>\n<p>\n    Oświadczam, że osiągnięcia te powstały w związku z prowadzeniem przeze mnie działalności naukowej\n    w tym podmiocie (nie dotyczy osiągnięć artystycznych).\n</p>\n<div width="10%" style="text-align: center; width:50%; float: right;">\n    <p>{{ data_oswiadczenia|default:"" }}...........................................................</p>\n    <p>(data i podpis)</p>\n</div>\n<div style="clear:both;"></div>\n<strong>Dotyczy:</strong><br/>\n{{ object.opis_bibliograficzny_cache|safe }}\n	2000-01-01 00:00:00+00	2000-01-01 00:00:00+00
+4	oswiadczenia/tresc_jednego_oswiadczenia_2026_2030.html	{% load oswiadczenia_tags %}<h1>Oświadczenie upoważaniające podmiot do wykazania osiągnięć w ewaluacji jakości działalności naukowej</h1>\n<hr>\n<h2>{{ autor.nazwisko }} {{ autor.imiona }}</h2>\n<p>ORCID: <strong>{{ autor.orcid }}</strong></p>\n<p>Dyscypliny:</p>\n<ul>\n    <li>{{ dyscyplina_naukowa }}</li>\n    {% if subdyscyplina_naukowa %}\n        <li>{{ subdyscyplina_naukowa }}</li>\n    {% endif %}\n</ul>\n<p>\n    Ja, <strong>{{ autor.nazwisko }} {{ autor.imiona }}</strong>, zgodnie z art. 265 ust. 13 ustawy z dnia\n    20 lipca 2018 r. – Prawo  o szkolnictwie\n    wyższym i nauce (Dz. U. z 2021 r. poz. 478, z późn. zm.) [stara podstawa prawna] upoważniam do wykazania na potrzeby\n    ewaluacji jakości działalności naukowej za lata <strong>2026-2030</strong> moich, wymienionych w niniejszym\n    oświadczeniu osiągnięć przez <strong>{{ uczelnia.nazwa }}</strong> w dyscyplinie:\n    <strong>{{ dyscyplina_pracy }}</strong>.\n</p>\n<p>\n    Oświadczam, że osiągnięcia te powstały w związku z prowadzeniem przeze mnie działalności naukowej\n    w tym podmiocie (nie dotyczy osiągnięć artystycznych).\n</p>\n<div width="10%" style="text-align: center; width:50%; float: right;">\n    <p>{{ data_oswiadczenia|default:"" }}...........................................................</p>\n    <p>(data i podpis)</p>\n</div>\n<div style="clear:both;"></div>\n<strong>Dotyczy:</strong><br/>\n{{ object.opis_bibliograficzny_cache|safe }}\n	2000-01-01 00:00:00+00	2000-01-01 00:00:00+00
 \.
 
 
@@ -19071,7 +19079,7 @@ COPY public.siteblog_article_sites (id, article_id, site_id) FROM stdin;
 -- Data for Name: snapshot_odpiec_snapshotodpiec; Type: TABLE DATA; Schema: public; Owner: -
 --
 
-COPY public.snapshot_odpiec_snapshotodpiec (id, created_on, comment, owner_id) FROM stdin;
+COPY public.snapshot_odpiec_snapshotodpiec (id, created_on, comment, owner_id, okres_id) FROM stdin;
 \.
 
 
@@ -19950,7 +19958,7 @@ SELECT pg_catalog.setval('public.django_countdown_sitecountdown_id_seq', 1, fals
 -- Name: django_migrations_id_seq; Type: SEQUENCE SET; Schema: public; Owner: -
 --
 
-SELECT pg_catalog.setval('public.django_migrations_id_seq', 1207, true);
+SELECT pg_catalog.setval('public.django_migrations_id_seq', 1212, true);
 
 
 --
@@ -19964,7 +19972,7 @@ SELECT pg_catalog.setval('public.django_site_id_seq', 1, true);
 -- Name: django_template_id_seq; Type: SEQUENCE SET; Schema: public; Owner: -
 --
 
-SELECT pg_catalog.setval('public.django_template_id_seq', 3, true);
+SELECT pg_catalog.setval('public.django_template_id_seq', 4, true);
 
 
 --
@@ -23023,14 +23031,6 @@ ALTER TABLE ONLY public.ewaluacja_metryki_metrykaautora
 
 ALTER TABLE ONLY public.ewaluacja_metryki_statusgenerowania
     ADD CONSTRAINT ewaluacja_metryki_statusgenerowania_pkey PRIMARY KEY (id);
-
-
---
--- Name: ewaluacja_metryki_statusgenerowania ewaluacja_metryki_statusgenerowania_uczelnia_id_key; Type: CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.ewaluacja_metryki_statusgenerowania
-    ADD CONSTRAINT ewaluacja_metryki_statusgenerowania_uczelnia_id_key UNIQUE (uczelnia_id);
 
 
 --
@@ -28474,6 +28474,13 @@ CREATE INDEX deduplikator_autorow_duplicatescanrun_created_by_id_9e24ba35 ON pub
 
 
 --
+-- Name: deduplikator_autorow_duplicatescanrun_okres_id_11c4941a; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX deduplikator_autorow_duplicatescanrun_okres_id_11c4941a ON public.deduplikator_autorow_duplicatescanrun USING btree (okres_id);
+
+
+--
 -- Name: deduplikator_autorow_duplicatescanrun_status_ff0027f1; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -29163,7 +29170,14 @@ CREATE INDEX ewaluacja_metryki_metrykaautora_uczelnia_id_f2a91bd0 ON public.ewal
 -- Name: ewaluacja_metryki_status_jeden_wiersz_bez_uczelni; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE UNIQUE INDEX ewaluacja_metryki_status_jeden_wiersz_bez_uczelni ON public.ewaluacja_metryki_statusgenerowania USING btree (((uczelnia_id IS NULL))) WHERE (uczelnia_id IS NULL);
+CREATE UNIQUE INDEX ewaluacja_metryki_status_jeden_wiersz_bez_uczelni ON public.ewaluacja_metryki_statusgenerowania USING btree (COALESCE(okres_id, (0)::bigint)) WHERE (uczelnia_id IS NULL);
+
+
+--
+-- Name: ewaluacja_metryki_status_uczelnia_okres; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX ewaluacja_metryki_status_uczelnia_okres ON public.ewaluacja_metryki_statusgenerowania USING btree (uczelnia_id, COALESCE(okres_id, (0)::bigint)) WHERE (uczelnia_id IS NOT NULL);
 
 
 --
@@ -29171,6 +29185,13 @@ CREATE UNIQUE INDEX ewaluacja_metryki_status_jeden_wiersz_bez_uczelni ON public.
 --
 
 CREATE INDEX ewaluacja_metryki_statusgenerowania_okres_id_11186501 ON public.ewaluacja_metryki_statusgenerowania USING btree (okres_id);
+
+
+--
+-- Name: ewaluacja_metryki_statusgenerowania_uczelnia_id_36912598; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX ewaluacja_metryki_statusgenerowania_uczelnia_id_36912598 ON public.ewaluacja_metryki_statusgenerowania USING btree (uczelnia_id);
 
 
 --
@@ -32181,6 +32202,13 @@ CREATE INDEX siteblog_article_sites_site_id_7694f571 ON public.siteblog_article_
 --
 
 CREATE INDEX siteblog_article_slug_791e314b_like ON public.siteblog_article USING btree (slug varchar_pattern_ops);
+
+
+--
+-- Name: snapshot_odpiec_snapshotodpiec_okres_id_b8dc4c6b; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX snapshot_odpiec_snapshotodpiec_okres_id_b8dc4c6b ON public.snapshot_odpiec_snapshotodpiec USING btree (okres_id);
 
 
 --
@@ -35728,6 +35756,14 @@ ALTER TABLE ONLY public.deduplikator_autorow_logscalania
 
 
 --
+-- Name: deduplikator_autorow_duplicatescanrun deduplikator_autorow_okres_id_11c4941a_fk_ewaluacja; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.deduplikator_autorow_duplicatescanrun
+    ADD CONSTRAINT deduplikator_autorow_okres_id_11c4941a_fk_ewaluacja FOREIGN KEY (okres_id) REFERENCES public.ewaluacja_common_okresewaluacji(id) DEFERRABLE INITIALLY DEFERRED;
+
+
+--
 -- Name: deduplikator_autorow_duplicatecandidate deduplikator_autorow_reviewed_by_id_3b21a620_fk_bpp_bppus; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -38229,6 +38265,14 @@ ALTER TABLE ONLY public.siteblog_article_sites
 
 ALTER TABLE ONLY public.siteblog_article_sites
     ADD CONSTRAINT siteblog_article_sites_site_id_7694f571_fk_django_site_id FOREIGN KEY (site_id) REFERENCES public.django_site(id) DEFERRABLE INITIALLY DEFERRED;
+
+
+--
+-- Name: snapshot_odpiec_snapshotodpiec snapshot_odpiec_snap_okres_id_b8dc4c6b_fk_ewaluacja; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.snapshot_odpiec_snapshotodpiec
+    ADD CONSTRAINT snapshot_odpiec_snap_okres_id_b8dc4c6b_fk_ewaluacja FOREIGN KEY (okres_id) REFERENCES public.ewaluacja_common_okresewaluacji(id) DEFERRABLE INITIALLY DEFERRED;
 
 
 --

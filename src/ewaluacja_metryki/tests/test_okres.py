@@ -289,20 +289,35 @@ def test_przeliczenie_publikacji_w_okresie_jej_roku(
     assert (rok_min, rok_max) == (okres.rok_od, okres.rok_do)
 
 
-@pytest.mark.parametrize("ktory", [0, 1])
-def test_strona_autora_pokazuje_metryki_wybranego_okresu(
-    admin_user, client, dwie_metryki, ktory
+def test_strona_autora_pokazuje_metryki_wszystkich_okresow(
+    admin_user, client, dwie_metryki
 ):
-    """Przyciski metryk na stronie autora — tylko z okresu wybranego w sesji
-    (tego, który pokaże widok szczegółów), bez dublowania dyscypliny."""
-    wybrana = dwie_metryki[ktory]
+    """Strona autora pokazuje metryki z każdego okresu (najnowszy pierwszy),
+    a link każdej prowadzi do szczegółów z JEJ okresem w adresie —
+    niezależnie od okresu wybranego przez oglądającego."""
     client.force_login(admin_user)
-    wybierz_okres(client, wybrana.okres)
+    wybierz_okres(client, dwie_metryki[0].okres)
 
-    response = client.get(reverse("bpp:browse_autor", args=(wybrana.autor.slug,)))
+    autor = dwie_metryki[0].autor
+    response = client.get(reverse("bpp:browse_autor", args=(autor.slug,)))
 
     assert response.status_code == 200
-    assert list(response.context["metryki_autora"]) == [wybrana]
+    metryki = list(response.context["metryki_autora"])
+    assert set(metryki) == set(dwie_metryki)
+    assert [m.okres.rok_od for m in metryki] == sorted(
+        (m.okres.rok_od for m in metryki), reverse=True
+    )
+    html = response.content.decode()
+    for m in dwie_metryki:
+        assert f"/ewaluacja_metryki/{m.okres.slug}/szczegoly/" in m.get_absolute_url()
+        assert m.get_absolute_url() in html
+        assert f"Okres {m.okres}" in html
+
+    # link otwiera szczegóły w okresie metryki, nawet gdy wybrany jest inny
+    drugi = dwie_metryki[1]
+    res = client.get(drugi.get_absolute_url())
+    assert res.status_code == 200
+    assert res.context["metryka"] == drugi
 
 
 def test_update_or_create_zapisuje_przeliczone_srednie(dwie_metryki):
@@ -326,3 +341,11 @@ def test_update_or_create_zapisuje_przeliczone_srednie(dwie_metryki):
     assert m2022.srednia_za_slot_nazbierana == Decimal("80")
     assert m2022.srednia_za_slot_wszystkie == Decimal("80")
     assert m2022.procent_wykorzystania_slotow == Decimal("25")
+
+
+def test_szczegoly_pokazuja_autora_w_innych_okresach(admin_user, client, dwie_metryki):
+    m2022, m2026 = dwie_metryki
+    client.force_login(admin_user)
+    res = client.get(m2026.get_absolute_url())
+    assert list(res.context["inne_okresy"]) == [m2022]
+    assert m2022.get_absolute_url() in res.content.decode()

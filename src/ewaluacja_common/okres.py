@@ -1,6 +1,6 @@
-"""Wybór okresu ewaluacji: ostatnio wybrany przez użytkownika w górnej belce
-stron ewaluacji (sesja + trwale ``WybranyOkresEwaluacji``), a bez wyboru —
-domyślny wg bieżącego roku.
+"""Wybór okresu ewaluacji: ostatnio wybrany przez użytkownika na pasku okresu
+(pod ścieżką nawigacji) stron ewaluacji (sesja + trwale
+``WybranyOkresEwaluacji``), a bez wyboru — domyślny wg bieżącego roku.
 
 Użycie w widokach: ``okres = okres_dla_request(request)``, potem
 ``okres.rok_od`` / ``okres.rok_do`` / ``okres.lata``.
@@ -10,14 +10,21 @@ from django.utils import timezone
 
 KLUCZ_SESJI = "okres_ewaluacji_pk"
 
-#: Przestrzenie nazw URL stron, na których w górnej belce pokazujemy wybór
-#: okresu (i które liczą dane dla wybranego okresu).
+#: Strony, na których pod ścieżką nawigacji pokazujemy pasek wyboru okresu
+#: (i które liczą dane dla wybranego okresu): przestrzeń nazw URL (cała
+#: aplikacja) albo ``przestrzeń:nazwa`` (pojedynczy widok).
 APLIKACJE_Z_OKRESEM = frozenset(
     {
         "ewaluacja_metryki",
         "ewaluacja_liczba_n",
         "ewaluacja_optymalizacja",
         "ewaluacja_dwudyscyplinowcy",
+        "snapshot_odpiec",
+        "oswiadczenia:wydruk",
+        "pbn_wysylka_oswiadczen",
+        "komparator_pbn",
+        "pbn_komparator_zrodel",
+        "deduplikator_autorow",
     }
 )
 
@@ -89,6 +96,17 @@ def _zapamietany_dla_uzytkownika(request):
         WybranyOkresEwaluacji.objects.filter(user=user).select_related("okres").first()
     )
     return wybor.okres if wybor is not None else None
+
+
+def pokazac_pasek_okresu(resolver_match):
+    """Czy strona (wg ``request.resolver_match``) ma pasek wyboru okresu."""
+    if resolver_match is None:
+        return False
+    przestrzen = resolver_match.namespace.split(":")[0]
+    return (
+        przestrzen in APLIKACJE_Z_OKRESEM
+        or f"{przestrzen}:{resolver_match.url_name}" in APLIKACJE_Z_OKRESEM
+    )
 
 
 def okres_dla_request(request):

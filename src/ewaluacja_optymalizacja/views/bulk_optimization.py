@@ -6,6 +6,7 @@ from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.db import transaction
 from django.shortcuts import redirect, render
+from django.urls import reverse
 from django.utils.html import format_html
 from django.views.decorators.http import require_POST
 
@@ -237,7 +238,7 @@ def start_bulk_optimization(request):
                     "najpierw policzyć liczbę N. "
                     'Przejdź do <a href="{}">modułu Liczba N</a> '
                     "lub uruchom polecenie: python src/manage.py przelicz_n",
-                    "/ewaluacja_liczba_n/",
+                    reverse("ewaluacja_liczba_n:index"),
                 ),
             )
             return redirect("ewaluacja_optymalizacja:index")

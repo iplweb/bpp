@@ -135,6 +135,19 @@
                                     <strong>Status:</strong>
                                     <span class="deduplikator-autorow__status-completed"><span class="fi-check"></span> {{ completed_scan.get_status_display }}</span>
                                 </p>
+                                {% if completed_scan.okres %}
+                                    <p class="deduplikator-autorow__status-text">
+                                        <strong>Priorytet wg okresu:</strong> {{ completed_scan.okres }}
+                                    </p>
+                                {% endif %}
+                                {% if okres_skanu_inny %}
+                                    <p class="deduplikator-autorow__status-text callout warning small">
+                                        Kolejność kandydatów (priorytet: prace z lat okresu) policzono
+                                        dla okresu {{ okres_skanu }}, a wybrany jest okres
+                                        {{ rok_od }}–{{ rok_do }}. Uruchom nowe skanowanie, aby
+                                        przeliczyć priorytety dla wybranego okresu.
+                                    </p>
+                                {% endif %}
                                 <p class="deduplikator-autorow__status-text--spaced">
                                     <strong>Znaleziono:</strong> {{ completed_scan.duplicates_found }} duplikatów<br>
                                     <strong>Do sprawdzenia:</strong> {{ pending_candidates_count }}
@@ -610,7 +623,7 @@
                             </div>
                         </div>
 
-                        <h4>Dyscypliny głównego autora (2022-2025):</h4>
+                        <h4>Dyscypliny głównego autora ({{ rok_od }}–{{ rok_do }}):</h4>
                         <div class="deduplikator-autorow__discipline-table">
                             <table class="deduplikator-autorow__table">
                                 <thead class="deduplikator-autorow__table-head">
@@ -646,7 +659,7 @@
                                     {% empty %}
                                         <tr>
                                             <td colspan="7" class="deduplikator-autorow__table-cell deduplikator-autorow__table-cell--center deduplikator-autorow__table-cell--muted">
-                                                Brak przypisanych dyscyplin dla lat 2022-2025
+                                                Brak przypisanych dyscyplin dla lat {{ rok_od }}–{{ rok_do }}
                                             </td>
                                         </tr>
                                     {% endfor %}
@@ -841,12 +854,16 @@
                                             <a href="#"
                                                class="button small secondary deduplikator-autorow__button--full-width"
                                                data-open-wydawnictwo="ciagle"
+                                               data-rok-od="{{ rok_od }}"
+                                               data-rok-do="{{ rok_do }}"
                                                data-autor-id="{{ duplikat_data.autor.pk }}">
                                                 <span class="fi-page-multiple"></span> Pokaż wyd. ciągłe
                                             </a>
                                             <a href="#"
                                                class="button small secondary deduplikator-autorow__button--full-width"
                                                data-open-wydawnictwo="zwarte"
+                                               data-rok-od="{{ rok_od }}"
+                                               data-rok-do="{{ rok_do }}"
                                                data-autor-id="{{ duplikat_data.autor.pk }}">
                                                 <span class="fi-book"></span> Pokaż wyd. zwarte
                                             </a>
@@ -969,7 +986,7 @@
                                 </div>
                             </div>
 
-                            <h5 class="deduplikator-autorow__section-title">Dyscypliny duplikatu (2022-2025):</h5>
+                            <h5 class="deduplikator-autorow__section-title">Dyscypliny duplikatu ({{ rok_od }}–{{ rok_do }}):</h5>
                             <div class="deduplikator-autorow__discipline-section">
                                 <table class="deduplikator-autorow__table deduplikator-autorow__table--small">
                                     <thead class="deduplikator-autorow__table-head--light">
@@ -1005,7 +1022,7 @@
                                         {% empty %}
                                             <tr>
                                                 <td colspan="7" class="deduplikator-autorow__table-cell--small deduplikator-autorow__table-cell--center deduplikator-autorow__table-cell--muted">
-                                                    Brak przypisanych dyscyplin dla lat 2022-2025
+                                                    Brak przypisanych dyscyplin dla lat {{ rok_od }}–{{ rok_do }}
                                                 </td>
                                             </tr>
                                         {% endfor %}
@@ -1364,7 +1381,8 @@
             // autora zostało już skasowane — czyli dokładnie husk, który
             // deduplikator ma pomagać usuwać.
             var baseQuery = encodeURIComponent(
-                'rok >= 2022 and rok <= 2025 and autorzy_set.autor.id = ' + autorId +
+                'rok >= ' + target.dataset.rokOd + ' and rok <= ' +
+                target.dataset.rokDo + ' and autorzy_set.autor.id = ' + autorId +
                 ' and autorzy_set.deleted_at = None'
             );
             window.open('/admin/bpp/wydawnictwo_' + type + '/?q-l=on&q=' + baseQuery, '_blank');

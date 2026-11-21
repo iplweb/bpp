@@ -59,12 +59,12 @@ Menu **ewaluacja → metryki ewaluacyjne**.
 
 ![Menu „ewaluacja” z pozycją „metryki ewaluacyjne”](../images/redaktor/metryki-ewaluacyjne/01-menu-ewaluacja.png)
 
-Przy pierwszym wejściu nad tabelą pojawia się żółta ramka **„Ważna
-informacja o charakterze prezentowanych danych”**. Przypomina, że to
-wskaźniki orientacyjne, a nie wynik ewaluacji ministerialnej. Krzyżyk
-w prawym rogu ją chowa; w tej przeglądarce wróci po 14 dniach.
-
-![Zastrzeżenie o charakterze danych z krzyżykiem do zamknięcia](../images/redaktor/metryki-ewaluacyjne/02-zastrzezenie.png)
+Pod ścieżką nawigacji jest pasek **Okres ewaluacji** — kliknij okres
+(np. 2022–2025 albo 2026–2030), a cała strona pokaże dane tego okresu.
+Okres jest też w adresie strony, np.
+`/ewaluacja_metryki/2026-2030/`: taki link można wysłać komuś innemu
+i otworzy się u niego dokładnie ten okres. To samo dotyczy liczby N,
+optymalizacji, snapshotów odpięć i wydruku oświadczeń.
 
 ## Przeliczenie metryk {#przeliczenie-metryk}
 

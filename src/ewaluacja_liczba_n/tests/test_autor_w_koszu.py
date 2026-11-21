@@ -9,7 +9,7 @@ from model_bakery import baker
 
 from bpp.models import Autor, Autor_Dyscyplina
 from ewaluacja_liczba_n.models import IloscUdzialowDlaAutoraZaRok
-from ewaluacja_liczba_n.utils import oblicz_liczby_n_dla_ewaluacji_2022_2025
+from ewaluacja_liczba_n.utils import oblicz_liczby_n_dla_okresu
 
 
 @pytest.mark.django_db
@@ -30,9 +30,9 @@ def test_przeliczenie_n_pomija_autora_z_kosza(
             rok=2022,
         )
 
-    oblicz_liczby_n_dla_ewaluacji_2022_2025(uczelnia)
+    oblicz_liczby_n_dla_okresu(uczelnia, rok_min=2022, rok_max=2025)
     w_koszu.delete()
-    oblicz_liczby_n_dla_ewaluacji_2022_2025(uczelnia)
+    oblicz_liczby_n_dla_okresu(uczelnia, rok_min=2022, rok_max=2025)
 
     assert set(
         IloscUdzialowDlaAutoraZaRok.objects.values_list("autor_id", flat=True)

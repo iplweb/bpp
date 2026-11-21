@@ -82,7 +82,7 @@
                             <th class="text-right">Liczba N - średnia</th>
                             <th class="text-right">Sankcje</th>
                             <th class="text-right">Liczba 3N - ostateczna</th>
-                            <th class="text-right">Liczba N - koniec {{ okres_ewaluacji.rok_do }}</th>
+                            <th class="text-right">Liczba N - koniec {{ rok_liczby_n_koniec }}</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -128,7 +128,7 @@
         {% if dyscypliny_nieraportowane %}
         <h3>Dyscypliny nieraportowane</h3>
         <div class="callout alert">
-            <p>Poniższe dyscypliny nie są raportowane w ewaluacji ze względu na liczbę N na koniec {{ okres_ewaluacji.rok_do }} roku poniżej progu 12:</p>
+            <p>Poniższe dyscypliny nie są raportowane w ewaluacji ze względu na liczbę N na koniec {{ rok_liczby_n_koniec }} roku poniżej progu 12:</p>
             <table class="hover stack">
                 <thead>
                     <tr>
@@ -136,7 +136,7 @@
                         <th>Dyscyplina</th>
                         <th>Kod</th>
                         <th class="text-right">Liczba N - średnia</th>
-                        <th class="text-right">Liczba N - koniec {{ okres_ewaluacji.rok_do }}</th>
+                        <th class="text-right">Liczba N - koniec {{ rok_liczby_n_koniec }}</th>
                     </tr>
                 </thead>
                 <tbody>

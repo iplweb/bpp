@@ -39,7 +39,9 @@ class UruchomGenerowanieView(View):
 
         # Sprawdź czy generowanie nie jest już w trakcie
         uczelnia = uczelnia_dla_odczytu(request)
-        status = StatusGenerowania.get_or_create(uczelnia=uczelnia)
+        status = StatusGenerowania.get_or_create(
+            uczelnia=uczelnia, okres=okres_dla_request(request)
+        )
         if status.w_trakcie:
             if request.headers.get("HX-Request"):
                 # Dla HTMX zwróć aktualny status
@@ -55,7 +57,7 @@ class UruchomGenerowanieView(View):
             )
             return redirect("ewaluacja_metryki:lista")
 
-        # Okres ewaluacji: ten wybrany w górnej belce (albo domyślny)
+        # Okres ewaluacji: ten wybrany na pasku okresu (albo domyślny)
         okres = okres_dla_request(request)
         if okres is None:
             messages.error(request, "Brak zdefiniowanych okresów ewaluacji.")
@@ -141,7 +143,9 @@ class StatusGenerowaniaView(View):
 
     def get(self, request, *args, **kwargs):
         uczelnia = uczelnia_dla_odczytu(request)
-        status = StatusGenerowania.get_or_create(uczelnia=uczelnia)
+        status = StatusGenerowania.get_or_create(
+            uczelnia=uczelnia, okres=okres_dla_request(request)
+        )
 
         return JsonResponse(
             {
@@ -185,7 +189,9 @@ class StatusGenerowaniaPartialView(View):
 
         # Pobierz status generowania
         uczelnia = uczelnia_dla_odczytu(request)
-        status = StatusGenerowania.get_or_create(uczelnia=uczelnia)
+        status = StatusGenerowania.get_or_create(
+            uczelnia=uczelnia, okres=okres_dla_request(request)
+        )
 
         # Sprawdź czy poprzedni status był w trakcie (dla odświeżenia strony po zakończeniu)
         previous_status_was_running = (

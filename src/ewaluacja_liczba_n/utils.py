@@ -48,6 +48,10 @@ def oblicz_srednia_liczbe_n_dla_dyscyplin(
 
     okres, rok_min, rok_max = ustal_okres(okres, rok_min, rok_max)
 
+    # Okres trwający: średnia tylko z lat, które minęły albo trwają (dziś,
+    # w 2026 r., za 2026–2030 liczy się sam 2026 r. → autor wnosi maks. 1).
+    rok_max = min(rok_max, okres.ostatni_rok_liczenia())
+
     rok_kw = dict(rok__gte=rok_min, rok__lte=rok_max)
 
     # Słownik do przechowywania sum udziałów i wymiarów etatu dla każdej dyscypliny
@@ -95,8 +99,11 @@ def oblicz_srednia_liczbe_n_dla_dyscyplin(
     # Usuń istniejące rekordy dla uczelni w tym okresie
     LiczbaNDlaUczelni.objects.filter(uczelnia=uczelnia, okres=okres).delete()
 
-    # Oblicz średnią i zapisz wyniki
+    # Oblicz średnią i zapisz wyniki (dzielimy przez liczbę lat, które
+    # minęły albo trwają; okres jeszcze niezaczęty → brak liczby N)
     liczba_lat = rok_max - rok_min + 1
+    if liczba_lat <= 0:
+        return
 
     for dyscyplina, stats in dyscyplina_stats.items():
         if stats["suma_udzialow"] > 0:
@@ -131,7 +138,7 @@ def oblicz_dyscypliny_nieraportowane(uczelnia, rok=None, okres=None):
     from django.db.models import Sum
 
     if rok is None:
-        rok = (okres or domyslny_okres()).rok_do
+        rok = (okres or domyslny_okres()).ostatni_rok_liczenia()
 
     sumy = (
         IloscUdzialowDlaAutoraZaRok.objects.filter(uczelnia=uczelnia, rok=rok)
@@ -365,14 +372,15 @@ def oblicz_liczbe_n_na_koniec_okresu(uczelnia, okres=None, rok=None):
 
     Args:
         okres: okres ewaluacji (domyślnie okres domyślny)
-        rok: jawnie podany rok (domyślnie ``okres.rok_do``)
+        rok: jawnie podany rok (domyślnie ostatni rok okresu albo — dla
+            okresu trwającego — rok bieżący)
     """
     from collections import defaultdict
 
     from bpp.models.dyscyplina_naukowa import Autor_Dyscyplina
 
     if rok is None:
-        rok = (okres or domyslny_okres()).rok_do
+        rok = (okres or domyslny_okres()).ostatni_rok_liczenia()
 
     # Słownik do przechowywania sum udziałów dla każdej dyscypliny
     dyscyplina_stats = defaultdict(lambda: Decimal("0"))
@@ -401,11 +409,6 @@ def oblicz_liczbe_n_na_koniec_okresu(uczelnia, okres=None, rok=None):
             continue
 
     return dict(dyscyplina_stats)
-
-
-def oblicz_liczbe_n_na_koniec_2025(uczelnia):
-    """Zgodność wstecz: liczba N na koniec 2025 r. (okres 2022–2025)."""
-    return oblicz_liczbe_n_na_koniec_okresu(uczelnia, rok=2025)
 
 
 @transaction.atomic
@@ -477,22 +480,13 @@ def oblicz_liczby_n_dla_okresu(uczelnia, okres=None, rok_min=None, rok_max=None)
     # Krok 2: Policz średnią dla dyscyplin (BEZ bonusu!)
     oblicz_srednia_liczbe_n_dla_dyscyplin(uczelnia, rok_min, rok_max, okres=okres)
 
-    # Krok 3: Określ dyscypliny nieraportowane (suma w ostatnim roku < 12)
-    nieraportowane_ids = oblicz_dyscypliny_nieraportowane(uczelnia, rok_max)
+    # Krok 3: Określ dyscypliny nieraportowane (suma w ostatnim roku < 12;
+    # dla okresu trwającego — w roku bieżącym)
+    nieraportowane_ids = oblicz_dyscypliny_nieraportowane(
+        uczelnia, min(rok_max, okres.ostatni_rok_liczenia())
+    )
 
     # Krok 4: Doliczyć +1 slot gdzie potrzeba (NA KOŃCU - nie wpływa na średnią!)
     dolicz_bonus_za_nieraportowana(
         uczelnia, nieraportowane_ids, rok_min, rok_max, okres=okres
-    )
-
-
-def oblicz_liczby_n_dla_ewaluacji_2022_2025(
-    uczelnia, rok_min=None, rok_max=None, okres=None
-):
-    """Zgodność wstecz. Bez argumentów liczy okres 2022–2025 (jak dotąd);
-    z ``okres=`` albo ``rok_min=``/``rok_max=`` — wskazany okres."""
-    if okres is None and rok_min is None and rok_max is None:
-        rok_min, rok_max = 2022, 2025
-    return oblicz_liczby_n_dla_okresu(
-        uczelnia, okres=okres, rok_min=rok_min, rok_max=rok_max
     )

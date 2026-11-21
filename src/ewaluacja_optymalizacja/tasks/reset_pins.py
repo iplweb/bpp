@@ -21,7 +21,6 @@ def _reset_pins_for_authors(autorzy_ids, task, snapshot_pk, logger_func, okres=N
     from django.db.models import Q
 
     from bpp.models import (
-        Patent_Autor,
         Wydawnictwo_Ciagle_Autor,
         Wydawnictwo_Zwarte_Autor,
     )
@@ -72,12 +71,7 @@ def _reset_pins_for_authors(autorzy_ids, task, snapshot_pk, logger_func, okres=N
         },
     )
 
-    # Patent Autor
-    count_patent = Patent_Autor.objects.filter(base_filter).update(przypieta=True)
-    updated_count += count_patent
-    logger_func(
-        f"Reset {count_patent} pins in Patent_Autor for {len(autorzy_ids)} authors"
-    )
+    # Patenty nie biorą udziału w przypięciach/odpięciach — bez zmian.
 
     task.update_state(
         state="PROGRESS",
@@ -88,17 +82,16 @@ def _reset_pins_for_authors(autorzy_ids, task, snapshot_pk, logger_func, okres=N
             "total_authors": len(autorzy_ids),
             "reset_ciagle": count_ciagle,
             "reset_zwarte": count_zwarte,
-            "reset_patent": count_patent,
             "total_reset": updated_count,
         },
     )
 
     logger_func(
         f"Reset complete. Total pins reset: {updated_count} "
-        f"(Ciągłe: {count_ciagle}, Zwarte: {count_zwarte}, Patent: {count_patent})"
+        f"(Ciągłe: {count_ciagle}, Zwarte: {count_zwarte})"
     )
 
-    return count_ciagle, count_zwarte, count_patent, updated_count
+    return count_ciagle, count_zwarte, updated_count
 
 
 @shared_task(
@@ -134,7 +127,6 @@ def reset_discipline_pins_task(
     from bpp.models import (
         Autor_Dyscyplina,
         Dyscyplina_Naukowa,
-        Patent_Autor,
         Uczelnia,
         Wydawnictwo_Ciagle_Autor,
         Wydawnictwo_Zwarte_Autor,
@@ -171,6 +163,7 @@ def reset_discipline_pins_task(
         snapshot = SnapshotOdpiec.objects.create(
             owner=owner,
             comment=f"przed resetem przypięć - {dyscyplina.nazwa} ({okres})",
+            okres=okres,
         )
 
     self.update_state(
@@ -184,7 +177,8 @@ def reset_discipline_pins_task(
         autor_id__in=autorzy_ids,
     )
     updated_count = 0
-    for model in (Wydawnictwo_Ciagle_Autor, Wydawnictwo_Zwarte_Autor, Patent_Autor):
+    # Patenty nie biorą udziału w przypięciach/odpięciach.
+    for model in (Wydawnictwo_Ciagle_Autor, Wydawnictwo_Zwarte_Autor):
         updated_count += model.objects.filter(base_filter).update(przypieta=True)
         logger.info(
             f"Reset pins in {model.__name__} for discipline '{dyscyplina.nazwa}'"
@@ -318,6 +312,7 @@ def reset_all_pins_task(self, uczelnia_id, algorithm_mode="two-phase", okres_pk=
                 f"przed resetem przypięć - wszystkie dyscypliny uczelni {uczelnia} "
                 f"({okres})"
             ),
+            okres=okres,
         )
 
         logger.info(
@@ -337,7 +332,7 @@ def reset_all_pins_task(self, uczelnia_id, algorithm_mode="two-phase", okres_pk=
     )
 
     # Reset pins for all models
-    count_ciagle, count_zwarte, count_patent, updated_count = _reset_pins_for_authors(
+    count_ciagle, count_zwarte, updated_count = _reset_pins_for_authors(
         autorzy_ids, self, snapshot.pk, logger.info, okres=okres
     )
 
@@ -352,7 +347,6 @@ def reset_all_pins_task(self, uczelnia_id, algorithm_mode="two-phase", okres_pk=
             "total_authors": len(autorzy_ids),
             "reset_ciagle": count_ciagle,
             "reset_zwarte": count_zwarte,
-            "reset_patent": count_patent,
             "total_reset": updated_count,
         },
         logger_func=logger.info,
@@ -402,7 +396,6 @@ def reset_all_pins_task(self, uczelnia_id, algorithm_mode="two-phase", okres_pk=
         "total_authors": len(autorzy_ids),
         "reset_ciagle": count_ciagle,
         "reset_zwarte": count_zwarte,
-        "reset_patent": count_patent,
         "total_reset": updated_count,
         "optimizations_recalculated": discipline_count if discipline_count > 0 else 0,
         "completed_at": datetime.now().isoformat(),

@@ -1,29 +1,24 @@
-from bpp.models import Patent_Autor, Wydawnictwo_Ciagle_Autor, Wydawnictwo_Zwarte_Autor
+from bpp.models import Wydawnictwo_Ciagle_Autor, Wydawnictwo_Zwarte_Autor
 
 
-def suma_odpietych_dyscyplin():
-    return (
-        Wydawnictwo_Ciagle_Autor.objects.exclude(dyscyplina_naukowa=None)
-        .exclude(przypieta=True)
+def _policz(przypieta, okres=None):
+    """Liczba przypisań z dyscypliną o danym stanie przypięcia; z ``okres`` —
+    tylko w pracach z lat okresu ewaluacji."""
+    filtr = {}
+    if okres is not None:
+        filtr = {"rekord__rok__gte": okres.rok_od, "rekord__rok__lte": okres.rok_do}
+    return sum(
+        model.objects.exclude(dyscyplina_naukowa=None)
+        .filter(przypieta=przypieta, **filtr)
         .count()
-        + Wydawnictwo_Zwarte_Autor.objects.exclude(dyscyplina_naukowa=None)
-        .exclude(przypieta=True)
-        .count()
-        + Patent_Autor.objects.exclude(dyscyplina_naukowa=None)
-        .exclude(przypieta=True)
-        .count()
+        # Patenty nie biorą udziału w przypięciach/odpięciach.
+        for model in (Wydawnictwo_Ciagle_Autor, Wydawnictwo_Zwarte_Autor)
     )
 
 
-def suma_przypietych_dyscyplin():
-    return (
-        Wydawnictwo_Ciagle_Autor.objects.exclude(dyscyplina_naukowa=None)
-        .exclude(przypieta=False)
-        .count()
-        + Wydawnictwo_Zwarte_Autor.objects.exclude(dyscyplina_naukowa=None)
-        .exclude(przypieta=False)
-        .count()
-        + Patent_Autor.objects.exclude(dyscyplina_naukowa=None)
-        .exclude(przypieta=False)
-        .count()
-    )
+def suma_odpietych_dyscyplin(okres=None):
+    return _policz(False, okres)
+
+
+def suma_przypietych_dyscyplin(okres=None):
+    return _policz(True, okres)

@@ -80,7 +80,7 @@ class LiczbaNExcelExporter:
             "Dyscyplina",
             "Kod",
             "Liczba N - średnia",
-            f"Liczba N - koniec {self.okres.rok_do}",
+            f"Liczba N - koniec {self.okres.ostatni_rok_liczenia()}",
         ]
         for col_num, header in enumerate(headers, 1):
             cell = ws_nieraportowane.cell(row=1, column=col_num, value=header)

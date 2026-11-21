@@ -6,7 +6,7 @@ from bpp.models import Wydawnictwo_Ciagle, Wydawnictwo_Zwarte
 
 
 def get_publications_queryset(
-    rok_od=2022, rok_do=2025, tytul=None, tylko_odpiete=False, with_annotations=False
+    rok_od, rok_do, tytul=None, tylko_odpiete=False, with_annotations=False
 ):
     """
     Get publications that need statements sent to PBN.

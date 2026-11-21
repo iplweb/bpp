@@ -497,8 +497,10 @@ def test_status_generowania_in_context(admin_user, client):
     """Test że status generowania jest w kontekście widoku listy"""
     client.force_login(admin_user)
 
-    # Stwórz status
-    status = StatusGenerowania.get_or_create()
+    # Stwórz status (per okres — widok bierze okres domyślny)
+    from ewaluacja_common.okres import okres_domyslny
+
+    status = StatusGenerowania.get_or_create(okres=okres_domyslny())
     status.liczba_przetworzonych = 10
     status.save()
     status.zakoncz_generowanie(liczba_bledow=0)
@@ -557,3 +559,30 @@ def test_metryki_list_view_sorting(admin_user, client):
     metryki_list = list(response.context["metryki"])
     assert metryki_list[0] == metryka2  # Niższa średnia pierwsza
     assert metryki_list[1] == metryka1
+
+
+@pytest.mark.django_db
+def test_generowanie_innego_okresu_nie_blokuje(admin_client):
+    """Trwające generowanie metryk za 2022–2025 nie blokuje okresu 2026–2030:
+    jego strona ma własny status („wygenerowano w dniu …”) i przycisk
+    uruchomienia generowania."""
+    from ewaluacja_common.models import OkresEwaluacji
+
+    o2022 = OkresEwaluacji.objects.get(rok_od=2022)
+    o2026 = OkresEwaluacji.objects.get(rok_od=2026)
+    StatusGenerowania.get_or_create(okres=o2022).rozpocznij_generowanie(
+        task_id="t", liczba_do_przetworzenia=10, okres=o2022
+    )
+    zakonczony = StatusGenerowania.get_or_create(okres=o2026)
+    zakonczony.zakoncz_generowanie()
+
+    admin_client.post(reverse("ewaluacja_common:wybierz_okres"), {"okres": o2026.pk})
+    res = admin_client.get(reverse("ewaluacja_metryki:lista"))
+    status = res.context["status_generowania"]
+    assert status.okres == o2026
+    assert not status.w_trakcie
+    assert "Wizualizacja wygenerowana w dniu" in res.content.decode()
+
+    admin_client.post(reverse("ewaluacja_common:wybierz_okres"), {"okres": o2022.pk})
+    res = admin_client.get(reverse("ewaluacja_metryki:lista"))
+    assert res.context["status_generowania"].w_trakcie

@@ -7,11 +7,21 @@ from django.views.generic.base import TemplateView
 from bpp.models import Wydawnictwo_Ciagle, Wydawnictwo_Zwarte
 from bpp.models.wydawnictwo_ciagle import Wydawnictwo_Ciagle_Autor
 from bpp.models.wydawnictwo_zwarte import Wydawnictwo_Zwarte_Autor
+from ewaluacja_common.okres import okres_dla_request
 from pbn_api.models import OswiadczenieInstytucji, Publication, Scientist
 
-# Evaluation period constants
+# Lata okresu ewaluacji, gdy w bazie nie ma żadnego okresu (awaryjnie).
 EVALUATION_START_YEAR = 2022
 EVALUATION_END_YEAR = 2025
+
+
+def lata_okresu(request):
+    """``(rok_od, rok_do)`` okresu ewaluacji wybranego na pasku okresu
+    (albo w adresie URL)."""
+    okres = okres_dla_request(request)
+    if okres is None:
+        return EVALUATION_START_YEAR, EVALUATION_END_YEAR
+    return okres.rok_od, okres.rok_do
 
 
 @method_decorator(staff_member_required, name="dispatch")
@@ -22,11 +32,10 @@ class KomparatorMainView(TemplateView):
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
+        rok_od, rok_do = lata_okresu(self.request)
 
-        # Filter by evaluation period (2022-2025)
-        evaluation_filter = Q(
-            rok__gte=EVALUATION_START_YEAR, rok__lte=EVALUATION_END_YEAR
-        )
+        # Filtr: wybrany okres ewaluacji
+        evaluation_filter = Q(rok__gte=rok_od, rok__lte=rok_do)
 
         # Stats for publications not sent to PBN
         not_sent_filter = Q(pbn_uid_id__isnull=True)
@@ -78,8 +87,8 @@ class KomparatorMainView(TemplateView):
             przypieta=True,
             afiliuje=True,
             dyscyplina_naukowa__isnull=False,
-            rekord__rok__gte=EVALUATION_START_YEAR,
-            rekord__rok__lte=EVALUATION_END_YEAR,
+            rekord__rok__gte=rok_od,
+            rekord__rok__lte=rok_do,
         )
 
         bpp_ciagle_statements = Wydawnictwo_Ciagle_Autor.objects.filter(
@@ -93,8 +102,8 @@ class KomparatorMainView(TemplateView):
         # PBN statements count - only for publications from evaluation period
         # Filter PBN statements by publication year in the evaluation period
         pbn_statements = OswiadczenieInstytucji.objects.filter(
-            publicationId__year__gte=EVALUATION_START_YEAR,
-            publicationId__year__lte=EVALUATION_END_YEAR,
+            publicationId__year__gte=rok_od,
+            publicationId__year__lte=rok_do,
         ).count()
 
         # Count PBN publications never downloaded (not in BPP)
@@ -105,11 +114,11 @@ class KomparatorMainView(TemplateView):
             "pbn_uid_id"
         )
 
-        # Count PBN publications in 2022-2025 that are not in BPP
+        # Count PBN publications in the evaluation period that are not in BPP
         pbn_publications_not_in_bpp = (
             Publication.objects.filter(
-                year__gte=EVALUATION_START_YEAR,
-                year__lte=EVALUATION_END_YEAR,
+                year__gte=rok_od,
+                year__lte=rok_do,
                 status="ACTIVE",
             )
             .exclude(mongoId__in=bpp_pbn_uids_subquery)
@@ -167,15 +176,15 @@ class KomparatorMainView(TemplateView):
             .count()
         )
 
-        # Add discipline discrepancy statistics for 2022-2025
+        # Add discipline discrepancy statistics for the evaluation period
         from komparator_pbn_udzialy.models import RozbieznoscDyscyplinPBN
 
         # Get discrepancy statistics filtered by year
         discipline_discrepancies_qs = RozbieznoscDyscyplinPBN.objects.select_related(
             "oswiadczenie_instytucji__publicationId"
         ).filter(
-            oswiadczenie_instytucji__publicationId__year__gte=EVALUATION_START_YEAR,
-            oswiadczenie_instytucji__publicationId__year__lte=EVALUATION_END_YEAR,
+            oswiadczenie_instytucji__publicationId__year__gte=rok_od,
+            oswiadczenie_instytucji__publicationId__year__lte=rok_do,
         )
 
         # Use conditional aggregation to get all counts in a single query
@@ -212,8 +221,8 @@ class KomparatorMainView(TemplateView):
                 "deleted_pbn_in_bpp": deleted_pbn_in_bpp,
                 "deleted_pbn_scientists_in_bpp": deleted_pbn_scientists_in_bpp,
                 "deleted_pbn_journals_in_bpp": deleted_pbn_journals_in_bpp,
-                "evaluation_start_year": EVALUATION_START_YEAR,
-                "evaluation_end_year": EVALUATION_END_YEAR,
+                "evaluation_start_year": rok_od,
+                "evaluation_end_year": rok_do,
                 "uczelnia": uczelnia,
                 "charaktery_wysylane_do_pbn": charaktery_wysylane_do_pbn,
                 # Discipline discrepancy statistics
@@ -253,13 +262,15 @@ class BPPMissingInPBNView(ListView):
         publication_type = self.request.GET.get("type", "ciagle")
         query = self.request.GET.get("q", "")
 
+        rok_od, rok_do = lata_okresu(self.request)
+
         # Base filter for BPP statements
         bpp_statements_filter = Q(
             przypieta=True,
             afiliuje=True,
             dyscyplina_naukowa__isnull=False,
-            rekord__rok__gte=EVALUATION_START_YEAR,
-            rekord__rok__lte=EVALUATION_END_YEAR,
+            rekord__rok__gte=rok_od,
+            rekord__rok__lte=rok_do,
         )
 
         if publication_type == "ciagle":
@@ -291,8 +302,8 @@ class BPPMissingInPBNView(ListView):
 
             # Filter out those that have PBN statements
             pbn_publication_ids = OswiadczenieInstytucji.objects.filter(
-                publicationId__year__gte=EVALUATION_START_YEAR,
-                publicationId__year__lte=EVALUATION_END_YEAR,
+                publicationId__year__gte=rok_od,
+                publicationId__year__lte=rok_do,
             ).values_list("publicationId_id", flat=True)
 
             queryset = queryset.exclude(rekord__pbn_uid_id__in=pbn_publication_ids)
@@ -325,8 +336,8 @@ class BPPMissingInPBNView(ListView):
 
             # Filter out those that have PBN statements
             pbn_publication_ids = OswiadczenieInstytucji.objects.filter(
-                publicationId__year__gte=EVALUATION_START_YEAR,
-                publicationId__year__lte=EVALUATION_END_YEAR,
+                publicationId__year__gte=rok_od,
+                publicationId__year__lte=rok_do,
             ).values_list("publicationId_id", flat=True)
 
             queryset = queryset.exclude(rekord__pbn_uid_id__in=pbn_publication_ids)
@@ -345,8 +356,9 @@ class BPPMissingInPBNView(ListView):
         context = super().get_context_data(**kwargs)
         context["publication_type"] = self.request.GET.get("type", "ciagle")
         context["query"] = self.request.GET.get("q", "")
-        context["evaluation_start_year"] = EVALUATION_START_YEAR
-        context["evaluation_end_year"] = EVALUATION_END_YEAR
+        rok_od, rok_do = lata_okresu(self.request)
+        context["evaluation_start_year"] = rok_od
+        context["evaluation_end_year"] = rok_do
         return context
 
 
@@ -361,10 +373,12 @@ class PBNMissingInBPPView(ListView):
     def get_queryset(self):
         query = self.request.GET.get("q", "")
 
+        rok_od, rok_do = lata_okresu(self.request)
+
         # Get PBN statements from evaluation period
         queryset = OswiadczenieInstytucji.objects.filter(
-            publicationId__year__gte=EVALUATION_START_YEAR,
-            publicationId__year__lte=EVALUATION_END_YEAR,
+            publicationId__year__gte=rok_od,
+            publicationId__year__lte=rok_do,
         ).select_related("publicationId", "personId", "institutionId")
 
         # Filter out those that have BPP records
@@ -390,6 +404,7 @@ class PBNMissingInBPPView(ListView):
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         context["query"] = self.request.GET.get("q", "")
-        context["evaluation_start_year"] = EVALUATION_START_YEAR
-        context["evaluation_end_year"] = EVALUATION_END_YEAR
+        rok_od, rok_do = lata_okresu(self.request)
+        context["evaluation_start_year"] = rok_od
+        context["evaluation_end_year"] = rok_do
         return context
