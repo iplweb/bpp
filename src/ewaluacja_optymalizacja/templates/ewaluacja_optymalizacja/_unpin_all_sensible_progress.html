@@ -54,7 +54,7 @@
                 <p><strong>Snapshot ID:</strong> {{ info.snapshot_id }}</p>
             {% endif %}
 
-            {% if info.unpinned_ciagle or info.unpinned_zwarte or info.unpinned_patent %}
+            {% if info.unpinned_ciagle or info.unpinned_zwarte %}
                 <h5>Status odpinania:</h5>
                 <table style="width: 100%; margin-bottom: 1rem;">
                     <thead>
@@ -74,12 +74,6 @@
                         <tr>
                             <td>Wydawnictwa zwarte</td>
                             <td><span class="label success">{{ info.unpinned_zwarte|intcomma }}</span></td>
-                        </tr>
-                        {% endif %}
-                        {% if info.unpinned_patent %}
-                        <tr>
-                            <td>Patenty</td>
-                            <td><span class="label success">{{ info.unpinned_patent|intcomma }}</span></td>
                         </tr>
                         {% endif %}
                         {% if info.unpinned_count %}
@@ -140,10 +134,6 @@
                         <td>Wydawnictwa zwarte</td>
                         <td>{{ result.unpinned_zwarte|intcomma }}</td>
                     </tr>
-                    <tr>
-                        <td>Patenty</td>
-                        <td>{{ result.unpinned_patent|intcomma }}</td>
-                    </tr>
                     <tr style="font-weight: bold; background-color: #f4f4f4; border-top: 2px solid #333;">
                         <td><strong>RAZEM</strong></td>
                         <td><strong>{{ result.unpinned_count|intcomma }}</strong></td>
@@ -155,7 +145,7 @@
                 <p><span class="fi-info"></span> <strong>Ważne:</strong>
                 Utworzono snapshot nr {{ result.snapshot_id }} przed zmianami.
                 W razie potrzeby możesz go przywrócić w module
-                <a href="/snapshot_odpiec/">Snapshoty odpięć</a>.</p>
+                <a href="{% url 'snapshot_odpiec:index' %}">Snapshoty odpięć</a>.</p>
             </div>
 
             <div class="callout info">

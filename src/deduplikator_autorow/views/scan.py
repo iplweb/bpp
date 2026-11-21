@@ -13,7 +13,7 @@ from bpp.const import GR_WPROWADZANIE_DANYCH
 from pbn_downloader_app.freshness import is_pbn_people_data_fresh
 
 from ..models import DuplicateScanRun
-from .helpers import get_running_scan, group_required
+from .helpers import get_running_scan, group_required, okres_pk_dla_skanu
 
 
 @group_required(GR_WPROWADZANIE_DANYCH)
@@ -52,7 +52,8 @@ def start_scan_view(request):
     # z beata pomiędzy jednym a drugim zapytaniem.)
     zadany_task_id = str(uuid4())
     result = scan_for_duplicates.apply_async(
-        kwargs={"user_id": request.user.pk}, task_id=zadany_task_id
+        kwargs={"user_id": request.user.pk, "okres_pk": okres_pk_dla_skanu(request)},
+        task_id=zadany_task_id,
     )
 
     if result.id != zadany_task_id:

@@ -32,6 +32,12 @@ roku. Na stronie **ewaluacja → liczba N**:
 - **Liczba N - średnia** = (suma udziałów z 2022 + 2023 + 2024 + 2025) ÷ 4,
 - **Liczba N - koniec 2025** = suma udziałów z samego 2025 roku.
 
+Tak jest dla zakończonego okresu 2022–2025. W okresie, który **trwa**
+(np. 2026–2030 w 2026 r.), średnia liczy się tylko z lat, które minęły
+albo trwają: w 2026 r. to sam 2026 (suma ÷ 1, więc osoba na pełnym etacie
+wnosi najwyżej 1), w 2027 r. — (2026 + 2027) ÷ 2 itd. Kolumna „koniec”
+pokazuje wtedy rok bieżący zamiast ostatniego roku okresu.
+
 ![Tabela liczby N: kolumny „Liczba N - średnia” i „Liczba N - koniec 2025”, sekcja „Dyscypliny nieraportowane”](../images/redaktor/liczba-n-faq/01-tabela-liczby-n.png)
 
 Każde z pytań niżej to jedno miejsce, w którym ten rachunek może dać inny

@@ -3467,31 +3467,9 @@ def metryki_ewaluacyjne(page: Page, base: str, out: Path) -> None:
         bottom_of(m, f"{li} .menu-columns-wrapper"),
     )
 
-    # 2. Disclaimer (shown until closed) + status box with "Uruchom generowanie"
+    # 2. Status box with "Uruchom generowanie"
     m.goto(lista)
     m.wait_for_load_state("networkidle")
-    m.wait_for_timeout(500)  # disclaimer fades in
-    if m.locator("#ewaluacja-disclaimer").is_visible():
-        mark(
-            m,
-            [
-                {
-                    "sel": "#ewaluacja-disclaimer .close-button",
-                    "arrow": "above",
-                    "label": "zamknij (wróci po 14 dniach)",
-                    "dx": -560,
-                    "dy": -120,
-                }
-            ],
-        )
-        shot(
-            m,
-            out / "02-zastrzezenie.png",
-            0,
-            bottom_of(m, "#ewaluacja-disclaimer", 20),
-        )
-        m.locator("[data-action=close-disclaimer]").click()
-        m.wait_for_timeout(600)
     m.mouse.move(5, 5)
     mark(
         m,

@@ -27,8 +27,26 @@
             </a>
         </h1>
 
-        <!-- Disclaimer komunikat -->
-        {% include "ewaluacja_metryki/disclaimer.html" %}
+
+        {% if inne_okresy %}
+        <div class="callout ewaluacja-metryki__disciplines-callout">
+            <strong>Ten autor w innych okresach ewaluacji:</strong>
+            <div class="button-group stacked-for-small ewaluacja-metryki__button-group-spaced">
+                {% for inna in inne_okresy %}
+                    <a href="{{ inna.get_absolute_url }}"
+                       class="button hollow ewaluacja-metryki__discipline-btn"
+                       title="PKDaut/slot {{ inna.srednia_za_slot_nazbierana|floatformat:2 }}, wykorzystanie slotów {{ inna.procent_wykorzystania_slotow|floatformat:1 }}%">
+                        <span class="ewaluacja-metryki__discipline-name">
+                            {{ inna.okres }} — {{ inna.dyscyplina_naukowa.nazwa }}
+                        </span>
+                        <span class="float-right badge ewaluacja-metryki__discipline-badge {% if inna.srednia_za_slot_nazbierana > metryka.srednia_za_slot_nazbierana %}success{% elif inna.srednia_za_slot_nazbierana < metryka.srednia_za_slot_nazbierana %}alert{% else %}secondary{% endif %}">
+                            {{ inna.srednia_za_slot_nazbierana|floatformat:2 }}
+                        </span>
+                    </a>
+                {% endfor %}
+            </div>
+        </div>
+        {% endif %}
 
         {% if inne_dyscypliny %}
         <div class="callout ewaluacja-metryki__disciplines-callout">

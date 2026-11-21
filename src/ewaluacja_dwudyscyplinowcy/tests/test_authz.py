@@ -39,7 +39,7 @@ def test_redaktor_ma_dostep(client):
 
 @pytest.mark.django_db
 def test_widok_liczy_wybrany_okres(admin_client, dyscyplina1, dyscyplina2, monkeypatch):
-    """Lista bierze lata z okresu wybranego w belce, nie z literału 2022–2025."""
+    """Lista bierze lata z okresu wybranego na pasku okresu, nie z literału 2022–2025."""
     from bpp.models import Autor_Dyscyplina
     from ewaluacja_common.models import OkresEwaluacji
     from ewaluacja_common.okres import KLUCZ_SESJI

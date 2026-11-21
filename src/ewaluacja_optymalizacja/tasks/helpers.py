@@ -67,7 +67,9 @@ def _create_optimization_snapshot(uczelnia, logger_func, okres=None):
         f"Suma slotów: {suma_slotow_przed}"
     )
 
-    snapshot = SnapshotOdpiec.objects.create(owner=None, comment=snapshot_comment)
+    snapshot = SnapshotOdpiec.objects.create(
+        owner=None, comment=snapshot_comment, okres=okres
+    )
 
     logger_func(f"Created snapshot {snapshot.pk}: {snapshot_comment}")
     return snapshot, suma_punktow_przed, suma_slotow_przed

@@ -136,7 +136,9 @@ def unpinning_opportunities_list(request):
             status_unpinning.zakoncz("Zadanie zakończone")
 
     # Also check if metrics generation is running
-    status = StatusGenerowania.get_or_create()
+    status = StatusGenerowania.get_or_create(
+        uczelnia=uczelnia_dla_odczytu(request), okres=okres_dla_request(request)
+    )
     if status.w_trakcie and task_id:
         # Metrics are running as part of unpinning chain
         messages.info(

@@ -25,7 +25,7 @@ def okres_2026(db):
 
 
 def wybierz_okres(client, okres):
-    """Ustaw w sesji klienta testowego okres wybrany w górnej belce."""
+    """Ustaw w sesji klienta testowego okres wybrany na pasku okresu."""
     session = client.session
     session[KLUCZ_SESJI] = okres.pk
     session.save()

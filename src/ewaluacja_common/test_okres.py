@@ -1,4 +1,4 @@
-"""Okres ewaluacji: domyślny wg roku, wybór w sesji, przełącznik w belce."""
+"""Okres ewaluacji: domyślny wg roku, wybór w sesji, pasek wyboru okresu."""
 
 import pytest
 from django.urls import reverse
@@ -161,3 +161,81 @@ def test_admin_okresow_tylko_do_odczytu(admin_client):
     )
     okres.refresh_from_db()
     assert okres.rok_do != 2099
+
+
+@pytest.mark.django_db
+def test_pasek_okresu_pod_breadcrumbs_a_nie_w_gornej_belce(admin_client):
+    """Wybór okresu to pasek na całą szerokość pod breadcrumbs, nie pozycja
+    menu górnej belki; okresy to linki do tej samej strony w innym okresie."""
+    resp = admin_client.get("/ewaluacja_metryki/2022-2025/")
+    html = resp.content.decode()
+    assert html.count('class="pasek-okresu"') == 1
+    assert html.index('id="breadcrumbs-wrapper"') < html.index('class="pasek-okresu"')
+    assert "wybor-okresu" not in html
+    assert 'href="/ewaluacja_metryki/2026-2030/"' in html
+    assert 'aria-current="page"' in html
+
+
+@pytest.mark.django_db
+def test_pasek_okresu_tylko_na_stronach_ewaluacji(admin_client):
+    resp = admin_client.get("/")
+    assert 'class="pasek-okresu"' not in resp.content.decode()
+
+
+@pytest.mark.django_db
+def test_okres_z_adresu_url(admin_client, uczelnia):
+    """Okres w ścieżce wybiera okres strony i zostaje zapamiętany."""
+    resp = admin_client.get("/ewaluacja_liczba_n/2026-2030/")
+    assert resp.status_code == 200
+    assert str(resp.context["okres_ewaluacji"]) == "2026–2030"
+    # zapamiętany: strona bez okresu w adresie bierze ostatni z adresu
+    resp = admin_client.get(reverse("ewaluacja_metryki:lista"))
+    assert str(resp.context["okres_ewaluacji"]) == "2026–2030"
+
+
+@pytest.mark.django_db
+def test_linki_na_stronie_z_okresem_maja_okres(admin_client, uczelnia):
+    """{% url %} na stronie z okresem w adresie daje linki z tym okresem —
+    nawigacja nie gubi okresu, a strony innych aplikacji bez zmian."""
+    html = admin_client.get("/ewaluacja_liczba_n/2022-2025/").content.decode()
+    assert "/ewaluacja_liczba_n/2022-2025/" in html
+    assert 'href="/ewaluacja_liczba_n/"' not in html
+
+
+@pytest.mark.django_db
+def test_nieznany_okres_w_adresie_404(admin_client):
+    assert admin_client.get("/ewaluacja_liczba_n/2010-2013/").status_code == 404
+
+
+@pytest.mark.django_db
+def test_nawigacja_bez_okresu_przekierowuje_na_adres_z_okresem(admin_client):
+    """Wejście z menu (nawigacja przeglądarki) na stronę z paskiem okresu →
+    adres z okresem, żeby można go było skopiować i wysłać."""
+    resp = admin_client.get(
+        "/ewaluacja_metryki/?widok=tabela", HTTP_SEC_FETCH_MODE="navigate"
+    )
+    assert resp.status_code == 302
+    slug = okres_domyslny().slug
+    assert resp["Location"] == f"/ewaluacja_metryki/{slug}/?widok=tabela"
+
+
+@pytest.mark.django_db
+def test_htmx_bez_okresu_nie_przekierowuje(admin_client):
+    resp = admin_client.get(
+        reverse("ewaluacja_metryki:lista"),
+        HTTP_SEC_FETCH_MODE="cors",
+        HTTP_HX_REQUEST="true",
+    )
+    assert resp.status_code == 200
+
+
+@pytest.mark.django_db
+def test_okres_z_adresu_wygrywa_z_sesja(admin_client):
+    """Wyścig z odpytywaniem statusu: sesja ma stary okres, ale adres mówi
+    co innego — liczy się adres."""
+    stary = OkresEwaluacji.objects.get(rok_od=2022)
+    session = admin_client.session
+    session[KLUCZ_SESJI] = stary.pk
+    session.save()
+    resp = admin_client.get("/ewaluacja_metryki/2026-2030/")
+    assert str(resp.context["okres_ewaluacji"]) == "2026–2030"

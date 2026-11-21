@@ -1,4 +1,4 @@
-<body onload="window.print()" onfocus="window.close()">
+{% load oswiadczenia_tags %}<body onload="window.print()" onfocus="window.close()">
 <style>
     @media print {
         footer {
@@ -7,8 +7,9 @@
     }
 </style>
 {% for decl in declarations %}
-    {% include "oswiadczenia/tresc_jednego_oswiadczenia.html" with autor=decl.autor dyscyplina_naukowa=decl.dyscyplina_naukowa subdyscyplina_naukowa=decl.subdyscyplina_naukowa uczelnia=uczelnia object=decl.object dyscyplina_pracy=decl.dyscyplina_pracy %}
-    <footer></footer>
+    {% include decl.object.rok|szablon_oswiadczenia with autor=decl.autor dyscyplina_naukowa=decl.dyscyplina_naukowa subdyscyplina_naukowa=decl.subdyscyplina_naukowa uczelnia=uczelnia object=decl.object dyscyplina_pracy=decl.dyscyplina_pracy %}
+    {# Pusty <footer> = podział strony przy wydruku (styl wyżej). #}
+    {# djlint:off H020 #}<footer></footer>{# djlint:on #}
 {% empty %}
     <p>Brak oswiadczen do wydruku.</p>
 {% endfor %}

@@ -16,13 +16,17 @@ from ..utils import (
     is_pbn_journals_data_fresh,
 )
 from .constants import (
-    DEFAULT_ROK_DO,
-    DEFAULT_ROK_OD,
     DEFAULT_SORT,
     DYSCYPLINY_VALID_SORT_FIELDS,
     VALID_SORT_FIELDS,
 )
 from .forms import DyscyplinyFilterForm, FilterForm
+from .okres import (
+    PARAM_PUBLIKACJE_W_OKRESIE,
+    filtruj_publikacje_w_okresie,
+    lata_okresu,
+    tylko_z_publikacjami_w_okresie,
+)
 
 
 class RozbieznosciZrodelListView(GroupRequiredMixin, ListView):
@@ -48,10 +52,11 @@ class RozbieznosciZrodelListView(GroupRequiredMixin, ListView):
     def get_filter_params(self):
         """Pobiera parametry filtrów z request."""
         # Przy pierwszym wejściu (brak GET params) domyślnie checkboxy zaznaczone
+        okres_od, okres_do = lata_okresu(self.request)
         if not self.request.GET:
             return (
-                DEFAULT_ROK_OD,
-                DEFAULT_ROK_DO,
+                okres_od,
+                okres_do,
                 "",
                 "",
                 True,
@@ -60,7 +65,7 @@ class RozbieznosciZrodelListView(GroupRequiredMixin, ListView):
                 DEFAULT_SORT,
             )
 
-        form = FilterForm(self.request.GET)
+        form = FilterForm(self.request.GET, domyslne_lata=(okres_od, okres_do))
         if form.is_valid():
             rok_od = form.cleaned_data["rok_od"]
             rok_do = form.cleaned_data["rok_do"]
@@ -69,15 +74,15 @@ class RozbieznosciZrodelListView(GroupRequiredMixin, ListView):
             # Checkbox: 'on' gdy zaznaczony, brak w GET gdy odznaczony
             tylko_rozbieznosci = "tylko_rozbieznosci" in self.request.GET
             bez_publikacji = "bez_publikacji" in self.request.GET
-            bez_publikacji_2022_2025 = "bez_publikacji_2022_2025" in self.request.GET
+            z_publikacjami_w_okresie = tylko_z_publikacjami_w_okresie(self.request)
         else:
-            rok_od = DEFAULT_ROK_OD
-            rok_do = DEFAULT_ROK_DO
+            rok_od = okres_od
+            rok_do = okres_do
             search = ""
             dyscyplina = ""
             tylko_rozbieznosci = True
             bez_publikacji = False
-            bez_publikacji_2022_2025 = True
+            z_publikacjami_w_okresie = True
 
         sort = self.request.GET.get("sort", DEFAULT_SORT)
         if sort not in VALID_SORT_FIELDS:
@@ -90,7 +95,7 @@ class RozbieznosciZrodelListView(GroupRequiredMixin, ListView):
             dyscyplina,
             tylko_rozbieznosci,
             bez_publikacji,
-            bez_publikacji_2022_2025,
+            z_publikacjami_w_okresie,
             sort,
         )
 
@@ -102,7 +107,7 @@ class RozbieznosciZrodelListView(GroupRequiredMixin, ListView):
             dyscyplina,
             tylko_rozbieznosci,
             bez_publikacji,
-            bez_publikacji_2022_2025,
+            z_publikacjami_w_okresie,
             sort,
         ) = self.get_filter_params()
 
@@ -137,12 +142,11 @@ class RozbieznosciZrodelListView(GroupRequiredMixin, ListView):
             )
             queryset = queryset.filter(Exists(has_publications))
 
-        # Filtr tylko źródła z publikacjami 2022-2025
-        if bez_publikacji_2022_2025:
-            has_publications_2022_2025 = Wydawnictwo_Ciagle.objects.filter(
-                zrodlo_id=OuterRef("zrodlo_id"), rok__gte=2022, rok__lte=2025
+        # Filtr tylko źródła z publikacjami z lat wybranego okresu ewaluacji
+        if z_publikacjami_w_okresie:
+            queryset = filtruj_publikacje_w_okresie(
+                queryset, *lata_okresu(self.request)
             )
-            queryset = queryset.filter(Exists(has_publications_2022_2025))
 
         # Sortowanie
         queryset = queryset.order_by(sort)
@@ -158,7 +162,7 @@ class RozbieznosciZrodelListView(GroupRequiredMixin, ListView):
             dyscyplina,
             tylko_rozbieznosci,
             bez_publikacji,
-            bez_publikacji_2022_2025,
+            z_publikacjami_w_okresie,
             sort,
         ) = self.get_filter_params()
         meta = KomparatorZrodelMeta.get_instance()
@@ -184,7 +188,7 @@ class RozbieznosciZrodelListView(GroupRequiredMixin, ListView):
                 "dyscyplina": dyscyplina,
                 "tylko_rozbieznosci": tylko_rozbieznosci,
                 "bez_publikacji": bez_publikacji,
-                "bez_publikacji_2022_2025": bez_publikacji_2022_2025,
+                "tylko_z_publikacjami_w_okresie": z_publikacjami_w_okresie,
                 "current_sort": sort,
                 "total_count": stats["total"],
                 "points_count": stats["points"],
@@ -196,10 +200,13 @@ class RozbieznosciZrodelListView(GroupRequiredMixin, ListView):
         )
 
         # Buduj query string dla linków sortowania
+        okres_od, okres_do = lata_okresu(self.request)
+        context["okres_od"] = okres_od
+        context["okres_do"] = okres_do
         query_params = []
-        if rok_od != DEFAULT_ROK_OD:
+        if rok_od != okres_od:
             query_params.append(f"rok_od={rok_od}")
-        if rok_do != DEFAULT_ROK_DO:
+        if rok_do != okres_do:
             query_params.append(f"rok_do={rok_do}")
         if search:
             query_params.append(f"search={quote(search)}")
@@ -209,8 +216,8 @@ class RozbieznosciZrodelListView(GroupRequiredMixin, ListView):
             query_params.append("tylko_rozbieznosci=on")
         if bez_publikacji:
             query_params.append("bez_publikacji=on")
-        if bez_publikacji_2022_2025:
-            query_params.append("bez_publikacji_2022_2025=on")
+        if z_publikacjami_w_okresie:
+            query_params.append(f"{PARAM_PUBLIKACJE_W_OKRESIE}=on")
         context["filter_query_string"] = "&".join(query_params)
 
         return context
@@ -228,10 +235,11 @@ class RozbieznosciDyscyplinListView(GroupRequiredMixin, ListView):
     def get_filter_params(self):
         """Pobiera parametry filtrów z request."""
         # When form is first loaded (no GET params), use defaults
+        okres_od, okres_do = lata_okresu(self.request)
         if not self.request.GET:
             return (
-                DEFAULT_ROK_OD,
-                DEFAULT_ROK_DO,
+                okres_od,
+                okres_do,
                 "",
                 True,
                 False,
@@ -240,7 +248,9 @@ class RozbieznosciDyscyplinListView(GroupRequiredMixin, ListView):
                 "zrodlo__nazwa",
             )
 
-        form = DyscyplinyFilterForm(self.request.GET)
+        form = DyscyplinyFilterForm(
+            self.request.GET, domyslne_lata=(okres_od, okres_do)
+        )
         if form.is_valid():
             rok_od = form.cleaned_data["rok_od"]
             rok_do = form.cleaned_data["rok_do"]
@@ -248,15 +258,15 @@ class RozbieznosciDyscyplinListView(GroupRequiredMixin, ListView):
             # Checkboxes: 'on' when checked, not present when unchecked
             tylko_rozbieznosci = "tylko_rozbieznosci" in self.request.GET
             bez_publikacji = "bez_publikacji" in self.request.GET
-            bez_publikacji_2022_2025 = "bez_publikacji_2022_2025" in self.request.GET
+            z_publikacjami_w_okresie = tylko_z_publikacjami_w_okresie(self.request)
             wyswietlaj_nazwy = "wyswietlaj_nazwy" in self.request.GET
         else:
-            rok_od = DEFAULT_ROK_OD
-            rok_do = DEFAULT_ROK_DO
+            rok_od = okres_od
+            rok_do = okres_do
             search = ""
             tylko_rozbieznosci = True
             bez_publikacji = False
-            bez_publikacji_2022_2025 = True
+            z_publikacjami_w_okresie = True
             wyswietlaj_nazwy = False
 
         sort = self.request.GET.get("sort", "zrodlo__nazwa")
@@ -269,7 +279,7 @@ class RozbieznosciDyscyplinListView(GroupRequiredMixin, ListView):
             search,
             tylko_rozbieznosci,
             bez_publikacji,
-            bez_publikacji_2022_2025,
+            z_publikacjami_w_okresie,
             wyswietlaj_nazwy,
             sort,
         )
@@ -281,7 +291,7 @@ class RozbieznosciDyscyplinListView(GroupRequiredMixin, ListView):
             search,
             tylko_rozbieznosci,
             bez_publikacji,
-            bez_publikacji_2022_2025,
+            z_publikacjami_w_okresie,
             wyswietlaj_nazwy,
             sort,
         ) = self.get_filter_params()
@@ -310,12 +320,11 @@ class RozbieznosciDyscyplinListView(GroupRequiredMixin, ListView):
             )
             queryset = queryset.filter(Exists(has_publications))
 
-        # Filtr tylko źródła z publikacjami 2022-2025
-        if bez_publikacji_2022_2025:
-            has_publications_2022_2025 = Wydawnictwo_Ciagle.objects.filter(
-                zrodlo_id=OuterRef("zrodlo_id"), rok__gte=2022, rok__lte=2025
+        # Filtr tylko źródła z publikacjami z lat wybranego okresu ewaluacji
+        if z_publikacjami_w_okresie:
+            queryset = filtruj_publikacje_w_okresie(
+                queryset, *lata_okresu(self.request)
             )
-            queryset = queryset.filter(Exists(has_publications_2022_2025))
 
         # Sortowanie
         queryset = queryset.order_by(sort)
@@ -330,7 +339,7 @@ class RozbieznosciDyscyplinListView(GroupRequiredMixin, ListView):
             search,
             tylko_rozbieznosci,
             bez_publikacji,
-            bez_publikacji_2022_2025,
+            z_publikacjami_w_okresie,
             wyswietlaj_nazwy,
             sort,
         ) = self.get_filter_params()
@@ -367,7 +376,7 @@ class RozbieznosciDyscyplinListView(GroupRequiredMixin, ListView):
                 "search": search,
                 "tylko_rozbieznosci": tylko_rozbieznosci,
                 "bez_publikacji": bez_publikacji,
-                "bez_publikacji_2022_2025": bez_publikacji_2022_2025,
+                "tylko_z_publikacjami_w_okresie": z_publikacjami_w_okresie,
                 "wyswietlaj_nazwy": wyswietlaj_nazwy,
                 "dyscypliny_cache": dyscypliny_cache,
                 "current_sort": sort,
@@ -381,10 +390,13 @@ class RozbieznosciDyscyplinListView(GroupRequiredMixin, ListView):
         )
 
         # Buduj query string dla linków sortowania
+        okres_od, okres_do = lata_okresu(self.request)
+        context["okres_od"] = okres_od
+        context["okres_do"] = okres_do
         query_params = []
-        if rok_od != DEFAULT_ROK_OD:
+        if rok_od != okres_od:
             query_params.append(f"rok_od={rok_od}")
-        if rok_do != DEFAULT_ROK_DO:
+        if rok_do != okres_do:
             query_params.append(f"rok_do={rok_do}")
         if search:
             query_params.append(f"search={quote(search)}")
@@ -392,8 +404,8 @@ class RozbieznosciDyscyplinListView(GroupRequiredMixin, ListView):
             query_params.append("tylko_rozbieznosci=on")
         if bez_publikacji:
             query_params.append("bez_publikacji=on")
-        if bez_publikacji_2022_2025:
-            query_params.append("bez_publikacji_2022_2025=on")
+        if z_publikacjami_w_okresie:
+            query_params.append(f"{PARAM_PUBLIKACJE_W_OKRESIE}=on")
         if wyswietlaj_nazwy:
             query_params.append("wyswietlaj_nazwy=on")
         context["filter_query_string"] = "&".join(query_params)

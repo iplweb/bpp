@@ -18,3 +18,8 @@ MAX_PEWNOSC = 250
 # -20 (duża odległość lat publikacji)
 # = -115
 MIN_PEWNOSC = -115
+
+# Lata okresu, wg którego liczymy priorytet kandydatów na duplikaty, gdy
+# w bazie nie ma żadnego okresu ewaluacji (awaryjnie; normalnie okres
+# z paska okresu / zapisany w skanie).
+DOMYSLNE_LATA_PRIORYTETU = (2022, 2025)

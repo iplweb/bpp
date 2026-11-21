@@ -244,7 +244,6 @@ def _get_discipline_pin_stats(dyscyplina_naukowa, okres=None):
     """
     from bpp.models import (
         Autor_Dyscyplina,
-        Patent_Autor,
         Wydawnictwo_Ciagle_Autor,
         Wydawnictwo_Zwarte_Autor,
     )
@@ -281,7 +280,8 @@ def _get_discipline_pin_stats(dyscyplina_naukowa, okres=None):
     pinned_count = 0
     unpinned_count = 0
 
-    for model in [Wydawnictwo_Ciagle_Autor, Wydawnictwo_Zwarte_Autor, Patent_Autor]:
+    # Patenty nie biorą udziału w przypięciach/odpięciach.
+    for model in [Wydawnictwo_Ciagle_Autor, Wydawnictwo_Zwarte_Autor]:
         pinned_count += model.objects.filter(base_filter, przypieta=True).count()
         unpinned_count += model.objects.filter(base_filter, przypieta=False).count()
 
