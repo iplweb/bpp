@@ -5,6 +5,9 @@ czasopismo pod dwiema nazwami („Acta Oxenfurcka” i „ACTA OXENFURCKA”) �
 takie duplikaty powstają najczęściej przy imporcie danych. Rozbijają dorobek
 na dwa rekordy, więc raporty, sloty i eksport do PBN widzą tylko część prac.
 
+Prace wpisane dwa razy wyszukuje osobne narzędzie — opisuje je strona
+[Duplikaty publikacji (deduplikator)](duplikaty-publikacji.md).
+
 Ta strona prowadzi po kolei przez:
 
 - [deduplikator autorów](#deduplikator-autorow) — wyszukanie par, ocenę

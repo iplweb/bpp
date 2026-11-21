@@ -6429,6 +6429,184 @@ def import_pracownikow(page: Page, base: str, out: Path) -> None:
     red.context.close()
 
 
+def duplikaty_publikacji(page: Page, base: str, out: Path) -> None:
+    """docs/redaktor/duplikaty-publikacji.md: the publication deduplicator (editor).
+
+    Needs bin/docs-demo-duplikaty-publikacji.py (re-run it before each run:
+    it removes earlier scans) and a Celery worker (the scan runs in the
+    background)."""
+    red = new_session(page, base, DEMO_USER_REDAKTOR)
+    red.on("dialog", lambda dialog: dialog.accept())  # data-confirm prompts
+    dedup = f"{base}/deduplikator-publikacji/duplicate-publications/"
+
+    # 1. "operacje" menu: deduplikator publikacji
+    li = open_top_menu(red, "fi-wrench")
+    mark(
+        red,
+        [
+            {
+                "sel": f"{li} .menu-columns-wrapper a",
+                "text": "deduplikator publikacji",
+                "arrow": "right",
+                "label": "deduplikator publikacji",
+                "dx": 60,
+                "dy": -20,
+            }
+        ],
+    )
+    shot(
+        red,
+        out / "01-menu-operacje.png",
+        0,
+        bottom_of(red, f"{li} .menu-columns-wrapper"),
+    )
+
+    # 2. start screen: no scan yet, the scan form
+    red.goto(dedup)
+    red.wait_for_load_state("networkidle")
+    red.mouse.move(5, 5)
+    red.fill("#year_from", "2020")
+    red.fill("#year_to", "2026")
+    mark(
+        red,
+        [
+            {
+                "sel": "label[for=year_from]",
+                "arrow": "below",
+                "label": "1. zakres lat",
+                "dx": 60,
+                "dy": -75,
+            },
+            {"sel": "label[for=year_to]"},
+            {
+                "sel": ".deduplikator-publikacji__checkboxes-inline",
+                "arrow": "above",
+                "label": "2. czego nie porównywać (opcjonalnie)",
+                "dx": 0,
+                "dy": 50,
+            },
+            {
+                "sel": "button[type=submit].primary",
+                "arrow": "below",
+                "label": "3. uruchom",
+                "dx": -60,
+                "dy": -20,
+            },
+        ],
+    )
+    shot(
+        red,
+        out / "02-ekran-startowy.png",
+        0,
+        bottom_of(red, ".callout.warning", 30),
+    )
+
+    # 3. start the scan and catch it in progress
+    red.goto(dedup)
+    red.wait_for_load_state("networkidle")
+    red.fill("#year_from", "2020")
+    red.fill("#year_to", "2026")
+    red.click("button[type=submit].primary")
+    red.wait_for_load_state("networkidle")
+    for _ in range(20):
+        if red.locator("#scan-progress-container").count():
+            break
+        red.wait_for_timeout(300)
+        red.reload()
+    if red.locator("#scan-progress-container").count():
+        red.wait_for_function(
+            "parseFloat(document.getElementById('scan-progress-bar').style.width) > 0",
+            timeout=30000,
+        )
+        red.mouse.move(5, 5)
+        mark(
+            red,
+            [
+                {"sel": "#scan-progress-container"},
+                {
+                    "sel": "#scan-eta-content",
+                    "arrow": "right",
+                    "label": "postęp i czas do końca, odświeżają się same",
+                    "dx": 40,
+                    "dy": -10,
+                },
+            ],
+        )
+        shot(
+            red,
+            out / "03-skanowanie-w-toku.png",
+            0,
+            bottom_of(red, "#scan-progress-container", 10),
+        )
+    # the page reloads itself when the scan is done
+    red.wait_for_selector("table.deduplikator-publikacji__table", timeout=120000)
+    red.wait_for_load_state("networkidle")
+
+    # 4. the results list
+    red.goto(dedup)
+    red.wait_for_load_state("networkidle")
+    red.mouse.move(5, 5)
+    mark(
+        red,
+        [
+            {"sel": "thead th", "text": "Podobieństwo"},
+            {"sel": "thead th", "text": "Powody"},
+            {"sel": "tbody tr:first-child .deduplikator-publikacji__actions"},
+        ],
+    )
+    ostatni = page_box(red, "tbody tr", "Novigradu (nr 10)")
+    shot(red, out / "04-lista-wynikow.png", 0, ostatni["y"] + ostatni["height"] + 4)
+
+    # 5. one pair compared: both records of the DOI pair, one above the other
+    wiersz = red.locator("tbody tr", has_text="Wpływ mutacji").first
+    linki = wiersz.locator(".deduplikator-publikacji__pub-info a")
+    adresy = [linki.nth(i).get_attribute("href") for i in range(2)]
+    czesci = []
+    for adres, opis in zip(adresy, ("oryginał", "potencjalny duplikat"), strict=True):
+        rec = red.context.new_page()
+        rec.goto(f"{base}{adres}")
+        rec.wait_for_load_state("networkidle")
+        close_cookie_banner(rec)
+        rec.mouse.move(5, 5)
+        autorzy = rec.locator(".praca-mono__authors-section .author-name").count()
+        mark(
+            rec,
+            [
+                {
+                    "sel": ".praca-mono__authors-section",
+                    "arrow": "below",
+                    "label": f"{opis}: autorzy ({autorzy})",
+                    "dx": -420,
+                    "dy": -30,
+                },
+                {"sel": ".praca-mono__column--right > *:first-child"},
+            ],
+        )
+        czesci.append(shot(rec, None, 0, 560))
+        rec.close()
+    stitch(red, czesci, out / "05-porownanie-pary.png", "drugi rekord z tej pary")
+
+    # 6. decision: confirm the DOI pair -> message, the row is gone
+    wiersz.locator("button[title='Potwierdź jako duplikat']").click()
+    red.wait_for_load_state("networkidle")
+    red.wait_for_selector("#messagesPlaceholder >> text=Duplikat potwierdzony")
+    red.mouse.move(5, 5)
+    mark(
+        red,
+        [
+            {
+                "sel": "#messagesPlaceholder .callout",
+                "text": "Duplikat potwierdzony",
+                "arrow": "below",
+                "label": "para znika z listy",
+                "dx": 60,
+                "dy": 40,
+            }
+        ],
+    )
+    shot(red, out / "06-potwierdzony-duplikat.png", 0, 420)
+
+
 def zgloszenie_publikacji(page: Page, base: str, out: Path) -> None:
     """docs/uzytkownik/zgloszenie-publikacji.md: the "Zgłoś publikację" wizard, end to end."""
     nastepny = ".wizard-nav button:not([name=wizard_goto_step])"
@@ -6740,6 +6918,7 @@ SCENARIOS = {
     "panel-uczelnia-autorzy": ("redaktor/autorzy", panel_uczelnia_autorzy),
     "panel-uczelnia-wydawnictwa": ("redaktor/wydawnictwa", panel_uczelnia_wydawnictwa),
     "import-pracownikow": ("administrator/import-pracownikow", import_pracownikow),
+    "duplikaty-publikacji": ("redaktor/duplikaty-publikacji", duplikaty_publikacji),
 }
 
 
