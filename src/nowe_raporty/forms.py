@@ -114,6 +114,17 @@ class BaseRaportForm(forms.Form):
     def __init__(self, *args, request=None, **kwargs):
         super().__init__(*args, **kwargs)
 
+        # FD#528: „Od roku"/„Do roku" mają w deklaracji wywoływalny ``initial``.
+        # django-formdefaults nie umie go zapisać (nie-JSON) i przy KAŻDYM
+        # kolejnym odświeżeniu reprezentacji formularza kasuje takie pole
+        # z bazy — razem z zapisanymi „Moimi wartościami domyślnymi". Na
+        # instancji podstawiamy więc gotowe liczby; formdefaults zapisuje je
+        # jako auto-wartość systemową i sam odświeża, gdy zmieni się rok.
+        for nazwa in ("od_roku", "do_roku"):
+            pole = self.fields[nazwa]
+            if callable(pole.initial):
+                pole.initial = pole.initial()
+
         # Multi-hosted: uczelnię bierzemy WYŁĄCZNIE z requestu
         # (``request._uczelnia``, ustawiane przez SiteResolutionMiddleware wg
         # hosta). Bez requestu — post_migrate (nowe_raporty.apps.create_entries

@@ -49,14 +49,14 @@ def test_fd528_moje_wartosci_domyslne_zapisuja_sie(
     edit_url = _otworz_formularz(admin_client)
 
     res = admin_client.post(
-        edit_url, {"_override_sortowanie": "on", "sortowanie": "autorzy"}
+        edit_url, {"_override_od_roku": "on", "od_roku": "2019"}
     )
 
     assert res.status_code == 200
     v = FormFieldDefaultValue.objects.get(
-        parent__full_name=FULL_NAME, field__name="sortowanie", user=admin_user
+        parent__full_name=FULL_NAME, field__name="od_roku", user=admin_user
     )
-    assert v.value == "autorzy"
+    assert v.value == 2019
 
 
 @pytest.mark.django_db
@@ -116,3 +116,38 @@ def test_fd528_nieaktualna_klasa_formularza_daje_404(admin_client, widok):
         FormRepresentation.objects.create(full_name=full_name, label=full_name)
         res = admin_client.get(reverse(widok, args=[full_name]))
         assert res.status_code == 404
+
+
+@pytest.mark.django_db
+def test_fd528_lata_nie_znikaja_przy_kolejnym_snapshocie(admin_user, uczelnia):
+    """formdefaults pomija pola z wywoływalnym ``initial`` — i przy KAŻDYM
+    kolejnym odświeżeniu reprezentacji (co 60 s na proces) KASUJE je z bazy
+    razem z zapisanymi wartościami użytkowników. „Od roku"/„Do roku" znikały
+    więc co drugie odświeżenie z okna „Moje wartości domyślne", a zapisane
+    tam lata przepadały."""
+    from formdefaults import core
+
+    seed_default_reports()
+    klasa = form_class_dla(DefinicjaRaportu.objects.get(slug="raport-autorow"))
+
+    def snapshot():
+        core._LAST_SNAPSHOT.clear()  # jak po upływie TTL / w nowym procesie
+        core.get_form_defaults(klasa(), "Raport autorów", user=admin_user)
+        rep = FormRepresentation.objects.get(full_name=FULL_NAME)
+        return rep, set(rep.fields_set.values_list("name", flat=True))
+
+    rep, pola = snapshot()
+    assert {"od_roku", "do_roku"} <= pola
+    FormFieldDefaultValue.objects.update_or_create(
+        parent=rep,
+        field=rep.fields_set.get(name="od_roku"),
+        user=admin_user,
+        defaults={"value": 2019, "is_auto_snapshot": False},
+    )
+
+    for _ in range(3):
+        rep, pola = snapshot()
+        assert {"od_roku", "do_roku"} <= pola
+        assert FormFieldDefaultValue.objects.get(
+            parent=rep, field__name="od_roku", user=admin_user
+        ).value == 2019
