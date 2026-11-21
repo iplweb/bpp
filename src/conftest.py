@@ -378,6 +378,20 @@ def _zeruj_cache_nazw_dbtemplates():
     invalidate_known_names()
 
 
+@pytest.fixture(autouse=True)
+def _zeruj_cache_snapshotow_formdefaults():
+    """``formdefaults.core._LAST_SNAPSHOT`` to cache procesu (TTL 60 s): „pola
+    formularza X są już zapisane w bazie”. Rollback / flush testu usuwa
+    wiersze ``FormFieldRepresentation``, a cache zostaje — kolejny test na tym
+    workerze w ciągu minuty nie odtwarza pól i okno „Moje wartości domyślne”
+    wychodzi puste (flake ``test_repro_fd528`` zależny od składu shardu)."""
+    from formdefaults import core
+
+    core._LAST_SNAPSHOT.clear()
+    yield
+    core._LAST_SNAPSHOT.clear()
+
+
 # =============================================================================
 # Izolacja pod xdist: neutralizacja WYCIEKŁYCH scommitowanych danych domenowych.
 #

@@ -1,3 +1,4 @@
+from django.conf import settings
 from django.db import models
 
 
@@ -25,11 +26,12 @@ class OkresEwaluacji(models.Model):
     """Okres objęty ewaluacją (np. 2022–2025, 2026–2030).
 
     Trzymany w bazie, a nie w kodzie: długość kolejnego okresu zależy od
-    nowelizacji ustawy (projekt z 2026 r. wydłuża okres z 4 do 5 lat) — gdy
-    przepisy się zmienią, poprawia się wpis w adminie, bez wydania.
-    Domyślny okres to ten, w którym mieści się bieżący rok
-    (``ewaluacja_common.okres.okres_domyslny``); użytkownik może przełączyć
-    się na inny w górnej belce stron ewaluacji.
+    nowelizacji ustawy (projekt z 2026 r. wydłuża okres z 4 do 5 lat).
+    Okresy definiujemy MY — w adminie są tylko do odczytu (bez dodawania,
+    edycji i usuwania); zmiana przepisów = migracja danych w wydaniu.
+    Użytkownik przełącza okres w górnej belce stron ewaluacji; wybór jest
+    zapamiętywany na stałe (``WybranyOkresEwaluacji``). Bez wyboru — okres,
+    w którym mieści się bieżący rok (``ewaluacja_common.okres.okres_domyslny``).
     """
 
     rok_od = models.PositiveSmallIntegerField("pierwszy rok", unique=True)
@@ -63,3 +65,22 @@ class OkresEwaluacji(models.Model):
 
     def zawiera(self, rok):
         return self.rok_od <= rok <= self.rok_do
+
+
+class WybranyOkresEwaluacji(models.Model):
+    """Ostatnio wybrany przez użytkownika okres ewaluacji — obowiązuje na
+    wszystkich stronach ewaluacji, także po ponownym zalogowaniu."""
+
+    user = models.OneToOneField(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="wybrany_okres_ewaluacji",
+    )
+    okres = models.ForeignKey(OkresEwaluacji, on_delete=models.CASCADE)
+
+    class Meta:
+        verbose_name = "wybrany okres ewaluacji"
+        verbose_name_plural = "wybrane okresy ewaluacji"
+
+    def __str__(self):
+        return f"{self.user}: {self.okres}"

@@ -358,6 +358,10 @@ TEMPLATES = [
 ]
 
 MIDDLEWARE = [
+    # First (outermost): fixes Content-Length of X-Accel-Redirect responses
+    # from django-sendfile as the very last step; under ASGI a mismatch makes
+    # uvicorn raise "Response content shorter than Content-Length".
+    "django_bpp.middleware.OffloadedFileContentLengthMiddleware",
     "django.middleware.locale.LocaleMiddleware",
     "django.middleware.security.SecurityMiddleware",
     # Zaraz po SecurityMiddleware: nagłówek CSP trafia też do odpowiedzi

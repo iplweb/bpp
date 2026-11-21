@@ -11,8 +11,8 @@ from ewaluacja_common.okres import ustaw_okres
 @login_required
 @require_POST
 def wybierz_okres(request):
-    """Zapamiętaj w sesji okres ewaluacji wybrany w górnej belce i wróć na
-    stronę, z której przyszło żądanie."""
+    """Zapamiętaj okres ewaluacji wybrany w górnej belce (sesja + na stałe
+    dla użytkownika) i wróć na stronę, z której przyszło żądanie."""
     try:
         pk = int(request.POST.get("okres", ""))
     except ValueError as e:
