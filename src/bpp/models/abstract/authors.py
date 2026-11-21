@@ -8,7 +8,7 @@ from decimal import Decimal
 from django.conf import settings
 from django.core.exceptions import ValidationError
 from django.db import IntegrityError, models, transaction
-from django.db.models import CASCADE, SET_NULL, Q, Sum
+from django.db.models import CASCADE, PROTECT, SET_NULL, Q, Sum
 
 from bpp.models.dyscyplina_naukowa import Autor_Dyscyplina, Dyscyplina_Naukowa
 from bpp.models.util import dodaj_autora
@@ -31,13 +31,13 @@ class BazaModeluOdpowiedzialnosciAutorow(models.Model):
     nie zawiera podstawowej informacji, czyli powiązania"""
 
     autor = models.ForeignKey("bpp.Autor", CASCADE)
-    jednostka = models.ForeignKey("bpp.Jednostka", CASCADE)
+    jednostka = models.ForeignKey("bpp.Jednostka", PROTECT)
     kierunek_studiow = models.ForeignKey(
         "bpp.Kierunek_Studiow", SET_NULL, blank=True, null=True
     )
     kolejnosc = models.IntegerField("Kolejność", default=0)
     typ_odpowiedzialnosci = models.ForeignKey(
-        "bpp.Typ_Odpowiedzialnosci", CASCADE, verbose_name="Typ odpowiedzialności"
+        "bpp.Typ_Odpowiedzialnosci", PROTECT, verbose_name="Typ odpowiedzialności"
     )
     zapisany_jako = models.CharField(max_length=512)
     afiliuje = models.BooleanField(

@@ -166,7 +166,7 @@ class Wydawnictwo_Zwarte_Baza(
 
 class ModelZOpenAccessWydawnictwoZwarte(ModelZOpenAccess):
     openaccess_tryb_dostepu = models.ForeignKey(
-        "Tryb_OpenAccess_Wydawnictwo_Zwarte", CASCADE, blank=True, null=True
+        "Tryb_OpenAccess_Wydawnictwo_Zwarte", PROTECT, blank=True, null=True
     )
 
     class Meta:
@@ -408,7 +408,7 @@ class Wydawnictwo_Zwarte_Zewnetrzna_Baza_Danych(models.Model):
     rekord = models.ForeignKey(
         Wydawnictwo_Zwarte, CASCADE, related_name="zewnetrzna_baza_danych"
     )
-    baza = models.ForeignKey(Zewnetrzna_Baza_Danych, CASCADE)
+    baza = models.ForeignKey(Zewnetrzna_Baza_Danych, PROTECT)
     info = models.CharField(
         verbose_name="Informacje dodatkowe", max_length=512, blank=True, default=""
     )

@@ -178,6 +178,9 @@ def test_oai_bez_uczelni_to_404(client, oai_url, settings):
         jednostka=any_jednostka(),
         typ_odpowiedzialnosci=aut,
     )
+    # Jednostka.uczelnia is CASCADE but the authorship's jednostka is
+    # PROTECT, so the authorships have to go before the university does.
+    Wydawnictwo_Ciagle_Autor.objects.all().delete()
     Uczelnia.objects.all().delete()
     denorms.flush()
 
