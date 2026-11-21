@@ -441,12 +441,24 @@ def test_szablony_oswiadczenia_task(db):
 @pytest.mark.django_db
 def test_szablon_2026_2030_w_bazie_z_adnotacja(zwarte_z_dyscyplinami, admin_client):
     """Migracja zakłada szablon 2026–2030 w bazie (edytowalny w panelu):
-    lata nowego okresu i adnotacja o starej podstawie prawnej."""
-    from dbtemplates.models import Template
+    lata nowego okresu i adnotacja o starej podstawie prawnej.
 
-    t = Template.objects.get(
-        name="oswiadczenia/tresc_jednego_oswiadczenia_2026_2030.html"
+    Funkcję migracji wołamy wprost: dane z migracji mogą zniknąć po flushu
+    testu transakcyjnego na tym samym workerze."""
+    import importlib
+
+    from dbtemplates.models import Template
+    from django.apps import apps
+
+    migracja = importlib.import_module(
+        "oswiadczenia.migrations.0007_szablon_oswiadczenia_2026_2030"
     )
+    Template.objects.filter(name=migracja.TEMPLATE_NAME).delete()
+    migracja.forward(apps, None)
+    # druga migracja nie dubluje ani nie nadpisuje istniejącego szablonu
+    migracja.forward(apps, None)
+
+    t = Template.objects.get(name=migracja.TEMPLATE_NAME)
     assert "za lata <strong>2026-2030</strong>" in t.content
     assert "[stara podstawa prawna]" in t.content
 
