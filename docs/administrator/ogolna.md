@@ -1,5 +1,7 @@
 # Instrukcja dla administratora
 
+Co pokazuje strona startowa modułu redagowania („Panel Sterowania”) i jakie dane o kliknięciach w menu oraz logowaniach przy tym zapisuje, opisuje strona [Pulpit administratora](panel-administracyjny.md).
+
 ## Konfiguracja sposobu prezentacji danych dla użytkowników niezalogowanych
 
 ### Ustawienia globalne - rekord uczelni
@@ -13,6 +15,9 @@
   („Logo na stronę WWW”, „Logo wektorowe (SVG)”),
 - w sekcji „Opcje edycji” ustawisz domyślną wartość pola „Afiliuje” dla
   powiązań autorów z pracami (wydawnictwo ciągłe, zwarte, patent).
+
+Sposoby logowania (konta BPP, LDAP/Active Directory, Keycloak, Microsoft,
+ORCID) i ich konfigurację opisuje strona [Metody logowania](metody-logowania.md).
 
 #### Kolejność i zakres wyświetlanych wydziałów
 

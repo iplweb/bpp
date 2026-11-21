@@ -173,7 +173,8 @@ dwóm limitom, które ustawia się zmiennymi środowiskowymi:
 
 Konfiguracja LDAP (ActiveDirectory) odbywa się za pomocą zmiennych środowiskowych lub
 konfiguracyjnych `AUTH_LDAP_SERVER_URI`, `AUTH_LDAP_BIND_DN`, `AUTH_LDAP_BIND_PASSWORD` oraz
-`AUTH_LDAP_USER_SEARCH`. Zmienne te należy ustawić w pliku `.env` w katalogu domowym użytkownika.
+`AUTH_LDAP_USER_SEARCH`. Pełny opis (wszystkie zmienne, dopasowanie kont, typowe problemy):
+[Metody logowania](metody-logowania.md#ldap-active-directory).
 
 ## Content-Security-Policy (CSP)
 

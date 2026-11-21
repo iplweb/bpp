@@ -1,6 +1,10 @@
 """Matchowanie źródeł (czasopism) po ISSN/e-ISSN, mniswId i tytule."""
 
-from django.db.models import Q
+import html
+
+from django.contrib.postgres.lookups import Unaccent
+from django.db.models import Q, Value
+from django.db.models.functions import Lower, Trim
 
 from bpp.models import Zrodlo
 from bpp.models.zrodlo import issn_norm_expr
@@ -106,6 +110,35 @@ def _disambiguate_by_issn(qs, issn: str | None, e_issn: str | None) -> Zrodlo | 
     return None
 
 
+def zrodla_po_tytule_bez_diakrytykow(
+    tytul: str | None, pola: tuple[str, ...] = ("nazwa",)
+):
+    """Źródła, których któreś z ``pola`` równa się ``tytul`` bez diakrytyków.
+
+    Porównanie ignoruje wielkość liter, znaki diakrytyczne i białe znaki na
+    brzegach — „Vedelem Tudomany" (CrossRef) trafia w „Védelem Tudomány"
+    (BPP), FD#460. Diakrytyki zdejmuje PostgreSQL-owe ``unaccent`` PO OBU
+    stronach (ta sama funkcja co przy dopasowaniu autorów), więc folding jest
+    identyczny dla wartości z bazy i wartości szukanej, także dla znaków
+    spoza dekompozycji Unicode (``ł``, ``ø``). Encje HTML z CrossRef są
+    dekodowane (FD#321).
+
+    Zwraca QuerySet (pusty, z jednym lub wieloma rekordami) albo ``None``
+    dla pustego tytułu.
+    """
+    if not tytul or not isinstance(tytul, str):
+        return None
+    tytul = html.unescape(tytul).strip()
+    if not tytul:
+        return None
+    szukany = Lower(Unaccent(Value(tytul)))
+    adnotacje = {f"_{pole}_fold": Lower(Unaccent(Trim(pole))) for pole in pola}
+    filtr = Q()
+    for nazwa_adnotacji in adnotacje:
+        filtr |= Q(**{nazwa_adnotacji: szukany})
+    return Zrodlo.objects.annotate(**adnotacje).filter(filtr)
+
+
 def _try_match_zrodlo_by_title_single(
     elem: str,
     disable_skrot: bool,
@@ -128,14 +161,31 @@ def _try_match_zrodlo_by_title_single(
     except Zrodlo.MultipleObjectsReturned:
         return _disambiguate_by_issn(Zrodlo.objects.filter(filtr), issn, e_issn)
     except Zrodlo.DoesNotExist:
-        if not disable_fuzzy and elem.endswith("."):
-            fuzzy = Q(nazwa__istartswith=elem[:-1]) | Q(skrot__istartswith=elem[:-1])
-            try:
-                return Zrodlo.objects.get(fuzzy)
-            except Zrodlo.DoesNotExist:
-                pass
-            except Zrodlo.MultipleObjectsReturned:
-                return _disambiguate_by_issn(Zrodlo.objects.filter(fuzzy), issn, e_issn)
+        pass
+
+    # Tytuł różniący się tylko diakrytykami (FD#460). Tylko gdy wolno
+    # dopasowywać luźniej: importy hurtowe (listy ministerialne, punktacja)
+    # wołają z ``disable_fuzzy=True`` po ścisłe dopasowanie, a to zapytanie
+    # robi pełny skan tabeli źródeł (``unaccent`` nie ma indeksu).
+    pola = ("nazwa",) if disable_skrot else ("nazwa", "skrot")
+    bez_diakrytykow = (
+        None if disable_fuzzy else zrodla_po_tytule_bez_diakrytykow(elem, pola)
+    )
+    if bez_diakrytykow is not None:
+        kandydaci = list(bez_diakrytykow[:2])
+        if len(kandydaci) == 1:
+            return kandydaci[0]
+        if kandydaci:
+            return _disambiguate_by_issn(bez_diakrytykow, issn, e_issn)
+
+    if not disable_fuzzy and elem.endswith("."):
+        fuzzy = Q(nazwa__istartswith=elem[:-1]) | Q(skrot__istartswith=elem[:-1])
+        try:
+            return Zrodlo.objects.get(fuzzy)
+        except Zrodlo.DoesNotExist:
+            pass
+        except Zrodlo.MultipleObjectsReturned:
+            return _disambiguate_by_issn(Zrodlo.objects.filter(fuzzy), issn, e_issn)
 
     return None
 
