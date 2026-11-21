@@ -1,0 +1,32 @@
+name: Newsfragments
+
+# Każdy ticket Freshdesk z tytułu PR-a (``FD#<numer>``) musi mieć
+# newsfragment ``src/bpp/newsfragments/fd<numer>.<typ>.rst``. Szybki job
+# (kilka sekund), osobno od suity testów — uruchamia się też przy zmianie
+# tytułu i etykiet PR-a. Świadomy wyjątek: etykieta ``bez-newsfragmentu``.
+on:
+  pull_request:
+    branches:
+      - dev
+    types: [opened, edited, synchronize, reopened, labeled, unlabeled]
+
+permissions:
+  contents: read
+
+jobs:
+  fd-newsfragments:
+    name: FD newsfragments
+    runs-on: ubuntu-latest
+    if: ${{ !contains(github.event.pull_request.labels.*.name, 'bez-newsfragmentu') }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+      - name: Check newsfragments for FD# tickets in the PR title
+        env:
+          PR_TITLE: ${{ github.event.pull_request.title }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          git diff --name-only --diff-filter=AM "$BASE_SHA...$HEAD_SHA" > "$RUNNER_TEMP/changed.txt"
+          python3 bin/check-fd-newsfragments.py "$PR_TITLE" "$RUNNER_TEMP/changed.txt"

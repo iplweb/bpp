@@ -272,6 +272,11 @@ Nazwa pliku: `<slug>.<typ>.rst` (albo `.md`), gdzie `<typ>`:
 Treść po polsku, zwięźle (jedno zdanie/akapit). Numer zgłoszenia w slugu
 dla ticketów (np. `fd407.bugfix.rst`); `#443` linkuje się do GitHub Issues.
 
+CI (workflow `Newsfragments`, `bin/check-fd-newsfragments.py`) wymaga
+fragmentu `fd<N>.<typ>.rst` dla każdego `FD#<N>` w tytule PR-a. Świadomy
+wyjątek: etykieta `bez-newsfragmentu`. Dla ticketów opis ma być dokładny
+(co było źle, co jest teraz, gdzie to widać w UI) — trafia do klientów.
+
 ## Autologin dla agentów (WebFetch / curl bez logowania)
 
 Gdy user uruchomił `run-site run`, dev stack zapisuje gitignored,
