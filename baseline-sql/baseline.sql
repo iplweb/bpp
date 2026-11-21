@@ -12505,7 +12505,7 @@ CREATE TABLE public.pbn_downloader_app_pbndownloadtask (
     total_publications integer,
     total_statements integer,
     last_updated timestamp with time zone NOT NULL,
-    user_id integer
+    user_id integer NOT NULL
 );
 
 
@@ -12538,7 +12538,7 @@ CREATE TABLE public.pbn_downloader_app_pbninstitutionpeopletask (
     people_processed integer NOT NULL,
     total_people integer,
     last_updated timestamp with time zone NOT NULL,
-    user_id integer
+    user_id integer NOT NULL
 );
 
 
@@ -12572,7 +12572,7 @@ CREATE TABLE public.pbn_downloader_app_pbnjournalsdownloadtask (
     total_journals integer,
     zrodla_integrated integer NOT NULL,
     last_updated timestamp with time zone NOT NULL,
-    user_id integer
+    user_id integer NOT NULL
 );
 
 
@@ -16677,6 +16677,26 @@ COPY public.django_countdown_sitecountdown (id, countdown_time, message, long_de
 --
 
 COPY public.django_migrations (id, app, name, applied) FROM stdin;
+1147	bpp	0447_autoreksporttask	2000-01-01 00:00:00+00
+1148	bpp	0448_uczelnia_szerokosc_lewej_kolumny_and_more	2000-01-01 00:00:00+00
+1149	bpp	0454_merge_20260706_0757	2000-01-01 00:00:00+00
+1150	bpp	0487_merge_20260805_1305	2000-01-01 00:00:00+00
+1151	bpp	0491_merge_20261021_2141	2000-01-01 00:00:00+00
+1152	bpp	0492_autor_identyfikatory_profili	2000-01-01 00:00:00+00
+1153	bpp	0493_merge_20261024_0915	2000-01-01 00:00:00+00
+1154	bpp	0494_autor_opis_do_adnotacji	2000-01-01 00:00:00+00
+1155	bpp	0495_uczelnia_adresy_integracji_https	2000-01-01 00:00:00+00
+1156	bpp	0496_autoreksporttask_ukryte_statusy	2000-01-01 00:00:00+00
+1157	bpp	0497_uczelnia_bppuser_szyfrowanie_sekretow	2000-01-01 00:00:00+00
+1158	bpp	0498_autoreksporttask_tylko_dla_redakcji	2000-01-01 00:00:00+00
+1159	bpp	0499_autoreksporttask_zlecone_anonimowo	2000-01-01 00:00:00+00
+1160	bpp	0500_autor_flagi_widocznosci	2000-01-01 00:00:00+00
+1161	bpp	0501_autor_usun_pokazuj	2000-01-01 00:00:00+00
+1162	bpp	0502_autoreksporttask_xlsx	2000-01-01 00:00:00+00
+1163	bpp	0503_charakter_ogolny_rozdzialy_ksiazki	2000-01-01 00:00:00+00
+1164	taggit	0007_alter_taggeditem_options	2000-01-01 00:00:00+00
+1165	bpp	0504_wydawca_slug	2000-01-01 00:00:00+00
+1206	zglos_publikacje	0031_zgloszenie_kosz_zamrozony_trigger	2000-01-01 00:00:00+00
 314	bpp	0224_auto_20201007_0956	2000-01-01 00:00:00+00
 744	import_dyscyplin	0015_auto_20190326_0553	2000-01-01 00:00:00+00
 1166	bpp	0505_wydawca_slug_dane	2000-01-01 00:00:00+00
@@ -17858,26 +17878,6 @@ COPY public.django_migrations (id, app, name, applied) FROM stdin;
 1144	bpp	0444_autor_biogram_autor_biogram_format_and_more	2000-01-01 00:00:00+00
 1145	bpp	0445_remove_autor_uklad_profilu_and_more	2000-01-01 00:00:00+00
 1146	bpp	0446_merge_20260619_2128	2000-01-01 00:00:00+00
-1147	bpp	0447_autoreksporttask	2000-01-01 00:00:00+00
-1148	bpp	0448_uczelnia_szerokosc_lewej_kolumny_and_more	2000-01-01 00:00:00+00
-1149	bpp	0454_merge_20260706_0757	2000-01-01 00:00:00+00
-1150	bpp	0487_merge_20260805_1305	2000-01-01 00:00:00+00
-1151	bpp	0491_merge_20261021_2141	2000-01-01 00:00:00+00
-1152	bpp	0492_autor_identyfikatory_profili	2000-01-01 00:00:00+00
-1153	bpp	0493_merge_20261024_0915	2000-01-01 00:00:00+00
-1154	bpp	0494_autor_opis_do_adnotacji	2000-01-01 00:00:00+00
-1155	bpp	0495_uczelnia_adresy_integracji_https	2000-01-01 00:00:00+00
-1156	bpp	0496_autoreksporttask_ukryte_statusy	2000-01-01 00:00:00+00
-1157	bpp	0497_uczelnia_bppuser_szyfrowanie_sekretow	2000-01-01 00:00:00+00
-1158	bpp	0498_autoreksporttask_tylko_dla_redakcji	2000-01-01 00:00:00+00
-1159	bpp	0499_autoreksporttask_zlecone_anonimowo	2000-01-01 00:00:00+00
-1160	bpp	0500_autor_flagi_widocznosci	2000-01-01 00:00:00+00
-1161	bpp	0501_autor_usun_pokazuj	2000-01-01 00:00:00+00
-1162	bpp	0502_autoreksporttask_xlsx	2000-01-01 00:00:00+00
-1163	bpp	0503_charakter_ogolny_rozdzialy_ksiazki	2000-01-01 00:00:00+00
-1164	taggit	0007_alter_taggeditem_options	2000-01-01 00:00:00+00
-1165	bpp	0504_wydawca_slug	2000-01-01 00:00:00+00
-1206	pbn_downloader_app	0005_task_user_opcjonalny	2000-01-01 00:00:00+00
 \.
 
 
@@ -34093,6 +34093,13 @@ CREATE TRIGGER ts_post_bpp_wydawnictwo_zwarte_search BEFORE INSERT OR UPDATE ON 
 --
 
 CREATE TRIGGER ts_post_bpp_zrodlo_search BEFORE INSERT OR UPDATE ON public.bpp_zrodlo FOR EACH ROW EXECUTE FUNCTION public.ts_post_bpp_zrodlo_search();
+
+
+--
+-- Name: zglos_publikacje_zgloszenie_publikacji zglos_publikacje_zgloszenie_publikacji_kosz_straznik; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER zglos_publikacje_zgloszenie_publikacji_kosz_straznik BEFORE DELETE OR UPDATE ON public.zglos_publikacje_zgloszenie_publikacji FOR EACH ROW EXECUTE FUNCTION public.bpp_kosz_straznik();
 
 
 --

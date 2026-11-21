@@ -635,7 +635,9 @@ class BppSoftDeleteAdminMixin:
         """Przywracanie = ``delete`` + ``change`` (jak akcja
         ``przywroc_zaznaczone``). Uprawnienia na poziomie MODELU — obiektowe
         ``has_change_permission`` rekordu z kosza zawsze odmawia (tylko do
-        odczytu)."""
+        odczytu). Admin bez edycji w formularzu (``has_change_permission``
+        zawsze ``False``, np. zgłoszenia publikacji) nadpisuje to i pyta
+        o uprawnienie ``change`` użytkownika wprost."""
         return self.has_delete_permission(request) and self.has_change_permission(
             request
         )
@@ -754,8 +756,10 @@ class BppSoftDeleteAdminMixin:
         actions = super().get_actions(request)
         if self.has_delete_permission(request):
             actions["usun_do_kosza"] = self.get_action("usun_do_kosza")
-            if self.has_change_permission(request):
+            if self.moze_przywracac(request):
                 actions["przywroc_zaznaczone"] = self.get_action("przywroc_zaznaczone")
+            else:
+                actions.pop("przywroc_zaznaczone", None)
         else:
             actions.pop("usun_do_kosza", None)
             actions.pop("przywroc_zaznaczone", None)

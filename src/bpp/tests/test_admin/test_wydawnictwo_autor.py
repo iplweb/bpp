@@ -75,3 +75,65 @@ def test_edit_btn_appears(klass, model, admin_client):
         normalize_html(res.content.decode())
     )
     assert znalezione == [str(rekord.pk)]
+
+
+def _rekord_ze_slugiem(model, tytul, slug):
+    # ``slug`` to pole denormalizowane, liczone dopiero przy flushu denorm-a —
+    # w teście ustawiamy je wprost, żeby link „View on site" dał się sprawdzić.
+    rekord = baker.make(model, tytul_oryginalny=tytul)
+    model.objects.filter(pk=rekord.pk).update(slug=slug)
+    rekord.refresh_from_db()
+    assert rekord.slug == slug
+    return rekord
+
+
+def _changelist_autorow(admin_client, klass, rekord_id):
+    url = reverse(f"admin:bpp_{klass}_autor_changelist")
+    return admin_client.get(url, {"rekord__id__exact": rekord_id})
+
+
+@pytest.mark.django_db
+@KLASY
+def test_changelist_rekord_zywy(klass, model, admin_client):
+    rekord = _rekord_ze_slugiem(model, "Zywy rekord", "zywy-rekord")
+
+    res = _changelist_autorow(admin_client, klass, rekord.pk)
+    assert res.status_code == 200
+
+    html = normalize_html(res.content.decode())
+    assert "Zywy rekord" in html
+    assert "w koszu" not in html
+    assert reverse("bpp:browse_praca_by_slug", args=(rekord.slug,)) in html
+    assert "Dodaj powiązanie autora z rekordem" in html
+
+
+@pytest.mark.django_db
+@KLASY
+def test_changelist_rekord_w_koszu(klass, model, admin_client):
+    # Regresja po soft delete (#1054): rodzic z kosza dawał 500
+    # (NoReverseMatch dla browse_praca_by_slug z pustym slugiem).
+    slug = "rekord-z-kosza"
+    rekord = _rekord_ze_slugiem(model, "Rekord z kosza", slug)
+    rekord.delete()
+
+    res = _changelist_autorow(admin_client, klass, rekord.pk)
+    assert res.status_code == 200
+
+    html = normalize_html(res.content.decode())
+    assert "Rekord z kosza" in html
+    assert "Rekord jest w koszu" in html
+    assert reverse(f"admin:bpp_{klass}_change", args=(rekord.pk,)) in html
+    assert "Dodaj powiązanie autora z rekordem" not in html
+    assert reverse("bpp:browse_praca_by_slug", args=(slug,)) not in html
+
+
+@pytest.mark.django_db
+@KLASY
+def test_changelist_rekord_nie_istnieje(klass, model, admin_client):
+    res = _changelist_autorow(admin_client, klass, 999999)
+    assert res.status_code == 200
+
+    html = normalize_html(res.content.decode())
+    assert "Rekord o ID 999999 nie istnieje" in html
+    assert "Dodaj powiązanie autora z rekordem" not in html
+    assert "browse_praca" not in html

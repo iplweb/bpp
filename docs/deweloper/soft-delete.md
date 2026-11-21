@@ -10,7 +10,8 @@
 ## Zasady (w skrócie)
 
 1. **Kosz jest zamrożony w bazie.** Trigger `bpp_kosz_straznik`
-   (`BEFORE UPDATE OR DELETE`, migracja `0523`) na każdej tabeli z koszem:
+   (`BEFORE UPDATE OR DELETE`, migracja `0523`; zgłoszenia publikacji —
+   `zglos_publikacje/0031`) na każdej tabeli z koszem:
    zmiana `deleted_at`, jakikolwiek `UPDATE` wiersza w koszu i fizyczny
    `DELETE` wiersza w koszu są odrzucane, chyba że transakcja ustawiła
    `bpp.kosz_operacja = 'on'` — robi to wyłącznie `operacja_kosza()`
@@ -170,6 +171,25 @@ autorzy), importer autorów PBN i komendy `import_wydawca_*` sprawdzają kosz
 (`pbn_integrator.kosz.pomin_jesli_koliduje`) — trafienie w kosz = pomiń
 i zgłoś (`RekordWKoszuPominietyPrzezImport`), nigdy nie wskrzeszaj.
 
+### Zgłoszenia publikacji — TAK
+
+`Zgloszenie_Publikacji` jest w tym samym koszu co reszta
+(`BppSoftDeleteSlownikMixin`, trigger `zglos_publikacje/0031`). Wcześniej
+(od 2024, #1468) miało własny, starszy soft-delete pakietu — z jego kaskadą,
+która przy kasowaniu **twardo** usuwała autorów i załączniki zgłoszenia,
+a w adminie nie dało się skasowanych zgłoszeń ani zobaczyć, ani przywrócić.
+
+| Model | Zasady |
+|---|---|
+| `Zgloszenie_Publikacji` | Nic nie blokuje kosza (autorzy, załączniki i sesje importu są pominięte w guardzie). Admin jak wszędzie: filtr „♻️ Kosz" (ostatni; „🗑️ Tylko skasowane" wyłącza domyślne zawężenie „stan obsługi → Do obsługi", więc pokazuje też spam i odrzucone), „Usuń do kosza" z powodem, „♻️ Przywróć" (akcja i przycisk). Formularz zgłoszenia w adminie nigdy nie jest edytowalny, więc przywracanie sprawdza uprawnienie `change` użytkownika wprost (`moze_przywracac`). Zgłoszenie z kosza nie ma przycisków „Użyj importera", „Zwróć do autora", „Dodaj wyd. …"; `zwroc/` daje 404. Strona publiczna: link „edycja zgłoszenia" (kod z e-maila) daje 404; `numer_zgloszenia` w formularzu publikacji go nie widzi; importer nie domyka zgłoszenia z kosza i nie bierze z niego dyscyplin ani opłat. Ślad: `SoftDeleteLog` + `LogEntry` (model spoza reversion). `/api/v1/` zgłoszeń nie wystawia — nie ma ich w `/api/v1/usuniete/`. |
+| `Zgloszenie_Publikacji_Autor`, `Zgloszenie_Publikacji_Zalacznik` | **NIE** — jak `*_Autor` publikacji: domyślny `objects` ukrywa wiersze zgłoszeń z kosza, `all_objects` widzi wszystko; wracają przy przywróceniu. |
+
+Zgłoszenia skasowane starym mechanizmem mają te same kolumny
+(`deleted_at`, `restored_at`, `transaction_id`, migracja `0016`), więc
+**od razu są w koszu** — migracja danych nie jest potrzebna. Ich autorów
+i załączników nie da się odzyskać (stara kaskada skasowała je twardo);
+przywrócone takie zgłoszenie wraca bez nich.
+
 ### Poza koszem
 
 | Model | Dlaczego |
@@ -179,7 +199,7 @@ i zgłoś (`RekordWKoszuPominietyPrzezImport`), nigdy nie wskrzeszaj.
 | `Cache_Punktacja_*` | kasowane receiverem przy koszu, przeliczane przy restore |
 | `PBN_Export_Queue`, `SentData`, `pbn_api.*` | kolejka i lustro PBN |
 | `SoftDeleteLog` | audyt kosza |
-| `Element_Repozytorium`, `Zgloszenie_Publikacji` | mają własny, starszy soft-delete |
+| `Element_Repozytorium` | ma własny, starszy soft-delete |
 
 ## Unikalne pola w koszu (slug, nazwa, ORCID, PBN UID, …)
 
@@ -307,11 +327,40 @@ wersję" jest zablokowane (najpierw „Przywróć" z kosza).
   `/api/v1/autor_jednostka/` i `/api/v1/poziom_wydawcy/` pomijają wiersze
   rodziców z kosza.
 - Autocomplete admina nie podsuwa rekordów z kosza; przekierowanie
-  `global-nav-redir` dla rekordu z kosza daje 404 (nie zdradza sluga).
+  `global-nav-redir` dla rekordu z kosza daje 410 (bez przekierowania,
+  więc nie zdradza sluga).
 - Publikacja wskazana w habilitacji (`Publikacja_Habilitacyjna`, GenericFK)
   nie trafi do kosza — GenericFK sprawdzamy jawnie.
 - Scalanie autorów przepina pracę dyplomową z kosza wyłącznie w kolumnie
   autora (`update`), bez pełnego `save()` nieaktualnej instancji.
+
+## Publiczne strony rekordu z kosza — HTTP 410 Gone
+
+Publiczny adres rekordu, który JEST w koszu, odpowiada **410 Gone** ze
+stroną „Ten rekord został usunięty z bibliografii" (zdanie dopasowane do
+typu: publikacja / autor / źródło / wydawca / uczelnia), linkami do
+wyszukiwania i strony głównej oraz `noindex` (meta + `X-Robots-Tag`).
+Strona nie pokazuje ŻADNYCH danych rekordu — także w `<title>`, meta
+i `og:url` (slug publikacji zawiera tytuł). Adres, który nigdy nie
+istniał, i rekord usunięty trwale z kosza dalej dają 404.
+
+Mechanizm (`src/bpp/rekord_usuniety.py`): widok po chybionym lookupie
+w domyślnym menedżerze pyta `deleted_objects` (tylko na ścieżce chybienia
+— żywy rekord nie płaci ani jednego dodatkowego zapytania) i rzuca
+`RekordUsuniety`; `bpp.middleware.RekordUsunietyMiddleware` renderuje
+`rekord_usuniety.html` ze statusem 410. `cache_publiczny` zapisuje tylko
+200, a kosz bumpuje generację cache'a, więc zapamiętana strona rekordu
+nie przeżyje przeniesienia go do kosza.
+
+Objęte: rekord po slugu, po `model,pk`, stare adresy (`/<model>/<pk>/`,
+`/rekord/<ct>,<pk>/` — przekierowują na `browse_praca`, które daje 410),
+slug ze starym sufiksem `-<ct>-<pk>`, autor (slug/pk) i jego sieć
+powiązań, źródło, wydawca (slug/pk), uczelnia, `global-nav-redir`.
+Autor ze schowaną stroną zostaje dla anonima 404 także w koszu (te same
+reguły widoczności). Poza zakresem: OAI-PMH i API (mają nagrobki).
+
+Nowy publiczny widok szczegółów modelu z koszem: dodaj
+`RekordUsunietyDetailMixin` (albo wołaj `rzuc_jesli_w_koszu` po chybieniu).
 
 ## Wdrożenie: okno serwisowe
 
@@ -331,8 +380,8 @@ nie są migrowane wcale.
 
 Wszystkie migracje tego PR-a — `bpp/0511`–`0523`, `cerif_export/0001`,
 `pbn_api/0080`, `pbn_export_queue/0011`–`0012`, `pbn_integrator/0001`,
-`rozbieznosci_dyscyplin/0022`, `zglos_publikacje/0029` — **nie mają kroku
-wstecz** (decyzja właściciela). Wyjątek: `pbn_import/0013` zmienia tylko
+`rozbieznosci_dyscyplin/0022`, `zglos_publikacje/0029`, `0031` — **nie mają
+kroku wstecz** (decyzja właściciela). Wyjątek: `pbn_import/0013` zmienia tylko
 `choices` (cofnięcie nic nie gubi). `migrate` w tył przez którąkolwiek
 z nich rzuca `IrreversibleError`, zanim cokolwiek zmieni w bazie.
 Migracje z kodem (`RunPython`/`RunSQL`) po prostu nie mają

@@ -7,8 +7,9 @@ i oknem serwisowym): ``docs/deweloper/soft-delete.md``. Skrót:
   (``BppPublikacjaSoftDeleteMixin``), ``Autor`` (tylko autor bez prac),
   ``Uczelnia`` i słowniki ``Zrodlo``,
   ``Wydawca``, ``Konferencja``, ``Seria_Wydawnicza``
-  (``BppSoftDeleteSlownikMixin`` — tylko rekord nieużywany); niezależnie od
-  dawna ``Element_Repozytorium`` i ``Zgloszenie_Publikacji``.
+  (``BppSoftDeleteSlownikMixin`` — tylko rekord nieużywany), zgłoszenia
+  publikacji (ten sam mixin, guard nic nie blokuje); niezależnie od dawna
+  ``Element_Repozytorium``.
 - NIE: tabele łączące ``*_Autor`` i dzieci publikacji
   (``*_Streszczenie``, ``*_Zewnetrzna_Baza_Danych``) — NIE mają własnego
   kosza; ich domyślny menedżer (``BppDzieckoPublikacjiMixin``) ukrywa
@@ -1090,7 +1091,10 @@ class BppSoftDeleteSlownikMixin(
     BppUnikalnoscZKoszemMixin, BppPkPrzedHardDeleteMixin, SoftDeleteModel
 ):
     """Kosz dla uczelni i słowników (``Uczelnia``, ``Zrodlo``, ``Wydawca``,
-    ``Konferencja``, ``Seria_Wydawnicza``). ``Jednostka`` NIE ma kosza
+    ``Konferencja``, ``Seria_Wydawnicza``) oraz zgłoszeń publikacji
+    (``zglos_publikacje.Zgloszenie_Publikacji`` — wszystkie jego relacje
+    przychodzące są pominięte, więc guard nic nie blokuje).
+    ``Jednostka`` NIE ma kosza
     (nie kasuje się jej wcale — ``JednostkaNieDoUsuniecia``).
 
     Do kosza trafia wyłącznie rekord NIEUŻYWANY: guard bierze WSZYSTKIE

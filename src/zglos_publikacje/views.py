@@ -542,6 +542,17 @@ class Zgloszenie_PublikacjiWizard(UczelniaSettingRequiredMixin, SessionWizardVie
         # w żywej sesji. `self.storage` istnieje (ustawione w dispatch);
         # pierwsze wejście (brak extra_data) → no-op, bezpieczne.
         self._wyczysc_tmp_pliki()
+        kod_do_edycji = self.kwargs.get("kod_do_edycji")
+        if (
+            kod_do_edycji
+            and not Zgloszenie_Publikacji.objects.filter(
+                kod_do_edycji=kod_do_edycji
+            ).exists()
+        ):
+            # Link do edycji zgłoszenia, którego nie ma albo jest w koszu
+            # (``objects`` kosza nie widzi) — 404 od razu, nie dopiero po
+            # przejściu dwóch kroków kreatora.
+            raise Http404
         return super().get(request, *args, **kwargs)
 
     def render_done(self, form, **kwargs):
