@@ -21,6 +21,43 @@ APLIKACJE_Z_OKRESEM = frozenset(
 )
 
 
+#: Okresy zakładane, gdy tabela okresów jest pusta. Kopia danych z migracji
+#: ``0006_okresy_ewaluacji_dane`` (migracja trzyma własną — nie importuje kodu
+#: aplikacji).
+OKRESY_STARTOWE = (
+    (2022, 2025, "Rozporządzenie MNiSW z 22 lutego 2019 r. w sprawie ewaluacji."),
+    (
+        2026,
+        2030,
+        "Wg projektu nowelizacji ustawy (2026 r.: okres 5-letni). Do czasu "
+        "nowego rozporządzenia punkty i sloty liczone wg zasad 2022–2025.",
+    ),
+)
+
+
+def zasiej_okresy_po_migracji(sender, using="default", **kwargs):
+    """``post_migrate``: gdy tabela okresów jest PUSTA, zakłada okresy startowe.
+
+    Kod ewaluacji zakłada, że jest choć jeden okres. Migracja danych odpala
+    się raz, a ``flush`` (testy transakcyjne, ``manage.py flush``) czyści
+    tabelę i woła tylko ``post_migrate`` — stąd ten handler. Niepustej tabeli
+    nie rusza, więc okresy poprawione w adminie zostają.
+    """
+    from django.db import connections
+
+    from ewaluacja_common.models import OkresEwaluacji
+
+    tabela = OkresEwaluacji._meta.db_table
+    if tabela not in connections[using].introspection.table_names():
+        return  # migracja 0005 jeszcze nie przeszła
+    if OkresEwaluacji.objects.using(using).exists():
+        return
+    OkresEwaluacji.objects.using(using).bulk_create(
+        OkresEwaluacji(rok_od=od, rok_do=do, uwagi=uwagi)
+        for od, do, uwagi in OKRESY_STARTOWE
+    )
+
+
 def okres_domyslny(rok=None):
     """Okres zawierający ``rok`` (domyślnie bieżący). Gdy żaden go nie
     zawiera — ostatni okres, który już się zaczął; a gdy i takiego nie ma —

@@ -71,3 +71,36 @@ def test_wybierz_okres_zla_wartosc_404(admin_client, wartosc):
         reverse("ewaluacja_common:wybierz_okres"), {"okres": wartosc}
     )
     assert resp.status_code == 404
+
+
+@pytest.mark.django_db
+def test_post_migrate_zaklada_okresy_gdy_tabela_pusta():
+    """Po ``flush`` (TRUNCATE + post_migrate) okresy wracają."""
+    from django.apps import apps
+
+    from ewaluacja_common.okres import zasiej_okresy_po_migracji
+
+    OkresEwaluacji.objects.all().delete()
+    zasiej_okresy_po_migracji(apps.get_app_config("ewaluacja_common"))
+    assert [str(o) for o in OkresEwaluacji.objects.all()] == [
+        "2022–2025",
+        "2026–2030",
+    ]
+
+
+@pytest.mark.django_db
+def test_post_migrate_nie_rusza_okresow_z_admina():
+    from django.apps import apps
+
+    from ewaluacja_common.okres import zasiej_okresy_po_migracji
+
+    OkresEwaluacji.objects.all().delete()
+    OkresEwaluacji.objects.create(rok_od=2026, rok_do=2029)
+    zasiej_okresy_po_migracji(apps.get_app_config("ewaluacja_common"))
+    assert [str(o) for o in OkresEwaluacji.objects.all()] == ["2026–2029"]
+
+
+@pytest.mark.django_db(transaction=True)
+def test_okresy_przezywaja_flush_testu_transakcyjnego():
+    """Test transakcyjny przed nami zrobił flush — okresy muszą być."""
+    assert OkresEwaluacji.objects.filter(rok_od=2022).exists()
