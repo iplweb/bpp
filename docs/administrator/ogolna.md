@@ -64,6 +64,31 @@ rekordu — także wtedy, gdy kilku autorów ukrywasz naraz akcją „Ukryj
 wybranych autorów na stronach jednostek i w rankingu” na liście autorów.
 To samo dotyczy akcji zmiany statusu korekty na listach publikacji.
 
+##### Ukrywanie autorów naraz (akcje na liście autorów)
+
+Na liście autorów (Redagowanie ➡ Wprowadzanie danych ➡ Autorzy) zaznacz
+autorów i wybierz akcję z listy „Akcja”:
+
+- **„Ukryj wybranych autorów na stronach jednostek i w rankingu”** /
+  **„Pokaż wybranych autorów na stronach jednostek i w rankingu”** —
+  zmieniają tylko pola „Pokazuj na stronie jednostki” i „Pokazuj
+  w rankingu”; pozostałe ustawienia widoczności zostają bez zmian,
+- **„Ukryj wybranych autorów wszędzie (strony jednostek, ranking,
+  wyszukiwanie, indeks, API, strona autora)”** — odznacza wszystkie pola
+  sekcji „Widoczność”: „Pokazuj na stronie jednostki”, „Pokazuj
+  w rankingu”, „Pokazuj w wyszukiwaniu”, „Pokazuj w indeksie autorów”,
+  „Pokazuj w API” i „Pokazuj stronę autora”. Autor znika ze wszystkich
+  publicznych miejsc, a jego strona przestaje istnieć,
+- **„Pokaż wybranych autorów wszędzie (…)”** — zaznacza z powrotem
+  wszystkie te pola.
+
+Akcje „… wszędzie” są dostępne dla użytkowników, którzy mogą edytować
+autorów. Każda zmiana trafia do „Historii” autora (wpis „Ukryto wszędzie
+(akcja masowa)” albo „Pokazano wszędzie (akcja masowa)”), więc w razie
+pomyłki można przywrócić poprzedni stan pojedynczego autora. Pole „Pokazuj
+sieć powiązań” nie jest przez te akcje zmieniane — sieć powiązań autora ze
+schowaną stroną i tak nie jest pokazywana.
+
 #### Ukrywanie lub wyświetlanie raportów na stronie głównej
 
 Celem konfiguracji sposobu wyświetlania strony głównej jak i innych elementów

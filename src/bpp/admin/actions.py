@@ -1,12 +1,16 @@
+import reversion
 from django.contrib import messages
+from django.contrib.admin.models import CHANGE, LogEntry
+from django.db import transaction
 from django.db.models import Q
 from django.utils.translation import ngettext
 
 from bpp.admin.helpers.pbn_api.gui import (
     sprobuj_wyslac_do_pbn_gui,
 )
-from bpp.models import Status_Korekty, Uczelnia
+from bpp.models import Autor, Status_Korekty, Uczelnia
 from bpp.views.cache_publiczny import uniewaznij_cache_publiczny
+from bpp.wersjonowanie import zapewnij_wersje_poczatkowa
 from pbn_export_queue.tasks import queue_pbn_export_batch
 
 
@@ -147,3 +151,91 @@ def ustaw_pokazuj_false(modeladmin, request, queryset):
 ustaw_pokazuj_false.short_description = (
     "Ukryj wybranych autorów na stronach jednostek i w rankingu"
 )
+
+
+#: Flagi publicznej widoczności autora przełączane akcjami „… wszędzie”.
+#: ``pokazuj_siec_powiazan`` celowo pominięte: sieć powiązań i tak nie jest
+#: dostępna dla autora ze schowaną stroną, a „pokaż wszędzie” nie powinno
+#: nadpisywać ustawienia uczelni (pole jest trójstanowe).
+POLA_WIDOCZNOSCI_AUTORA = (
+    "pokazuj_na_stronie_jednostki",
+    "pokazuj_w_rankingu",
+    "pokazuj_w_wyszukiwaniu",
+    "pokazuj_w_indeksie",
+    "pokazuj_w_api",
+    "pokazuj_strone_autora",
+)
+
+KOMUNIKAT_UKRYTO_WSZEDZIE = "Ukryto wszędzie (akcja masowa)"
+KOMUNIKAT_POKAZANO_WSZEDZIE = "Pokazano wszędzie (akcja masowa)"
+
+
+def _ustaw_widocznosc_wszedzie(request, queryset, widoczny, komentarz):
+    """Ustaw wszystkie flagi publicznej widoczności autorów na ``widoczny``.
+
+    Jeden ``UPDATE`` ustawia wszystkie flagi naraz, więc constraint
+    ``bpp_autor_strona_schowana_wymaga_ukrycia`` (schowana strona autora
+    wymaga wyłączenia wyszukiwania i indeksu) jest spełniony w obu
+    kierunkach. Każdy zmieniony autor dostaje wersję w historii (reversion)
+    i wpis ``LogEntry`` — to akcja „hurtowa”, którą trzeba móc prześledzić
+    i cofnąć. Zwraca liczbę zmienionych autorów.
+    """
+    wartosci = dict.fromkeys(POLA_WIDOCZNOSCI_AUTORA, widoczny)
+    # ``exclude(**wartosci)`` = NOT (wszystkie flagi już mają tę wartość).
+    pks = list(queryset.exclude(**wartosci).values_list("pk", flat=True))
+    if not pks:
+        return 0
+
+    for autor in Autor.objects.filter(pk__in=pks):
+        # Rekordy bez historii: zapisz stan sprzed zmiany, żeby dało się
+        # do niego wrócić z „Historii” autora.
+        zapewnij_wersje_poczatkowa(autor)
+
+    with transaction.atomic(), reversion.create_revision():
+        updated = Autor.objects.filter(pk__in=pks).update(**wartosci)
+        autorzy = list(Autor.objects.filter(pk__in=pks))
+        for autor in autorzy:
+            reversion.add_to_revision(autor)
+        reversion.set_user(request.user)
+        reversion.set_comment(komentarz)
+        LogEntry.objects.log_actions(
+            request.user.pk, autorzy, CHANGE, change_message=komentarz
+        )
+        # ``update()`` nie wysyła ``post_save``; w bloku ``atomic``
+        # unieważnienie wykona się raz, po COMMIT.
+        uniewaznij_cache_publiczny()
+    return updated
+
+
+def ukryj_autorow_wszedzie(modeladmin, request, queryset):
+    updated = _ustaw_widocznosc_wszedzie(
+        request, queryset, False, KOMUNIKAT_UKRYTO_WSZEDZIE
+    )
+    modeladmin.message_user(
+        request,
+        f"Ukryto wszędzie {updated} {ngettext('autora', 'autorów', updated)}",
+    )
+
+
+ukryj_autorow_wszedzie.short_description = (
+    "Ukryj wybranych autorów wszędzie (strony jednostek, ranking, "
+    "wyszukiwanie, indeks, API, strona autora)"
+)
+ukryj_autorow_wszedzie.allowed_permissions = ("change",)
+
+
+def pokaz_autorow_wszedzie(modeladmin, request, queryset):
+    updated = _ustaw_widocznosc_wszedzie(
+        request, queryset, True, KOMUNIKAT_POKAZANO_WSZEDZIE
+    )
+    modeladmin.message_user(
+        request,
+        f"Pokazano wszędzie {updated} {ngettext('autora', 'autorów', updated)}",
+    )
+
+
+pokaz_autorow_wszedzie.short_description = (
+    "Pokaż wybranych autorów wszędzie (strony jednostek, ranking, "
+    "wyszukiwanie, indeks, API, strona autora)"
+)
+pokaz_autorow_wszedzie.allowed_permissions = ("change",)
