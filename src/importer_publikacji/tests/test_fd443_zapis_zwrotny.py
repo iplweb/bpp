@@ -148,19 +148,13 @@ def test_idempotencja_drugie_wywolanie_nic_nie_zmienia(
 
 
 def _soft_usun_bez_kaskady(zgl):
-    """Ustaw ``deleted_at`` z pominięciem ``instance.delete()``.
+    """Przenieś zgłoszenie do kosza.
 
-    ``django_softdelete`` w ``delete()`` emuluje ``on_delete`` relacji
-    odwrotnych — dla ``ImportSession.zgloszenie`` (``SET_NULL``) zeruje
-    FK, więc zwykłe ``zgl.delete()`` NIE ustawia sceny dla guardu
-    ``deleted_at``. Wiersz z ``deleted_at`` i żywym FK powstaje na
-    ścieżkach omijających ``delete()``: ``UPDATE`` z migracji danych,
-    surowy SQL, wyścig między dwoma transakcjami. Guard jest dokładnie
-    dla nich — i to sprawdza ten helper.
+    Kosz BPP nie kaskaduje (inaczej niż dawny soft-delete pakietu, który
+    zerował ``ImportSession.zgloszenie``) — sesja dalej wskazuje zgłoszenie
+    z kosza, więc o pominięciu decyduje guard ``deleted_at``.
     """
-    from django.utils import timezone
-
-    type(zgl).global_objects.filter(pk=zgl.pk).update(deleted_at=timezone.now())
+    zgl.delete(reason="test")
 
 
 @pytest.mark.django_db
@@ -184,21 +178,20 @@ def test_soft_usuniete_zgloszenie_nie_zostaje_oznaczone(importer_user, rekord):
 
 
 @pytest.mark.django_db
-def test_skasowanie_zgloszenia_zeruje_wiazanie_sesji(importer_user, rekord):
-    """Charakteryzacja: ``zgl.delete()`` zeruje ``ImportSession.zgloszenie``.
+def test_kosz_zgloszenia_zostawia_wiazanie_sesji(importer_user, rekord):
+    """Charakteryzacja: kosz NIE zeruje ``ImportSession.zgloszenie``.
 
-    ``django_softdelete`` emuluje ``on_delete=SET_NULL`` przy soft-delete,
-    więc typowa ścieżka (operator kasuje zgłoszenie w module redagowania)
-    rozbraja wiązanie jeszcze przed guardem ``deleted_at``. Efekt netto
-    jest ten sam — zgłoszenie nie zostaje oznaczone.
+    Zgłoszenie w koszu jest zamrożone razem ze swoimi powiązaniami (po
+    przywróceniu wiązanie wraca). Oznaczenia i tak nie ma — pilnuje tego
+    guard ``deleted_at`` w ``oznacz_jako_zaimportowane``.
     """
     zgl = _zgl()
     session = _sesja(importer_user, zgloszenie=zgl)
 
-    zgl.delete()
+    zgl.delete(reason="test")
 
     session = ImportSession.objects.get(pk=session.pk)
-    assert session.zgloszenie_id is None
+    assert session.zgloszenie_id == zgl.pk
     assert oznacz_jako_zaimportowane(session, rekord) is False
 
     z_bazy = type(zgl).global_objects.get(pk=zgl.pk)

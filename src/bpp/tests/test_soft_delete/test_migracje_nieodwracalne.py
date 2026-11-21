@@ -35,6 +35,7 @@ NIEODWRACALNE = [
     ("pbn_integrator", "0001_initial"),
     ("rozbieznosci_dyscyplin", "0022_rozbieznosci_zrodel_bez_skasowanych_publikacji"),
     ("zglos_publikacje", "0030_zgloszenie_autor_protect"),
+    ("zglos_publikacje", "0031_zgloszenie_kosz_zamrozony_trigger"),
 ]
 
 

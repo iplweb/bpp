@@ -8,6 +8,7 @@ from django.conf import settings
 from django.contrib import admin, messages
 from django.contrib.admin import helpers
 from django.contrib.admin.templatetags.admin_urls import add_preserved_filters
+from django.contrib.auth import get_permission_codename
 from django.db import transaction
 from django.http import Http404, HttpResponseRedirect
 from django.shortcuts import render
@@ -20,6 +21,7 @@ from templated_email import send_templated_mail
 from bpp.admin.core import DynamicAdminFilterMixin
 from bpp.admin.helpers.djangoql import BppDjangoQLSearchMixin
 from bpp.admin.helpers.fieldsets import MODEL_Z_OPLATA_ZA_PUBLIKACJE
+from bpp.admin.helpers.mixins import BppSoftDeleteAdminMixin
 from bpp.util import zaloguj_polkniety_wyjatek
 from import_common.normalization import extract_doi_from_url
 from zglos_publikacje.models import (
@@ -77,7 +79,12 @@ class Zgloszenie_Publikacji_ZalacznikInline(admin.TabularInline):
 
 @admin.register(Zgloszenie_Publikacji)
 class Zgloszenie_PublikacjiAdmin(
-    BppDjangoQLSearchMixin, DynamicAdminFilterMixin, admin.ModelAdmin
+    BppDjangoQLSearchMixin,
+    DynamicAdminFilterMixin,
+    # Kosz jak w reszcie admina (filtr „♻️ Kosz", „Usuń do kosza", „♻️
+    # Przywróć"). OSTATNI przed ``ModelAdmin`` — patrz docstring mixinu.
+    BppSoftDeleteAdminMixin,
+    admin.ModelAdmin,
 ):
     djangoql_completion_enabled_by_default = False
     djangoql_completion = True
@@ -165,6 +172,17 @@ class Zgloszenie_PublikacjiAdmin(
     def has_change_permission(self, request, obj=None):
         return False
 
+    def moze_przywracac(self, request):
+        """Przywracanie z kosza = ``delete`` + ``change`` (jak wszędzie).
+
+        Formularz zgłoszenia nie jest edytowalny (``has_change_permission``
+        zawsze ``False``), więc o ``change`` pytamy użytkownika wprost.
+        """
+        opts = self.model._meta
+        return self.has_delete_permission(request) and request.user.has_perm(
+            f"{opts.app_label}.{get_permission_codename('change', opts)}"
+        )
+
     def get_urls(self):
         from django.urls import re_path as url
 
@@ -205,12 +223,16 @@ class Zgloszenie_PublikacjiAdmin(
         extra_context = extra_context or {}
         obj = self.get_object(request, object_id)
         if obj is not None:
-            # ``_changelist_filters`` — filtry listy, z której operator tu
-            # wszedł (admin dokleja je przy ``preserve_filters``). Importer
-            # wraca z nimi przyciskiem „Wróć do zgłoszeń" (FD#482).
-            extra_context["importer_url"] = self.importer_url(
-                obj, changelist_filters=request.GET.get("_changelist_filters")
-            )
+            # Zgłoszenie z kosza jest tylko do odczytu: bez importera, zwrotu
+            # i dodawania rekordu (najpierw „♻️ Przywróć").
+            if obj.deleted_at is None:
+                # ``_changelist_filters`` — filtry listy, z której operator tu
+                # wszedł (admin dokleja je przy ``preserve_filters``).
+                # Importer wraca z nimi przyciskiem „Wróć do zgłoszeń"
+                # (FD#482).
+                extra_context["importer_url"] = self.importer_url(
+                    obj, changelist_filters=request.GET.get("_changelist_filters")
+                )
             if obj.czy_zaimportowane:
                 # Panel „📥 Zaimportowane …" nad formularzem (FD#443, §8).
                 url, nazwa = self._rekord_url_i_nazwa(obj)
@@ -286,7 +308,10 @@ class Zgloszenie_PublikacjiAdmin(
     @transaction.atomic
     def zwroc_view(self, request, id, form_url="", extra_context=None):
         opts = Zgloszenie_Publikacji._meta
-        obj = Zgloszenie_Publikacji.objects.get(pk=id)
+        # ``objects`` — zgłoszenia z kosza nie zwracamy (najpierw „Przywróć").
+        obj = Zgloszenie_Publikacji.objects.filter(pk=id).first()
+        if obj is None:
+            raise Http404("Zgłoszenie nie istnieje albo jest w koszu")
         form_class = ZwrocEmailForm
 
         add = False

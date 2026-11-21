@@ -1,0 +1,1 @@
+Publiczny adres rekordu przeniesionego do kosza (publikacji, autora, źródła, wydawcy, uczelni) zwraca teraz HTTP 410 „Gone" ze stroną „Ten rekord został usunięty z bibliografii" — bez żadnych danych rekordu, z linkami do wyszukiwania i strony głównej, oznaczoną dla wyszukiwarek jako ``noindex``. Adresy, które nigdy nie istniały, dalej zwracają 404.

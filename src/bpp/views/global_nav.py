@@ -1,11 +1,12 @@
 from django.contrib.contenttypes.models import ContentType
-from django.http import Http404
 from django.http.response import (
     HttpResponseBadRequest,
     HttpResponseNotAllowed,
     HttpResponseRedirect,
 )
 from django.urls.base import reverse
+
+from bpp.rekord_usuniety import RekordUsuniety
 
 lookup_map_user = {
     "bpp.autor": ("bpp:browse_autor", lambda x: (None, {"slug": x.slug})),
@@ -66,10 +67,12 @@ def _resolve_lookup_url(lookup_map, klass, source):
 
 def _obiekt_spoza_kosza(klass, object_id):
     """``get_object_for_this_type`` pyta ``_base_manager`` (widzi kosz) —
-    przekierowanie zdradziłoby slug rekordu z kosza, więc 404."""
+    przekierowanie zdradziłoby slug rekordu z kosza. Zamiast tego 410:
+    ten sam wynik, który dałaby docelowa strona publiczna rekordu z kosza,
+    tylko bez przekierowania niosącego slug (``bpp.rekord_usuniety``)."""
     obiekt = klass.get_object_for_this_type(pk=object_id)
     if getattr(obiekt, "deleted_at", None) is not None:
-        raise Http404
+        raise RekordUsuniety(type(obiekt))
     return obiekt
 
 

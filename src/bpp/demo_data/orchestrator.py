@@ -8,6 +8,7 @@ import sys
 from dataclasses import dataclass
 from pathlib import Path
 
+from django.core.exceptions import FieldDoesNotExist
 from django.db import connection
 
 from bpp.demo_data.confirm import ConfirmAborted, double_confirm
@@ -58,6 +59,10 @@ class CreateOptions:
     polon_dyscypliny: list[str] | None = None
     polon_bez_blednych_wierszy: bool = False
     bez_ewaluacji: bool = False
+    zgloszen: int = 40
+    # Login uzytkownika, któremu przypisujemy wpisy „utworzono" w historii
+    # (admin „Historia"). None → konto techniczne ``bpp-system``.
+    uzytkownik: str | None = None
 
 
 def run_create(opts: CreateOptions, *, stdin=None, stdout=None):
@@ -69,7 +74,7 @@ def run_create(opts: CreateOptions, *, stdin=None, stdout=None):
     3. Manifest + RNG init.
     4. Generatory w sztywnej kolejnosci dependency: uczelnia → wydzialy →
        jednostki → autorzy → dyscypliny → zrodla (+ punktacja) → wydawcy
-       (+ poziomy) → WC → WZ.
+       (+ poziomy) → WC → WZ → streszczenia → zgloszenia publikacji.
     5. Przeliczenie ewaluacji (cache punktow/slotow, liczba N, metryki) —
        pomijane z `--bez-ewaluacji`.
     6. Manifest save + summary do stdout.
@@ -92,7 +97,8 @@ def run_create(opts: CreateOptions, *, stdin=None, stdout=None):
         f"Stworzy: {opts.wydzialow} wydz., "
         f"{opts.wydzialow * opts.jednostek_na_wydzial} jedn., "
         f"{opts.autorow} aut., {opts.ile_ciaglych} prac ciaglych, "
-        f"{opts.ile_zwartych} prac zwartych w bazie '{db_name}'."
+        f"{opts.ile_zwartych} prac zwartych, {opts.zgloszen} zgloszen "
+        f"publikacji w bazie '{db_name}'."
     )
     try:
         double_confirm(
@@ -106,6 +112,9 @@ def run_create(opts: CreateOptions, *, stdin=None, stdout=None):
     except ConfirmAborted as e:
         stdout.write(f"[ABORT] {e}\n")
         raise SystemExit(1) from None
+
+    # PRZED generatorami — bledny --uzytkownik nie moze zostawic polowy demo:
+    autor_historii = _autor_historii(opts.uzytkownik, stdout)
 
     # 3. Manifest + RNG:
     rng = random.Random(opts.seed)
@@ -240,6 +249,39 @@ def run_create(opts: CreateOptions, *, stdin=None, stdout=None):
         disable_progress=opts.disable_progress,
     )
 
+    from bpp.demo_data.generators.zgloszenia import create_zgloszenia
+
+    create_zgloszenia(
+        n=opts.zgloszen,
+        autorzy=autorzy,
+        prace_wc=wc,
+        prace_wz=wz,
+        lata=lata,
+        theme=theme,
+        prefix=prefix,
+        manifest=manifest,
+        rng=rng,
+        batch_size=opts.batch_size,
+        disable_progress=opts.disable_progress,
+    )
+
+    # Ślad w historii (admin „Historia") — bulk_create go nie zostawia:
+    from bpp.demo_data.historia import (
+        komentarz_utworzenia,
+        zapisz_historie_utworzenia,
+    )
+
+    wpisy_historii = zapisz_historie_utworzenia(
+        manifest,
+        user=autor_historii,
+        komentarz=komentarz_utworzenia(seed=opts.seed, motyw=opts.motyw),
+        batch_size=opts.batch_size,
+    )
+    stdout.write(
+        f'[OK] Historia: {sum(wpisy_historii.values())} wpisow „utworzono" '
+        f"(uzytkownik: {autor_historii.username}).\n"
+    )
+
     if not opts.bez_ewaluacji:
         from bpp.demo_data.ewaluacja import przelicz_ewaluacje
 
@@ -284,6 +326,45 @@ def run_create(opts: CreateOptions, *, stdin=None, stdout=None):
         stdout.write("\n" + podsumowanie.tekst())
 
 
+def _autor_historii(username: str | None, stdout):
+    """Użytkownik, któremu przypisujemy wpisy „utworzono" w historii:
+    podany ``--uzytkownik`` albo konto techniczne ``bpp-system`` (to samo,
+    które podpisuje inne operacje systemowe)."""
+    if username is None:
+        from pbn_export_queue.operacje import pobierz_konto_techniczne
+
+        return pobierz_konto_techniczne()
+
+    from django.contrib.auth import get_user_model
+
+    try:
+        return get_user_model().objects.get(username=username)
+    except get_user_model().DoesNotExist:
+        stdout.write(f"[BLAD] Nie ma uzytkownika '{username}' (--uzytkownik).\n")
+        raise SystemExit(1) from None
+
+
+def _odepnij_rozdzialy(manager, pks: list[int], batch_size: int) -> None:
+    """Zeruje self-FK `wydawnictwo_nadrzedne` rozdzialow demo przed kasowaniem.
+
+    Pole jest PROTECT (soft-delete, #1054), a `hard_delete()` na modelu
+    soft-delete kasuje wiersz po wierszu w kolejnosci `Meta.ordering`, NIE
+    po pk. Ksiazka-matka bywa wiec kasowana przed swoim rozdzialem i kolektor
+    Django rzuca `ProtectedError`. Odpinamy rozdzialy UPDATE-em na paczke,
+    zamiast polegac na kolejnosci (jak
+    `wyczysc_publikacje_importu._odepnij_rozdzialy`).
+    """
+    try:
+        manager.model._meta.get_field("wydawnictwo_nadrzedne")
+    except FieldDoesNotExist:
+        return
+    for start in range(0, len(pks), batch_size):
+        manager.filter(
+            pk__in=pks[start : start + batch_size],
+            wydawnictwo_nadrzedne__isnull=False,
+        ).update(wydawnictwo_nadrzedne=None)
+
+
 @dataclass
 class CleanupOptions:
     manifest: Path
@@ -298,10 +379,9 @@ def run_cleanup(opts: CleanupOptions, *, stdin=None, stdout=None):
     usuwa obiekty w bezpiecznej kolejnosci, renamuje manifest do
     `.applied.<TS>`.
 
-    Wewnatrz jednego modelu PK sortowane DESC — dla
-    `bpp.Wydawnictwo_Zwarte` rozdzialy zazwyczaj maja wyzsze PK niz
-    ich nadrzedne (sa tworzone po), wiec usuwajac od konca nie
-    zlamiemy FK `wydawnictwo_nadrzedne`.
+    Przed kasowaniem `bpp.Wydawnictwo_Zwarte` rozdzialy sa odpinane od
+    ksiazek nadrzednych (`_odepnij_rozdzialy`) — FK `wydawnictwo_nadrzedne`
+    jest PROTECT, a kolejnosc kasowania per-instancja nie jest gwarantowana.
     """
     stdin = stdin or sys.stdin
     stdout = stdout or sys.stdout
@@ -346,6 +426,7 @@ def run_cleanup(opts: CleanupOptions, *, stdin=None, stdout=None):
         przelicz_liczbe_n_po_cleanup,
         usun_cache_punktacji,
     )
+    from bpp.demo_data.historia import usun_historie
 
     # Cache punktacji nie ma FK do rekordu (klucz-krotka) — kasujemy jawnie
     # PRZED rekordami.
@@ -377,6 +458,7 @@ def run_cleanup(opts: CleanupOptions, *, stdin=None, stdout=None):
         # komentarz niżej. `getattr` zamiast `isinstance`, bo lista modeli
         # przychodzi z manifestu i miesza modele soft-delete z resztą.
         manager = manager_z_koszem(model)
+        _odepnij_rozdzialy(manager, sorted_pks, opts.batch_size)
 
         for start in pbar:
             chunk = sorted_pks[start : start + opts.batch_size]
@@ -391,6 +473,9 @@ def run_cleanup(opts: CleanupOptions, *, stdin=None, stdout=None):
                 # nadal siedzą w bazie, mijają się z celem komendy.
                 hard = getattr(qs, "hard_delete", None)
                 (hard or qs.delete)()
+                # Historia (LogEntry + wersje reversion) skasowanych obiektów
+                # — inaczej zostałaby osierocona:
+                usun_historie(model, chunk)
 
     przelicz_liczbe_n_po_cleanup(manifest, stdout)
 

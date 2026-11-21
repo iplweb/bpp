@@ -274,6 +274,15 @@ def _worker_trzyma_blokade(rekord):
             cur.execute("SELECT pg_try_advisory_lock(%s)", [klucz])
             assert cur.fetchone()[0]
         yield
+        # Release the lock explicitly instead of relying on ``close()``:
+        # closing only sends a Terminate message, and the server backend
+        # drops its session locks asynchronously while exiting. The test's
+        # next ``pg_try_advisory_xact_lock`` could still see the lock held
+        # (flaky ``WpisWTrakcieWysylki``). ``pg_advisory_unlock`` returns
+        # only after the lock is gone.
+        with inne.cursor() as cur:
+            cur.execute("SELECT pg_advisory_unlock(%s)", [klucz])
+            assert cur.fetchone()[0]
     finally:
         inne.close()
 
@@ -405,14 +414,18 @@ def test_autocomplete_admina_nie_podsuwa_kosza(admin_client):
     assert b"Koszowski" not in res.content
 
 
-def test_global_nav_404_dla_rekordu_z_kosza(client):
+def test_global_nav_410_dla_rekordu_z_kosza(client):
+    """Bez przekierowania (zdradziłoby slug) — od razu 410, jak strona
+    publiczna rekordu z kosza (``bpp.rekord_usuniety``)."""
     autor = baker.make(Autor, nazwisko="Koszowski", imiona="Tajny")
     autor.delete()
     ct = ContentType.objects.get_for_model(Autor)
 
     res = client.get(f"/global-nav-redir/{ct.pk}-{autor.pk}/")
 
-    assert res.status_code == 404
+    assert res.status_code == 410
+    assert b"Koszowski" not in res.content
+    assert autor.slug.encode() not in res.content
 
 
 def test_wersja_uczelni_bez_pol_kosza(uczelnia):

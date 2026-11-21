@@ -1,0 +1,28 @@
+{# Strona „Nie można przenieść do kosza”: komunikat guardu + rekordy blokujące. #}
+{# kosz_blokada_grupy — GrupaBlokady per relacja (bpp.models.soft_delete). #}
+{# Pozycje z kosza są oznaczone i linkują do rekordu (podgląd / przywrócenie). #}
+<div class="grp-module kosz-blokada">
+  <h2>🗑️ Nie można przenieść „{{ object }}” do kosza</h2>
+  <div class="grp-row">
+    <p class="grp-description">{{ kosz_blokada }}</p>
+  </div>
+  {% if kosz_blokada_grupy %}
+    <div class="grp-row">
+      <p class="grp-description">Poniżej rekordy, które blokują przeniesienie do kosza — kliknij, żeby otworzyć rekord.{% if kosz_blokada_w_koszu %} <strong>🗑️ {{ kosz_blokada_w_koszu }} z nich {{ kosz_blokada_w_koszu|pluralize:"jest,są" }} w koszu</strong> — one także blokują: przywróć je i odepnij powiązanie albo zostaw rekord.{% endif %}</p>
+    </div>
+  {% endif %}
+</div>
+{% for grupa in kosz_blokada_grupy %}
+  <div class="grp-module kosz-blokada-grupa">
+    <h2>{{ grupa.etykieta }}: {{ grupa.liczba }}{% if grupa.w_koszu %} (w tym 🗑️ {{ grupa.w_koszu }} w koszu){% endif %}</h2>
+    {% for pozycja in grupa.pozycje %}
+      <div class="grp-row">
+        {% if pozycja.url %}<a href="{{ pozycja.url }}">{{ pozycja.tekst }}</a>{% else %}{{ pozycja.tekst }}{% endif %}
+        {% if pozycja.w_koszu %}&nbsp;<strong title="Rekord jest w koszu — otwórz go, żeby obejrzeć albo przywrócić">🗑️ w koszu</strong>{% endif %}
+      </div>
+    {% endfor %}
+    {% if grupa.reszta %}
+      <div class="grp-row"><em>…i jeszcze {{ grupa.reszta }}</em></div>
+    {% endif %}
+  </div>
+{% endfor %}

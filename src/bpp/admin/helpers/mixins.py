@@ -239,7 +239,7 @@ class PokazSkasowaneFilter(SoftDeleteFilter):
     i da się go bezpiecznie zabookmarkować.
     """
 
-    title = "Kosz"
+    title = "♻️ Kosz"
 
     def lookups(self, request, model_admin):
         return (
@@ -312,9 +312,14 @@ class BppSoftDeleteAdminMixin:
         return qs
 
     def get_list_filter(self, request):
-        list_filter = list(super().get_list_filter(request) or [])
-        if PokazSkasowaneFilter not in list_filter:
-            list_filter.insert(0, PokazSkasowaneFilter)
+        """Filtr kosza zawsze OSTATNI w panelu filtrów (decyzja właściciela)
+        — także gdy admin ma własne ``list_filter`` z tym filtrem."""
+        list_filter = [
+            f
+            for f in (super().get_list_filter(request) or [])
+            if f is not PokazSkasowaneFilter
+        ]
+        list_filter.append(PokazSkasowaneFilter)
         return list_filter
 
     # --- blokada kosza z bazy → komunikat zamiast 500 ---------------------
@@ -361,6 +366,13 @@ class BppSoftDeleteAdminMixin:
             return False
         return super().has_change_permission(request, obj)
 
+    def get_view_on_site_url(self, obj=None):
+        """Rekord z kosza nie ma „Pokaż na stronie" — strona publiczna daje
+        dla niego 404."""
+        if obj is not None and getattr(obj, "deleted_at", None) is not None:
+            return None
+        return super().get_view_on_site_url(obj)
+
     def has_delete_permission(self, request, obj=None):
         """Rekord już w koszu nie ma przycisku „Usuń" (opróżnianie kosza to
         osobna akcja superusera)."""
@@ -373,11 +385,21 @@ class BppSoftDeleteAdminMixin:
     ):
         if obj is not None and getattr(obj, "deleted_at", None) is not None:
             context["rekord_w_koszu"] = obj
+            if self.moze_przywracac(request):
+                context["kosz_przywroc_url"] = reverse(
+                    f"admin:{self._nazwa_url_przywroc()}", args=[obj.pk]
+                )
             self.message_user(
                 request,
                 f"🗑️ Rekord jest w koszu (od {obj.deleted_at:%Y-%m-%d %H:%M}). "
-                "Aby go edytować, przywróć go akcją „♻️ Przywróć zaznaczone” "
-                "na liście z filtrem „Kosz → 🗑️ Tylko skasowane”.",
+                + (
+                    "Aby go edytować, przywróć go przyciskiem „♻️ Przywróć” "
+                    "na dole strony."
+                    if "kosz_przywroc_url" in context
+                    else "Aby go edytować, przywróć go akcją „♻️ Przywróć "
+                    "zaznaczone” na liście z filtrem „Kosz → 🗑️ Tylko "
+                    "skasowane”."
+                ),
                 level=messages.WARNING,
             )
         return super().render_change_form(
@@ -427,11 +449,23 @@ class BppSoftDeleteAdminMixin:
     def blokada_kosza(self, obj):
         """Komunikat, dlaczego rekord NIE może trafić do kosza, albo ``None``
         (guard modelu albo kolejka PBN)."""
+        return self.blokada_kosza_szczegoly(obj)[0]
+
+    def blokada_kosza_szczegoly(self, obj):
+        """``(komunikat, grupy)`` — dlaczego rekord NIE może trafić do kosza
+        i KTÓRE rekordy go blokują (``GrupaBlokady`` per relacja; guard
+        modelu albo kolejka PBN). ``(None, [])``, gdy nic nie blokuje."""
+        from pbn_export_queue.operacje import grupa_blokady_kolejki
+
         try:
             obj.sprawdz_czy_mozna_do_kosza()
         except ProtectedError as e:
-            return e.args[0]
-        return self.stan_pbn_przed_koszem(obj)["blokada"]
+            return e.args[0], list(getattr(e, "grupy", []))
+        komunikat = self.stan_pbn_przed_koszem(obj)["blokada"]
+        if komunikat is None:
+            return None, []
+        grupa = grupa_blokady_kolejki(obj)
+        return komunikat, [grupa] if grupa is not None else []
 
     # --- kasowanie = kosz -----------------------------------------------
 
@@ -495,10 +529,13 @@ class BppSoftDeleteAdminMixin:
         """
         obj = self.get_object(request, unquote(object_id))
         if obj is not None and self.has_delete_permission(request, obj):
-            blokada = self.blokada_kosza(obj)
+            blokada, grupy = self.blokada_kosza_szczegoly(obj)
             extra_context = {
                 **(extra_context or {}),
                 "kosz_blokada": blokada,
+                "kosz_blokada_grupy": grupy,
+                "kosz_blokada_w_koszu": sum(g.w_koszu for g in grupy),
+                "title": "Usuń do kosza",
                 "kosz_pbn": self.stan_pbn_przed_koszem(obj),
             }
             if request.method == "POST" and blokada:
@@ -551,27 +588,13 @@ class BppSoftDeleteAdminMixin:
     def przywroc_zaznaczone(self, request, queryset):
         """Przywraca rekordy z kosza (pomija żywe — ``restore()`` przelicza
         punktację i kolejkuje PBN, więc no-op byłby kosztowny)."""
-        from bpp.models.soft_delete import (
-            KonfliktPrzywracania,
-            NiedozwolonaZmianaKosza,
-        )
-        from pbn_export_queue.operacje import RekordWKolejcePBN
-
         przywrocono = 0
         with self._soft_delete_user_context(request):
             for obj in queryset:
                 if obj.deleted_at is None:
                     continue
-                try:
-                    obj.restore(user=request.user)
-                except (
-                    KonfliktPrzywracania,
-                    RekordWKolejcePBN,
-                    NiedozwolonaZmianaKosza,
-                ) as e:
-                    self.message_user(request, str(e), level=messages.ERROR)
-                    continue
-                przywrocono += 1
+                if self._przywroc_jeden(request, obj):
+                    przywrocono += 1
         if not przywrocono:
             self.message_user(
                 request,
@@ -586,6 +609,89 @@ class BppSoftDeleteAdminMixin:
             f"Przywrócono z kosza: {przywrocono}.",
             level=messages.SUCCESS,
         )
+
+    def _przywroc_jeden(self, request, obj):
+        """``restore()`` jednego rekordu; ``False`` (z komunikatem), gdy
+        reguły kosza na to nie pozwalają (kolejka PBN, konflikt unikalności,
+        rekord już nie w koszu). Wspólne dla akcji i przycisku „Przywróć"."""
+        from bpp.models.soft_delete import (
+            KonfliktPrzywracania,
+            NiedozwolonaZmianaKosza,
+        )
+        from pbn_export_queue.operacje import RekordWKolejcePBN
+
+        try:
+            obj.restore(user=request.user)
+        except (
+            KonfliktPrzywracania,
+            RekordWKolejcePBN,
+            NiedozwolonaZmianaKosza,
+        ) as e:
+            self.message_user(request, str(e), level=messages.ERROR)
+            return False
+        return True
+
+    def moze_przywracac(self, request):
+        """Przywracanie = ``delete`` + ``change`` (jak akcja
+        ``przywroc_zaznaczone``). Uprawnienia na poziomie MODELU — obiektowe
+        ``has_change_permission`` rekordu z kosza zawsze odmawia (tylko do
+        odczytu). Admin bez edycji w formularzu (``has_change_permission``
+        zawsze ``False``, np. zgłoszenia publikacji) nadpisuje to i pyta
+        o uprawnienie ``change`` użytkownika wprost."""
+        return self.has_delete_permission(request) and self.has_change_permission(
+            request
+        )
+
+    def _nazwa_url_przywroc(self):
+        opts = self.model._meta
+        return f"{opts.app_label}_{opts.model_name}_przywroc"
+
+    def get_urls(self):
+        from django.urls import path
+
+        return [
+            path(
+                "<path:object_id>/przywroc/",
+                self.admin_site.admin_view(self.przywroc_view),
+                name=self._nazwa_url_przywroc(),
+            ),
+            *super().get_urls(),
+        ]
+
+    def przywroc_view(self, request, object_id):
+        """Przycisk „♻️ Przywróć" na stronie rekordu z kosza (tylko POST).
+
+        Te same uprawnienia i reguły co akcja „Przywróć zaznaczone"; po
+        sukcesie wraca na stronę (już edytowalnego) rekordu."""
+        from django.core.exceptions import PermissionDenied
+        from django.http import HttpResponseNotAllowed, HttpResponseRedirect
+
+        if request.method != "POST":
+            return HttpResponseNotAllowed(["POST"])
+        if not self.moze_przywracac(request):
+            raise PermissionDenied
+        obj = self.get_object(request, unquote(object_id))
+        if obj is None:
+            return self._get_obj_does_not_exist_redirect(
+                request, self.model._meta, object_id
+            )
+        url_rekordu = reverse(
+            f"admin:{self.model._meta.app_label}_{self.model._meta.model_name}_change",
+            args=[obj.pk],
+        )
+        if obj.deleted_at is None:
+            self.message_user(
+                request, f"„{obj}” nie jest w koszu.", level=messages.WARNING
+            )
+            return HttpResponseRedirect(url_rekordu)
+        with self._soft_delete_user_context(request):
+            if self._przywroc_jeden(request, obj):
+                self.message_user(
+                    request,
+                    f"♻️ Przywrócono z kosza: „{obj}”.",
+                    level=messages.SUCCESS,
+                )
+        return HttpResponseRedirect(url_rekordu)
 
     #: Ile rekordów wypisać na stronie pośredniej z powodem.
     LIMIT_PODGLADU_KOSZA = 50
@@ -650,8 +756,10 @@ class BppSoftDeleteAdminMixin:
         actions = super().get_actions(request)
         if self.has_delete_permission(request):
             actions["usun_do_kosza"] = self.get_action("usun_do_kosza")
-            if self.has_change_permission(request):
+            if self.moze_przywracac(request):
                 actions["przywroc_zaznaczone"] = self.get_action("przywroc_zaznaczone")
+            else:
+                actions.pop("przywroc_zaznaczone", None)
         else:
             actions.pop("usun_do_kosza", None)
             actions.pop("przywroc_zaznaczone", None)

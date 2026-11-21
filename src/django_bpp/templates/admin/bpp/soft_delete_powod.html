@@ -1,50 +1,62 @@
 {% extends "admin/base_site.html" %}
-{% load admin_urls %}
+{% load i18n admin_urls %}
 
-{% block content %}
 {# Strona pośrednia akcji "Usuń do kosza": pyta o powód operacji. #}
 {# Powód wędruje przez reason= do SoftDeleteLog.powod (receiver fazy 06). #}
+{# Markup Grappelli jak w delete_selected_confirmation.html i change_form. #}
 
-<p>🗑️ Zaznaczone rekordy zostaną przeniesione do <strong>kosza</strong>.</p>
-<p>
-  Operacja jest odwracalna — rekordy wrócą akcją „♻️ Przywróć zaznaczone”
-  na liście z filtrem <em>Kosz → 🗑️ Tylko skasowane</em>.
-</p>
+{% block bodyclass %}grp-delete-confirmation{% endblock %}
+{% block content-class %}{% endblock %}
 
-<p>Do kosza trafi rekordów: <strong>{{ ile_obiektow }}</strong>.</p>
+{% block breadcrumbs %}
+  <ul class="grp-horizontal-list">
+    <li><a href="{% url 'admin:index' %}">{% trans "Home" %}</a></li>
+    <li><a href="{% url 'admin:app_list' app_label=opts.app_label %}">{{ opts.app_config.verbose_name }}</a></li>
+    <li><a href="{% url opts|admin_urlname:'changelist' %}">{{ opts.verbose_name_plural|capfirst }}</a></li>
+    <li>Usuń do kosza</li>
+  </ul>
+{% endblock %}
 
-<ul>
-  {% for w in wiersze %}
-    <li>
-      {{ w.obj }}
-      {% if w.blokada %}<br><strong>⛔ Nie trafi do kosza:</strong> {{ w.blokada }}{% endif %}
-      {% if w.pbn.wycofanie %}<br>⚠️ Zostanie wycofany z PBN (oświadczenia instytucji); przywrócenie zleci ponowną wysyłkę.{% endif %}
-    </li>
-  {% endfor %}
-</ul>
+{% block content %}
+<div class="g-d-c">
+  <form method="post" novalidate>{% csrf_token %}
+    <fieldset class="module grp-module">
+      <h2>🗑️ Przenieść zaznaczone rekordy do kosza? ({{ ile_obiektow }})</h2>
+      <div class="grp-row">
+        <p class="grp-description">Operacja jest odwracalna — rekordy wrócą akcją „♻️ Przywróć zaznaczone” na liście z filtrem <em>Kosz → 🗑️ Tylko skasowane</em>.</p>
+      </div>
+      {% include "admin/bpp/kosz_pole_powod.html" with pomoc="Trafi do dziennika operacji kosza (wspólny dla wszystkich zaznaczonych rekordów)." %}
+    </fieldset>
 
-{% if ile_ukrytych %}
-  {# Przy zaznaczeniu "wszystkie pasujące" lista bywa ogromna — pokazujemy #}
-  {# próbkę, a nie materializujemy dziesiątek tysięcy rekordów na stronie. #}
-  <p>… oraz {{ ile_ukrytych }} dalszych (lista skrócona).</p>
-{% endif %}
+    <div class="grp-module">
+      <h2>Rekordy do przeniesienia: {{ ile_obiektow }}</h2>
+      {% for w in wiersze %}
+        <div class="grp-row">
+          {{ w.obj }}
+          {% if w.blokada %}<p class="grp-help"><strong>⛔ Nie trafi do kosza:</strong> {{ w.blokada }}</p>{% endif %}
+          {% if w.pbn.wycofanie %}<p class="grp-help">⚠️ Zostanie wycofany z PBN (oświadczenia instytucji); przywrócenie zleci ponowną wysyłkę.</p>{% endif %}
+        </div>
+      {% endfor %}
+      {% if ile_ukrytych %}
+        {# Przy zaznaczeniu "wszystkie pasujące" lista bywa ogromna — pokazujemy #}
+        {# próbkę, a nie materializujemy dziesiątek tysięcy rekordów na stronie. #}
+        <div class="grp-row"><em>…i jeszcze {{ ile_ukrytych }} (lista skrócona)</em></div>
+      {% endif %}
+    </div>
 
-<form method="post">{% csrf_token %}
-  {% for pk in wybrane_pk %}
-    <input type="hidden" name="{{ action_checkbox_name }}" value="{{ pk }}">
-  {% endfor %}
-  <input type="hidden" name="action" value="usun_do_kosza">
-  <input type="hidden" name="powod_potwierdzony" value="1">
-  <input type="hidden" name="index" value="{{ action_index }}">
-  <input type="hidden" name="select_across" value="{{ select_across }}">
-
-  <p>
-    <label for="id_powod">Powód usunięcia (trafi do dziennika operacji):</label>
-    <br>
-    <textarea name="powod" id="id_powod" rows="3" cols="60"></textarea>
-  </p>
-
-  <input type="submit" value="🗑️ Przenieś do kosza">
-  <a href="{% url opts|admin_urlname:'changelist' %}">Anuluj</a>
-</form>
+    <div class="grp-module grp-submit-row grp-fixed-footer">
+      {% for pk in wybrane_pk %}
+        <input type="hidden" name="{{ action_checkbox_name }}" value="{{ pk }}">
+      {% endfor %}
+      <input type="hidden" name="action" value="usun_do_kosza">
+      <input type="hidden" name="powod_potwierdzony" value="1">
+      <input type="hidden" name="index" value="{{ action_index }}">
+      <input type="hidden" name="select_across" value="{{ select_across }}">
+      <ul>
+        <li class="grp-float-left"><a href="{% url opts|admin_urlname:'changelist' %}" class="grp-button grp-cancel-link">{% trans "Cancel" %}</a></li>
+        <li><input type="submit" value="🗑️ Tak, przenieś do kosza" class="grp-button grp-default" /></li>
+      </ul>
+    </div>
+  </form>
+</div>
 {% endblock %}

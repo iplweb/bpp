@@ -7,7 +7,6 @@ from django.contrib.contenttypes.models import ContentType
 from django.core.exceptions import ValidationError
 from django.db import models
 from django.db.models import Q
-from django_softdelete.models import SoftDeleteModel
 
 from bpp.models import Autor_Dyscyplina, Uczelnia
 from bpp.models.abstract import (
@@ -17,7 +16,12 @@ from bpp.models.abstract import (
     ModelZOplataZaPublikacje,
     ModelZRokiem,
 )
-from bpp.models.soft_delete import BppPkPrzedHardDeleteMixin
+from bpp.models.soft_delete import (
+    BppDzieckoPublikacjiMixin,
+    BppSoftDeleteSlownikMixin,
+    BppWszystkieWierszeManager,
+    BppZywyRodzicManager,
+)
 from bpp.models.wydawca import Wydawca
 from bpp.models.wydawnictwo_zwarte import Wydawnictwo_Zwarte
 from pbn_api.models.publication import Publication as PBN_Publication
@@ -59,17 +63,28 @@ def zgloszenie_publikacji_upload_to(instance, filename):
 
 
 class Zgloszenie_Publikacji(
-    # BppPkPrzedHardDeleteMixin: ten model jest soft-delete NIEZALEŻNIE od
-    # faz 01-04 (używa pakietu od dawna, na własne potrzeby), więc receivery
-    # fazy 06 obejmują go razem z resztą — a wtedy jego hard_delete()
-    # potrzebuje zachowanego pk. Patrz docstring mixinu.
-    BppPkPrzedHardDeleteMixin,
+    # Kosz jak w reszcie BPP (``docs/deweloper/soft-delete.md``): ``objects``
+    # ukrywa kosz, ``global_objects``/``deleted_objects``, ``delete()`` /
+    # ``restore()`` bez kaskady pakietu (autorzy i załączniki zostają przy
+    # zgłoszeniu i wracają z nim), trigger ``bpp_kosz_straznik`` zamraża
+    # zgłoszenie w koszu (migracja ``0031``).
+    BppSoftDeleteSlownikMixin,
     ModelZRokiem,
     DwaTytuly,
     ModelZDOI,
     ModelZOplataZaPublikacje,
-    SoftDeleteModel,
 ):
+    #: Nic nie blokuje kosza zgłoszenia: autorzy i załączniki znikają razem
+    #: z nim (bez własnego kosza), a sesja importu to log — importer i tak
+    #: nie domyka zgłoszenia z kosza (``importer_publikacji.zgloszenia``).
+    pomijane_relacje_kosza = frozenset(
+        {
+            "zglos_publikacje.Zgloszenie_Publikacji_Autor.rekord",
+            "zglos_publikacje.Zgloszenie_Publikacji_Zalacznik.zgloszenie",
+            "importer_publikacji.ImportSession.zgloszenie",
+        }
+    )
+
     email = models.EmailField("E-mail zgłaszającego")
 
     utworzono = models.DateTimeField(
@@ -322,7 +337,12 @@ class Zgloszenie_Publikacji(
         return self.status == Zgloszenie_Publikacji.Statusy.ZAIMPORTOWANY
 
 
-class Zgloszenie_Publikacji_Autor(BazaModeluOdpowiedzialnosciAutorow):
+class Zgloszenie_Publikacji_Autor(
+    # Bez własnego kosza: ``objects`` ukrywa autorów zgłoszeń z kosza,
+    # ``all_objects`` widzi wszystko (jak ``*_Autor`` publikacji).
+    BppDzieckoPublikacjiMixin,
+    BazaModeluOdpowiedzialnosciAutorow,
+):
     rekord = models.ForeignKey(Zgloszenie_Publikacji, on_delete=models.CASCADE)
 
     rok = models.PositiveSmallIntegerField()
@@ -369,6 +389,18 @@ class Zgloszenie_Publikacji_Autor(BazaModeluOdpowiedzialnosciAutorow):
                 ) from e
 
 
+class ZywyRodzicZalacznikaManager(BppZywyRodzicManager):
+    """``objects`` załącznika: ukrywa załączniki zgłoszeń z kosza.
+
+    Osobna klasa z domyślnym ``pole_rodzica``: menedżer relacji odwrotnej
+    (``zgloszenie.zalaczniki``) Django tworzy z KLASY domyślnego menedżera,
+    bez argumentów — z bazowym ``"rekord"`` filtr byłby błędny.
+    """
+
+    def __init__(self, pole_rodzica="zgloszenie"):
+        super().__init__(pole_rodzica)
+
+
 class Zgloszenie_Publikacji_Zalacznik(models.Model):
     zgloszenie = models.ForeignKey(
         Zgloszenie_Publikacji,
@@ -387,6 +419,10 @@ class Zgloszenie_Publikacji_Zalacznik(models.Model):
         default="",
     )
     kolejnosc = models.PositiveSmallIntegerField(default=0)
+
+    # Bez własnego kosza — znika i wraca razem ze zgłoszeniem.
+    objects = ZywyRodzicZalacznikaManager()
+    all_objects = BppWszystkieWierszeManager()
 
     class Meta:
         verbose_name = "załącznik zgłoszenia publikacji"

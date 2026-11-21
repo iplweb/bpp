@@ -154,6 +154,34 @@ def aktywny_wpis(instance):
     return PBN_Export_Queue.objects.filter_rekord_do_wysylki(instance).first()
 
 
+def grupa_blokady_kolejki(instance):
+    """Niezakończone wpisy kolejki rekordu jako ``GrupaBlokady`` (do strony
+    „Nie można przenieść do kosza") albo ``None``."""
+    from django.utils.timezone import localtime
+
+    from bpp.models.soft_delete import GrupaBlokady, PozycjaBlokady
+
+    wpisy = list(PBN_Export_Queue.objects.filter_rekord_do_wysylki(instance))
+    if not wpisy:
+        return None
+    return GrupaBlokady(
+        etykieta="Rekordy w kolejce PBN",
+        liczba=len(wpisy),
+        pozycje=[
+            PozycjaBlokady(
+                obj=wpis,
+                wiersz=wpis,
+                opis=(
+                    f"{wpis.get_operacja_display()} — zlecono "
+                    f"{localtime(wpis.zamowiono):%Y-%m-%d %H:%M}"
+                    + (", w trakcie wysyłki" if wpis.wysylke_podjeto else "")
+                ),
+            )
+            for wpis in wpisy
+        ],
+    )
+
+
 def sprawdz_kolejke_przed_koszem(instance):
     """Kosz/przywrócenie: blokada rekordu, potem reguła i świeży ``pbn_uid``.
 

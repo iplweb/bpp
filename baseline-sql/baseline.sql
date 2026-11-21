@@ -16677,6 +16677,71 @@ COPY public.django_countdown_sitecountdown (id, countdown_time, message, long_de
 --
 
 COPY public.django_migrations (id, app, name, applied) FROM stdin;
+1147	bpp	0447_autoreksporttask	2000-01-01 00:00:00+00
+1148	bpp	0448_uczelnia_szerokosc_lewej_kolumny_and_more	2000-01-01 00:00:00+00
+1149	bpp	0454_merge_20260706_0757	2000-01-01 00:00:00+00
+1150	bpp	0487_merge_20260805_1305	2000-01-01 00:00:00+00
+1151	bpp	0491_merge_20261021_2141	2000-01-01 00:00:00+00
+1152	bpp	0492_autor_identyfikatory_profili	2000-01-01 00:00:00+00
+1153	bpp	0493_merge_20261024_0915	2000-01-01 00:00:00+00
+1154	bpp	0494_autor_opis_do_adnotacji	2000-01-01 00:00:00+00
+1155	bpp	0495_uczelnia_adresy_integracji_https	2000-01-01 00:00:00+00
+1156	bpp	0496_autoreksporttask_ukryte_statusy	2000-01-01 00:00:00+00
+1157	bpp	0497_uczelnia_bppuser_szyfrowanie_sekretow	2000-01-01 00:00:00+00
+1158	bpp	0498_autoreksporttask_tylko_dla_redakcji	2000-01-01 00:00:00+00
+1159	bpp	0499_autoreksporttask_zlecone_anonimowo	2000-01-01 00:00:00+00
+1160	bpp	0500_autor_flagi_widocznosci	2000-01-01 00:00:00+00
+1161	bpp	0501_autor_usun_pokazuj	2000-01-01 00:00:00+00
+1162	bpp	0502_autoreksporttask_xlsx	2000-01-01 00:00:00+00
+1163	bpp	0503_charakter_ogolny_rozdzialy_ksiazki	2000-01-01 00:00:00+00
+1164	taggit	0007_alter_taggeditem_options	2000-01-01 00:00:00+00
+1165	bpp	0504_wydawca_slug	2000-01-01 00:00:00+00
+1206	zglos_publikacje	0031_zgloszenie_kosz_zamrozony_trigger	2000-01-01 00:00:00+00
+314	bpp	0224_auto_20201007_0956	2000-01-01 00:00:00+00
+744	import_dyscyplin	0015_auto_20190326_0553	2000-01-01 00:00:00+00
+1166	bpp	0505_wydawca_slug_dane	2000-01-01 00:00:00+00
+1167	bpp	0506_wydawca_slug_unique	2000-01-01 00:00:00+00
+1168	bpp	0507_zrodlo_issn_norm_indexes	2000-01-01 00:00:00+00
+1169	bpp	0508_uczelnia_help_texty_pbn_profil	2000-01-01 00:00:00+00
+1170	zglos_publikacje	0028_obslugujacy_verbose_name	2000-01-01 00:00:00+00
+1171	nowe_raporty	0003_opis_bibliograficzny_link	2000-01-01 00:00:00+00
+1172	bpp	0509_uczelnia_kafel_wydzialy	2000-01-01 00:00:00+00
+1173	ewaluacja_common	0005_okres_ewaluacji	2000-01-01 00:00:00+00
+1174	ewaluacja_common	0006_okresy_ewaluacji_dane	2000-01-01 00:00:00+00
+1175	ewaluacja_liczba_n	0011_okres_ewaluacji	2000-01-01 00:00:00+00
+1176	ewaluacja_liczba_n	0012_okres_ewaluacji_wymagany	2000-01-01 00:00:00+00
+1177	ewaluacja_metryki	0012_metrykaautora_okres	2000-01-01 00:00:00+00
+1178	ewaluacja_metryki	0013_metrykaautora_okres_notnull	2000-01-01 00:00:00+00
+1179	ewaluacja_optymalizacja	0017_okres_ewaluacji	2000-01-01 00:00:00+00
+1180	ewaluacja_optymalizacja	0018_okres_ewaluacji_dane	2000-01-01 00:00:00+00
+1181	ewaluacja_optymalizacja	0019_okres_ewaluacji_wymagany	2000-01-01 00:00:00+00
+1182	ewaluacja_common	0007_wybrany_okres_ewaluacji	2000-01-01 00:00:00+00
+1183	bpp	0510_slowniki_protect	2000-01-01 00:00:00+00
+1184	zglos_publikacje	0029_autor_slowniki_protect	2000-01-01 00:00:00+00
+344	bpp	0252_slug	2000-01-01 00:00:00+00
+472	bpp	0365_bppuser_pbn_token_updated	2000-01-01 00:00:00+00
+1004	bpp	0460_faza_b_ii2_repoint	2000-01-01 00:00:00+00
+1185	pbn_export_queue	0011_pbn_export_queue_operacja	2000-01-01 00:00:00+00
+1186	bpp	0511_publikacje_soft_delete_fields	2000-01-01 00:00:00+00
+1187	bpp	0512_soft_delete_rekord_views	2000-01-01 00:00:00+00
+1188	bpp	0513_soft_delete_autorzy_przez_publikacje	2000-01-01 00:00:00+00
+1189	bpp	0514_nowe_sumy_bez_skasowanych_publikacji	2000-01-01 00:00:00+00
+1190	bpp	0515_drop_kronika_views	2000-01-01 00:00:00+00
+1191	bpp	0516_praca_habilitacyjna_warunkowy_unique_autora	2000-01-01 00:00:00+00
+1192	bpp	0517_soft_delete_protect_fk	2000-01-01 00:00:00+00
+1193	bpp	0518_autor_soft_delete	2000-01-01 00:00:00+00
+1194	bpp	0519_softdeletelog	2000-01-01 00:00:00+00
+1195	bpp	0520_soft_delete_struktura_i_slowniki	2000-01-01 00:00:00+00
+1196	bpp	0521_slug_unikalny_razem_z_koszem	2000-01-01 00:00:00+00
+1197	bpp	0522_kasowanie_prac_dyplomowych_z_autorzy_mat	2000-01-01 00:00:00+00
+1198	bpp	0523_kosz_zamrozony_trigger	2000-01-01 00:00:00+00
+1199	cerif_export	0001_odpieta_przynaleznosc	2000-01-01 00:00:00+00
+1200	pbn_api	0080_sentdata_withdrawn_at	2000-01-01 00:00:00+00
+1201	pbn_export_queue	0012_zamowil_protect	2000-01-01 00:00:00+00
+1202	pbn_import	0013_alter_importinconsistency_inconsistency_type	2000-01-01 00:00:00+00
+1203	pbn_integrator	0001_initial	2000-01-01 00:00:00+00
+1204	rozbieznosci_dyscyplin	0022_rozbieznosci_zrodel_bez_skasowanych_publikacji	2000-01-01 00:00:00+00
+1205	zglos_publikacje	0030_zgloszenie_autor_protect	2000-01-01 00:00:00+00
 1041	bpp	0466_bppuser_zwijaj_dlugie_listy_autorow_and_more	2000-01-01 00:00:00+00
 852	pbn_import	0002_add_task_id_field	2000-01-01 00:00:00+00
 853	pbn_import	0003_add_import_inconsistency	2000-01-01 00:00:00+00
@@ -17267,7 +17332,6 @@ COPY public.django_migrations (id, app, name, applied) FROM stdin;
 310	bpp	0215_auto_20200806_0146	2000-01-01 00:00:00+00
 311	bpp	0221_merge_20200806_0851	2000-01-01 00:00:00+00
 313	bpp	0223_auto_20200812_1930	2000-01-01 00:00:00+00
-314	bpp	0224_auto_20201007_0956	2000-01-01 00:00:00+00
 315	bpp	0225_auto_20201007_1002	2000-01-01 00:00:00+00
 316	bpp	0226_rekord_mat_status	2000-01-01 00:00:00+00
 317	bpp	0227_auto_20201011_0010	2000-01-01 00:00:00+00
@@ -17297,7 +17361,6 @@ COPY public.django_migrations (id, app, name, applied) FROM stdin;
 341	bpp	0248_autorzy_mat_idx	2000-01-01 00:00:00+00
 342	bpp	0249_dyscyplina_zrodla	2000-01-01 00:00:00+00
 343	bpp	0250_auto_20210315_2104	2000-01-01 00:00:00+00
-344	bpp	0252_slug	2000-01-01 00:00:00+00
 345	bpp	0253_rekord_mat_slug	2000-01-01 00:00:00+00
 347	bpp	0255_auto_20210407_1138	2000-01-01 00:00:00+00
 349	bpp	0257_wydawca_pbn_uid	2000-01-01 00:00:00+00
@@ -17399,7 +17462,6 @@ COPY public.django_migrations (id, app, name, applied) FROM stdin;
 467	bpp	0360_uczelnia_pokazuj_zrodla_bez_prac_w_przegladaniu_danych_and_more	2000-01-01 00:00:00+00
 468	bpp	0361_alter_patent_slowa_kluczowe_eng_and_more	2000-01-01 00:00:00+00
 470	bpp	0363_uczelnia_pokazuj_jednostki_na_pierwszej_stronie_and_more	2000-01-01 00:00:00+00
-472	bpp	0365_bppuser_pbn_token_updated	2000-01-01 00:00:00+00
 473	bpp	0366_alter_uczelnia_pbn_api_afiliacja_zawsze_na_uczelnie	2000-01-01 00:00:00+00
 474	bpp	0367_bppuser_przedstawiaj_w_pbn_jako	2000-01-01 00:00:00+00
 475	bpp	0368_wydawnictwo_zwarte_wydawnictwo_nadrzedne_w_pbn	2000-01-01 00:00:00+00
@@ -17651,7 +17713,6 @@ COPY public.django_migrations (id, app, name, applied) FROM stdin;
 741	import_dyscyplin	0012_import_dyscyplin_row_dyscyplina_ostateczna	2000-01-01 00:00:00+00
 742	import_dyscyplin	0013_auto_20190324_1826	2000-01-01 00:00:00+00
 743	import_dyscyplin	0014_auto_20190324_1906	2000-01-01 00:00:00+00
-744	import_dyscyplin	0015_auto_20190326_0553	2000-01-01 00:00:00+00
 745	import_dyscyplin	0016_auto_20190327_0129	2000-01-01 00:00:00+00
 746	import_dyscyplin	0017_auto_20190327_2246	2000-01-01 00:00:00+00
 747	import_dyscyplin	0018_auto_20200329_1719	2000-01-01 00:00:00+00
@@ -17686,7 +17747,6 @@ COPY public.django_migrations (id, app, name, applied) FROM stdin;
 777	import_polon	0013_alter_importpolonoverride_options_and_more	2000-01-01 00:00:00+00
 778	import_polon	0014_add_ignoruj_miejsce_pracy	2000-01-01 00:00:00+00
 780	import_pracownikow	0001_initial	2000-01-01 00:00:00+00
-1004	bpp	0460_faza_b_ii2_repoint	2000-01-01 00:00:00+00
 781	import_pracownikow	0002_importpracownikowrow	2000-01-01 00:00:00+00
 782	import_pracownikow	0003_auto_20210228_1916	2000-01-01 00:00:00+00
 783	import_pracownikow	0004_auto_20210307_1110	2000-01-01 00:00:00+00
@@ -17818,65 +17878,6 @@ COPY public.django_migrations (id, app, name, applied) FROM stdin;
 1144	bpp	0444_autor_biogram_autor_biogram_format_and_more	2000-01-01 00:00:00+00
 1145	bpp	0445_remove_autor_uklad_profilu_and_more	2000-01-01 00:00:00+00
 1146	bpp	0446_merge_20260619_2128	2000-01-01 00:00:00+00
-1147	bpp	0447_autoreksporttask	2000-01-01 00:00:00+00
-1148	bpp	0448_uczelnia_szerokosc_lewej_kolumny_and_more	2000-01-01 00:00:00+00
-1149	bpp	0454_merge_20260706_0757	2000-01-01 00:00:00+00
-1150	bpp	0487_merge_20260805_1305	2000-01-01 00:00:00+00
-1151	bpp	0491_merge_20261021_2141	2000-01-01 00:00:00+00
-1152	bpp	0492_autor_identyfikatory_profili	2000-01-01 00:00:00+00
-1153	bpp	0493_merge_20261024_0915	2000-01-01 00:00:00+00
-1154	bpp	0494_autor_opis_do_adnotacji	2000-01-01 00:00:00+00
-1155	bpp	0495_uczelnia_adresy_integracji_https	2000-01-01 00:00:00+00
-1156	bpp	0496_autoreksporttask_ukryte_statusy	2000-01-01 00:00:00+00
-1157	bpp	0497_uczelnia_bppuser_szyfrowanie_sekretow	2000-01-01 00:00:00+00
-1158	bpp	0498_autoreksporttask_tylko_dla_redakcji	2000-01-01 00:00:00+00
-1159	bpp	0499_autoreksporttask_zlecone_anonimowo	2000-01-01 00:00:00+00
-1160	bpp	0500_autor_flagi_widocznosci	2000-01-01 00:00:00+00
-1161	bpp	0501_autor_usun_pokazuj	2000-01-01 00:00:00+00
-1162	bpp	0502_autoreksporttask_xlsx	2000-01-01 00:00:00+00
-1163	bpp	0503_charakter_ogolny_rozdzialy_ksiazki	2000-01-01 00:00:00+00
-1164	taggit	0007_alter_taggeditem_options	2000-01-01 00:00:00+00
-1165	bpp	0504_wydawca_slug	2000-01-01 00:00:00+00
-1166	bpp	0505_wydawca_slug_dane	2000-01-01 00:00:00+00
-1167	bpp	0506_wydawca_slug_unique	2000-01-01 00:00:00+00
-1168	bpp	0507_zrodlo_issn_norm_indexes	2000-01-01 00:00:00+00
-1169	bpp	0508_uczelnia_help_texty_pbn_profil	2000-01-01 00:00:00+00
-1170	zglos_publikacje	0028_obslugujacy_verbose_name	2000-01-01 00:00:00+00
-1171	nowe_raporty	0003_opis_bibliograficzny_link	2000-01-01 00:00:00+00
-1172	bpp	0509_uczelnia_kafel_wydzialy	2000-01-01 00:00:00+00
-1173	ewaluacja_common	0005_okres_ewaluacji	2000-01-01 00:00:00+00
-1174	ewaluacja_common	0006_okresy_ewaluacji_dane	2000-01-01 00:00:00+00
-1175	ewaluacja_liczba_n	0011_okres_ewaluacji	2000-01-01 00:00:00+00
-1176	ewaluacja_liczba_n	0012_okres_ewaluacji_wymagany	2000-01-01 00:00:00+00
-1177	ewaluacja_metryki	0012_metrykaautora_okres	2000-01-01 00:00:00+00
-1178	ewaluacja_metryki	0013_metrykaautora_okres_notnull	2000-01-01 00:00:00+00
-1179	ewaluacja_optymalizacja	0017_okres_ewaluacji	2000-01-01 00:00:00+00
-1180	ewaluacja_optymalizacja	0018_okres_ewaluacji_dane	2000-01-01 00:00:00+00
-1181	ewaluacja_optymalizacja	0019_okres_ewaluacji_wymagany	2000-01-01 00:00:00+00
-1182	ewaluacja_common	0007_wybrany_okres_ewaluacji	2000-01-01 00:00:00+00
-1183	bpp	0510_slowniki_protect	2000-01-01 00:00:00+00
-1184	zglos_publikacje	0029_autor_slowniki_protect	2000-01-01 00:00:00+00
-1185	pbn_export_queue	0011_pbn_export_queue_operacja	2000-01-01 00:00:00+00
-1186	bpp	0511_publikacje_soft_delete_fields	2000-01-01 00:00:00+00
-1187	bpp	0512_soft_delete_rekord_views	2000-01-01 00:00:00+00
-1188	bpp	0513_soft_delete_autorzy_przez_publikacje	2000-01-01 00:00:00+00
-1189	bpp	0514_nowe_sumy_bez_skasowanych_publikacji	2000-01-01 00:00:00+00
-1190	bpp	0515_drop_kronika_views	2000-01-01 00:00:00+00
-1191	bpp	0516_praca_habilitacyjna_warunkowy_unique_autora	2000-01-01 00:00:00+00
-1192	bpp	0517_soft_delete_protect_fk	2000-01-01 00:00:00+00
-1193	bpp	0518_autor_soft_delete	2000-01-01 00:00:00+00
-1194	bpp	0519_softdeletelog	2000-01-01 00:00:00+00
-1195	bpp	0520_soft_delete_struktura_i_slowniki	2000-01-01 00:00:00+00
-1196	bpp	0521_slug_unikalny_razem_z_koszem	2000-01-01 00:00:00+00
-1197	bpp	0522_kasowanie_prac_dyplomowych_z_autorzy_mat	2000-01-01 00:00:00+00
-1198	bpp	0523_kosz_zamrozony_trigger	2000-01-01 00:00:00+00
-1199	cerif_export	0001_odpieta_przynaleznosc	2000-01-01 00:00:00+00
-1200	pbn_api	0080_sentdata_withdrawn_at	2000-01-01 00:00:00+00
-1201	pbn_export_queue	0012_zamowil_protect	2000-01-01 00:00:00+00
-1202	pbn_import	0013_alter_importinconsistency_inconsistency_type	2000-01-01 00:00:00+00
-1203	pbn_integrator	0001_initial	2000-01-01 00:00:00+00
-1204	rozbieznosci_dyscyplin	0022_rozbieznosci_zrodel_bez_skasowanych_publikacji	2000-01-01 00:00:00+00
-1205	zglos_publikacje	0030_zgloszenie_autor_protect	2000-01-01 00:00:00+00
 \.
 
 
@@ -19948,7 +19949,7 @@ SELECT pg_catalog.setval('public.django_countdown_sitecountdown_id_seq', 1, fals
 -- Name: django_migrations_id_seq; Type: SEQUENCE SET; Schema: public; Owner: -
 --
 
-SELECT pg_catalog.setval('public.django_migrations_id_seq', 1205, true);
+SELECT pg_catalog.setval('public.django_migrations_id_seq', 1206, true);
 
 
 --
@@ -34092,6 +34093,13 @@ CREATE TRIGGER ts_post_bpp_wydawnictwo_zwarte_search BEFORE INSERT OR UPDATE ON 
 --
 
 CREATE TRIGGER ts_post_bpp_zrodlo_search BEFORE INSERT OR UPDATE ON public.bpp_zrodlo FOR EACH ROW EXECUTE FUNCTION public.ts_post_bpp_zrodlo_search();
+
+
+--
+-- Name: zglos_publikacje_zgloszenie_publikacji zglos_publikacje_zgloszenie_publikacji_kosz_straznik; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER zglos_publikacje_zgloszenie_publikacji_kosz_straznik BEFORE DELETE OR UPDATE ON public.zglos_publikacje_zgloszenie_publikacji FOR EACH ROW EXECUTE FUNCTION public.bpp_kosz_straznik();
 
 
 --
