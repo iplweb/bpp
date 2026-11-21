@@ -245,8 +245,12 @@ def test_zakres_pelny_zapisuje_historie_utworzonych_rekordow(uczelnia):
         w.revision.comment
         for w in Version.objects.get_for_object(Autor.objects.get(pk=row.autor_id))
     ]
-    assert len(komentarze) == 2
-    assert komentarze[0].startswith("Dodano zatrudnienie")
+    # Od najnowszej: aktualizacja pól zatrudnienia, dodanie zatrudnienia,
+    # utworzenie autora.
+    assert len(komentarze) == 3
+    assert "zatrudnienie: podstawowe_miejsce_pracy -> tak" in komentarze[0]
+    assert komentarze[1].startswith("Dodano zatrudnienie")
+    assert komentarze[2].startswith("Utworzono autora")
 
     jednostka = Jednostka.objects.get(nazwa=dec_j.nazwa_zrodlowa)
     wpis = LogEntry.objects.get(
