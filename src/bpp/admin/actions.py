@@ -10,7 +10,7 @@ from bpp.admin.helpers.pbn_api.gui import (
 )
 from bpp.models import Autor, Status_Korekty, Uczelnia
 from bpp.views.cache_publiczny import uniewaznij_cache_publiczny
-from bpp.wersjonowanie import zapewnij_wersje_poczatkowa
+from bpp.wersjonowanie import zapewnij_wersje_poczatkowe
 from pbn_export_queue.tasks import queue_pbn_export_batch
 
 
@@ -170,47 +170,75 @@ KOMUNIKAT_UKRYTO_WSZEDZIE = "Ukryto wszędzie (akcja masowa)"
 KOMUNIKAT_POKAZANO_WSZEDZIE = "Pokazano wszędzie (akcja masowa)"
 
 
+#: Górna granica liczby autorów zmienianych jedną akcją „… wszędzie”.
+#: Wersje w historii i wpisy ``LogEntry`` powstają hurtem, ale przy
+#: „zaznacz wszystkie” na dużej bazie (dziesiątki tysięcy autorów) samo
+#: serializowanie wersji przekroczyłoby limit czasu żądania.
+MAKS_AUTOROW_AKCJI_WSZEDZIE = 2000
+
+
 def _ustaw_widocznosc_wszedzie(request, queryset, widoczny, komentarz):
     """Ustaw wszystkie flagi publicznej widoczności autorów na ``widoczny``.
 
     Jeden ``UPDATE`` ustawia wszystkie flagi naraz, więc constraint
     ``bpp_autor_strona_schowana_wymaga_ukrycia`` (schowana strona autora
     wymaga wyłączenia wyszukiwania i indeksu) jest spełniony w obu
-    kierunkach. Każdy zmieniony autor dostaje wersję w historii (reversion)
-    i wpis ``LogEntry`` — to akcja „hurtowa”, którą trzeba móc prześledzić
-    i cofnąć. Zwraca liczbę zmienionych autorów.
+    kierunkach. Każdy zmieniony autor dostaje wersję w historii (reversion,
+    plus wersję „przed”, jeśli nie miał żadnej) i wpis ``LogEntry`` — to
+    akcja hurtowa, którą trzeba móc prześledzić i cofnąć. Liczba zapytań
+    nie zależy od liczby autorów.
+
+    Zwraca liczbę zmienionych autorów albo ``None``, gdy zaznaczono ich
+    więcej niż ``MAKS_AUTOROW_AKCJI_WSZEDZIE``.
     """
     wartosci = dict.fromkeys(POLA_WIDOCZNOSCI_AUTORA, widoczny)
     # ``exclude(**wartosci)`` = NOT (wszystkie flagi już mają tę wartość).
     pks = list(queryset.exclude(**wartosci).values_list("pk", flat=True))
+    if len(pks) > MAKS_AUTOROW_AKCJI_WSZEDZIE:
+        return None
     if not pks:
         return 0
 
-    for autor in Autor.objects.filter(pk__in=pks):
-        # Rekordy bez historii: zapisz stan sprzed zmiany, żeby dało się
-        # do niego wrócić z „Historii” autora.
-        zapewnij_wersje_poczatkowa(autor)
-
-    with transaction.atomic(), reversion.create_revision():
-        updated = Autor.objects.filter(pk__in=pks).update(**wartosci)
-        autorzy = list(Autor.objects.filter(pk__in=pks))
-        for autor in autorzy:
-            reversion.add_to_revision(autor)
-        reversion.set_user(request.user)
-        reversion.set_comment(komentarz)
-        LogEntry.objects.log_actions(
-            request.user.pk, autorzy, CHANGE, change_message=komentarz
-        )
+    with transaction.atomic():
+        # Stan sprzed zmiany dla autorów bez historii — żeby dało się do
+        # niego wrócić z „Historii” autora.
+        zapewnij_wersje_poczatkowe(Autor, pks, select_related=("tytul",))
+        with reversion.create_revision():
+            updated = Autor.objects.filter(pk__in=pks).update(**wartosci)
+            autorzy = list(
+                Autor.objects.filter(pk__in=pks)
+                .select_related("tytul")  # ``__str__`` → ``object_repr``
+                .prefetch_related("wybrane_publikacje")
+            )
+            for autor in autorzy:
+                reversion.add_to_revision(autor)
+            reversion.set_user(request.user)
+            reversion.set_comment(komentarz)
+            LogEntry.objects.log_actions(
+                request.user.pk, autorzy, CHANGE, change_message=komentarz
+            )
         # ``update()`` nie wysyła ``post_save``; w bloku ``atomic``
         # unieważnienie wykona się raz, po COMMIT.
         uniewaznij_cache_publiczny()
     return updated
 
 
+def _komunikat_limitu(modeladmin, request):
+    modeladmin.message_user(
+        request,
+        f"Zaznaczono zbyt wielu autorów do zmiany — jedną akcją można zmienić "
+        f"najwyżej {MAKS_AUTOROW_AKCJI_WSZEDZIE}. Zawęź listę filtrami "
+        f"i powtórz akcję. Nic nie zostało zmienione.",
+        messages.ERROR,
+    )
+
+
 def ukryj_autorow_wszedzie(modeladmin, request, queryset):
     updated = _ustaw_widocznosc_wszedzie(
         request, queryset, False, KOMUNIKAT_UKRYTO_WSZEDZIE
     )
+    if updated is None:
+        return _komunikat_limitu(modeladmin, request)
     modeladmin.message_user(
         request,
         f"Ukryto wszędzie {updated} {ngettext('autora', 'autorów', updated)}",
@@ -228,6 +256,8 @@ def pokaz_autorow_wszedzie(modeladmin, request, queryset):
     updated = _ustaw_widocznosc_wszedzie(
         request, queryset, True, KOMUNIKAT_POKAZANO_WSZEDZIE
     )
+    if updated is None:
+        return _komunikat_limitu(modeladmin, request)
     modeladmin.message_user(
         request,
         f"Pokazano wszędzie {updated} {ngettext('autora', 'autorów', updated)}",

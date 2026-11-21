@@ -12,6 +12,9 @@ i „Pokazuj stronę autora”, a strony publiczne odświeżają się od razu.
 Każda zmiana jest zapisywana w „Historii” autora (wpis „Ukryto wszędzie
 (akcja masowa)” / „Pokazano wszędzie (akcja masowa)”), więc pojedynczego
 autora można przywrócić do poprzedniego stanu. Akcje są dostępne tylko dla
-użytkowników z prawem edycji autorów. Bez zmian: dotychczasowe akcje „Ukryj
+użytkowników z prawem edycji autorów; jedną akcją można zmienić najwyżej
+2000 autorów (przy większym zaznaczeniu trzeba zawęzić listę filtrami).
+Ustawienia widoczności są zapisane na autorze, więc w instalacji z kilkoma
+uczelniami ukrycie działa na stronach wszystkich uczelni. Bez zmian: dotychczasowe akcje „Ukryj
 / Pokaż wybranych autorów na stronach jednostek i w rankingu” działają jak
 wcześniej, a pole „Pokazuj sieć powiązań” nie jest zmieniane.

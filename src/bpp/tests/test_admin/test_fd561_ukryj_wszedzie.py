@@ -180,3 +180,107 @@ def test_akcje_wszedzie_wymagaja_uprawnienia_change(django_user_model):
     dostepne = _admin().get_actions(request)
     assert "ukryj_autorow_wszedzie" in dostepne
     assert "pokaz_autorow_wszedzie" in dostepne
+
+
+def _post_akcji(admin_client, akcja, pks):
+    return admin_client.post(
+        "/admin/bpp/autor/",
+        {"action": akcja, "_selected_action": pks, "index": 0},
+    )
+
+
+@pytest.mark.django_db
+def test_ukryj_wszedzie_przez_changelist_zachowuje_wersje_przed(admin_client):
+    """``VersionAdmin.changelist_view`` owija akcję w ``create_revision``.
+    Wersja „przed” nie może się scalić z tą rewizją (i zostać nadpisana
+    wersją „po”) — inaczej ukrycia nie da się cofnąć z „Historii”."""
+    autorzy = baker.make(Autor, _quantity=3)
+    pks = [a.pk for a in autorzy]
+
+    res = _post_akcji(admin_client, "ukryj_autorow_wszedzie", pks)
+    assert res.status_code == 302
+
+    for autor in autorzy:
+        assert _flagi(autor) == dict.fromkeys(POLA, False)
+        wersje = list(Version.objects.get_for_object(autor))
+        assert len(wersje) == 2
+        po, przed = wersje  # najnowsza pierwsza
+        assert przed.field_dict["pokazuj_w_api"] is True
+        assert po.field_dict["pokazuj_w_api"] is False
+        assert po.revision.comment == "Ukryto wszędzie (akcja masowa)"
+
+    # Przywrócenie wersji „przed” cofa ukrycie.
+    przed = Version.objects.get_for_object(autorzy[0]).last()
+    przed.revert()
+    assert _flagi(autorzy[0]) == dict.fromkeys(POLA, True)
+
+
+@pytest.mark.django_db
+def test_akcja_wszedzie_stala_liczba_zapytan(
+    admin_client, django_assert_max_num_queries
+):
+    """Liczba zapytań nie rośnie z liczbą autorów (hurtowe wersje i LogEntry)."""
+    tytul = baker.make("bpp.Tytul")
+
+    def zmierz(n):
+        autorzy = baker.make(Autor, tytul=tytul, _quantity=n)
+        from django.db import connection
+        from django.test.utils import CaptureQueriesContext
+
+        with CaptureQueriesContext(connection) as ctx:
+            _post_akcji(
+                admin_client, "ukryj_autorow_wszedzie", [a.pk for a in autorzy]
+            )
+        return len(ctx.captured_queries)
+
+    zmierz(1)  # rozgrzewka: sesja, cache ContentType itp.
+    przy_2 = zmierz(2)
+    przy_40 = zmierz(40)
+    assert przy_40 == przy_2
+
+    autorzy = baker.make(Autor, tytul=tytul, _quantity=60)
+    with django_assert_max_num_queries(przy_2):
+        _post_akcji(admin_client, "ukryj_autorow_wszedzie", [a.pk for a in autorzy])
+
+
+@pytest.mark.django_db
+def test_akcja_wszedzie_odmawia_powyzej_limitu(admin_user):
+    autorzy = baker.make(Autor, _quantity=3)
+    request = _request(admin_user)
+
+    with mock.patch.object(actions, "MAKS_AUTOROW_AKCJI_WSZEDZIE", 2):
+        actions.ukryj_autorow_wszedzie(_admin(), request, Autor.objects.all())
+
+    for autor in autorzy:
+        assert _flagi(autor) == dict.fromkeys(POLA, True)
+    assert not LogEntry.objects.exists()
+    assert not Version.objects.exists()
+    (komunikat,) = list(get_messages(request))
+    assert "zbyt wielu" in str(komunikat)
+    assert "Nic nie zostało zmienione" in str(komunikat)
+
+
+@pytest.mark.django_db
+def test_zapewnij_wersje_poczatkowa_w_aktywnej_rewizji_nie_scala_sie():
+    """Wołana wewnątrz aktywnej rewizji (np. akcja admina) zapisuje stan
+    „przed” we własnej rewizji, a nie w zewnętrznej."""
+    import reversion
+
+    from bpp.wersjonowanie import (
+        KOMENTARZ_WERSJI_POCZATKOWEJ,
+        zapewnij_wersje_poczatkowa,
+    )
+
+    autor = baker.make(Autor, pokazuj_w_api=True)
+    with reversion.create_revision():
+        zapewnij_wersje_poczatkowa(autor)
+        Autor.objects.filter(pk=autor.pk).update(pokazuj_w_api=False)
+        autor.refresh_from_db()
+        reversion.add_to_revision(autor)
+        reversion.set_comment("po")
+
+    po, przed = Version.objects.get_for_object(autor)
+    assert przed.revision.comment == KOMENTARZ_WERSJI_POCZATKOWEJ
+    assert przed.field_dict["pokazuj_w_api"] is True
+    assert po.revision.comment == "po"
+    assert po.field_dict["pokazuj_w_api"] is False

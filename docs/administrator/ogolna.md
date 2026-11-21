@@ -89,6 +89,15 @@ pomyłki można przywrócić poprzedni stan pojedynczego autora. Pole „Pokazuj
 sieć powiązań” nie jest przez te akcje zmieniane — sieć powiązań autora ze
 schowaną stroną i tak nie jest pokazywana.
 
+Jedną akcją „… wszędzie” można zmienić najwyżej 2000 autorów — przy
+większym zaznaczeniu akcja niczego nie zmienia i prosi o zawężenie listy
+filtrami.
+
+Ustawienia widoczności są zapisane na autorze, a nie na jego powiązaniu
+z uczelnią. W instalacji z kilkoma uczelniami ukrycie autora (zarówno
+w formularzu, jak i akcjami na liście) działa więc na stronach WSZYSTKICH
+uczelni, w których autor występuje.
+
 #### Ukrywanie lub wyświetlanie raportów na stronie głównej
 
 Celem konfiguracji sposobu wyświetlania strony głównej jak i innych elementów
