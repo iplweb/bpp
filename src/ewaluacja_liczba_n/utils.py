@@ -434,6 +434,9 @@ def oblicz_liczby_n_dla_okresu(uczelnia, okres=None, rok_min=None, rok_max=None)
     for ad in Autor_Dyscyplina.objects.filter(
         autor__aktualna_jednostka__uczelnia=uczelnia,
         autor__aktualna_jednostka__skupia_pracownikow=True,
+        # Autor w koszu nie liczy się do N (decyzja właściciela) — przy
+        # PRZELICZENIU; kosz/przywrócenie autora wymaga przeliczenia N.
+        autor__deleted_at__isnull=True,
         **warunek_lat,
     ):
         if ad.wymiar_etatu is not None:

@@ -6,6 +6,7 @@ from django.db import models, transaction
 from django.db.models import CASCADE, PositiveSmallIntegerField
 
 from bpp import const
+from bpp.models.soft_delete import BppZywyRodzicManager
 from bpp.util import zaloguj_polkniety_wyjatek
 from import_common.normalization import normalize_kod_dyscypliny
 
@@ -76,7 +77,26 @@ class Dyscyplina_Naukowa(models.Model):
         return self.kod_dziedziny() in const.DZIEDZINY_HST
 
 
-class Autor_DyscyplinaManager(models.Manager):
+class Autor_DyscyplinaManager(BppZywyRodzicManager):
+    """Domyślny menedżer: ukrywa wiersze autorów z KOSZA.
+
+    Dane kadrowe zostają przy autorze w koszu (i wracają z nim), ale raporty
+    ewaluacji, liczba N, raport zerowy itd. czytają ``objects`` wprost —
+    autor z kosza nie może się w nich pojawić. ``all_objects`` widzi
+    wszystko (guardy, scalanie, przywracanie)."""
+
+    def __init__(self):
+        super().__init__("autor")
+
+    def deconstruct(self):
+        return (
+            False,
+            f"{self.__class__.__module__}.{self.__class__.__qualname__}",
+            None,
+            (),
+            {},
+        )
+
     @transaction.atomic
     def ukryj_nieuzywane(self):
         # Ukryj dyscypliny nieużywane
@@ -140,6 +160,7 @@ class Autor_Dyscyplina(models.Model):
     zatrudnienie_do = models.DateTimeField(blank=True, null=True)
 
     objects = Autor_DyscyplinaManager()
+    all_objects = models.Manager()  # noqa: DJ012 — drugi menedżer, nie pole
 
     class Meta:
         unique_together = [("rok", "autor")]

@@ -215,3 +215,21 @@ def test_rest_api_wydawnictwo_ciagle_autor_ukrywa_ukryty_status(
     uczelnia.ukryj_status_korekty_set.create(status_korekty=przed_korekta)
     res = api_client.get(reverse("api_v1:wydawnictwo_ciagle_autor-list"))
     assert res.json()["count"] == 0
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize(
+    "nazwa", ["wydawnictwo_ciagle_streszczenie", "wydawnictwo_ciagle_autor"]
+)
+def test_rest_api_dzieci_publikacji_z_kosza_niewidoczne(
+    client, wydawnictwo_ciagle_ze_streszczeniami, autor_jan_kowalski, jednostka, nazwa
+):
+    # Pod-zasoby nie ujawniają dzieci (streszczeń, autorstw) publikacji
+    # z kosza — domyślny menedżer dziecka filtruje po rodzicu.
+    wydawnictwo_ciagle_ze_streszczeniami.dodaj_autora(autor_jan_kowalski, jednostka)
+    url = reverse(f"api_v1:{nazwa}-list")
+    assert client.get(url).json()["count"] > 0
+
+    wydawnictwo_ciagle_ze_streszczeniami.delete()
+
+    assert client.get(url).json()["count"] == 0

@@ -72,7 +72,12 @@ def test_klasa_audytowana_tworzy_zdarzenia(
 
     pk = obiekt.pk
     with django_capture_on_commit_callbacks(execute=True):
-        obiekt.delete()
+        # Jednostki nie kasuje się zwykłym ``delete()`` (blokada) — tylko
+        # serwisowo, ``hard_delete()`` na querysecie.
+        if model._meta.label == "bpp.Jednostka":
+            model.objects.filter(pk=pk).hard_delete()
+        else:
+            obiekt.delete()
     obiekt.pk = pk  # delete() zeruje pk; potrzebne do wyszukania zdarzenia
     if isinstance(obiekt, SoftDeleteModel):
         # Miękkie usunięcie (django_softdelete): delete() tylko oznacza rekord

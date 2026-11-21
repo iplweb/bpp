@@ -8,6 +8,7 @@ from django_softdelete.models import SoftDeleteModel
 from model_utils import Choices
 
 from bpp.const import TRYB_DOSTEPU
+from bpp.models.soft_delete import BppPkPrzedHardDeleteMixin
 
 
 def element_repozytorium_upload_to(instance, filename):
@@ -15,7 +16,7 @@ def element_repozytorium_upload_to(instance, filename):
     return f"protected/repozytorium/{uuid.uuid4()}{ext}"
 
 
-class Element_Repozytorium(SoftDeleteModel):
+class Element_Repozytorium(BppPkPrzedHardDeleteMixin, SoftDeleteModel):
     ER_TRYB_DOSTEPU = Choices(
         (TRYB_DOSTEPU.NIEJAWNY, "niejawny"),
         (TRYB_DOSTEPU.TYLKO_W_SIECI, "tylko w sieci"),

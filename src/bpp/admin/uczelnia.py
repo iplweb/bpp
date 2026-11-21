@@ -17,7 +17,7 @@ from ..util.ssrf import waliduj_url_integracji
 from .core import BaseBppAdminMixin, RestrictDeletionToAdministracjaGroupMixin
 from .helpers.constance_field_mixin import ConstanceUczelniaFieldsMixin
 from .helpers.fieldsets import ADNOTACJE_FIELDSET
-from .helpers.mixins import ZapiszZAdnotacjaMixin
+from .helpers.mixins import BppSoftDeleteAdminMixin, ZapiszZAdnotacjaMixin
 from .helpers.ror_field import czysc_ror
 from .helpers.site_filtered import SiteFilteredAdminMixin
 from .helpers.wersje import HistoriaWersjiMixin
@@ -172,6 +172,7 @@ class UczelniaAdmin(
     RestrictDeletionToAdministracjaGroupMixin,
     ZapiszZAdnotacjaMixin,
     BaseBppAdminMixin,
+    BppSoftDeleteAdminMixin,
     HistoriaWersjiMixin,
     VersionAdmin,
 ):

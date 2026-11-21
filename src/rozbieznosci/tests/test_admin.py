@@ -23,7 +23,14 @@ from rozbieznosci.models import IgnorowanaRozbieznosc, RozbieznoscLog
 def test_admin_kasuje_publikacje_z_logiem_rozbieznosci(
     admin_client, wydawnictwo_ciagle
 ):
-    """Superuser kasuje publikację, do której dopisano log zmiany punktacji."""
+    """Superuser kasuje publikację, do której dopisano log zmiany punktacji.
+
+    Od soft-delete publikacji „Usuń" przenosi rekord do kosza: publikacja
+    znika z ``objects``, ale wiersz zostaje, więc log rozbieżności (CASCADE
+    tylko przy kasowaniu twardym) też zostaje — wróci razem z publikacją
+    przy ``restore()``. Ważne jest, że uprawnienie do logu nie blokuje
+    kasowania (FD#462).
+    """
     baker.make(RozbieznoscLog, rekord=wydawnictwo_ciagle, metryka="if")
     pk = wydawnictwo_ciagle.pk
 
@@ -34,7 +41,8 @@ def test_admin_kasuje_publikacje_z_logiem_rozbieznosci(
 
     assert res.status_code == 302
     assert not Wydawnictwo_Ciagle.objects.filter(pk=pk).exists()
-    assert not RozbieznoscLog.objects.filter(rekord_id=pk).exists()
+    assert Wydawnictwo_Ciagle.deleted_objects.filter(pk=pk).exists()
+    assert RozbieznoscLog.objects.filter(rekord_id=pk).exists()
 
 
 @pytest.mark.django_db

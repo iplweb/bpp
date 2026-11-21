@@ -184,7 +184,8 @@ class Command(BaseCommand):
             self.stdout.write(
                 f"  usuwam: [{jednostka.pk}] {jednostka.nazwa} ({jednostka.skrot})"
             )
-        ile_usunieto, _ = do_usuniecia.delete()
+        # Kasowanie serwisowe — zwykłe ``delete()`` jednostek jest zablokowane.
+        ile_usunieto, _ = do_usuniecia.hard_delete()
         self.stdout.write(self.style.SUCCESS(f"\nUsunięto jednostek: {ile_usunieto}."))
 
         if dry_run:

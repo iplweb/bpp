@@ -18,6 +18,7 @@ from bpp.util import zaloguj_polkniety_wyjatek
 from import_common.core import matchuj_autora
 from pbn_api.models import Scientist
 from pbn_downloader_app.freshness import is_pbn_people_data_fresh
+from pbn_integrator.kosz import pomin_jesli_koliduje
 
 from .core import get_cache_status
 from .models import CachedScientistMatch, DoNotRemind, MatchCacheRebuildOperation
@@ -478,6 +479,18 @@ def create_all_unmatched_scientists(request):
 
             try:
                 autor_data = _prepare_autor_data(scientist, view)
+                # Unikalna wartość autora z KOSZA → pomiń i zgłoś (nie
+                # tworzymy duplikatu, nie wskrzeszamy).
+                if pomin_jesli_koliduje(
+                    Autor,
+                    "importer_autorow_pbn",
+                    f"naukowiec {scientist.pk}",
+                    **autor_data,
+                ):
+                    errors.append(
+                        f"{scientist} - pominięto: pasujący autor jest w koszu"
+                    )
+                    continue
                 autor = Autor.objects.create(**autor_data)
                 employment_data = view._get_employment_data(scientist)
                 _create_autor_jednostka(autor, employment_data)

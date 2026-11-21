@@ -139,3 +139,33 @@ def test_backfill_logic_multi_install_leaves_null(
 
     # NULL-owy wiersz pozostaje nietknięty.
     assert SentData.objects.filter(uczelnia__isnull=True).count() == 1
+
+
+@pytest.mark.django_db
+def test_mark_as_withdrawn_izolacja(uczelnia, uczelnia2, wydawnictwo_ciagle):
+    """Wycofanie zleca KONKRETNA uczelnia — nie wolno mu ruszyć drugiej.
+
+    Wycofanie oświadczeń dotyczy profilu instytucji, a nie obiektu
+    publikacji w PBN (ten jest współdzielony). Gdyby ``mark_as_withdrawn``
+    gubiło ``uczelnia``, soft-delete rekordu w U1 skasowałby ślad wysyłki
+    U2 — a przy dwóch wierszach ``get_for_rec`` bez uczelni rzuca
+    ``MultipleObjectsReturned``, więc błąd wyszedłby dopiero na produkcji
+    multi-hosted.
+    """
+    rec = wydawnictwo_ciagle
+    d = {"type": "ARTICLE", "title": "x"}
+
+    SentData.objects.create_or_update_before_upload(rec, d, uczelnia=uczelnia)
+    SentData.objects.create_or_update_before_upload(rec, d, uczelnia=uczelnia2)
+    SentData.objects.mark_as_successful(rec, uczelnia=uczelnia)
+    SentData.objects.mark_as_successful(rec, uczelnia=uczelnia2)
+
+    SentData.objects.mark_as_withdrawn(rec, uczelnia=uczelnia)
+
+    wycofana = SentData.objects.get_for_rec(rec, uczelnia)
+    assert wycofana.withdrawn_at is not None
+    assert wycofana.submitted_successfully is False
+
+    nietknieta = SentData.objects.get_for_rec(rec, uczelnia2)
+    assert nietknieta.withdrawn_at is None
+    assert nietknieta.submitted_successfully is True

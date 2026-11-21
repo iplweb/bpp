@@ -5,13 +5,13 @@ publikacji nie może iść po widoku ``bpp_rekord``, który unionuje patenty
 razem z wydawnictwami.
 """
 
-from django.db.models import Prefetch
+from django.db.models import Prefetch, Q
 
 from bpp.models.patent import Patent, Patent_Autor
 from cerif_export import const
 from cerif_export.identyfikatory import BlednyIdentyfikator
 from cerif_export.kontekst import ZbioryWidocznosci
-from cerif_export.providers.base import ProviderEncji
+from cerif_export.providers.base import ProviderEncji, odpiete_przynaleznosci
 from cerif_export.providers.jednostki import (
     widoczne_jednostki,
     widoczne_pk,
@@ -53,6 +53,26 @@ def widoczne_patenty(uczelnia):
     )
 
 
+def nalezace_patenty(uczelnia):
+    """Patenty TEJ uczelni — bez reguł ekspozycji.
+
+    Scope przez model autorstwa z KOSZEM (``all_objects``), jak
+    wydawnictwa; sam ``Patent`` też przez ``global_objects``, bo jest
+    soft-delete od fazy 02. ``status_korekty``, ``nie_eksportuj_przez_api``
+    i ``rodzaj_prawa.eksportuj_jako_patent`` to ekspozycja — zostają
+    w ``widoczne_patenty()``.
+    """
+    wymagaj_uczelni(uczelnia)
+    return Patent.global_objects.filter(
+        Q(
+            pk__in=Patent_Autor.all_objects.filter(jednostka__uczelnia=uczelnia).values(
+                "rekord_id"
+            )
+        )
+        | Q(pk__in=odpiete_przynaleznosci(Patent, uczelnia))
+    )
+
+
 PREFETCH_TWORCOW = Prefetch(
     "autorzy_set",
     queryset=Patent_Autor.objects.select_related(
@@ -77,6 +97,21 @@ class ProviderPatentow(ProviderEncji):
 
         return (
             widoczne_patenty(uczelnia)
+            .select_related("rodzaj_prawa", "status_korekty", "wydzial")
+            .prefetch_related(
+                "slowa_kluczowe", PREFETCH_TWORCOW, *prefetche_pochodzenia()
+            )
+        )
+
+    def przynaleznosc(self, uczelnia, model):
+        wymagaj_uczelni(uczelnia)
+        if model is not Patent:
+            raise BlednyIdentyfikator(
+                f"Model {model!r} nie należy do setu {self.set_spec}"
+            )
+
+        return (
+            nalezace_patenty(uczelnia)
             .select_related("rodzaj_prawa", "status_korekty", "wydzial")
             .prefetch_related(
                 "slowa_kluczowe", PREFETCH_TWORCOW, *prefetche_pochodzenia()
