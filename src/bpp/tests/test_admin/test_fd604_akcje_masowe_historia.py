@@ -307,7 +307,7 @@ def test_status_korekty_stala_liczba_zapytan(
 def test_status_korekty_odmawia_powyzej_limitu(admin_client, przed_korekta):
     rekordy = baker.make(Wydawnictwo_Ciagle, status_korekty=przed_korekta, _quantity=3)
 
-    with mock.patch.object(actions, "MAKS_REKORDOW_AKCJI_MASOWEJ", 2):
+    with mock.patch.object(actions, "MAKS_REKORDOW_AKCJI_MASOWEJ_BEZ_WERSJI", 2):
         res = _post_akcji(
             admin_client,
             "/admin/bpp/wydawnictwo_ciagle/",
@@ -321,3 +321,43 @@ def test_status_korekty_odmawia_powyzej_limitu(admin_client, przed_korekta):
     assert not LogEntry.objects.exists()
     komunikaty = [str(m) for m in get_messages(res.wsgi_request)]
     assert any("Nic nie zostało zmienione" in k for k in komunikaty)
+
+
+def test_limity_akcji_masowej():
+    # Autor (wersje reversion) — niski limit; publikacje (tylko LogEntry)
+    # — dużo wyższy, żeby nie blokować redaktorów zmieniających status
+    # korekty całego rocznika.
+    assert actions.limit_akcji_masowej(Autor) == 2000
+    for model, _url in PUBLIKACJE:
+        assert actions.limit_akcji_masowej(model) == 20000
+
+
+@pytest.mark.django_db
+def test_status_korekty_powyzej_limitu_autorow_przechodzi_w_partiach(
+    admin_client, przed_korekta, po_korekcie
+):
+    """Limit dla wersjonowanych modeli nie dotyczy publikacji; wpisy
+    ``LogEntry`` powstają w partiach (tu: po 2), wszystkie trafiają do bazy."""
+    rekordy = baker.make(Wydawnictwo_Ciagle, status_korekty=przed_korekta, _quantity=5)
+
+    with (
+        mock.patch.object(actions, "MAKS_REKORDOW_AKCJI_MASOWEJ", 2),
+        mock.patch.object(actions, "PARTIA_LOGENTRY", 2),
+    ):
+        res = _post_akcji(
+            admin_client,
+            "/admin/bpp/wydawnictwo_ciagle/",
+            "ustaw_po_korekcie",
+            [r.pk for r in rekordy],
+        )
+    assert res.status_code == 302
+
+    for rekord in rekordy:
+        rekord.refresh_from_db()
+        assert rekord.status_korekty == po_korekcie
+    assert LogEntry.objects.filter(
+        object_id__in=[str(r.pk) for r in rekordy],
+        change_message="Ustawiono status korekty: po korekcie (akcja masowa)",
+    ).count() == 5
+    komunikaty = [str(m) for m in get_messages(res.wsgi_request)]
+    assert komunikaty == ["Ustawiono status 'po korekcie' dla 5 rekordów"]

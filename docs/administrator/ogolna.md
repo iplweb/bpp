@@ -127,7 +127,7 @@ korekcie (akcja masowa)” — z nazwą użytkownika i datą. Publikacje nie maj
 zapisywanych wersji, więc z „Historii” widać kto i kiedy zmienił status,
 ale nie ma tam przycisku przywracania — poprzedni status ustawia się
 ponownie akcją albo w formularzu rekordu. Akcje wymagają uprawnienia do
-edycji publikacji; jedną akcją można zmienić najwyżej 2000 rekordów.
+edycji publikacji; jedną akcją można zmienić najwyżej 20000 rekordów.
 
 Ustawienia widoczności są zapisane na autorze, a nie na jego powiązaniu
 z uczelnią. W instalacji z kilkoma uczelniami ukrycie autora (zarówno
