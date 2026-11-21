@@ -16,11 +16,18 @@ Dokumentacja jest podzielona według odbiorcy.
 
 ### 📘 Instrukcja użytkownika
 
-To, co widzi każdy odwiedzający stronę — wyszukiwanie i przeglądanie
-publikacji, bez logowania.
+Dla autorów, czytelników i osób przygotowujących zestawienia —
+wyszukiwanie, własny dorobek, punkty, raporty.
 
 - [Przeglądanie i wyszukiwanie](uzytkownik/przegladanie-i-wyszukiwanie.md)
-- [Raporty i rankingi](uzytkownik/raporty-rankingi.md)
+- [Jak pobrać listę publikacji](uzytkownik/pobieranie-listy-publikacji.md)
+- [Jak zgłosić nową publikację](uzytkownik/zgloszenie-publikacji.md)
+- [Gdzie sprawdzić punkty i sloty](uzytkownik/punkty-i-sloty.md)
+- [Raporty krok po kroku](uzytkownik/raporty-krok-po-kroku.md)
+- [Raporty i rankingi: co się liczy](uzytkownik/raporty-rankingi.md)
+- [Mój profil autora](uzytkownik/moj-profil-autora.md)
+- [Nie mogę się zalogować](uzytkownik/logowanie.md)
+- [Widget publikacji na stronie WWW](uzytkownik/widget-publikacji.md)
 
 ### ✏️ Instrukcja redaktora
 
@@ -28,6 +35,19 @@ Codzienne czynności redakcyjne — dla bibliotekarzy i redaktorów po
 zalogowaniu.
 
 - [Wyszukiwanie i redagowanie](redaktor/wyszukiwanie-redagowanie.md)
+- [Jak dodać publikację importerem](redaktor/importer-publikacji.md)
+- [Obsługa zgłoszeń publikacji](redaktor/obsluga-zgloszen.md)
+- [Import danych z POL-on i liczba N](redaktor/import-polon-liczba-n.md)
+- [Nowy rok w BPP — lista kontrolna](redaktor/nowy-rok.md)
+- [PBN: wysyłanie prac, kolejka i porównanie](redaktor/pbn-wysylka-i-synchronizacja.md)
+- [Impact Factor, kwartyle i punktacja źródeł](redaktor/impact-factor-i-punktacja.md)
+- [Duplikaty autorów i źródeł](redaktor/duplikaty.md)
+- [Metryki ewaluacyjne autorów](redaktor/metryki-ewaluacyjne.md)
+- [Liczba N — najczęstsze pytania](redaktor/liczba-n-faq.md)
+- [Import list ministerialnych i punktacji czasopism](redaktor/import-list-ministerialnych.md)
+- [Rozbieżności dyscyplin — jak je znaleźć i poprawić](redaktor/rozbieznosci-dyscyplin.md)
+- [Oświadczenia autorów i ich wysyłka do PBN](redaktor/oswiadczenia.md)
+- [Optymalizacja ewaluacji — wybór prac do slotów](redaktor/optymalizacja-ewaluacji.md)
 - [Uczelnia](redaktor/uczelnia.md)
 - [Jednostki](redaktor/jednostki.md)
 - [Autorzy](redaktor/autorzy.md)

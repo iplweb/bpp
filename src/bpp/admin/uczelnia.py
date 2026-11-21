@@ -520,7 +520,7 @@ class UczelniaAdmin(
                     request,
                     f"Integracja z PBN jest włączona, ale konfiguracja jest niekompletna: {e}. "
                     f"Uzupełnij brakujące dane (nazwa aplikacji i token) lub wyłącz "
-                    f"integrację z PBN w sekcji „Integracja z PBN API”.",
+                    f"integrację z PBN w sekcji „PBN API”.",
                 )
                 return ret
 

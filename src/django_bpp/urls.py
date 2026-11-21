@@ -587,6 +587,7 @@ if apps.is_installed("password_policies"):
         PasswordResetDoneView,
     )
 
+    from django_bpp.forms import BppSetPasswordForm
     from django_bpp.views import (
         RateLimitedPasswordResetFormView,
         SmartPasswordChangeView,
@@ -611,7 +612,7 @@ if apps.is_installed("password_policies"):
         url(
             r"^password_reset_confirm/"
             r"([0-9A-Za-z_\-]+)/([0-9A-Za-z]{1,13})/([0-9A-Za-z-=_]{1,64})/$",
-            PasswordResetConfirmView.as_view(),
+            PasswordResetConfirmView.as_view(form_class=BppSetPasswordForm),
             name="password_reset_confirm",
         ),
         url(

@@ -278,11 +278,11 @@ class WydawnictwoPBNAdapter:
             else:
                 oa["months"] = "0"
 
+        # PBN uses ``modeArticle`` for articles and ``modeMonograph`` for
+        # books, edited books and chapters.
+        mode_key = "modeArticle" if pub_type == self.ARTICLE else "modeMonograph"
         if self.original.openaccess_tryb_dostepu_id is not None:
-            if pub_type == "ARTICLE":
-                oa["modeArticle"] = self.original.openaccess_tryb_dostepu.skrot
-            else:
-                oa["modeMonograph"] = self.original.openaccess_tryb_dostepu.skrot
+            oa[mode_key] = self.original.openaccess_tryb_dostepu.skrot
 
         self._build_open_access_release_date(oa)
 
@@ -290,7 +290,7 @@ class WydawnictwoPBNAdapter:
         has_required = (
             oa.get("license")
             and oa.get("textVersion")
-            and oa.get("modeArticle")
+            and oa.get(mode_key)
             and oa.get("releaseDateMode")
         )
         return oa if has_required else None

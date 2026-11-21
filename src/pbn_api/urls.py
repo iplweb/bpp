@@ -1,4 +1,4 @@
-# https://publikacje.up.lublin.pl/pbn_api/callback?ott=dc37f06a-30bd-445a-80bd-199745f65d62
+# Example: https://bpp.example.org/pbn_api/callback?ott=<one-time token>
 
 
 from django.urls import path

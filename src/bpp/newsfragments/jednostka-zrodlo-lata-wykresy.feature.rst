@@ -1,1 +1,0 @@
-Strony jednostki i źródła: wybór lat jako zakres „od–do” (jak na stronie autora), wykresy publikacji, punktów i IF w latach z klikalnymi latami; na stronie jednostki typy publikacji jako przełączniki.

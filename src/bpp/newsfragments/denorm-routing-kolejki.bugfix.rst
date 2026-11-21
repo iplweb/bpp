@@ -1,1 +1,0 @@
-Wszystkie zadania denormalizacji (``denorm.tasks.*``) trafiają teraz do dedykowanej kolejki Celery ``denorm`` — wcześniej kierowane było tam tylko nieużywane już ``flush_single``, a właściwe przeliczanie szło kolejką ogólną.
