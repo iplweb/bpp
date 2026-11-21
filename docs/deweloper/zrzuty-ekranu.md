@@ -81,15 +81,22 @@ dopiero na obrazku.
 
 ## Artykuły w bazie wiedzy (Freshdesk)
 
-Artykuł we Freshdesku to **skrót** strony z `docs/`, nie jej kopia. Widżet
+Artykuł we Freshdesku to **zajawka** strony z `docs/`, nie jej kopia. Widżet
 pomocy wyświetla go w małym okienku, więc:
 
-- zostaje tylko: **gdzie kliknąć**, **skąd skopiować**, co się stanie,
+- początek instrukcji — **gdzie kliknąć**, **skąd skopiować** — do
+  pierwszego istotnego momentu; resztę zostawiamy dokumentacji,
 - obrazki te same co w `docs/` (adres z GitHub Pages), w krokach, których
-  dotyczą,
+  dotyczą; każdy owinięty w `<a href="…png" target="_blank" rel="noopener">`,
+  żeby klik otwierał pełny rozmiar w nowym oknie,
 - **bez uwag technicznych** — parametrów, klas CSS, stylów, szczegółów
   konfiguracji; te zostają w `docs/`,
-- na końcu odnośnik **„Szczegóły”** do strony w dokumentacji.
+- na końcu, pogrubiony, zawsze ten sam odnośnik do strony w dokumentacji
+  (`target="_blank"`): **„Ciąg dalszy w dokumentacji systemu. Kliknij
+  tutaj”**,
+- bez emoji — Freshdesk zamienia je na „?”,
+- przy zapisie przez API zawsze `status: 2` (inaczej zmiana zostaje
+  szkicem), a potem sprawdzenie na publicznym portalu.
 
 ## Jak wygenerować
 
