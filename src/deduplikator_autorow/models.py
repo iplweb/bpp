@@ -322,6 +322,16 @@ class DuplicateScanRun(models.Model):
         choices=[("pbn", "Faza PBN"), ("general", "Faza ogólna")],
     )
 
+    okres = models.ForeignKey(
+        "ewaluacja_common.OkresEwaluacji",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        verbose_name="Okres ewaluacji",
+        help_text="Okres ewaluacji, wg którego liczono priorytet kandydatów "
+        "(prace z lat okresu)",
+    )
+
     class Meta:
         verbose_name = "Skanowanie duplikatów"
         verbose_name_plural = "Skanowania duplikatów"
@@ -396,12 +406,14 @@ class DuplicateCandidate(models.Model):
         help_text="Lista powodów dopasowania",
     )
 
-    # Priority for sorting (100 = 2022-2025 with disciplines, 50 = 2022-2025, 0 = other)
+    # Priorytet sortowania wg okresu ewaluacji skanu (``scan_run.okres``):
+    # 100 = prace z okresu i dyscypliny, 50 = prace z okresu, 0 = pozostali.
     priority = models.IntegerField(
         "Priorytet",
         default=0,
         # db_index zbędny: pokrywa go Meta.Index [priority, confidence_score].
-        help_text="Priorytet wyświetlania: 100=prace 2022-2025 z dyscyplinami, 50=prace 2022-2025, 0=inne",
+        help_text="Priorytet wyświetlania: 100=prace z okresu ewaluacji skanowania "
+        "z dyscyplinami, 50=prace z okresu ewaluacji skanowania, 0=inne",
     )
 
     scan_mode = models.CharField(

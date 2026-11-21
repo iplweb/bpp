@@ -8516,6 +8516,7 @@ CREATE TABLE public.deduplikator_autorow_duplicatescanrun (
     celery_task_id character varying(255) NOT NULL,
     created_by_id integer,
     phase character varying(20) NOT NULL,
+    okres_id bigint,
     CONSTRAINT deduplikator_autorow_duplicatescanr_total_authors_to_scan_check CHECK ((total_authors_to_scan >= 0)),
     CONSTRAINT deduplikator_autorow_duplicatescanrun_authors_scanned_check CHECK ((authors_scanned >= 0)),
     CONSTRAINT deduplikator_autorow_duplicatescanrun_duplicates_found_check CHECK ((duplicates_found >= 0))
@@ -16223,7 +16224,7 @@ COPY public.deduplikator_autorow_duplicatecandidate (id, confidence_score, confi
 -- Data for Name: deduplikator_autorow_duplicatescanrun; Type: TABLE DATA; Schema: public; Owner: -
 --
 
-COPY public.deduplikator_autorow_duplicatescanrun (id, started_at, finished_at, status, total_authors_to_scan, authors_scanned, duplicates_found, error_message, celery_task_id, created_by_id, phase) FROM stdin;
+COPY public.deduplikator_autorow_duplicatescanrun (id, started_at, finished_at, status, total_authors_to_scan, authors_scanned, duplicates_found, error_message, celery_task_id, created_by_id, phase, okres_id) FROM stdin;
 \.
 
 
@@ -16644,6 +16645,11 @@ COPY public.django_countdown_sitecountdown (id, countdown_time, message, long_de
 --
 
 COPY public.django_migrations (id, app, name, applied) FROM stdin;
+346	bpp	0254_uczelnia_pbn_uid	2000-01-01 00:00:00+00
+472	bpp	0365_bppuser_pbn_token_updated	2000-01-01 00:00:00+00
+1004	bpp	0460_faza_b_ii2_repoint	2000-01-01 00:00:00+00
+1184	snapshot_odpiec	0003_snapshot_okres_ewaluacji	2000-01-01 00:00:00+00
+1185	ewaluacja_metryki	0014_status_generowania_per_okres	2000-01-01 00:00:00+00
 1041	bpp	0466_bppuser_zwijaj_dlugie_listy_autorow_and_more	2000-01-01 00:00:00+00
 852	pbn_import	0002_add_task_id_field	2000-01-01 00:00:00+00
 853	pbn_import	0003_add_import_inconsistency	2000-01-01 00:00:00+00
@@ -16745,7 +16751,6 @@ COPY public.django_migrations (id, app, name, applied) FROM stdin;
 946	zglos_publikacje	0012_auto_20220910_1654	2000-01-01 00:00:00+00
 947	zglos_publikacje	0013_auto_20220910_2114	2000-01-01 00:00:00+00
 948	zglos_publikacje	0014_zgloszenie_publikacji_autor_kierunek_studiow	2000-01-01 00:00:00+00
-346	bpp	0254_uczelnia_pbn_uid	2000-01-01 00:00:00+00
 949	zglos_publikacje	0015_zgloszenie_publikacji_autor_oswiadczenie_ken	2000-01-01 00:00:00+00
 950	zglos_publikacje	0016_zgloszenie_publikacji_deleted_at_and_more	2000-01-01 00:00:00+00
 951	zglos_publikacje	0017_zgloszenie_publikacji_zgoda_na_publikacje_pelnego_tekstu	2000-01-01 00:00:00+00
@@ -16834,6 +16839,7 @@ COPY public.django_migrations (id, app, name, applied) FROM stdin;
 1034	pbn_export_queue	0009_link_queue_to_uczelnia	2000-01-01 00:00:00+00
 1035	pbn_import	0012_alter_importinconsistency_inconsistency_type	2000-01-01 00:00:00+00
 1036	raport_slotow	0020_raportslotowuczelnia_uczelnia	2000-01-01 00:00:00+00
+106	bpp	0029_auto_20150923_1343	2000-01-01 00:00:00+00
 1037	raport_slotow	0021_merge_20260604_1952	2000-01-01 00:00:00+00
 1038	rozbieznosci	0001_initial	2000-01-01 00:00:00+00
 1039	rozbieznosci	0002_usun_stare_rozbieznosci	2000-01-01 00:00:00+00
@@ -17036,7 +17042,6 @@ COPY public.django_migrations (id, app, name, applied) FROM stdin;
 102	bpp	0025_auto_20150830_1740	2000-01-01 00:00:00+00
 103	bpp	0026_auto_20150902_2102	2000-01-01 00:00:00+00
 105	bpp	0028_openaccess	2000-01-01 00:00:00+00
-106	bpp	0029_auto_20150923_1343	2000-01-01 00:00:00+00
 107	bpp	0030_auto_20150923_1351	2000-01-01 00:00:00+00
 108	bpp	0031_zrodlo_openaccess_licencja	2000-01-01 00:00:00+00
 109	bpp	0032_auto_20151001_1413	2000-01-01 00:00:00+00
@@ -17365,7 +17370,6 @@ COPY public.django_migrations (id, app, name, applied) FROM stdin;
 467	bpp	0360_uczelnia_pokazuj_zrodla_bez_prac_w_przegladaniu_danych_and_more	2000-01-01 00:00:00+00
 468	bpp	0361_alter_patent_slowa_kluczowe_eng_and_more	2000-01-01 00:00:00+00
 470	bpp	0363_uczelnia_pokazuj_jednostki_na_pierwszej_stronie_and_more	2000-01-01 00:00:00+00
-472	bpp	0365_bppuser_pbn_token_updated	2000-01-01 00:00:00+00
 473	bpp	0366_alter_uczelnia_pbn_api_afiliacja_zawsze_na_uczelnie	2000-01-01 00:00:00+00
 474	bpp	0367_bppuser_przedstawiaj_w_pbn_jako	2000-01-01 00:00:00+00
 475	bpp	0368_wydawnictwo_zwarte_wydawnictwo_nadrzedne_w_pbn	2000-01-01 00:00:00+00
@@ -17652,7 +17656,6 @@ COPY public.django_migrations (id, app, name, applied) FROM stdin;
 777	import_polon	0013_alter_importpolonoverride_options_and_more	2000-01-01 00:00:00+00
 778	import_polon	0014_add_ignoruj_miejsce_pracy	2000-01-01 00:00:00+00
 780	import_pracownikow	0001_initial	2000-01-01 00:00:00+00
-1004	bpp	0460_faza_b_ii2_repoint	2000-01-01 00:00:00+00
 781	import_pracownikow	0002_importpracownikowrow	2000-01-01 00:00:00+00
 782	import_pracownikow	0003_auto_20210228_1916	2000-01-01 00:00:00+00
 783	import_pracownikow	0004_auto_20210307_1110	2000-01-01 00:00:00+00
@@ -17822,8 +17825,7 @@ COPY public.django_migrations (id, app, name, applied) FROM stdin;
 1181	ewaluacja_optymalizacja	0019_okres_ewaluacji_wymagany	2000-01-01 00:00:00+00
 1182	ewaluacja_common	0007_wybrany_okres_ewaluacji	2000-01-01 00:00:00+00
 1183	oswiadczenia	0006_oswiadczenie_lata_z_okresu	2000-01-01 00:00:00+00
-1184	snapshot_odpiec	0003_snapshot_okres_ewaluacji	2000-01-01 00:00:00+00
-1185	ewaluacja_metryki	0014_status_generowania_per_okres	2000-01-01 00:00:00+00
+1186	deduplikator_autorow	0013_okres_skanu	2000-01-01 00:00:00+00
 \.
 
 
@@ -19873,7 +19875,7 @@ SELECT pg_catalog.setval('public.django_countdown_sitecountdown_id_seq', 1, fals
 -- Name: django_migrations_id_seq; Type: SEQUENCE SET; Schema: public; Owner: -
 --
 
-SELECT pg_catalog.setval('public.django_migrations_id_seq', 1185, true);
+SELECT pg_catalog.setval('public.django_migrations_id_seq', 1186, true);
 
 
 --
@@ -28273,6 +28275,13 @@ CREATE INDEX deduplikator_autorow_duplicatescanrun_created_by_id_9e24ba35 ON pub
 
 
 --
+-- Name: deduplikator_autorow_duplicatescanrun_okres_id_11c4941a; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX deduplikator_autorow_duplicatescanrun_okres_id_11c4941a ON public.deduplikator_autorow_duplicatescanrun USING btree (okres_id);
+
+
+--
 -- Name: deduplikator_autorow_duplicatescanrun_status_ff0027f1; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -35327,6 +35336,14 @@ ALTER TABLE ONLY public.deduplikator_autorow_duplicatecandidate
 
 ALTER TABLE ONLY public.deduplikator_autorow_logscalania
     ADD CONSTRAINT deduplikator_autorow_main_scientist_id_7522d38e_fk_pbn_api_s FOREIGN KEY (main_scientist_id) REFERENCES public.pbn_api_scientist("mongoId") DEFERRABLE INITIALLY DEFERRED;
+
+
+--
+-- Name: deduplikator_autorow_duplicatescanrun deduplikator_autorow_okres_id_11c4941a_fk_ewaluacja; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.deduplikator_autorow_duplicatescanrun
+    ADD CONSTRAINT deduplikator_autorow_okres_id_11c4941a_fk_ewaluacja FOREIGN KEY (okres_id) REFERENCES public.ewaluacja_common_okresewaluacji(id) DEFERRABLE INITIALLY DEFERRED;
 
 
 --

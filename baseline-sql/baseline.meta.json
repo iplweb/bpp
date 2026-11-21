@@ -1,5 +1,5 @@
 {
-  "git_sha": "092d929d5f09603ccd4ee2b8bddddff4ba010ebf",
+  "git_sha": "a898ded9314c5582762ad41b30ebde5cdef9d827",
   "last_migration": {
     "admin": "0003_logentry_add_action_flag_choices",
     "admin_dashboard": "0001_initial",
@@ -12,7 +12,7 @@
     "crossref_bpp": "0001_initial",
     "dashboard": "0001_initial",
     "dbtemplates": "0002_alter_template_creation_date_and_more",
-    "deduplikator_autorow": "0012_alter_duplicatecandidate_main_autor_and_more",
+    "deduplikator_autorow": "0013_okres_skanu",
     "deduplikator_publikacji": "0002_remove_publicationduplicatecandidate_deduplikato_similar_17e420_idx_and_more",
     "deduplikator_zrodel": "0002_scanzrodelforduplicates_sourceduplicatecandidate",
     "denorm": "0019_conditional_notify_during_flush",

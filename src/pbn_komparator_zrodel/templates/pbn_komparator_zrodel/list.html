@@ -115,10 +115,10 @@
                             Nie wyświetlaj źródeł bez publikacji
                         </label>
                         <label>
-                            <input type="checkbox" name="bez_publikacji_2022_2025"
-                                   {% if bez_publikacji_2022_2025 %}checked{% endif %}
+                            <input type="checkbox" name="tylko_z_publikacjami_w_okresie"
+                                   {% if tylko_z_publikacjami_w_okresie %}checked{% endif %}
                                    data-submit-on-change>
-                            Nie wyświetlaj źródeł bez publikacji 2022-2025
+                            Tylko źródła z publikacjami w latach {{ okres_od }}–{{ okres_do }}
                         </label>
                     </div>
                 </div>
@@ -171,11 +171,7 @@
         <thead>
             <tr>
                 <th>
-                    {% if filter_query_string %}
-                        <a href="?{{ filter_query_string }}&sort={% if current_sort == 'zrodlo__nazwa' %}-zrodlo__nazwa{% else %}zrodlo__nazwa{% endif %}">
-                    {% else %}
-                        <a href="?sort={% if current_sort == 'zrodlo__nazwa' %}-zrodlo__nazwa{% else %}zrodlo__nazwa{% endif %}">
-                    {% endif %}
+                    <a href="?{% if filter_query_string %}{{ filter_query_string }}&{% endif %}sort={% if current_sort == 'zrodlo__nazwa' %}-zrodlo__nazwa{% else %}zrodlo__nazwa{% endif %}">
                         Źródło
                         {% if current_sort == 'zrodlo__nazwa' %}
                             <span class="fi-arrow-up"></span>
@@ -185,11 +181,7 @@
                     </a>
                 </th>
                 <th>
-                    {% if filter_query_string %}
-                        <a href="?{{ filter_query_string }}&sort={% if current_sort == 'rok' %}-rok{% else %}rok{% endif %}">
-                    {% else %}
-                        <a href="?sort={% if current_sort == 'rok' %}-rok{% else %}rok{% endif %}">
-                    {% endif %}
+                    <a href="?{% if filter_query_string %}{{ filter_query_string }}&{% endif %}sort={% if current_sort == 'rok' %}-rok{% else %}rok{% endif %}">
                         Rok
                         {% if current_sort == 'rok' %}
                             <span class="fi-arrow-up"></span>
@@ -199,11 +191,7 @@
                     </a>
                 </th>
                 <th>
-                    {% if filter_query_string %}
-                        <a href="?{{ filter_query_string }}&sort={% if current_sort == 'punkty_bpp' %}-punkty_bpp{% else %}punkty_bpp{% endif %}">
-                    {% else %}
-                        <a href="?sort={% if current_sort == 'punkty_bpp' %}-punkty_bpp{% else %}punkty_bpp{% endif %}">
-                    {% endif %}
+                    <a href="?{% if filter_query_string %}{{ filter_query_string }}&{% endif %}sort={% if current_sort == 'punkty_bpp' %}-punkty_bpp{% else %}punkty_bpp{% endif %}">
                         Punkty BPP
                         {% if current_sort == 'punkty_bpp' %}
                             <span class="fi-arrow-up"></span>
@@ -213,11 +201,7 @@
                     </a>
                 </th>
                 <th>
-                    {% if filter_query_string %}
-                        <a href="?{{ filter_query_string }}&sort={% if current_sort == 'punkty_pbn' %}-punkty_pbn{% else %}punkty_pbn{% endif %}">
-                    {% else %}
-                        <a href="?sort={% if current_sort == 'punkty_pbn' %}-punkty_pbn{% else %}punkty_pbn{% endif %}">
-                    {% endif %}
+                    <a href="?{% if filter_query_string %}{{ filter_query_string }}&{% endif %}sort={% if current_sort == 'punkty_pbn' %}-punkty_pbn{% else %}punkty_pbn{% endif %}">
                         Punkty PBN
                         {% if current_sort == 'punkty_pbn' %}
                             <span class="fi-arrow-up"></span>
