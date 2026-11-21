@@ -2,7 +2,7 @@
 
 Bez limitu uvicorn przyjmuje dowolnie wiele równoległych żądań, a każde
 trzyma własne połączenie z PostgreSQL. Scraper z ~7 tys. adresów IP
-(publikacje.up.lublin.pl, 2026-09-27) spiętrzył je ponad ``max_connections``
+(instalacja produkcyjna, 2026-09-27) spiętrzył je ponad ``max_connections``
 i baza odpowiadała ``too many clients`` każdemu, łącznie z workerami.
 
 Testy sprawdzają nie sam słownik z configu, tylko to, co faktycznie ląduje
