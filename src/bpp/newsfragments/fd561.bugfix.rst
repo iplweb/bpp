@@ -5,12 +5,16 @@ publikacji na stronie jednostki, ale jeśli był kierownikiem jednostki, jego
 nazwisko nadal pokazywało się w nagłówku strony jako „Kierownik: …” — teraz
 nagłówek go pomija (i pokazuje tylko osobę, która jest kierownikiem właśnie
 tej jednostki, a nie innej). Autor z odznaczonym polem „Pokazuj
-w wyszukiwaniu” nie pojawia się już też w publicznych listach wyboru autora
-(np. pole „Nazwisko i imię” w formularzu wyszukiwania, formularz „Zgłoś nową
-publikację”), zgodnie z opisem tego pola. Ponadto akcje na liście autorów
-„Ukryj wybranych autorów na stronach jednostek i w rankingu” i „Pokaż
-wybranych autorów na stronach jednostek i w rankingu” od razu odświeżają
-strony publiczne — wcześniej niezalogowani odwiedzający mogli jeszcze przez
-kilka minut widzieć ukrytego autora na stronie jednostki. Bez zmian: indeks
-autorów (pole „Pokazuj w indeksie autorów”), ranking, strona autora i API
-działają jak dotąd, a redakcja nadal widzi wszystkich autorów.
+w wyszukiwaniu” nie jest już podpowiadany w polu „Nazwisko i imię”
+w publicznej wyszukiwarce (Wyszukaj). Celowo NADAL można go wybrać
+w raportach (raport slotów, raporty autora) i w formularzu „Zgłoś nową
+publikację” — ukryty autor musi móc zgłosić własną pracę, a współautor
+wskazać go na liście autorów. Ponadto akcje na liście autorów „Ukryj
+wybranych autorów na stronach jednostek i w rankingu” i „Pokaż wybranych
+autorów na stronach jednostek i w rankingu” oraz akcje zmiany statusu
+korekty na listach publikacji („Ustaw status korekty: przed korektą” itp.) od razu
+odświeżają strony publiczne — wcześniej niezalogowani odwiedzający mogli
+jeszcze przez kilka minut widzieć stary stan (np. ukrytego autora na stronie
+jednostki). Bez zmian: indeks autorów (pole „Pokazuj w indeksie autorów”),
+ranking, strona autora i API działają jak dotąd, a redakcja nadal widzi
+wszystkich autorów.

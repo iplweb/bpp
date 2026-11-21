@@ -218,10 +218,7 @@ class PublicAutorAutocomplete(AutorAutocompleteBase):
 
         request = getattr(self, "request", None)
         uczelnia = Uczelnia.objects.get_for_request(request) if request else None
-        qs = super().get_queryset().kiedykolwiek_zwiazani(uczelnia)
-        # „Pokazuj w wyszukiwaniu" obejmuje też publiczne listy wyboru
-        # (FD#561); redakcja widzi wszystkich.
-        return widoczni_autorzy(qs, request, lookup="pokazuj_w_wyszukiwaniu")
+        return super().get_queryset().kiedykolwiek_zwiazani(uczelnia)
 
     def get_results(self, context):
         """Płaska lista wyników — bez optgroupów (kontrakt: brak duplikacji)."""
@@ -230,6 +227,23 @@ class PublicAutorAutocomplete(AutorAutocompleteBase):
     def get_result_label(self, result):
         """Return clean author name without PBN/MNISW markers."""
         return str(result)
+
+
+class WyszukiwarkaAutorAutocomplete(PublicAutorAutocomplete):
+    """Picker autora w publicznej wyszukiwarce (pole „Nazwisko i imię”).
+
+    Jak ``PublicAutorAutocomplete``, ale pomija autorów z
+    ``pokazuj_w_wyszukiwaniu=False`` (FD#561); redakcja widzi wszystkich.
+    Raporty i formularz zgłaszania publikacji celowo zostają przy
+    ``PublicAutorAutocomplete`` — ukryty autor musi móc wybrać sam siebie.
+    """
+
+    def get_queryset(self):
+        return widoczni_autorzy(
+            super().get_queryset(),
+            getattr(self, "request", None),
+            lookup="pokazuj_w_wyszukiwaniu",
+        )
 
 
 class AutorAktualnieZatrudnionyNaUczelni(AutorAutocomplete):

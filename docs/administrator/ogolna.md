@@ -52,14 +52,17 @@ kierownika wyświetlanego w nagłówku strony.
 
 W tej samej sekcji ukryjesz autora także w rankingu, w indeksie autorów,
 w wyszukiwaniu i w API, a nawet całą jego stronę. Pole „Pokazuj
-w wyszukiwaniu” dotyczy zarówno wyszukiwarki w górnym pasku strony, jak
-i publicznych list wyboru autora (np. pole „Nazwisko i imię” w formularzu
-wyszukiwania, formularz „Zgłoś nową publikację”). Redakcja (użytkownicy
-z uprawnieniami do wprowadzania danych) nadal widzi wszystkich autorów.
+w wyszukiwaniu” dotyczy wyszukiwarki w górnym pasku strony oraz podpowiedzi
+w polu „Nazwisko i imię” w formularzu Wyszukaj. Celowo NIE dotyczy raportów
+(raport slotów, raporty autora) ani formularza „Zgłoś nową publikację” —
+tam ukrytego autora nadal można wybrać, żeby mógł zgłosić własną pracę albo
+zostać wskazany przez współautora. Redakcja (użytkownicy z uprawnieniami do
+wprowadzania danych) zawsze widzi wszystkich autorów.
 
 Ukrycie autora jest widoczne na stronach publicznych od razu po zapisaniu
 rekordu — także wtedy, gdy kilku autorów ukrywasz naraz akcją „Ukryj
 wybranych autorów na stronach jednostek i w rankingu” na liście autorów.
+To samo dotyczy akcji zmiany statusu korekty na listach publikacji.
 
 #### Ukrywanie lub wyświetlanie raportów na stronie głównej
 

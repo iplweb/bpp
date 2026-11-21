@@ -12,7 +12,11 @@ from pbn_export_queue.tasks import queue_pbn_export_batch
 
 def ustaw_status(queryset, nazwa_statusu):
     status = Status_Korekty.objects.get(nazwa=nazwa_statusu)
-    return queryset.exclude(status_korekty=status).update(status_korekty=status)
+    updated = queryset.exclude(status_korekty=status).update(status_korekty=status)
+    # ``update()`` nie wysyła ``post_save`` — status korekty decyduje
+    # o widoczności rekordu publicznie, więc cache stron musi się odświeżyć.
+    uniewaznij_cache_publiczny()
+    return updated
 
 
 def ustaw_przed_korekta(modeladmin, request, queryset):
