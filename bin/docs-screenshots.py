@@ -6650,6 +6650,309 @@ def asystent_ai(page: Page, base: str, out: Path) -> None:
     adm.context.close()
 
 
+def zaladuj_wykresy_panelu(page: Page) -> None:
+    """The dashboard charts load lazily as they scroll into view: bring each
+    one into view, wait until all are drawn, then go back to the top."""
+    for el in page.locator(".lazy-chart[data-chart-url]").all():
+        el.scroll_into_view_if_needed()
+        page.wait_for_timeout(300)
+    page.wait_for_function(
+        "() => [...document.querySelectorAll('.lazy-chart[data-chart-url]')]"
+        ".every(e => e.classList.contains('is-loaded'))",
+        timeout=60000,
+    )
+    page.wait_for_timeout(1000)  # fade-in
+    page.evaluate("window.scrollTo(0, 0)")
+
+
+def ukryj_kolumny(page: Page, ktore: list[int]) -> None:
+    """Blank out dashboard columns (1-3) so the labels have empty space; the
+    layout stays as it is (visibility, not display)."""
+    page.evaluate(
+        """(ktore) => document.querySelectorAll('.dashboard-column').forEach(
+            (c, i) => { c.style.visibility = ktore.includes(i + 1) ? 'hidden' : ''; })""",
+        ktore,
+    )
+
+
+def modul(page: Page, naglowek: str) -> str:
+    """Tag a dashboard box by its heading; returns a CSS selector."""
+    return "#" + page.evaluate(
+        """(n) => {
+        const h = [...document.querySelectorAll('.dashboard-column > .grp-module > h2')]
+            .find(e => e.textContent.trim() === n);
+        const m = h.parentElement;
+        m.id = m.id || 'kb-mod-' + n.toLowerCase().replace(/[^a-z0-9]+/g, '-');
+        return m.id; }""",
+        naglowek,
+    )
+
+
+def panel_administracyjny(page: Page, base: str, out: Path) -> None:
+    """docs/administrator/panel-administracyjny.md: the admin dashboard, its boxes and charts, menu-click and login logs (superuser); run bin/docs-demo-panel-administracyjny.py first."""
+    adm = new_session(page, base, DEMO_USER_ADMIN)
+    adm.goto(f"{base}/admin/")
+    adm.wait_for_load_state("networkidle")
+    zaladuj_wykresy_panelu(adm)
+    w = VIEWPORT["width"]
+    kol = [page_box(adm, f".dashboard-column:nth-child({i})") for i in (1, 2, 3)]
+
+    # 1. the whole dashboard, top part (the app list below goes on for screens)
+    shot(
+        adm,
+        out / "01-panel-sterowania.png",
+        0,
+        bottom_of(adm, modul(adm, "Prace w bazie")),
+    )
+
+    # 2. left column: own recent edits, recent logins, version info
+    edyt, logi, info = (
+        modul(adm, n)
+        for n in ("Ostatnio edytowane", "Ostatnie logowania", "Informacje")
+    )
+    ukryj_kolumny(adm, [2, 3])
+    mark(
+        adm,
+        [
+            {
+                "sel": edyt,
+                "arrow": "right",
+                "label": "1. Twoje ostatnie zmiany",
+                "dy": -120,
+            },
+            {
+                "sel": logi,
+                "arrow": "right",
+                "label": "2. kto i kiedy się logował",
+                "dy": -60,
+            },
+            {
+                "sel": info,
+                "arrow": "right",
+                "label": "3. wersja BPP i pomoc",
+                "dy": -30,
+            },
+        ],
+    )
+    top = page_box(adm, edyt)["y"] - 20
+    adm.evaluate("window.scrollTo(0, 0)")
+    adm.screenshot(
+        path=out / "02-ostatnie-zmiany-i-logowania.png",
+        full_page=True,
+        clip={
+            "x": 0,
+            "y": top,
+            "width": kol[1]["x"] + kol[1]["width"],
+            "height": bottom_of(adm, info) - top,
+        },
+    )
+    adm.evaluate("document.getElementById('kb-overlay')?.remove()")
+
+    # 3. right column: most-used menu items, counters, app search
+    ukryj_kolumny(adm, [1, 2])
+    najcz, stat, apl = (
+        modul(adm, n)
+        for n in ("Najczęściej używane", "Statystyki", "Aplikacje i modele")
+    )
+    mark(
+        adm,
+        [
+            {
+                "sel": najcz,
+                "arrow": "left",
+                "label": "1. Twoje najczęstsze pozycje menu",
+                "dy": -110,
+            },
+            {
+                "sel": stat,
+                "arrow": "left",
+                "label": "2. liczba rekordów w bazie",
+                "dy": -60,
+            },
+            {
+                "sel": "#app-list-search",
+                "arrow": "left",
+                "label": "3. szukaj modelu",
+                "dy": -10,
+            },
+        ],
+    )
+    top = page_box(adm, najcz)["y"] - 20
+    x0 = kol[2]["x"] - 520
+    adm.evaluate("window.scrollTo(0, 0)")
+    adm.screenshot(
+        path=out / "03-najczesciej-uzywane-i-statystyki.png",
+        full_page=True,
+        clip={
+            "x": x0,
+            "y": top,
+            "width": w - x0,
+            "height": bottom_of(adm, "#app-list-search", 140) - top,
+        },
+    )
+    adm.evaluate("document.getElementById('kb-overlay')?.remove()")
+    ukryj_kolumny(adm, [])
+
+    # 4. editing activity: weekdays (last month), days of month (6 months)
+    tydz = modul(adm, "Edycje w dni tygodnia")
+    mies = modul(adm, "Aktywność w dniach miesiąca")
+    ukryj_kolumny(adm, [1, 3])
+    mark(
+        adm,
+        [
+            {
+                "sel": f"{tydz} > h2",
+                "arrow": "left",
+                "label": "1. ostatnie 30 dni",
+                "dy": 40,
+            },
+            {
+                "sel": f"{mies} > h2",
+                "arrow": "left",
+                "label": "2. ostatnie 6 miesięcy",
+                "dy": 40,
+            },
+        ],
+    )
+    top = page_box(adm, tydz)["y"] - 20
+    adm.evaluate("window.scrollTo(0, 0)")
+    adm.screenshot(
+        path=out / "04-aktywnosc-redakcji.png",
+        full_page=True,
+        clip={
+            "x": 0,
+            "y": top,
+            "width": kol[2]["x"],
+            "height": bottom_of(adm, mies) - top,
+        },
+    )
+    adm.evaluate("document.getElementById('kb-overlay')?.remove()")
+    ukryj_kolumny(adm, [])
+
+    # 5. the publication charts: totals by year, points, IF, newly added
+    prace, pkt, impf, nowe = (
+        modul(adm, n)
+        for n in (
+            "Prace w bazie",
+            "Łączne punkty MNiSW",
+            "Łączny Impact Factor",
+            "Nowo dodane prace",
+        )
+    )
+    mark(adm, [{"sel": f"{m} > h2"} for m in (prace, pkt, impf, nowe)])
+    top = min(page_box(adm, prace)["y"], page_box(adm, impf)["y"]) - 20
+    adm.evaluate("window.scrollTo(0, 0)")
+    adm.screenshot(
+        path=out / "05-wykresy-dorobku.png",
+        full_page=True,
+        clip={
+            "x": 0,
+            "y": top,
+            "width": kol[2]["x"] - 4,
+            "height": max(bottom_of(adm, pkt), bottom_of(adm, nowe)) - top,
+        },
+    )
+    adm.evaluate("document.getElementById('kb-overlay')?.remove()")
+
+    # 6. formal types: hover a slice (tooltip), a click opens the list
+    top90 = modul(adm, "Charaktery formalne - Top 90%")
+    ukryj_kolumny(adm, [3])
+    # slices are sorted by size: the first is "Inne" (no link), the second
+    # the most common formal type. Hover the middle of its ring segment.
+    adm.locator("#charakter-formalny-chart-top90").scroll_into_view_if_needed()
+    xy = adm.evaluate(
+        """() => {
+        const p = document.querySelectorAll(
+            '#charakter-formalny-chart-top90 g.slice path.surface')[1];
+        const m = p.getScreenCTM(), n = 40, L = p.getTotalLength();
+        let x = 0, y = 0;
+        for (let i = 0; i < n; i++) {
+            const q = p.getPointAtLength(L * i / n).matrixTransform(m);
+            x += q.x; y += q.y;
+        }
+        return [x / n, y / n]; }"""
+    )
+    adm.mouse.move(*xy)
+    adm.wait_for_timeout(800)
+    mark(
+        adm,
+        [
+            {
+                "sel": f"{top90} .hoverlayer .hovertext",
+                "arrow": "right",
+                "label": "kliknij wycinek: lista prac",
+                "dx": 0,
+                "dy": -40,
+            },
+        ],
+    )
+    top = page_box(adm, top90)["y"] - 20
+    x0 = kol[1]["x"] - 20
+    adm.screenshot(
+        path=out / "06-charaktery-formalne.png",
+        full_page=True,
+        clip={
+            "x": x0,
+            "y": top,
+            "width": w - x0,
+            "height": bottom_of(adm, top90) - top,
+        },
+    )
+    adm.context.close()
+
+    # 7. the menu-click log in the admin (Dashboard Administracyjny)
+    adm = new_session(page, base, DEMO_USER_ADMIN)
+    adm.goto(f"{base}/admin/admin_dashboard/menuclick/")
+    adm.wait_for_load_state("networkidle")
+    mark(
+        adm,
+        [
+            {
+                "sel": "#result_list thead",
+                "arrow": "right",
+                "label": "kto, co, kiedy",
+                "dx": 0,
+                "dy": -40,
+            },
+        ],
+    )
+    adm.screenshot(
+        path=out / "07-klikniecia-w-menu.png",
+        clip={
+            "x": 0,
+            "y": 0,
+            "width": w,
+            "height": bottom_of(adm, "#result_list tbody tr:nth-child(8)", 20),
+        },
+    )
+
+    # 8. login log (easyaudit): user, IP, time
+    adm.goto(f"{base}/admin/easyaudit/loginevent/")
+    adm.wait_for_load_state("networkidle")
+    mark(
+        adm,
+        [
+            {
+                "sel": "#result_list thead",
+                "arrow": "right",
+                "label": "logowania z adresem IP",
+                "dx": 0,
+                "dy": -40,
+            },
+        ],
+    )
+    adm.screenshot(
+        path=out / "08-logi-logowania.png",
+        clip={
+            "x": 0,
+            "y": 0,
+            "width": w,
+            "height": bottom_of(adm, "#result_list tbody tr:nth-child(8)", 20),
+        },
+    )
+    adm.context.close()
+
+
 def zgloszenie_publikacji(page: Page, base: str, out: Path) -> None:
     """docs/uzytkownik/zgloszenie-publikacji.md: the "Zgłoś publikację" wizard, end to end."""
     nastepny = ".wizard-nav button:not([name=wizard_goto_step])"
@@ -6962,6 +7265,10 @@ SCENARIOS = {
     "panel-uczelnia-wydawnictwa": ("redaktor/wydawnictwa", panel_uczelnia_wydawnictwa),
     "import-pracownikow": ("administrator/import-pracownikow", import_pracownikow),
     "asystent-ai": ("uzytkownik/asystent-ai", asystent_ai),
+    "panel-administracyjny": (
+        "administrator/panel-administracyjny",
+        panel_administracyjny,
+    ),
 }
 
 
