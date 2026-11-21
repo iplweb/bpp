@@ -165,12 +165,17 @@ repos:
           pass_filenames: false
           always_run: true
 
-#    - repo: https://github.com/gitguardian/ggshield
-#      rev: v1.43.0
-#      hooks:
-#        - id: ggshield
-#          language: python
-#          stages: [commit]
+    # GitGuardian secret detection — the same engine as the GitGuardian
+    # check on GitHub, so secrets get caught before the commit instead of
+    # as an alert on the PR. Needs auth: `uvx ggshield auth login` once per
+    # machine (token lands in ~/.config/ggshield/), or GITGUARDIAN_API_KEY.
+    # False positives: `ggshield secret ignore --last-found` → .gitguardian.yaml.
+    - repo: https://github.com/gitguardian/ggshield
+      rev: v1.56.1
+      hooks:
+        - id: ggshield
+          language_version: python3
+          stages: [pre-commit]
 
     - repo: https://github.com/rhysd/actionlint
       rev: v1.7.8
