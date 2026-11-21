@@ -13,6 +13,7 @@ from bpp.models import Autor
 from crossref_bpp.core import Komparator, StatusPorownania
 from import_common.normalization import normalize_doi
 
+from ..historia import komunikat_utworzenia, zapisz_utworzenie
 from ..models import ImportedAuthor, ImportedAuthor_Candidate
 
 
@@ -243,7 +244,7 @@ def _prefill_dyscypliny_z_zgloszen(session):
 
 
 @transaction.atomic
-def _create_single_author(imported, obca):
+def _create_single_author(imported, obca, user=None):
     """Utwórz (lub dopasuj po ORCID) rekord ``Autor`` dla pojedynczego
     ``ImportedAuthor`` i przypisz go do obcej jednostki.
 
@@ -254,6 +255,9 @@ def _create_single_author(imported, obca):
 
     Jeśli dostawca podał ORCID i istnieje już ``Autor`` z tym ORCID-em,
     dopasowuje istniejącego zamiast tworzyć duplikat.
+
+    Nowo utworzony ``Autor`` dostaje wpis w historii zmian (FD#441) w imieniu
+    ``user`` (domyślnie twórcy sesji importu).
     """
     orcid = imported.orcid.strip() or None
 
@@ -273,6 +277,11 @@ def _create_single_author(imported, obca):
         orcid=orcid,
     )
     autor.dodaj_jednostke(obca)
+    zapisz_utworzenie(
+        user or imported.session.created_by,
+        autor,
+        komunikat_utworzenia(imported.session),
+    )
 
     imported.matched_autor = autor
     imported.matched_jednostka = obca
@@ -282,11 +291,11 @@ def _create_single_author(imported, obca):
 
 
 @transaction.atomic
-def _create_unmatched_authors(session, obca):
+def _create_unmatched_authors(session, obca, user=None):
     """Utwórz rekordy Autor dla niedopasowanych
     autorów i przypisz do obcej jednostki."""
     unmatched = session.authors.filter(
         match_status=(ImportedAuthor.MatchStatus.UNMATCHED)
     )
     for imported in unmatched:
-        _create_single_author(imported, obca)
+        _create_single_author(imported, obca, user)

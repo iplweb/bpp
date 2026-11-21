@@ -1,0 +1,1 @@
+Rekord publikacji (a także nowy autor) utworzony przez importer publikacji — również przy imporcie zgłoszenia — jest odnotowany na stronie „Historia" w module redagowania: widać, kto go dodał, z której sesji importu i z jakiego źródła danych.
