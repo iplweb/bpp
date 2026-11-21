@@ -19,7 +19,7 @@ Ta strona prowadzi po kolei przez:
 - [przeliczenie metryk](#przeliczenie-metryk),
 - [czytanie tabeli](#tabela-metryk) i [filtry oraz eksport do Excela](#filtry-i-eksport),
 - [szczegóły jednego autora](#szczegoly-autora) — w tym odpinanie dyscypliny,
-- [statystyki zbiorcze](#statystyki),
+- [statystyki zbiorcze](#statystyki) i [metryki jednostek w PDF](metryki-jednostek.md),
 - [typowe pytania](#typowe-pytania) i [co może pójść nie tak](#co-moze-pojsc-nie-tak).
 
 Pojęcia **punkty MNiSW**, **PKDaut** i **slot** wyjaśnia strona
@@ -275,6 +275,15 @@ Każda sekcja ma własny przycisk **„Export XLSX”**.
 
 ![Statystyki globalne i tabela „Top 20 autorów PKDaut/slot” z przyciskiem „Export XLSX”](../images/redaktor/metryki-ewaluacyjne/10-statystyki.png)
 
+## Metryki jednostek (PDF) {#metryki-jednostek}
+
+Z metryk autorów BPP składa też zestawienie PDF dla kierownika jednostki —
+kółka z wypełnieniem slotów i punktami każdej osoby, wykres „kto wypełnia
+sloty, a kto pisze lepsze prace”, potencjał i zalecenia. Menu **ewaluacja →
+metryki jednostek (PDF)** albo przycisk **„Metryki jednostek (PDF)”** nad
+tabelą. Kto je widzi, jak nadać dostęp kierownikom i jak je czytać —
+[Metryki jednostek](metryki-jednostek.md).
+
 ## Typowe pytania {#typowe-pytania}
 
 **Dlaczego autor ma średnią 200, a wykorzystanie tylko 38%?**
@@ -360,6 +369,7 @@ poprawność bazy”**.
 
 ## Zobacz też
 
+- [Metryki jednostek — zestawienie PDF dla kierownika](metryki-jednostek.md)
 - [Gdzie sprawdzić punkty i sloty](../uzytkownik/punkty-i-sloty.md) —
   punkty MNiSW, PKDaut i sloty na stronach autora i pracy
 - [Obliczanie slotów](sloty.md) — rodzaje autorów i progi algorytmu slotów

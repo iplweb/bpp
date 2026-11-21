@@ -118,4 +118,25 @@ class ProfilUzytkownikaView(LoginRequiredMixin, TemplateView):
                 okres_dla_request(self.request),
             ).select_related("dyscyplina_naukowa")
 
+        context.update(self._metryki_jednostek_context())
         return context
+
+    def _metryki_jednostek_context(self):
+        """Blok „Metryki jednostek” (FD#617): kierownik jednostki albo osoba
+        z jednostkami wskazanymi w profilu widzi tu swoje zestawienia PDF.
+        Pełne uprawnienia ewaluacji — tylko link do listy wszystkich."""
+        from ewaluacja_metryki.dostep_jednostek import (
+            ma_dostep_do_metryk_jednostek,
+            widzi_wszystkie_jednostki,
+        )
+        from ewaluacja_metryki.views.metryki_jednostek import jednostki_z_metrykami
+
+        user = self.request.user
+        if widzi_wszystkie_jednostki(user):
+            return {"metryki_jednostek_wszystkie": True}
+        if not ma_dostep_do_metryk_jednostek(user):
+            return {}
+        return {
+            "metryki_jednostek_dostep": True,
+            "metryki_jednostek": jednostki_z_metrykami(self.request),
+        }

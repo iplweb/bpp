@@ -1,0 +1,68 @@
+{% extends "base.html" %}
+{% load humanize %}
+
+{% block title %}Metryki jednostek{% endblock %}
+
+{% block breadcrumbs %}
+    {{ block.super }}
+    <li><a href="/">Strona główna</a></li>
+    <li><a href="{% url 'ewaluacja_metryki:lista' %}">Metryki ewaluacyjne</a></li>
+    <li class="current">Metryki jednostek</li>
+{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="columns">
+        <h1><span class="fi-page-pdf"></span> Metryki jednostek</h1>
+
+        <div class="callout secondary">
+            <p>
+                Zestawienie PDF dla kierownika jednostki, liczone z metryk ewaluacyjnych
+                za okres <strong>{{ okres }}</strong>: wypełnienie slotów i punkty
+                każdej osoby, wykres efektywności na tle jednostki, struktura
+                punktacji prac, niewykorzystany potencjał i wnioski.
+            </p>
+            <p class="margin-0">
+                Zestawienie zawiera nazwiska i oceny pracowników — przekazuj go tylko
+                osobom uprawnionym. Dane są tak aktualne jak ostatnie przeliczenie
+                metryk.
+            </p>
+        </div>
+
+        {% if jednostki %}
+            <table class="hover">
+                <thead>
+                    <tr>
+                        <th>Jednostka</th>
+                        <th class="text-right">Autorzy z metrykami</th>
+                        <th class="text-right">Punkty nazbierane</th>
+                        <th>Metryki jednostki</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for j in jednostki %}
+                        <tr>
+                            <td>{{ j.jednostka__nazwa }}</td>
+                            <td class="text-right">{{ j.liczba_autorow }}</td>
+                            <td class="text-right">{{ j.punkty|floatformat:0|intcomma }}</td>
+                            <td>
+                                <a class="button tiny margin-0" href="{% url 'ewaluacja_metryki:metryki_jednostki' j.jednostka_id %}">
+                                    <span class="fi-download"></span> PDF
+                                </a>
+                                <a class="button tiny secondary margin-0" target="_blank" href="{% url 'ewaluacja_metryki:metryki_jednostki' j.jednostka_id %}?format=html">
+                                    <span class="fi-eye"></span> podgląd
+                                </a>
+                            </td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        {% else %}
+            <div class="callout warning">
+                Brak metryk ewaluacyjnych w okresie {{ okres }}. Wygeneruj metryki
+                na stronie <a href="{% url 'ewaluacja_metryki:lista' %}">metryk ewaluacyjnych</a>.
+            </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}
