@@ -5,6 +5,9 @@
 // Import base styles
 @import 'themes/base';
 
+// WCAG AA contrast fixes for grappelli colour tokens (all themes)
+@import 'themes/contrast';
+
 // Import all theme files
 @import 'themes/classic-light';
 @import 'themes/navy-academic';
