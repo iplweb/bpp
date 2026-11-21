@@ -31,15 +31,10 @@ NIEODWRACALNE = [
     ("pbn_api", "0080_sentdata_withdrawn_at"),
     ("pbn_export_queue", "0011_pbn_export_queue_operacja"),
     ("pbn_export_queue", "0012_zamowil_protect"),
+    ("pbn_import", "0013_alter_importinconsistency_inconsistency_type"),
     ("pbn_integrator", "0001_initial"),
     ("rozbieznosci_dyscyplin", "0022_rozbieznosci_zrodel_bez_skasowanych_publikacji"),
     ("zglos_publikacje", "0029_zgloszenie_autor_protect"),
-]
-
-#: Jedyna migracja tego PR-a, która ZOSTAJE odwracalna: zmienia tylko
-#: ``choices`` (cofnięcie nic nie gubi).
-ODWRACALNE = [
-    ("pbn_import", "0013_alter_importinconsistency_inconsistency_type"),
 ]
 
 
@@ -54,11 +49,6 @@ def test_migracja_soft_delete_jest_nieodwracalna(graf, klucz):
     assert any(not op.reversible for op in migracja.operations), (
         f"{klucz} da się cofnąć — łańcuch soft-delete ma być nieodwracalny"
     )
-
-
-@pytest.mark.parametrize("klucz", ODWRACALNE, ids="/".join)
-def test_odwracalne_tylko_te_ktore_nic_nie_gubia(graf, klucz):
-    assert all(op.reversible for op in graf.nodes[klucz].operations)
 
 
 def test_cofniecie_ponizej_0510_blokuje_juz_najwyzsza_migracja(graf):

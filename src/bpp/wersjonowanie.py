@@ -36,7 +36,7 @@ from django.db.models import F
 from reversion.models import Version
 from reversion.revisions import _stack as _stos_rewizji
 
-from bpp.models import Autor, Autor_Jednostka, WybranaPublikacjaAutora
+from bpp.models import Autor, Autor_Jednostka, Uczelnia, WybranaPublikacjaAutora
 
 KOMENTARZ_WERSJI_POCZATKOWEJ = (
     "Stan sprzed pierwszej zarejestrowanej zmiany (zapisany automatycznie)."
@@ -45,12 +45,23 @@ KOMENTARZ_WERSJI_POCZATKOWEJ = (
 if not reversion.is_registered(WybranaPublikacjaAutora):
     reversion.register(WybranaPublikacjaAutora)
 
+#: Pola kosza NIE wchodzą do wersji żadnego modelu z koszem: przywrócenie
+#: wersji „z kosza" żywego rekordu (albo odwrotnie) ominęłoby
+#: ``delete()``/``restore()`` i zderzyło się z triggerem zamrożenia kosza.
+POLA_KOSZA = ("deleted_at", "restored_at", "transaction_id")
+
 if not reversion.is_registered(Autor):
     reversion.register(
         Autor,
-        exclude=("search", "deleted_at", "restored_at", "transaction_id"),
+        exclude=("search", *POLA_KOSZA),
         follow=("wybrane_publikacje",),
     )
+
+# Rejestracja jawna (zamiast automatycznej z ``VersionAdmin``) — tylko po to,
+# żeby wyłączyć pola kosza. ``bpp.admin.uczelnia`` importuje ten moduł przed
+# definicją ``UczelniaAdmin``.
+if not reversion.is_registered(Uczelnia):
+    reversion.register(Uczelnia, exclude=POLA_KOSZA)
 
 
 def przelicz_aktualna_jednostke(autor_id):

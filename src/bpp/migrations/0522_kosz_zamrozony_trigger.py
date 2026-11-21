@@ -35,7 +35,6 @@ TABELE = [
     "bpp_praca_habilitacyjna",
     "bpp_autor",
     "bpp_uczelnia",
-    "bpp_jednostka",
     "bpp_zrodlo",
     "bpp_wydawca",
     "bpp_konferencja",

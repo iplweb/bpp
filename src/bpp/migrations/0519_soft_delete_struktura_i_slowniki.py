@@ -14,21 +14,6 @@ class Migration(migrations.Migration):
 
     operations = [
         migrations.AddField(
-            model_name='jednostka',
-            name='deleted_at',
-            field=models.DateTimeField(blank=True, null=True),
-        ),
-        migrations.AddField(
-            model_name='jednostka',
-            name='restored_at',
-            field=models.DateTimeField(blank=True, null=True),
-        ),
-        migrations.AddField(
-            model_name='jednostka',
-            name='transaction_id',
-            field=models.UUIDField(blank=True, null=True),
-        ),
-        migrations.AddField(
             model_name='konferencja',
             name='deleted_at',
             field=models.DateTimeField(blank=True, null=True),

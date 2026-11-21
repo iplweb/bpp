@@ -11,7 +11,7 @@ from django.conf import settings
 from django.contrib.postgres.search import SearchVectorField as VectorField
 from django.core.exceptions import ValidationError
 from django.db import models
-from django.db.models import CASCADE
+from django.db.models import CASCADE, ProtectedError
 from django.db.models.functions import Coalesce
 from django.db.models.query_utils import Q
 from django.db.models.signals import post_delete, post_save
@@ -27,7 +27,6 @@ from tinymce.models import HTMLField
 from bpp.models import ModelZAdnotacjami, ModelZPBN_UID
 from bpp.models.abstract import ModelOpcjonalnieNieEksportowanyDoAPI, ModelZPBN_ID
 from bpp.models.autor import Autor, Autor_Jednostka
-from bpp.models.soft_delete import BppSoftDeleteSlownikMixin
 from bpp.util import FulltextSearchMixin, safe_opis_html, sanityzuj_jesli_html
 from bpp.util.ror import waliduj as waliduj_ror
 
@@ -37,39 +36,39 @@ SORTUJ_RECZNIE = ("kolejnosc", "nazwa")
 SORTUJ_ALFABETYCZNIE = ("nazwa",)
 
 
-class JednostkaQuerySet(TreeQuerySet):
-    """QuerySet jednostek świadomy kosza.
+KOMUNIKAT_JEDNOSTKA_NIE_DO_USUNIECIA = (
+    "Jednostek nie usuwa się z systemu (także do kosza) — zamiast tego "
+    "ukryj jednostkę (odznacz „Widoczna”)."
+)
 
-    ``delete()`` na querysecie przenosi DO KOSZA per instancja (guard,
-    ``SoftDeleteLog``, historia) — dotąd zbiorcze kasowanie jednostek szło
-    twardo, z pominięciem kosza. ``update(deleted_at=...)`` jest zablokowane
-    jak w ``BppSoftDeleteQuerySet``; ``hard_delete()`` — per instancja.
+
+class JednostkaNieDoUsuniecia(ProtectedError):
+    """Jednostki NIE kasuje się w ogóle (decyzja właściciela, listopad 2026).
+
+    Kosz odpadł, bo zamrożony rekord w drzewie MPTT blokowałby przeliczanie
+    ``lft``/``rght``/``tree_id`` sąsiadów; twarde kasowanie — bo jednostka
+    jest atrybucją publikacji i kont. Ukrywa się ją flagą ``widoczna``.
     """
 
+    def __init__(self, obiekty=()):
+        super().__init__(KOMUNIKAT_JEDNOSTKA_NIE_DO_USUNIECIA, list(obiekty))
+
+
+class JednostkaQuerySet(TreeQuerySet):
     def delete(self):
-        ile = 0
-        for obj in list(self):
-            n, _ = obj.delete()
-            ile += n
-        return ile, {self.model._meta.label: ile}
+        raise JednostkaNieDoUsuniecia(self)
 
     delete.alters_data = True
     delete.queryset_only = True
 
     def hard_delete(self):
-        from bpp.models.soft_delete import hard_delete_per_instancja
-
-        return hard_delete_per_instancja(self)
+        """Kasowanie SERWISOWE (sprzątanie danych demo, porządkowanie
+        struktury komendą ``zaloz_jednostki_domyslne``) — z pominięciem
+        blokady. Nie dla UI ani zwykłego kodu."""
+        return super().delete()
 
     hard_delete.alters_data = True
-
-    def update(self, **kwargs):
-        if "deleted_at" in kwargs or "restored_at" in kwargs:
-            raise RuntimeError(
-                "Nie ustawiaj deleted_at/restored_at przez .update() — "
-                "użyj .delete()/.restore()."
-            )
-        return super().update(**kwargs)
+    hard_delete.queryset_only = True
 
 
 class JednostkaManager(
@@ -96,15 +95,7 @@ class JednostkaManager(
         return ordering
 
     def get_queryset(self, *args, **kwargs):
-        # Kosz ukryty. Zapisy drzewa MPTT (lft/rght) idą przez
-        # niefiltrujący menedżer — mptt podstawia go sam, gdy
-        # ``get_queryset`` jest nadpisane (mptt#853).
-        return (
-            super()
-            .get_queryset(*args, **kwargs)
-            .filter(deleted_at__isnull=True)
-            .select_related("wydzial")
-        )
+        return super().get_queryset(*args, **kwargs).select_related("wydzial")
 
     def rebuild(self, *args, **kwargs):
         # TreeManager.rebuild() internally runs `.only("pk")` on the queryset
@@ -128,7 +119,6 @@ class JednostkaManager(
 
 
 class Jednostka(
-    BppSoftDeleteSlownikMixin,
     ModelZAdnotacjami,
     ModelZPBN_ID,
     ModelZPBN_UID,
@@ -193,12 +183,7 @@ class Jednostka(
         default=True,
         help_text="Gdy to pole jest zaznaczone, system wyświetli pole 'Opis' na podstronie jednostki.",
     )
-    slug = AutoSlugField(
-        populate_from="nazwa",
-        max_length=512,
-        unique=True,
-        manager_name="global_objects",
-    )
+    slug = AutoSlugField(populate_from="nazwa", max_length=512, unique=True)
 
     widoczna = models.BooleanField(default=True, db_index=True)
     wchodzi_do_rankingu_autorow = models.BooleanField(
@@ -356,71 +341,10 @@ class Jednostka(
             return False
         return True
 
-    def przeszkody_w_kasowaniu(self):
-        """Lista ``(etykieta, liczba)`` niepustych odwrotnych relacji FK
-        wskazujących na tę jednostkę z REALNYCH, zarządzanych tabel.
+    def delete(self, *args, **kwargs):
+        raise JednostkaNieDoUsuniecia([self])
 
-        Pusta lista ⇔ jednostkę można bezpiecznie skasować (nic się przez nią
-        nie kaskaduje). Zasada „ściśle zero": każda referencja z tabeli blokuje
-        (podjednostki ``children``, ``Autor_Jednostka``, własna historia
-        ``Jednostka_Rodzic`` itd.). Świadomie POMIJANE:
-
-        * modele NIEzarządzane w Django (``managed=False``) — u nas to warstwa
-          odczytowa cache (widoki SQL ``AutorzyView``, ``Nowe_Sumy_View`` oraz
-          alias-y na tabele bazowe ``Cache_Punktacja_Autora_*``). Nie są
-          samodzielnym źródłem danych blokujących kasowanie (realne wiersze
-          publikacji i tak trzymają je zarządzane tabele ``Wydawnictwo_*_Autor``
-          / ``Cache_Punktacja_Autora``), a liczenie odwrotnego O2O do widoku
-          przez akcesor rzucałoby ``DoesNotExist``.
-
-        KLUCZOWE: iterujemy po ``get_candidate_relations_to_delete`` — DOKŁADNIE
-        tym samym zbiorze relacji, który widzi kolektor kasowania Django
-        (``include_hidden=True``). ``_meta.related_objects`` POMIJA ukryte
-        relacje (``related_name="+"``, np. ``Import_Dyscyplin_Row.wydzial``),
-        które kolektor mimo to kaskaduje — użycie ich pominęłoby realne
-        referencje i pozwoliło na ciche SET_NULL/CASCADE. Kandydaci to tylko
-        FK/O2O (bez M2M), więc znika też potrzeba osobnego skipu M2M.
-
-        Relacje generyczne (reversion/easyaudit/cacheops) nie mają tu
-        ``GenericRelation``, więc nie są kandydatami do kasowania i nie
-        blokują — log audytu nie powinien wstrzymywać kasowania pustej
-        jednostki.
-        """
-        from django.db.models.deletion import get_candidate_relations_to_delete
-
-        przeszkody = []
-        for rel in get_candidate_relations_to_delete(self._meta):
-            related_model = rel.related_model
-            if not related_model._meta.managed:
-                continue
-            # Liczymy przez POLE (nie akcesor) — jednolicie dla FK i O2O,
-            # bez ryzyka ``DoesNotExist`` na pustym odwrotnym O2O.
-            liczba = related_model._base_manager.filter(
-                **{rel.field.name: self}
-            ).count()
-            if liczba:
-                przeszkody.append(
-                    (str(related_model._meta.verbose_name_plural), liczba)
-                )
-        return przeszkody
-
-    def czy_mozna_skasowac(self):
-        """True ⇔ jednostka jest w pełni pusta (brak przeszkód w kasowaniu)."""
-        return not self.przeszkody_w_kasowaniu()
-
-    def sprawdz_czy_mozna_do_kosza(self, *args, **kwargs):
-        """Do kosza — tylko jednostka PUSTA (ta sama reguła „ściśle zero",
-        co przy dotychczasowym kasowaniu: ``przeszkody_w_kasowaniu``)."""
-        from django.db.models import ProtectedError
-
-        przeszkody = self.przeszkody_w_kasowaniu()
-        if przeszkody:
-            szczegoly = ", ".join(f"{n}× {etykieta}" for etykieta, n in przeszkody)
-            raise ProtectedError(
-                f"Nie można usunąć jednostki „{self}” — są do niej przypięte "
-                f"inne obiekty (także w koszu): {szczegoly}.",
-                [],
-            )
+    delete.alters_data = True
 
     def dodaj_autora(
         self, autor, funkcja=None, rozpoczal_prace=None, zakonczyl_prace=None

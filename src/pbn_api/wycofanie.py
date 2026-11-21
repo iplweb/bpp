@@ -10,7 +10,7 @@ from dataclasses import dataclass
 
 from django.db import models
 
-from pbn_api.exceptions import CannotDeleteStatementsException
+from pbn_api.exceptions import CannotDeleteStatementsException, HttpException
 from pbn_api.models import SentData
 
 
@@ -66,6 +66,12 @@ def wycofaj_oswiadczenia(publikacja, client, uczelnia=None) -> WynikWycofania:
 
     try:
         client.delete_all_publication_statements(publikacja.pbn_uid_id)
+    except HttpException as exc:
+        if exc.status_code != 404:
+            raise
+        # PBN nie zna tej publikacji — tym bardziej nie ma naszych oświadczeń.
+        status = StatusWycofania.BRAK_OSWIADCZEN
+        komunikat = f"PBN: publikacja nie istnieje — nie ma czego wycofać ({exc})."
     except CannotDeleteStatementsException as exc:
         # PBN mówi: nie ma czego usuwać. Dla NAS to stan docelowy, nie
         # błąd — oświadczeń tej publikacji w profilu instytucji już nie

@@ -174,9 +174,18 @@ class RekordWKoszuPBN(AlreadyEnqueuedError):
     """Rekordu z kosza nie kolejkuje się do wysyłki do PBN."""
 
 
-class WycofanieZablokowane(AlreadyEnqueuedError):
-    """Aktywnego zlecenia WYCOFANIA nie można usunąć z kolejki ani wysłać
-    ponownie ręcznie — „kolejka blokuje rekord" do końca wycofania."""
+class OperacjaNaWpisieZablokowana(AlreadyEnqueuedError):
+    """Ręczna operacja na wpisie kolejki niedozwolona."""
+
+
+class WycofanieZablokowane(OperacjaNaWpisieZablokowana):
+    """Na zleceniach WYCOFANIA nie ma żadnych ręcznych operacji (usunięcie,
+    ponowna wysyłka, „spróbuj wysłać") — także po zakończeniu: to historia.
+    Kolejka obsługuje je sama, aż do skutku."""
+
+
+class WpisWTrakcieWysylki(OperacjaNaWpisieZablokowana):
+    """Wpisu, który worker właśnie wysyła, nie można usunąć."""
 
 
 class SendStatus(Enum):
@@ -291,18 +300,35 @@ class PBN_Export_Queue(models.Model):
         return f"Zlecenie wysyłki do PBN dla {self.rekord_do_wysylki}"
 
     def delete(self, *args, **kwargs):
-        """Aktywnego zlecenia WYCOFANIA nie można usunąć z kolejki, dopóki
-        rekord istnieje — „kolejka blokuje rekord". Wpis bez rekordu
-        (sprzątaczka kolejki) można usunąć."""
-        if (
-            self.operacja == self.Operacja.WYCOFANIE
-            and self.wysylke_zakonczono is None
-            and self.check_if_record_still_exists()
-        ):
+        """Usuwać wolno wyłącznie wpis WYSYŁKI, którego worker akurat nie
+        wysyła (np. wiszący w ponawianiu). Zlecenia wycofania nie są
+        usuwalne nigdy — to historia (``WycofanieZablokowane``)."""
+        self.zablokuj_reczna_operacje()
+        with transaction.atomic():
+            klucz = klucz_blokady_rekordu(self.content_type_id, self.object_id)
+            with connection.cursor() as cur:
+                # Ta sama blokada, którą worker trzyma przez całą wysyłkę.
+                cur.execute("SELECT pg_try_advisory_xact_lock(%s)", [klucz])
+                if not cur.fetchone()[0]:
+                    raise WpisWTrakcieWysylki(
+                        "Ten wpis jest właśnie wysyłany do PBN — spróbuj za chwilę."
+                    )
+            return super().delete(*args, **kwargs)
+
+    def zablokuj_reczna_operacje(self):
+        """Żadnych ręcznych operacji na zleceniach wycofania."""
+        if self.operacja == self.Operacja.WYCOFANIE:
             raise WycofanieZablokowane(
-                "Aktywnego zlecenia wycofania z PBN nie można usunąć z kolejki."
+                "Zleceń wycofania z PBN nie usuwa się ani nie wysyła ręcznie "
+                "— kolejka obsługuje je sama, aż do skutku."
             )
-        return super().delete(*args, **kwargs)
+
+    def rekord_istnieje_w_bazie(self):
+        """Czy wiersz rekordu FIZYCZNIE istnieje (także w koszu)."""
+        model = self.content_type.model_class() if self.content_type_id else None
+        if model is None or not model_table_exists(model):
+            return False
+        return model._base_manager.filter(pk=self.object_id).exists()
 
     @property
     def ostatnia_aktualizacja(self):
@@ -370,11 +396,7 @@ class PBN_Export_Queue(models.Model):
         """
         self.refresh_from_db()
 
-        if self.operacja == self.Operacja.WYCOFANIE:
-            raise WycofanieZablokowane(
-                "Zlecenia wycofania z PBN nie wysyła się ponownie ręcznie — "
-                "kolejka obsługuje je sama."
-            )
+        self.zablokuj_reczna_operacje()
 
         with transaction.atomic():
             rekord = self.rekord_do_wysylki
@@ -627,10 +649,8 @@ class PBN_Export_Queue(models.Model):
         NIE woła klienta PBN bezpośrednio i NIE dotyka ``SentData`` — robi
         to ``wycofaj_oswiadczenia()``, wspólne z wejściem synchronicznym.
         Tu wyłącznie: pozyskanie klienta, wywołanie prymitywu i tłumaczenie
-        wyniku/wyjątku na ``SendStatus``. Klasyfikacja wyjątków PBN idzie
-        przez wspólne ``_handle_pbn_exception`` (ResourceLocked →
-        RETRY_LATER, PraceSerwisowe → RETRY_MUCH_LATER, HTTP 423 →
-        RETRY_LATER, …), czyli DOKŁADNIE tę samą tabelę co wysyłka.
+        wyniku/wyjątku na ``SendStatus``. Wycofanie NIGDY nie kończy się
+        błędem — patrz ``_obsluz_blad_wycofania``.
 
         :return: SendStatus
         """
@@ -643,9 +663,9 @@ class PBN_Export_Queue(models.Model):
                 "Nie udało się zbudować klienta PBN do wycofania oświadczeń "
                 f"(PBN_Export_Queue pk={self.pk})",
                 logger=logger,
-                do_rollbar=False,  # Rollbar w _handle_pbn_exception
+                do_rollbar=False,  # Rollbar w _obsluz_blad_wycofania
             )
-            return self._handle_pbn_exception(exc)
+            return self._obsluz_blad_wycofania(exc)
 
         try:
             wynik = wycofaj_oswiadczenia(
@@ -656,9 +676,9 @@ class PBN_Export_Queue(models.Model):
                 "Błąd podczas wycofywania oświadczeń z PBN z kolejki eksportu "
                 f"(PBN_Export_Queue pk={self.pk})",
                 logger=logger,
-                do_rollbar=False,  # Rollbar w _handle_pbn_exception
+                do_rollbar=False,  # Rollbar w _obsluz_blad_wycofania
             )
-            return self._handle_pbn_exception(exc)
+            return self._obsluz_blad_wycofania(exc)
 
         # POMINIETO (rekord bez PBN UID) też kończy wpis sukcesem: nic nie
         # poszło do PBN, więc stan docelowy jest osiągnięty. To gate
@@ -668,6 +688,45 @@ class PBN_Export_Queue(models.Model):
         self.dopisz_komunikat(wynik.komunikat)
         self.save()
         return SendStatus.FINISHED_OKAY
+
+    def _obsluz_blad_wycofania(self, exc):
+        """Wycofanie zostaje w kolejce, aż się uda (decyzja właściciela).
+
+        Rekord stoi wtedy w koszu, a jego oświadczenia w PBN — dopóki wpis
+        nie wyjdzie z kolejki (i dopóki trwa, rekordu nie da się przywrócić).
+        Problemy z autoryzacją (wygasły token, konto bez tokenu — np.
+        techniczne ``bpp-system``) → czekamy na zalogowanie do PBN;
+        wszystko inne → ponowienie z rosnącym odstępem. „Nie ma czego
+        wycofać" kończy się sukcesem w ``wycofaj_oswiadczenia``.
+        """
+        status = self._handle_retry_exception(exc)
+        if status is not None:
+            return status
+
+        if isinstance(exc, (AccessDeniedException, WillNotExportError)):
+            self.dopisz_komunikat(
+                f"Brak ważnej autoryzacji w PBN ({exc}). Wycofanie czeka "
+                f"w kolejce na zalogowanie do PBN (zaktualizowanie tokenu)."
+            )
+            self.retry_after_user_authorised = True
+            self.save()
+            return SendStatus.RETRY_AFTER_USER_AUTHORISED
+
+        if not isinstance(exc, HttpException):
+            rollbar.report_exc_info(sys.exc_info())
+        self.dopisz_komunikat(
+            f"Błąd przy wycofaniu z PBN ({exc}). Wycofanie zostaje w kolejce "
+            f"— ponowię później."
+        )
+        self.save()
+        return SendStatus.RETRY_LATER
+
+    def odstep_ponowienia(self, bazowy):
+        """Odstęp (s) przed ponowieniem RETRY_LATER. Wycofanie ponawia się
+        bez końca, więc z rosnącym odstępem (do 6 h); wysyłka — stały."""
+        if self.operacja != self.Operacja.WYCOFANIE:
+            return bazowy
+        return min(bazowy * 2 ** max(self.ilosc_prob - 1, 0), 6 * 60 * 60)
 
     def _zajmij_atomowo(self):
         """Atomowo zajmij wpis do wysyłki (zabezpieczenie przed dwoma workerami).

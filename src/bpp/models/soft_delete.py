@@ -5,7 +5,7 @@ i oknem serwisowym): ``docs/deweloper/soft-delete.md``. Skrót:
 
 - TAK (``deleted_at``): pięć modeli publikacji
   (``BppPublikacjaSoftDeleteMixin``), ``Autor`` (tylko autor bez prac),
-  struktura (``Uczelnia``, ``Jednostka``) i słowniki ``Zrodlo``,
+  ``Uczelnia`` i słowniki ``Zrodlo``,
   ``Wydawca``, ``Konferencja``, ``Seria_Wydawnicza``
   (``BppSoftDeleteSlownikMixin`` — tylko rekord nieużywany); niezależnie od
   dawna ``Element_Repozytorium`` i ``Zgloszenie_Publikacji``.
@@ -595,7 +595,9 @@ class BppUnikalnoscZKoszemMixin:
             for nazwa in pola:
                 pole = self._meta.get_field(nazwa)
                 wartosc = getattr(self, pole.attname)
-                if wartosc is None or (wartosc == "" and pole.empty_strings_allowed):
+                # Jak Django na PostgreSQL: tylko NULL nie podlega unikalności
+                # — pusty napis już tak.
+                if wartosc is None:
                     break
                 warunki[pole.attname if pole.is_relation else nazwa] = wartosc
             else:
@@ -785,6 +787,28 @@ class BppPublikacjaSoftDeleteMixin(
         }
     )
 
+    def _sprawdz_odwolania_generyczne(self):
+        """GenericFK nie są relacjami ``_meta`` (``relacje_przychodzace`` ich
+        nie widzi) — publikacja wskazana w habilitacji
+        (``Publikacja_Habilitacyjna.publikacja``) blokuje kosz jawnie."""
+        from django.contrib.contenttypes.models import ContentType
+
+        from bpp.models.praca_habilitacyjna import Publikacja_Habilitacyjna
+
+        odwolania = list(
+            Publikacja_Habilitacyjna.objects.filter(
+                content_type=ContentType.objects.get_for_model(self),
+                object_id=self.pk,
+            )
+        )
+        if odwolania:
+            raise ProtectedError(
+                f"Nie można przenieść do kosza „{self}” — publikacja jest "
+                f"wskazana w habilitacji ({len(odwolania)}× powiązanie "
+                f"publikacji z habilitacją). Najpierw usuń te powiązania.",
+                odwolania,
+            )
+
     def sprawdz_czy_mozna_do_kosza(self, *args, **kwargs):
         """Guard kosza (BEZ efektów ubocznych) — rzuca ``ProtectedError``,
         gdy publikacji nie wolno wyrzucić:
@@ -800,6 +824,7 @@ class BppPublikacjaSoftDeleteMixin(
             relacje_przychodzace(type(self), self.POMIJANE_RELACJE_KOSZA),
             label="publikacji",
         )
+        self._sprawdz_odwolania_generyczne()
         rel = self._relacja_autorstw()
         if rel is None:
             return
@@ -881,8 +906,9 @@ class BppPublikacjaSoftDeleteMixin(
 class BppSoftDeleteSlownikMixin(
     BppUnikalnoscZKoszemMixin, BppPkPrzedHardDeleteMixin, SoftDeleteModel
 ):
-    """Kosz dla struktury uczelni i słowników (``Uczelnia``, ``Jednostka``,
-    ``Zrodlo``, ``Wydawca``, ``Konferencja``, ``Seria_Wydawnicza``).
+    """Kosz dla uczelni i słowników (``Uczelnia``, ``Zrodlo``, ``Wydawca``,
+    ``Konferencja``, ``Seria_Wydawnicza``). ``Jednostka`` NIE ma kosza
+    (nie kasuje się jej wcale — ``JednostkaNieDoUsuniecia``).
 
     Do kosza trafia wyłącznie rekord NIEUŻYWANY: guard bierze WSZYSTKIE
     przychodzące relacje (``relacje_przychodzace``) poza jawnie pominiętymi

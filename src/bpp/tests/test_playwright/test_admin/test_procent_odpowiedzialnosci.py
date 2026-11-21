@@ -61,13 +61,18 @@ def _skasuj_trwale(obj):
 
     Te testy nie działają w transakcji (``transaction.set_autocommit(True)``
     + live server), więc sprzątają po sobie ręcznie. ``delete()`` publikacji,
-    autora, jednostki czy uczelni jest MIĘKKIE (kosz): wiersz zostaje razem
+    autora czy uczelni jest MIĘKKIE (kosz): wiersz zostaje razem
     z autorstwami ``*_Autor``, które chronią autora przez ``PROTECT`` —
     teardown nie posprzątałby do końca.
 
     ``hard_delete()`` istnieje na modelach soft-delete; dla pozostałych
     zwykłe ``delete()`` i tak jest twarde.
     """
+    from bpp.models import Jednostka
+
+    if isinstance(obj, Jednostka):
+        # Jednostki nie kasuje się zwykłym ``delete()`` — tylko serwisowo.
+        return Jednostka.objects.filter(pk=obj.pk).hard_delete()
     hard = getattr(obj, "hard_delete", None)
     return hard() if hard is not None else obj.delete()
 

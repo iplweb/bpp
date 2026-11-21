@@ -17,7 +17,7 @@ import logging
 
 from django.contrib.contenttypes.models import ContentType
 from django.core.exceptions import FieldDoesNotExist
-from django.db.models import F
+from django.db.models import F, Q
 
 from pbn_integrator.models import RekordWKoszuPominietyPrzezImport
 
@@ -69,11 +69,16 @@ def zglos_rekord_w_koszu(
     zrodlo_importu,
     inconsistency_callback=None,
     dopisek="",
+    skad="PBN",
 ):
-    """Raportuje pominięcie rekordu z kosza. Zwraca ``None`` (wynik importu)."""
+    """Raportuje pominięcie rekordu z kosza. Zwraca ``None`` (wynik importu).
+
+    ``pbn_publication`` — publikacja PBN albo (dla nie-publikacji) sam
+    identyfikator do komunikatu; ``skad`` — źródło danych w komunikacie.
+    """
     pbn_uid_id = getattr(pbn_publication, "pk", pbn_publication)
     komunikat = (
-        f"W PBN jest rekord {pbn_uid_id}, ale u nas jest usunięty (w koszu): "
+        f"W {skad} jest rekord {pbn_uid_id}, ale u nas jest usunięty (w koszu): "
         f"„{rekord}” ({rekord._meta.verbose_name}, id={rekord.pk}). "
         f"{dopisek}Import go pominął — rekordów z kosza nie przywracamy "
         f"automatycznie. Jeśli ma wrócić, przywróć go z kosza w adminie."
@@ -81,7 +86,9 @@ def zglos_rekord_w_koszu(
     logger.warning(komunikat)
 
     ct = ContentType.objects.get_for_model(type(rekord))
-    pbn_fk = pbn_uid_id if getattr(pbn_publication, "pk", None) else None
+    from pbn_api.models import Publication
+
+    pbn_fk = pbn_uid_id if isinstance(pbn_publication, Publication) else None
     zaktualizowano = RekordWKoszuPominietyPrzezImport.objects.filter(
         content_type=ct, object_id=rekord.pk, zrodlo_importu=zrodlo_importu
     ).update(ile_razy=F("ile_razy") + 1, komunikat=komunikat)
@@ -102,9 +109,7 @@ def zglos_rekord_w_koszu(
     if inconsistency_callback is not None:
         inconsistency_callback(
             inconsistency_type=NIESCISLOSC_REKORD_W_KOSZU,
-            pbn_publication=(
-                pbn_publication if getattr(pbn_publication, "pk", None) else None
-            ),
+            pbn_publication=pbn_publication if pbn_fk else None,
             bpp_publication=rekord,
             message=komunikat,
             action_taken="Pominięto (rekord w koszu nie jest przywracany).",
@@ -121,3 +126,35 @@ def pomin_jesli_w_koszu(pbn_publication, zrodlo_importu, inconsistency_callback=
         rekord, pbn_publication, zrodlo_importu, inconsistency_callback
     )
     return True
+
+
+def rekord_z_kosza_kolidujacy(model, **wartosci):
+    """Rekord ``model`` z kosza, który trzyma którąś z UNIKALNYCH wartości.
+
+    ``wartosci`` — nazwy pól i wartości, którymi import chce utworzyć nowy
+    rekord. Pod uwagę idą pola ``unique=True`` z wartością różną od
+    ``None``. Utworzenie nowego wiersza z taką wartością wywróciłoby się
+    ``IntegrityError``-em (rekord w koszu nadal ją trzyma), a wskrzeszanie
+    jest wykluczone — wołający pomija i zgłasza (``pomin_jesli_koliduje``).
+    """
+    if not hasattr(model, "deleted_objects"):
+        return None
+    warunek = Q()
+    for nazwa, wartosc in wartosci.items():
+        if wartosc is None or not model._meta.get_field(nazwa).unique:
+            continue
+        warunek |= Q(**{nazwa: wartosc})
+    if not warunek:
+        return None
+    return model.deleted_objects.filter(warunek).first()
+
+
+def pomin_jesli_koliduje(model, zrodlo_importu, opis, skad="PBN", **wartosci):
+    """Import nie-publikacji (autor, wydawca, …): gdy unikalna wartość
+    należy do rekordu z kosza — zgłoś i zwróć ten rekord (wołający POMIJA
+    tworzenie); inaczej ``None``. Nigdy nie tworzymy duplikatu i nigdy nie
+    wskrzeszamy."""
+    rekord = rekord_z_kosza_kolidujacy(model, **wartosci)
+    if rekord is not None:
+        zglos_rekord_w_koszu(rekord, opis, zrodlo_importu, skad=skad)
+    return rekord

@@ -10,7 +10,7 @@ from bpp.admin.core import DynamicAdminFilterMixin
 from bpp.admin.helpers.site_filtered import SiteFilteredAdminMixin
 from pbn_api.exceptions import AlreadyEnqueuedError
 
-from .models import PBN_Export_Queue
+from .models import OperacjaNaWpisieZablokowana, PBN_Export_Queue
 
 User = get_user_model()
 
@@ -89,13 +89,9 @@ class PBN_Export_QueueAdmin(
     ]
 
     def has_delete_permission(self, request, obj=None):
-        # Aktywne zlecenie WYCOFANIA blokuje rekord — nie da się go usunąć
-        # z kolejki (``PBN_Export_Queue.delete``).
-        if (
-            obj is not None
-            and obj.operacja == PBN_Export_Queue.Operacja.WYCOFANIE
-            and obj.wysylke_zakonczono is None
-        ):
+        # Zleceń WYCOFANIA nie usuwa się z kolejki — nigdy
+        # (``PBN_Export_Queue.delete``).
+        if obj is not None and obj.operacja == PBN_Export_Queue.Operacja.WYCOFANIE:
             return False
         if request.user.is_superuser:
             return True
@@ -154,12 +150,20 @@ class PBN_Export_QueueAdmin(
 
     actions = [resend_to_pbn_action]
 
+    def delete_model(self, request, obj):
+        try:
+            obj.delete()
+        except OperacjaNaWpisieZablokowana as e:
+            self.message_user(request, str(e), level=messages.ERROR)
+
     def delete_queryset(self, request, queryset):
-        """Masowe usuwanie pomija aktywne zlecenia wycofania (zostają)."""
-        queryset.exclude(
-            operacja=PBN_Export_Queue.Operacja.WYCOFANIE,
-            wysylke_zakonczono__isnull=True,
-        ).delete()
+        """Masowe usuwanie per wpis (te same reguły co ``delete()``):
+        zlecenia wycofania i wpisy w trakcie wysyłki zostają."""
+        for obj in queryset:
+            try:
+                obj.delete()
+            except OperacjaNaWpisieZablokowana as e:
+                self.message_user(request, f"{obj}: {e}", level=messages.WARNING)
 
     def save_form(self, request, form, change):
         return form.save(commit=False)

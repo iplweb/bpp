@@ -7,6 +7,8 @@ przez ``sprobuj_utowrzyc_wpis``, żeby nie omijać zabezpieczenia TOCTOU,
 FK ``uczelnia`` ani pola ``operacja``.
 """
 
+from django.db import transaction
+
 from pbn_export_queue.models import PBN_Export_Queue
 
 #: Login konta używanego jako ``zamowil`` przy operacjach systemowych.
@@ -68,7 +70,10 @@ def _zakolejkuj(instance, operacja, user=None, uczelnia=None):
         # Rekord czeka już w kolejce — idempotencja, nie błąd.
         return None
 
-    tasks.task_sprobuj_wyslac_do_pbn.delay(wpis.pk)
+    # Po COMMIT: worker nie może dostać wpisu, którego jeszcze nie widzi
+    # (albo który zniknie z wycofaną transakcją kosza/przywrócenia).
+    pk = wpis.pk
+    transaction.on_commit(lambda: tasks.task_sprobuj_wyslac_do_pbn.delay(pk))
     return wpis
 
 

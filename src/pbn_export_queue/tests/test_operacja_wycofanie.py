@@ -8,6 +8,7 @@ eksportu, obok dotychczasowej ``WYSYLKA``.
 from unittest.mock import MagicMock, patch
 
 import pytest
+from django.contrib.contenttypes.models import ContentType
 from model_bakery import baker
 
 from pbn_export_queue.models import PBN_Export_Queue, SendStatus
@@ -165,12 +166,12 @@ def test_sprzataczka_nie_kasuje_zlecen_wycofania(
         operacja=PBN_Export_Queue.Operacja.WYCOFANIE,
         wysylke_zakonczono=None,
     )
-    wydawnictwo_zwarte.delete()
-    # Symulujemy stary, wiszący wpis WYSYLKA rekordu z kosza (sprzed reguły
-    # „wpis blokuje kosz") — taki sprzątaczka ma nadal usuwać.
+    # Wpis WYSYLKA rekordu FIZYCZNIE nieistniejącego — ten sprzątaczka
+    # ma nadal usuwać (rekordy z kosza zachowują historię wysyłek).
     wysylka = baker.make(
         PBN_Export_Queue,
-        rekord_do_wysylki=wydawnictwo_zwarte,
+        content_type=ContentType.objects.get_for_model(wydawnictwo_zwarte),
+        object_id=999_999_999,
         zamowil=admin_user,
         uczelnia=uczelnia,
         operacja=PBN_Export_Queue.Operacja.WYSYLKA,
@@ -184,8 +185,7 @@ def test_sprzataczka_nie_kasuje_zlecen_wycofania(
         "w PBN i nikt się o tym nie dowie"
     )
     assert not PBN_Export_Queue.objects.filter(pk=wysylka.pk).exists(), (
-        "wpis WYSYLKA rekordu z kosza ma nadal znikać — to zachowanie "
-        "z fazy 02, którego nie wolno zepsuć przy okazji"
+        "wpis WYSYLKA rekordu, którego nie ma w bazie, ma nadal znikać"
     )
 
 
@@ -266,14 +266,19 @@ def test_zakolejkuj_wycofanie_gate_brak_pbn_uid(wydawnictwo_ciagle, admin_user):
 
 
 @pytest.mark.django_db
-def test_zakolejkuj_wycofanie_tworzy_wpis(wydawnictwo_ciagle, admin_user, uczelnia):
+def test_zakolejkuj_wycofanie_tworzy_wpis(
+    wydawnictwo_ciagle, admin_user, uczelnia, django_capture_on_commit_callbacks
+):
     from pbn_api.models import Publication
     from pbn_export_queue.operacje import zakolejkuj_wycofanie
 
     wydawnictwo_ciagle.pbn_uid = baker.make(Publication)
     wydawnictwo_ciagle.save()
 
-    with patch("pbn_export_queue.tasks.task_sprobuj_wyslac_do_pbn") as mock_task:
+    with (
+        patch("pbn_export_queue.tasks.task_sprobuj_wyslac_do_pbn") as mock_task,
+        django_capture_on_commit_callbacks(execute=True),
+    ):
         wpis = zakolejkuj_wycofanie(
             wydawnictwo_ciagle, user=admin_user, uczelnia=uczelnia
         )
@@ -285,7 +290,9 @@ def test_zakolejkuj_wycofanie_tworzy_wpis(wydawnictwo_ciagle, admin_user, uczeln
 
 
 @pytest.mark.django_db
-def test_zakolejkuj_wysylke_nie_ma_gate_na_pbn_uid(wydawnictwo_ciagle, admin_user):
+def test_zakolejkuj_wysylke_nie_ma_gate_na_pbn_uid(
+    wydawnictwo_ciagle, admin_user, django_capture_on_commit_callbacks
+):
     """WYSYŁKA celowo NIE ma gate'u na ``pbn_uid``.
 
     Rekord, który nigdy nie poszedł do PBN, po przywróceniu i tak ma prawo
@@ -296,7 +303,10 @@ def test_zakolejkuj_wysylke_nie_ma_gate_na_pbn_uid(wydawnictwo_ciagle, admin_use
     from pbn_export_queue.operacje import zakolejkuj_wysylke
 
     assert wydawnictwo_ciagle.pbn_uid_id is None
-    with patch("pbn_export_queue.tasks.task_sprobuj_wyslac_do_pbn") as mock_task:
+    with (
+        patch("pbn_export_queue.tasks.task_sprobuj_wyslac_do_pbn") as mock_task,
+        django_capture_on_commit_callbacks(execute=True),
+    ):
         wpis = zakolejkuj_wysylke(wydawnictwo_ciagle, user=admin_user)
 
     assert wpis is not None
@@ -357,15 +367,13 @@ def test_zakolejkuj_wycofanie_bez_usera_uzywa_konta_technicznego(
 
 
 @pytest.mark.django_db
-def test_konto_techniczne_bez_tokenu_konczy_glosno(wydawnictwo_ciagle, uczelnia):
-    """Brak tokenu PBN kończy wpis BŁĘDEM, nie cichym sukcesem.
+def test_konto_techniczne_bez_tokenu_czeka_na_autoryzacje(wydawnictwo_ciagle, uczelnia):
+    """Brak tokenu PBN: wycofanie NIE kończy się (ani błędem, ani sukcesem)
+    — czeka w kolejce na zalogowanie do PBN (decyzja właściciela).
 
     Konto techniczne nie ma własnego ``pbn_token``, więc autoryzacja
-    w PBN rzuci ``WillNotExportError``. To jest akceptowalne WYŁĄCZNIE
-    dlatego, że kończy się głośno — wpis dostaje ``FINISHED_ERROR``
-    z błędem merytorycznym i komunikatem wskazującym konfigurację.
-    Gdyby kończyło się ``FINISHED_OKAY`` albo cichym ``None``, operator
-    myślałby, że oświadczenia zostały wycofane.
+    w PBN rzuci ``WillNotExportError``. Gdyby wpis się zakończył, rekord
+    dałoby się przywrócić, a oświadczenia zostałyby w PBN bez śladu.
 
     Obejście produkcyjne (bez zmiany kodu): administrator ustawia kontu
     technicznemu ``przedstawiaj_w_pbn_jako`` na konto z ważnym tokenem.
@@ -377,7 +385,6 @@ def test_konto_techniczne_bez_tokenu_konczy_glosno(wydawnictwo_ciagle, uczelnia)
     """
     from pbn_api.exceptions import WillNotExportError
     from pbn_api.models import Publication
-    from pbn_export_queue.models import RodzajBledu
     from pbn_export_queue.operacje import pobierz_konto_techniczne
 
     wydawnictwo_ciagle.delete()
@@ -406,10 +413,10 @@ def test_konto_techniczne_bez_tokenu_konczy_glosno(wydawnictwo_ciagle, uczelnia)
     ):
         result = wpis.send_to_pbn()
 
-    assert result == SendStatus.FINISHED_ERROR
+    assert result == SendStatus.RETRY_AFTER_USER_AUTHORISED
     wpis.refresh_from_db()
-    assert wpis.zakonczono_pomyslnie is False
-    assert wpis.rodzaj_bledu == RodzajBledu.MERYTORYCZNY
+    assert wpis.wysylke_zakonczono is None
+    assert wpis.retry_after_user_authorised
     assert "autoryzacj" in wpis.komunikat.lower()
 
 

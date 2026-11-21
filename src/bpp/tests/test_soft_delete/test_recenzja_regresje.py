@@ -183,18 +183,6 @@ def test_api_autor_jednostka_pomija_autorow_z_kosza(uczelnia):
 # --- 10: zbiorcze kasowanie jednostek idzie do kosza ---------------------
 
 
-@pytest.mark.django_db
-def test_zbiorcze_kasowanie_jednostek_idzie_do_kosza(uczelnia):
-    j1 = baker.make(Jednostka, uczelnia=uczelnia)
-    j2 = baker.make(Jednostka, uczelnia=uczelnia)
-
-    Jednostka.objects.filter(pk__in=[j1.pk, j2.pk]).delete()
-
-    assert Jednostka.deleted_objects.filter(pk__in=[j1.pk, j2.pk]).count() == 2
-    with pytest.raises(RuntimeError):
-        Jednostka.objects.filter(pk=j1.pk).update(deleted_at=None)
-
-
 # --- A: twarde skasowanie doktoratu czyści bpp_autorzy_mat ---------------
 
 

@@ -1,4 +1,4 @@
-"""Slug autora, jednostki, uczelni, źródła i wydawcy — unikalność RAZEM z koszem.
+"""Slug autora, uczelni, źródła i wydawcy — unikalność RAZEM z koszem.
 
 Rekord w koszu zachowuje slug (link /jan-kowalski/ zostaje); nowy rekord
 o tej samej nazwie dostaje kolejny wariant (``jan-kowalski-2``).
@@ -34,17 +34,6 @@ class Migration(migrations.Migration):
                         manager_name="global_objects",
                         max_length=1024,
                         populate_from="get_full_name",
-                        unique=True,
-                    ),
-                ),
-                migrations.AlterField(
-                    model_name="jednostka",
-                    name="slug",
-                    field=autoslug.fields.AutoSlugField(
-                        editable=False,
-                        manager_name="global_objects",
-                        max_length=512,
-                        populate_from="nazwa",
                         unique=True,
                     ),
                 ),

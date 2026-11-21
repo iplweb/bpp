@@ -16,7 +16,11 @@ from django.views.decorators.http import require_POST
 from bpp.const import GR_WPROWADZANIE_DANYCH
 from bpp.util import zaloguj_polkniety_wyjatek
 from pbn_api.exceptions import AlreadyEnqueuedError
-from pbn_export_queue.models import RodzajBledu, WycofanieZablokowane
+from pbn_export_queue.models import (
+    OperacjaNaWpisieZablokowana,
+    RodzajBledu,
+    WycofanieZablokowane,
+)
 
 from .mixins import PBNExportQueuePermissionMixin, kolejka_dla_requestu
 
@@ -39,7 +43,7 @@ def delete_from_queue(request, pk):
     queue_item = get_object_or_404(kolejka_dla_requestu(request), pk=pk)
     try:
         queue_item.delete()
-    except WycofanieZablokowane as e:
+    except OperacjaNaWpisieZablokowana as e:
         messages.error(request, str(e))
         return HttpResponseRedirect(
             reverse_lazy("pbn_export_queue:export-queue-detail", args=[pk])
@@ -123,6 +127,13 @@ def try_send_to_pbn(request, pk):
         )
 
     queue_item = get_object_or_404(kolejka_dla_requestu(request), pk=pk)
+    try:
+        queue_item.zablokuj_reczna_operacje()
+    except WycofanieZablokowane as e:
+        messages.error(request, str(e))
+        return HttpResponseRedirect(
+            reverse_lazy("pbn_export_queue:export-queue-detail", args=[pk])
+        )
     queue_item.sprobuj_wyslac_do_pbn()
     messages.success(request, "Zlecono ponowną wysyłkę do PBN.")
     return HttpResponseRedirect(

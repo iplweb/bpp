@@ -301,13 +301,11 @@ class BppSoftDeleteAdminMixin:
         Skasowanego rekordu nie da się inaczej ani otworzyć, ani
         przywrócić. Kosz chowa dopiero ``PokazSkasowaneFilter``.
         """
-        tree_manager = getattr(self.model, "_tree_manager", None)
-        if tree_manager is not None:
-            # MPTT (``Jednostka``): niefiltrujący menedżer drzewa — zachowuje
-            # porządek drzewa i ``TreeQuerySet`` wymagany przez admina MPTT.
-            qs = tree_manager._unfiltered().get_queryset()
-        else:
-            qs = self.model.global_objects.get_queryset()
+        qs = self.model.global_objects.get_queryset()
+        if getattr(request.resolver_match, "url_name", None) == "autocomplete":
+            # Autocomplete admina (``AutocompleteJsonView`` pyta admina
+            # modelu docelowego) nie podsuwa rekordów z kosza.
+            qs = qs.filter(deleted_at__isnull=True)
         ordering = self.get_ordering(request)
         if ordering:
             qs = qs.order_by(*ordering)

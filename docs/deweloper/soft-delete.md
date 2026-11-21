@@ -137,20 +137,23 @@ daje.
 | Model | Zasady |
 |---|---|
 | `Autor` | Liczba N: autor w koszu nie liczy się do N przy **przeliczeniu** — kosz/przywrócenie autora wymaga ręcznego przeliczenia N (jak ewaluacji). Guard: wskazuje na niego jakikolwiek rekord — autorstwo (także publikacji z kosza), doktorat (także jako **promotor**), habilitacja, projekt, **redakcja źródła**, **autor zgłoszenia**, konto użytkownika — → `ProtectedError`. Lista generyczna z `_meta`; pomijane jawnie (`POMIJANE_RELACJE_KOSZA_AUTORA`) tylko dane kadrowe, dane wyliczane, logi i wiersze importów/deduplikacji. Do kosza trafiają duplikaty, literówki, puste rekordy po scaleniu.  |
-| `Autor_Jednostka`, `Autor_Dyscyplina`, `Autor_Absencja`, `Projekt_Autor` | **NIE** — dane kadrowe żyją z autorem: zostają przy nim w koszu i wracają z nim. |
+| `Autor_Jednostka`, `Autor_Dyscyplina`, `Autor_Absencja`, `Projekt_Autor` | **NIE** — dane kadrowe żyją z autorem: zostają przy nim w koszu i wracają z nim. Domyślny menedżer `Autor_Dyscyplina.objects` ukrywa wiersze autorów z kosza (raport zerowy, dwudyscyplinowcy, liczba N, optymalizacja, metryki — autor z kosza w nich nie występuje); `all_objects` widzi wszystko. Metryki pomijają też wiersze udziałów autora z kosza do czasu przeliczenia N. |
 
-### Struktura i słowniki — TAK, tylko rekord nieużywany
+### Uczelnia i słowniki — TAK, tylko rekord nieużywany
 
 `BppSoftDeleteSlownikMixin`. Guard bierze **wszystkie** przychodzące FK
 (`relacje_przychodzace`) poza jawnie pominiętymi (`pomijane_relacje_kosza`)
-i liczy powiązania przez `_base_manager` (czyli także te w koszu). Zbiorcze
-`Jednostka.objects.filter(...).delete()` też idzie do kosza
-(`JednostkaQuerySet`).
+i liczy powiązania przez `_base_manager` (czyli także te w koszu).
+
+**`Jednostka` — NIE ma kosza i nie kasuje się jej wcale** (decyzja
+właściciela): zamrożony rekord w drzewie MPTT blokowałby przeliczanie
+`lft`/`rght`/`tree_id` sąsiadów. `delete()` i `QuerySet.delete()` rzucają
+`JednostkaNieDoUsuniecia` („ukryj jednostkę — odznacz »Widoczna«"), admin
+nie ma uprawnienia ani akcji usuwania.
 
 | Model | Blokuje kosz | Zostaje przy rekordzie w koszu |
 |---|---|---|
 | `Uczelnia` | jednostki (także w koszu), użytkownicy z dostępem do uczelni | konfiguracja; **`site` (domena)** — uczelnia w koszu nie obsługuje domeny (`get_for_site`), ale trzyma `Site` (OneToOne NOT NULL); żeby podpiąć domenę pod inną uczelnię, usuń ją trwale z kosza |
-| `Jednostka` | wszystko, co na nią wskazuje (reguła „ściśle zero" — `przeszkody_w_kasowaniu`) | — |
 | `Zrodlo` | wydawnictwa ciągłe | punktacja, dyscypliny, redakcja |
 | `Wydawca` | wydawnictwa zwarte, doktoraty, habilitacje, aliasy, zgłoszenia | poziomy wydawcy |
 | `Konferencja` | wydawnictwa ciągłe i zwarte | — |
@@ -161,7 +164,11 @@ i liczy powiązania przez `_base_manager` (czyli także te w koszu). Zbiorcze
 się z `CASCADE` na `PROTECT`: skasowanie konferencji/serii **nie kaskaduje
 już twardo na publikacje** (migracja `0519`; bez zmian w bazie —
 `on_delete` żyje tylko w ORM). Import (np. dopasowanie źródła po ISSN)
-kosza słowników nie widzi — może utworzyć nowy rekord obok tego z kosza.
+kosza słowników nie widzi przy dopasowaniu, ale **nie tworzy duplikatu
+wartości unikalnej trzymanej przez rekord z kosza**: import PBN (wydawcy,
+autorzy), importer autorów PBN i komendy `import_wydawca_*` sprawdzają kosz
+(`pbn_integrator.kosz.pomin_jesli_koliduje`) — trafienie w kosz = pomiń
+i zgłoś (`RekordWKoszuPominietyPrzezImport`), nigdy nie wskrzeszaj.
 
 ### Poza koszem
 
@@ -181,7 +188,7 @@ właściciela): link `/jan-kowalski/` zostaje na zawsze, nazwa, skrót, ORCID,
 PBN UID, `pbn_id`, `expertus_id`, `system_kadrowy_id` — też.
 
 - **slug:** autoslug sprawdza unikalność razem z koszem
-  (`AutoSlugField(manager_name="global_objects")` dla `Autor`, `Jednostka`,
+  (`AutoSlugField(manager_name="global_objects")` dla `Autor`,
   `Uczelnia`, `Zrodlo`, `Wydawca`), więc nowy „Jan Kowalski" dostaje po
   prostu kolejny slug (`jan-kowalski-2`). To naprawia `IntegrityError` na
   `bpp_autor_slug_key`;
@@ -207,6 +214,25 @@ transakcji co zapis kosza/przywrócenia (`pbn_export_queue/operacje.py`).
 Aktywnego zlecenia WYCOFANIA nie da się usunąć z kolejki ani wysłać
 ponownie ręcznie (`WycofanieZablokowane`); wpis wysyłki — można usunąć.
 
+**Ręczne operacje na kolejce.** Na zleceniach wycofania nie ma ŻADNYCH
+ręcznych operacji (usuń, wyślij ponownie, „spróbuj wysłać") — także po
+zakończeniu: to historia. Wpisu wysyłki, który worker właśnie wysyła (trzyma
+blokadę rekordu), nie da się usunąć (`WpisWTrakcieWysylki`). Sprzątaczka
+(`kolejka_wyczysc_wpisy_bez_rekordow`) usuwa wyłącznie wpisy wysyłki rekordów
+fizycznie nieistniejących — historia wysyłek rekordów z kosza zostaje.
+
+**Wycofanie nigdy nie kończy się błędem — zostaje w kolejce, aż się uda.**
+Wygasły token albo konto bez tokenu (np. techniczne `bpp-system`) → wpis
+czeka na zalogowanie do PBN (`retry_after_user_authorised`); każdy inny
+błąd → ponowienie z rosnącym odstępem (do 6 h,
+`PBN_Export_Queue.odstep_ponowienia`). Do tego czasu rekord stoi w koszu,
+jego oświadczenia w PBN, a przywrócić go nie można (jedna reguła kolejki).
+„Nie ma czego wycofać" (PBN nie ma oświadczeń albo nie zna publikacji —
+HTTP 404) jest sukcesem. Dla wpisów `bpp-system` ustaw temu kontu
+`przedstawiaj_w_pbn_jako` na konto z ważnym tokenem — logowanie tamtego
+konta ponowi oczekujące wycofania. Wyjątek: rekord skasowany FIZYCZNIE
+(nie ma skąd odczytać PBN UID) kończy wpis błędem.
+
 | Sytuacja | Co się dzieje |
 |---|---|
 | Kosz publikacji z PBN UID | Receiver zleca `WYCOFANIE` — usuwa **oświadczenia naszej instytucji** (profil instytucji). Obiektu publikacji w repozytorium PBN nie da się usunąć (jest współdzielony). Strona potwierdzenia mówi o tym wprost. |
@@ -231,10 +257,11 @@ Kosz i przywrócenie **zawsze** zostawiają ślad w historii rekordu
 
 - `reversion.is_registered(model)` → **rewizja** reversion z `set_user`
   i `set_comment` („Przeniesiono do kosza (powód: …)" / „Przywrócono
-  z kosza"). Dziś: `Autor` (jawnie, `bpp/wersjonowanie.py`) i `Uczelnia`
-  (przez `VersionAdmin`);
+  z kosza"). Dziś: `Autor` i `Uczelnia` (jawnie, `bpp/wersjonowanie.py`,
+  BEZ pól kosza `deleted_at`/`restored_at`/`transaction_id` — przywrócenie
+  wersji nie może ominąć `delete()`/`restore()`);
 - w przeciwnym razie → wpis admina `LogEntry` (CHANGE) z tym samym
-  komunikatem (publikacje, słowniki, jednostki). Bez usera (operacja
+  komunikatem (publikacje, słowniki). Bez usera (operacja
   systemowa) `LogEntry` nie powstaje — śladem zostaje `SoftDeleteLog`.
 
 Rejestracja modelu w reversion w przyszłości **automatycznie** przełącza go
@@ -263,6 +290,12 @@ wersję" jest zablokowane (najpierw „Przywróć" z kosza).
   (instalacja wielouczelniana; brak uczelni z domeny → pusto);
   `/api/v1/autor_jednostka/` i `/api/v1/poziom_wydawcy/` pomijają wiersze
   rodziców z kosza.
+- Autocomplete admina nie podsuwa rekordów z kosza; przekierowanie
+  `global-nav-redir` dla rekordu z kosza daje 404 (nie zdradza sluga).
+- Publikacja wskazana w habilitacji (`Publikacja_Habilitacyjna`, GenericFK)
+  nie trafi do kosza — GenericFK sprawdzamy jawnie.
+- Scalanie autorów przepina pracę dyplomową z kosza wyłącznie w kolumnie
+  autora (`update`), bez pełnego `save()` nieaktualnej instancji.
 
 ## Wdrożenie: okno serwisowe
 

@@ -501,9 +501,9 @@ def test_getrecord_z_nagrobkiem_przechodzi_xsd(schemat_koperty, uczelnia):
 
 
 @pytest.mark.django_db
-def test_jednostka_w_koszu_dostaje_nagrobek(uczelnia):
-    """Recenzja: przyrostowy harvest musi dostać nagrobek jednostki z kosza
-    (``nalezace_jednostki`` przez ``global_objects``)."""
+def test_ukryta_jednostka_dostaje_nagrobek(uczelnia):
+    """Jednostka nie ma kosza; ukryta (``widoczna=False``) wypada z feedu —
+    przyrostowy harvest musi dostać jej nagrobek."""
     from model_bakery import baker
 
     from bpp.models import Jednostka
@@ -513,7 +513,8 @@ def test_jednostka_w_koszu_dostaje_nagrobek(uczelnia):
     provider = rejestr_providerow()[const.SET_ORGUNITS]
     assert not provider.nagrobki(uczelnia, Jednostka).filter(pk=j.pk).exists()
 
-    j.delete()
+    j.widoczna = False
+    j.save()
 
     assert provider.nagrobki(uczelnia, Jednostka).filter(pk=j.pk).exists()
 

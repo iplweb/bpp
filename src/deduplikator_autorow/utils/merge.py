@@ -321,8 +321,14 @@ def _transfer_simple_authorship(
 
         # Przemapuj autora. Praca z kosza jest zamrożona w bazie (trigger
         # kosza) — przepięcie przy scalaniu to świadoma operacja na koszu.
+        # Pracę z kosza zmieniamy WYŁĄCZNIE w kolumnie autora (``update``):
+        # pełny ``save()`` nieaktualnej instancji nadpisałby inne pola,
+        # w tym ``deleted_at``.
         praca.autor = glowny_autor
-        with operacja_kosza():
+        if _w_koszu(praca):
+            with operacja_kosza():
+                model._base_manager.filter(pk=praca.pk).update(autor=glowny_autor)
+        else:
             praca.save()
 
         # Dodaj do kolejki PBN — z pominięciem kosza, jak w

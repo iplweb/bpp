@@ -17,7 +17,6 @@ from reversion.models import Version
 
 from bpp.models import (
     Autor,
-    Jednostka,
     Konferencja,
     Seria_Wydawnicza,
     Wydawca,
@@ -117,16 +116,6 @@ def test_zrodlo_w_koszu_zachowuje_slug_nowe_dostaje_inny():
     nowe = baker.make(Zrodlo, nazwa="Czasopismo Testowe", slug="")
     assert nowe.slug != oryginal
     assert Zrodlo.global_objects.get(pk=z.pk).slug == oryginal
-
-
-@pytest.mark.django_db
-def test_jednostka_pusta_do_kosza_i_z_powrotem(uczelnia):
-    j = baker.make(Jednostka, nazwa="Katedra Pusta", skrot="KP", uczelnia=uczelnia)
-    j.delete()
-    assert not Jednostka.objects.filter(pk=j.pk).exists()
-    j = Jednostka.global_objects.get(pk=j.pk)
-    j.restore()
-    assert Jednostka.objects.filter(pk=j.pk, nazwa="Katedra Pusta").exists()
 
 
 @pytest.mark.django_db

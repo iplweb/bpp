@@ -61,11 +61,10 @@ def nalezace_jednostki(uczelnia):
     Atrybucja to bezpośredni FK ``uczelnia``; ``widoczna``
     i ``nie_eksportuj_przez_api`` są regułami ekspozycji i zostają
     w ``widoczne_jednostki()``, żeby ich dopełnienie dało nagrobki.
-    ``global_objects``: jednostka z kosza ma dostać nagrobek (``objects``
-    odsiałby ją, zanim powstanie dopełnienie).
+    Jednostka nie ma kosza (nie kasuje się jej wcale).
     """
     wymagaj_uczelni(uczelnia)
-    return Jednostka.global_objects.filter(uczelnia=uczelnia)
+    return Jednostka.objects.filter(uczelnia=uczelnia)
 
 
 def widoczni_grantodawcy(uczelnia):
