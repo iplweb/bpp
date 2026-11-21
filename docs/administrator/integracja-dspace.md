@@ -26,9 +26,9 @@ Funkcje eksportu do DSpace w panelu administracyjnym są dostępne dla
   (np. z grupy „wprowadzanie danych"),
 - lista kolekcji pobierana na żywo z DSpace przy edycji mapowań
   (ograniczona do uczelni, do których użytkownik ma dostęp),
-- **Mapowania DSpace** i **Informacje o wysłaniu do DSpace** — członek
+- **Mapowania DSpace** i **Wysyłki do DSpace** (dziennik wysyłek) — członek
   samej grupy „eksport do DSpace" znajdzie je w menu **DSpace**
-  (osoby z grupą „dane systemowe" — w menu **Dane systemowe**).
+  (superużytkownik i osoby z grupą „dane systemowe" — w menu **Dane systemowe**).
 
 Grupa jest tworzona automatycznie przy aktualizacji systemu (migracje),
 ale **nikt nie otrzymuje jej automatycznie** — superużytkownik musi ją
@@ -36,15 +36,19 @@ nadać wybranym redaktorom w **Administracja → Użytkownicy**.
 
 ## 1. Konfiguracja połączenia na obiekcie Uczelnia
 
-Przejdź do **Redagowanie → Struktura → Uczelnia**, otwórz obiekt uczelni
-i rozwiń sekcję **„DSpace"**. Ustaw:
+Sekcję widzi i zmienia wyłącznie **superużytkownik**. W module
+redagowania wybierz z górnego menu **Struktura → Uczelnia**, otwórz obiekt
+uczelni i przewiń do sekcji **„DSpace"**. Ustaw:
+
+![Sekcja „DSpace” w formularzu uczelni](../images/administrator/integracja-dspace/01-sekcja-dspace.png)
+
 
 | Pole | Znaczenie |
 |---|---|
 | **Włącz eksport do DSpace** | Główny przełącznik. Dopóki wyłączony, rekordy tej uczelni nie są wysyłane. |
-| **Adres API DSpace** | Pełny adres REST API, np. `https://repozytorium.uczelnia.pl/server/api`. |
+| **Adres API DSpace** | Pełny adres REST API, np. `https://repozytorium.example.org/server/api`. |
 | **Użytkownik API DSpace** | Login konta API. |
-| **Hasło API DSpace** | Hasło konta API. Przechowywane w bazie **w postaci zaszyfrowanej**. |
+| **Hasło API DSpace** | Hasło konta API. Przechowywane w bazie **w postaci zaszyfrowanej**. Zapisanego hasła formularz nie wyświetla — pole zostaje puste; wpisz hasło tylko wtedy, gdy chcesz je zmienić. |
 | **Domyślny język dc.language.iso** | Język wpisywany do metadanych Dublin Core, gdy rekord go nie określa (domyślnie `pl`). |
 
 !!! note "Bezpieczeństwo hasła"
@@ -56,7 +60,8 @@ i rozwiń sekcję **„DSpace"**. Ustaw:
 
 W obrębie jednej uczelni o tym, do której **kolekcji** DSpace trafi
 rekord, decyduje jego **charakter formalny**. Mapowania definiujesz w
-**DSpace API → Mapowania DSpace**.
+**Dane systemowe → Mapowania DSpace** (członek samej grupy „eksport do
+DSpace” — w menu **DSpace → Mapowania DSpace**).
 
 Aby dodać mapowanie (**Dodaj mapowanie DSpace**):
 
@@ -72,8 +77,15 @@ Aby dodać mapowanie (**Dodaj mapowanie DSpace**):
     Picker odpytuje DSpace na żywo (z krótkim limitem czasu). Jeśli DSpace
     jest chwilowo nieosiągalny, błędnie skonfigurowany albo zwróci pustą
     listę, pole wraca do zwykłego wpisywania UUID — możesz wtedy wkleić
-    identyfikator kolekcji ręcznie. Linkiem **„Wpisz UUID ręcznie"** /
+    identyfikator kolekcji ręcznie; obok pola pojawia się wtedy komunikat,
+    np. „Nie udało się pobrać listy kolekcji z DSpace. Wpisz UUID kolekcji
+    ręcznie.”. Gdy lista się pobrała, linkiem **„Wpisz UUID ręcznie"** /
     **„Wybierz kolekcję z listy"** przełączasz się między trybami.
+
+    ![Dodawanie mapowania DSpace z ręcznie wpisanym UUID kolekcji](../images/administrator/integracja-dspace/02-mapowanie-dodaj.png)
+
+    UUID kolekcji odczytasz w samym DSpace — jest częścią adresu strony
+    kolekcji (`…/collections/<UUID>`).
 
 Reguła routingu: para **(Uczelnia, Charakter formalny)** musi być
 unikalna. Jeżeli rekord ma charakter, dla którego **nie ma** mapowania
@@ -82,7 +94,8 @@ zobaczy w podsumowaniu wysyłki konkretny powód pominięcia.
 
 ## 3. Podgląd wysłanych rekordów i link do repozytorium
 
-**DSpace API → Informacje o wysłaniu do DSpace** to dziennik wszystkich
+**Dane systemowe → Wysyłki do DSpace** (lista „Informacje o wysłaniu do
+DSpace”) to dziennik wszystkich
 prób eksportu (tylko do odczytu). Dla każdego wpisu widać uczelnię,
 status, UUID itemu oraz — gdy rekord udało się wysłać — kolumnę
 **„Zobacz w repozytorium"** z bezpośrednim linkiem do rekordu w DSpace.
