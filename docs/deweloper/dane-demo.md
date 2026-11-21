@@ -25,8 +25,39 @@ uv run python src/manage.py create_demo_data \
 - `--procent-ze-streszczeniem 70` — odsetek prac ze streszczeniem
 - `--od-roku 2020 --do-roku 2026` — zakres lat prac
 - `--seed 123` — deterministyczny wynik
+- `--uzytkownik LOGIN` — komu przypisać wpisy „utworzono" w historii
+  rekordów (domyślnie konto techniczne `bpp-system`)
 - `--zgloszen 40` — liczba zgłoszeń publikacji (`zglos_publikacje`);
   `0` wyłącza ich generowanie
+
+## Historia rekordów demo (`--uzytkownik`)
+
+Generator zapisuje `bulk_create`, więc bez dodatkowego kroku rekordy demo
+nie miałyby żadnego śladu na stronie „Historia" w adminie. Dlatego na koniec
+generowania każdy utworzony rekord z własną stroną w adminie dostaje wpis
+historii (`LogEntry`, akcja „dodano") o treści:
+
+> Utworzono poleceniem create_demo_data (dane demonstracyjne, motyw=…, seed=…)
+
+Dotyczy to: uczelni (tylko gdy stworzył ją generator), jednostek i wydziałów,
+autorów, powiązań autor–dyscyplina, źródeł, wydawców, wydawnictw ciągłych
+i zwartych oraz zgłoszeń publikacji. Pominięte są obiekty edytowane
+w inline'ach (autorzy prac, streszczenia, punktacja źródeł, poziomy
+wydawców) i dane wyliczane (liczba N, metryki ewaluacji).
+
+Modele wersjonowane przez django-reversion (autor, uczelnia) dostają
+dodatkowo wersję „utworzenia" z tym samym komentarzem — każdy rekord we
+własnej rewizji, żeby przywrócenie wersji jednego autora nie cofało
+pozostałych. Na stronie „Historia" autora wpis „Utworzono…" pojawia się
+raz.
+
+Wpisy są przypisane do konta technicznego `bpp-system` (to samo konto
+podpisuje inne operacje systemowe); `--uzytkownik LOGIN` przypisuje je
+wskazanemu użytkownikowi, np. superużytkownikowi uruchamiającemu komendę.
+
+`cleanup_demo_data` usuwa razem z obiektami demo całą ich historię
+(`LogEntry` i wersje reversion, także z późniejszych edycji) — nie zostaje
+osierocona historia.
 
 ## Zgłoszenia publikacji (`--zgloszen`)
 
@@ -106,6 +137,6 @@ uv run python src/manage.py cleanup_demo_data \
     --manifest <plik.json> --yes-i-am-sure --confirm-db <NAZWA_BAZY>
 ```
 
-> Cleanup usuwa wyłącznie obiekty z manifestu (po PK) — bezpieczny dla
-> istniejących danych. Po `create_demo_data` uruchom `denorm_flush`, by
+> Cleanup usuwa wyłącznie obiekty z manifestu (po PK) i ich historię —
+> bezpieczny dla istniejących danych. Po `create_demo_data` uruchom `denorm_flush`, by
 > wypełnić cache opisów bibliograficznych.
