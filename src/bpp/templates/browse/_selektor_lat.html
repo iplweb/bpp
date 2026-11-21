@@ -1,0 +1,20 @@
+{# Wspólny selektor lat (autor, jednostka, źródło). Oczekuje: lata (rosnąco). #}
+{# Zakres „od–do” obsługuje zakres-lat.js; bez JS zwykłe checkboxy name=rok. #}
+{# Klawisz w podpowiedzi (Ctrl / ⌘) podmienia JS wg systemu. Klasy #}
+{# autor-page__* są płaskie (BEM), więc działają poza stroną autora. #}
+<div data-zakres-lat>
+    <p class="autor-page__lata-podpowiedz" hidden>
+        Kliknij pierwszy i ostatni rok, żeby zaznaczyć zakres.
+        Pojedyncze lata dodasz lub odznaczysz z wciśniętym
+        <kbd data-zakres-lat-klawisz>Ctrl</kbd>.
+        <a href="#" data-zakres-lat-wyczysc>Wyczyść</a>
+    </p>
+    <div class="autor-page__chipy autor-page__chipy--lata">
+        {% for rok in lata reversed %}
+            <label class="autor-page__chip">
+                <input type="checkbox" name="rok" value="{{ rok }}"/>
+                <span>{{ rok }}</span>
+            </label>
+        {% endfor %}
+    </div>
+</div>

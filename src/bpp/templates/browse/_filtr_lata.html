@@ -1,0 +1,8 @@
+{# Grupa „Lata” (wspólny selektor lat). Oczekuje: lata (rosnąco). Musi stać #}
+{# WEWNĄTRZ <form> — zakres-lat.js zamienia lata na zakres przy wysyłce. #}
+<div class="autor-page__filtr" role="group" aria-labelledby="filtr-lata">
+    <div class="autor-page__filtr-tytul" id="filtr-lata">
+        <i class="fi-calendar autor-page__icon--mr-sm"></i>Lata
+    </div>
+    {% include "browse/_selektor_lat.html" %}
+</div>

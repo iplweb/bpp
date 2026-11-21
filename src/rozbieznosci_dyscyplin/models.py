@@ -13,8 +13,10 @@ class RozbieznosciViewBase(models.Model):
     dyscyplina_rekordu = models.ForeignKey(
         "bpp.Dyscyplina_Naukowa", DO_NOTHING, related_name="+", null=True, blank=True
     )
+    # NULL when the author has no discipline for that year — such rows must
+    # stay visible, so this has to be a LEFT JOIN in select_related().
     dyscyplina_autora = models.ForeignKey(
-        "bpp.Dyscyplina_Naukowa", DO_NOTHING, related_name="+"
+        "bpp.Dyscyplina_Naukowa", DO_NOTHING, related_name="+", null=True, blank=True
     )
     subdyscyplina_autora = models.ForeignKey(
         "bpp.Dyscyplina_Naukowa", DO_NOTHING, related_name="+", null=True, blank=True
@@ -54,17 +56,29 @@ class RozbieznosciView(RozbieznosciViewBase):
 
 class RozbieznosciZrodelView(models.Model):
     id = TupleField(models.IntegerField(), size=4, primary_key=True)
-    zrodlo = models.ForeignKey("bpp.Zrodlo", on_delete=DO_NOTHING, related_name="+")
+    zrodlo = models.ForeignKey(
+        "bpp.Zrodlo", on_delete=DO_NOTHING, related_name="+", verbose_name="źródło"
+    )
     rok = YearField()
     wydawnictwo_ciagle = models.ForeignKey(
-        "bpp.Wydawnictwo_Ciagle", on_delete=DO_NOTHING, related_name="+"
+        "bpp.Wydawnictwo_Ciagle",
+        on_delete=DO_NOTHING,
+        related_name="+",
+        verbose_name="wydawnictwo ciągłe",
     )
     autor = models.ForeignKey("bpp.Autor", on_delete=DO_NOTHING, related_name="+")
     dyscyplina_naukowa = models.ForeignKey(
-        "bpp.Dyscyplina_Naukowa", on_delete=DO_NOTHING, related_name="+"
+        "bpp.Dyscyplina_Naukowa",
+        on_delete=DO_NOTHING,
+        related_name="+",
+        verbose_name="dyscyplina naukowa",
     )
     punkty_kbn = models.DecimalField(
-        max_digits=10, decimal_places=2, null=True, blank=True
+        max_digits=10,
+        decimal_places=2,
+        null=True,
+        blank=True,
+        verbose_name="punkty MNiSW",
     )
     charakter_formalny = models.ForeignKey(
         "bpp.Charakter_Formalny",
@@ -72,6 +86,7 @@ class RozbieznosciZrodelView(models.Model):
         related_name="+",
         null=True,
         blank=True,
+        verbose_name="charakter formalny",
     )
 
     class Meta:

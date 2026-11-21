@@ -75,6 +75,8 @@ import './radon-profil.js';
 import './autor-identyfikatory.js';
 // „Pokaż wszystkie prace” — przewinięcie do wyszukiwarki z poprawką na sticky header.
 import './autor-przewin-do.js';
+// Lata w wyszukiwarce autora: zakres „od–do” kliknięciami (Ctrl/⌘ = pojedynczo).
+import './zakres-lat.js';
 // Eksport BibTeX/RIS: „Generuj” dopiero po zakończonej weryfikacji ALTCHA.
 import './eksport-autora-altcha.js';
 import '../../../../../.venv/lib/python/site-packages/channels_broadcast/static/channels_broadcast/js/notifications.js';

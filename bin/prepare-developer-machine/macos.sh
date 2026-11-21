@@ -103,6 +103,12 @@ prepare_macos() {
     npm install -g grunt-cli
     warn_if_old_node
 
+    # Skanery bezpieczeństwa (pre-commit + bin/scan-deps.sh) — patrz
+    # SECURITY_TOOLS w lib.sh. jq potrzebuje scan-deps.sh.
+    log "Instaluję skanery bezpieczeństwa"
+    # shellcheck disable=SC2086  # celowe dzielenie listy na słowa
+    brew install jq $SECURITY_TOOLS
+
     ensure_uv
     sync_python_deps
     link_homebrew_libs

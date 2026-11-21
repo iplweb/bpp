@@ -9,5 +9,10 @@ urlpatterns = [
         "api/redirect-to-admin/<int:content_type_id>/<int:object_id>/",
         views.RedirectToAdmin.as_view(),
         name="redirect-to-admin",
-    )
+    ),
+    path(
+        "zadanie/<uuid:task_id>/",
+        views.status_zadania,
+        name="status-zadania",
+    ),
 ]

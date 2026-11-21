@@ -87,7 +87,7 @@ def test_buildSearch(settings):
                 "prev_op": "and",
                 "value": 1,
             },
-            {"field": "Rok", "operator": str(EQUAL), "prev_op": "and", "value": 2013},
+            {"field": "Rok", "operator": str(EQUAL), "prev_op": "and", "value": "2013"},
         ]
     }
 

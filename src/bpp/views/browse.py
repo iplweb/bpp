@@ -8,7 +8,15 @@ from django.contrib import messages
 from django.contrib.contenttypes.models import ContentType
 from django.core.cache import cache
 from django.core.paginator import Paginator
-from django.db.models import Count, Exists, OuterRef
+from django.db.models import (
+    Count,
+    Exists,
+    Func,
+    IntegerField,
+    OuterRef,
+    Subquery,
+    Value,
+)
 from django.db.models.functions import Substr
 from django.http import JsonResponse
 from django.utils import timezone
@@ -40,17 +48,20 @@ from bpp.models import (
     Jednostka,
     Rekord,
     Uczelnia,
+    Wydawca,
     Wydawnictwo_Ciagle_Streszczenie,
     Zrodlo,
 )
 from bpp.models.util import prefetch_dane_strony_rekordu
 from bpp.multiseek_registry import (
     CharakterFormalnyQueryObject,
+    CharakterOgolnyQueryObject,
     JednostkaNadrzednaQueryObject,
     JednostkaQueryObject,
     NazwiskoIImieQueryObject,
     RokQueryObject,
     TypRekorduObject,
+    WydawcaQueryObject,
     WydzialQueryObject,
     ZakresLatQueryObject,
     ZrodloQueryObject,
@@ -58,6 +69,7 @@ from bpp.multiseek_registry import (
 )
 from bpp.multiseek_registry.fields.constants import UNION_NONE
 from bpp.permissions import moze_wprowadzac_dane
+from bpp.sekcje_zrodla_wydawcy import sekcje_wydawcy, sekcje_zrodla
 from bpp.util import sanitize_multiseek_title
 from bpp.util.uczelnia_scope import (
     scope_jednostki_do_uczelni,
@@ -247,9 +259,31 @@ class JednostkaView(DetailView):
         return self.render_to_response(context)
 
     def get_context_data(self, **kwargs):
-        return super().get_context_data(
-            typy=TYPY, **(self.podjednostki or {}), **kwargs
+        ctx = super().get_context_data(typy=TYPY, **(self.podjednostki or {}), **kwargs)
+        if self.podjednostki is None:
+            # Wykresy w latach tylko w zwykłym widoku jednostki — styl
+            # strukturalny (wydział) nie pokazuje własnych prac.
+            ctx.update(self._wykresy())
+        return ctx
+
+    def _wykresy(self):
+        from bpp.models import Rekord
+        from bpp.wykresy_lat import wykresy_w_latach
+
+        jednostka = self.object
+        wykresy = wykresy_w_latach(
+            Rekord.objects.prace_jednostki(jednostka), getattr(self, "request", None)
         )
+        if not wykresy:
+            return {}
+        # Klik w rok = te same filtry co formularz „Wyszukaj publikacje”
+        # (jednostka + potomkowie) plus ten rok.
+        pks = jednostka.get_descendants(include_self=True).values_list("pk", flat=True)
+        return {
+            "wykresy": {"wykresy": wykresy},
+            "szukaj_pola": [("jednostka", pk) for pk in pks],
+            "szukaj_tytul": str(jednostka),
+        }
 
 
 @method_decorator(cache_publiczny(), name="dispatch")
@@ -758,6 +792,19 @@ class AutorzyView(Browser):
         return context
 
 
+def _liczba_prac_zrodla():
+    """Podzapytanie: liczba rekordów źródła — to samo co
+    ``zrodlo.rekord_set.count()``, ale jednym zapytaniem dla całej strony.
+    ``COUNT(1)`` przez ``Func`` z tego samego powodu co w
+    ``_liczba_prac_wydawcy``: ``Rekord`` ma klucz złożony."""
+    return Subquery(
+        Rekord.objects.filter(zrodlo_id=OuterRef("pk"))
+        .order_by()
+        .values(liczba=Func(Value(1), function="COUNT")),
+        output_field=IntegerField(),
+    )
+
+
 @method_decorator(cache_publiczny(), name="dispatch")
 class ZrodlaView(Browser):
     template_name = "browse/zrodla.html"
@@ -771,6 +818,9 @@ class ZrodlaView(Browser):
             super()
             .get_queryset()
             .only("nazwa", "poprzednia_nazwa", "slug", "pbn_uid__status")
+            # Podzapytanie skalarne (nie JOIN) — wierszy nie mnoży, więc bez
+            # ``.distinct()``; zastępuje ``item.rekord_set.count`` (N+1).
+            .annotate(liczba_prac=_liczba_prac_zrodla())
             .order_by("nazwa")
         )
 
@@ -895,6 +945,115 @@ class ZrodloView(DetailView):
         context["has_publications"] = Wydawnictwo_Ciagle.objects.filter(
             zrodlo=self.object
         ).exists()
+        if context["has_publications"]:
+            from bpp.wykresy_lat import wykresy_zrodla
+
+            wykresy = wykresy_zrodla(self.object, getattr(self, "request", None))
+            if wykresy:
+                context["wykresy"] = {"wykresy": wykresy}
+                context["szukaj_pola"] = [("zrodlo", self.object.pk)]
+                context["szukaj_tytul"] = str(self.object)
+        # Sekcje „Najczęściej publikujący autorzy” / „Jednostki” + chipy typów.
+        context["typy"] = TYPY
+        context.update(sekcje_zrodla(self.object, getattr(self, "request", None)))
+        return context
+
+
+def _liczba_prac_wydawcy():
+    """Podzapytanie: liczba rekordów wydawcy razem z jego aliasami
+    (bezpośrednimi — tak są wprowadzane w praktyce). ``COUNT(1)`` przez
+    ``Func``, bo ``Rekord`` ma klucz złożony, a zwykły ``Count`` w podzapytaniu
+    dołożyłby ``GROUP BY``."""
+    return Subquery(
+        Rekord.objects.filter(
+            Q(wydawca_id=OuterRef("pk")) | Q(wydawca__alias_dla_id=OuterRef("pk"))
+        )
+        .order_by()
+        .values(liczba=Func(Value(1), function="COUNT")),
+        output_field=IntegerField(),
+    )
+
+
+@method_decorator(cache_publiczny(), name="dispatch")
+class WydawcyView(Browser):
+    """Indeks wydawców A–Z — jak indeks źródeł. Tylko wydawcy „główni”
+    (aliasy wchodzą do wydawcy, któremu odpowiadają) z co najmniej jedną
+    pracą w bazie."""
+
+    template_name = "browse/wydawcy.html"
+    model = Wydawca
+    param = "search"
+    literka_field = "nazwa"
+    paginate_by = 70
+
+    def _baza(self):
+        return (
+            Wydawca.objects.filter(alias_dla=None)
+            .annotate(liczba_prac=_liczba_prac_wydawcy())
+            .filter(liczba_prac__gt=0)
+        )
+
+    def get_queryset(self):
+        qry = self._baza().only("nazwa", "slug").order_by("nazwa")
+        sstr = self.get_search_string()
+        if sstr:
+            qry = qry.filter(nazwa__icontains=sstr)
+        literka = self.get_literka()
+        if literka:
+            qobj = Q()
+            for x in PODWOJNE.get(literka, [literka]):
+                qobj |= Q(nazwa__istartswith=x)
+            qry = qry.filter(qobj)
+        return qry
+
+    def get_context_data(self, *args, **kw):
+        context = super().get_context_data(*args, **kw)
+        context["available_letters"] = self.zapamietane_literki(self._baza())
+        return context
+
+
+@method_decorator(cache_publiczny(), name="dispatch")
+class WydawcaView(DetailView):
+    model = Wydawca
+    template_name = "browse/wydawca.html"
+
+    def get(self, request, *args, **kwargs):
+        self.object = self.get_object()
+        # Stary adres po pk → 301 na kanoniczny adres ze slugiem. Alias nie
+        # ma własnej strony — jego prace są na stronie wydawcy głównego
+        # (``get_absolute_url`` wskazuje slug toplevelu).
+        if "pk" in kwargs or self.object.alias_dla_id is not None:
+            return redirect(self.object.get_absolute_url(), permanent=True)
+        return self.render_to_response(self.get_context_data(object=self.object))
+
+    def get_context_data(self, **kwargs):
+        from bpp.podzial_wydawcy import podzial_wydawcy
+        from bpp.wykresy_lat import wykresy_w_latach
+
+        context = super().get_context_data(**kwargs)
+        wydawca = self.object
+        prace = wydawca.prace()
+        context["liczba_prac"] = prace.count()
+        context["aliasy"] = Wydawca.objects.filter(alias_dla=wydawca).order_by("nazwa")
+        context["poziomy"] = wydawca.poziom_wydawcy_set.order_by("-rok")
+        request = getattr(self, "request", None)
+        if context["liczba_prac"]:
+            # Książki i rozdziały osobno (licznik, przyciski, chipy, wykresy).
+            podzial = podzial_wydawcy(prace, request)
+            context["podzial"] = podzial["podzial"]
+            wykresy = wykresy_w_latach(prace, request)
+            if podzial["wykresy_kategorii"]:
+                # „Książki/Rozdziały w latach” zastępują wspólny wykres prac.
+                wykresy = podzial["wykresy_kategorii"] + [
+                    w for w in wykresy if w["nazwa"] != "Publikacje w latach"
+                ]
+            if wykresy:
+                context["wykresy"] = {"wykresy": wykresy}
+                context["szukaj_pola"] = [("wydawca", wydawca.pk)]
+                context["szukaj_tytul"] = str(wydawca)
+        # Sekcje autorów/jednostek, znaczek poziomu, chipy typów publikacji.
+        context["typy"] = TYPY
+        context.update(sekcje_wydawcy(wydawca, request))
         return context
 
 
@@ -1041,6 +1200,71 @@ def zrob_box_z_requestu(dct, name, qo, op=None):
     return []
 
 
+#: Zakres szerszy niż tyle lat to śmieci z POST — nie rozwijamy go na pola.
+MAKS_ROZPIETOSC_ZAKRESU_LAT = 300
+
+
+def _przedzialy_lat(request, zakres_qo):
+    """``rok`` i ``zakres_lat`` z POST → posortowane przedziały ``(od, do)``.
+
+    Przedziały nakładające się albo stykające scalamy: 2020 + 2022–2025
+    + 2021 → 2020–2025. Niepoprawne wartości pomijamy (jak multiseek)."""
+    przedzialy = []
+    for rok in request.POST.getlist("rok"):
+        try:
+            przedzialy.append((int(rok), int(rok)))
+        except ValueError:
+            continue
+    for z in request.POST.getlist("zakres_lat"):
+        try:
+            wartosc = zakres_qo.value_from_web(z)
+        except ValueError:  # json.loads na śmieciach z POST
+            wartosc = None
+        if wartosc is None:
+            continue
+        od, do = sorted(wartosc)
+        if do - od <= MAKS_ROZPIETOSC_ZAKRESU_LAT:
+            przedzialy.append((od, do))
+
+    scalone = []
+    for od, do in sorted(przedzialy):
+        if scalone and od <= scalone[-1][1] + 1:
+            scalone[-1] = (scalone[-1][0], max(scalone[-1][1], do))
+        else:
+            scalone.append((od, do))
+    return scalone
+
+
+def zrob_box_lat(request):
+    """Lata z POST (pojedyncze ``rok`` + zakresy ``zakres_lat=[od,do]``) jako
+    JEDNA grupa łączona OR, chronologicznie — „2017 lub 2020–2024”, nie AND
+    (pusty wynik). Kolejne lata i stykające się zakresy są „kompresowane” do
+    jednego pola „Zakres lat”; samotny rok zostaje polem „Rok”.
+
+    Zakresy produkuje selektor lat (zakres-lat.js) na stronach autora,
+    jednostki i źródła. Gdy pole „Zakres lat” jest dla użytkownika ukryte
+    w multiseeku, wszystko idzie jako pojedyncze lata — formularz
+    z niewidocznym polem by się nie wczytał."""
+    zakres_qo = ZakresLatQueryObject()
+    przedzialy = _przedzialy_lat(request, zakres_qo)
+    # Widoczność pola (zapytanie do bazy) sprawdzamy tylko, gdy jest zakres.
+    zakres_widoczny = any(od != do for od, do in przedzialy) and zakres_qo.enabled(
+        request
+    )
+
+    pola = []
+    for od, do in przedzialy:
+        if od == do or not zakres_widoczny:
+            pola.extend((RokQueryObject, str(rok)) for rok in range(od, do + 1))
+        else:
+            pola.append((ZakresLatQueryObject, f"[{od},{do}]"))
+
+    ret = []
+    for qo, wartosc in pola:
+        ret.append(make_field(qo, qo.ops[0], wartosc, prev_op=OR if ret else None))
+    return ret
+
+
 def zrob_formularz(*args, **extra):
     """Zwraca JSON formularza multiseeka dla sesji. ``extra`` (np. ``ordering``,
     ``report_type``) trafia obok ``form_data``."""
@@ -1125,8 +1349,15 @@ class BuildSearch(RedirectView):
 
     def post(self, *args, **kw):
         zrodla_box = zrob_box_z_requestu(self.request.POST, "zrodlo", ZrodloQueryObject)
+        wydawcy_box = zrob_box_z_requestu(
+            self.request.POST, "wydawca", WydawcaQueryObject
+        )
         typy_box = zrob_box_z_requestu(self.request.POST, "typ", TypRekorduObject)
-        lata_box = zrob_box_z_requestu(self.request.POST, "rok", RokQueryObject)
+        # Strona wydawcy: „książka” / „rozdział” / … (charakter ogólny).
+        charakter_ogolny_box = zrob_box_z_requestu(
+            self.request.POST, "charakter_ogolny", CharakterOgolnyQueryObject
+        )
+        lata_box = zrob_box_lat(self.request)
         jednostki_box = zrob_box_z_requestu(
             self.request.POST, "jednostka", JednostkaQueryObject
         )
@@ -1157,10 +1388,6 @@ class BuildSearch(RedirectView):
             self.request.POST, "charakter_formalny", CharakterFormalnyQueryObject
         )
 
-        zakres_lat_box = zrob_box_z_requestu(
-            self.request.POST, "zakres_lat", ZakresLatQueryObject
-        )
-
         # #438: oba pola „poddrzewowe" (Wydział / Jednostka nadrzędna) budujemy
         # BEZWARUNKOWO. Gdy danego parametru nie ma w POST, ``zrob_box_z_
         # requestu`` zwraca [], a ``zrob_formularz`` pomija puste boxy (no-op),
@@ -1187,15 +1414,16 @@ class BuildSearch(RedirectView):
 
         self.request.session[MULTISEEK_SESSION_KEY] = zrob_formularz(
             zrodla_box,
+            wydawcy_box,
             autorzy_box,
             *wspolautorzy_boxy,
             typy_box,
+            charakter_ogolny_box,
             charakter_box,
             jednostki_box,
             wydzialy_box,
             jednostki_nadrzedne_box,
             lata_box,
-            zakres_lat_box,
             **ustawienia,
         )
 

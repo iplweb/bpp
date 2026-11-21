@@ -1,5 +1,6 @@
 """System data fixtures: typy_odpowiedzialnosci, jezyki, charaktery_formalne, etc."""
 
+import functools
 import itertools
 import json
 import os
@@ -28,6 +29,47 @@ def fixture(name):
     )
     with open(path, "rb") as f:
         return json.load(f)
+
+
+# Szybkie ścieżki fixtur słownikowych
+# ===================================
+#
+# Słowniki (tytuły, typy KBN, statusy korekt, języki) siedzą w baseline, więc
+# w typowym teście fixtura nie ma nic do zrobienia — a mimo to dawniej
+# wysyłała po jednym ``get_or_create`` na wpis (``tytuly``: 31 SELECT-ów,
+# ~16 ms na KAŻDE wywołanie; łącznie ~45 s czasu workerów w pełnej suicie).
+# Teraz: jeden SELECT całej tabeli, porównanie w Pythonie i dawne
+# ``get_or_create`` WYŁĄCZNIE dla wpisów, których brakuje albo które się
+# różnią (np. po TRUNCATE testu transakcyjnego). Wynik w bazie — identyczny.
+# Wzorce z plików JSON czytamy raz na proces (``functools.cache``); są
+# krotkami, więc nikt ich przypadkiem nie zmodyfikuje.
+
+
+@functools.cache
+def _wzorzec_wg_pk(nazwa_pliku):
+    """``((pk, ((pole, wartosc), ...)), ...)`` z pliku fixture Django."""
+    return tuple(
+        (elem["pk"], tuple(elem["fields"].items())) for elem in fixture(nazwa_pliku)
+    )
+
+
+def _zapewnij_wg_pk(model, nazwa_pliku):
+    """Odpowiednik ``get_or_create(pk=..., **fields)`` dla każdego wpisu
+    pliku — z jednym SELECT-em, gdy baza już ma te wiersze. Zwraca
+    ``{pk: obiekt}`` całej tabeli."""
+    obiekty = {o.pk: o for o in model.objects.all()}
+    zmiana = False
+    for pk, pola in _wzorzec_wg_pk(nazwa_pliku):
+        obj = obiekty.get(pk)
+        if obj is None or any(
+            getattr(obj, model._meta.get_field(pole).attname) != wartosc
+            for pole, wartosc in pola
+        ):
+            model.objects.get_or_create(pk=pk, **dict(pola))
+            zmiana = True
+    if zmiana:
+        obiekty = {o.pk: o for o in model.objects.all()}
+    return obiekty
 
 
 @pytest.fixture(scope="function")
@@ -75,10 +117,14 @@ def typy_odpowiedzialnosci(db):
 def tytuly():
     # Lookup po kluczu naturalnym (skrot jest unique), NIGDY po pk — inaczej
     # wiersz o tym samym skrocie pod innym pk => INSERT => IntegrityError.
-    for elem in fixture("tytul.json"):
-        fields = dict(elem["fields"])
+    # Szybka ścieżka: tylko brakujące skróty idą do ``get_or_create``.
+    wzorzec = _wzorzec_wg_pk("tytul.json")
+    istniejace = set(Tytul.objects.values_list("skrot", flat=True))
+    for _pk, pola in wzorzec:
+        fields = dict(pola)
         skrot = fields.pop("skrot")
-        Tytul.objects.get_or_create(skrot=skrot, defaults=fields)
+        if skrot not in istniejace:
+            Tytul.objects.get_or_create(skrot=skrot, defaults=fields)
 
 
 @pytest.fixture(scope="function")
@@ -100,18 +146,45 @@ def jezyki():
     """
     from importlib import import_module
 
-    for skrot, nazwa in (("pol.", "polski"), ("ang.", "angielski")):
+    kody = import_module("bpp.migrations.0480_cerif_mapowania_slownikow")
+    podstawowe = (("pol.", "polski"), ("ang.", "angielski"))
+    crossref = (("pol.", "pl"), ("ang.", "en"))
+
+    # Szybka ścieżka: gdy wszystkie skróty już są (typowo — baseline), jeden
+    # SELECT + UPDATE tylko tych wierszy, w których wartość faktycznie się
+    # różni (zwykle jeden: baseline nie ma ``skrot_crossref`` dla ``ang.``).
+    # Dawniej każde wywołanie to ~20 zapytań, w tym 11 UPDATE-ów — prawie
+    # wszystkie niezmieniające ani jednego wiersza. ``skrot`` jest unique,
+    # więc UPDATE po pk to to samo, co dawne ``filter(skrot=...).update()``.
+    jezyki = {jezyk.skrot: jezyk for jezyk in Jezyk.objects.all()}
+    if all(skrot in jezyki for skrot, _ in podstawowe) and all(
+        pola["skrot"] in jezyki for pola in get_fixture("jezyk").values()
+    ):
+        zmiany = [
+            (jezyki[skrot], "kod_bcp47", kod)
+            for skrot, kod in kody.JEZYKI.items()
+            if skrot in jezyki and jezyki[skrot].kod_bcp47 in ("", None)
+        ] + [
+            (jezyki[skrot], "skrot_crossref", kod)
+            for skrot, kod in crossref
+            if jezyki[skrot].skrot_crossref != kod
+        ]
+        for jezyk, pole, wartosc in zmiany:
+            Jezyk.objects.filter(pk=jezyk.pk).update(**{pole: wartosc})
+            setattr(jezyk, pole, wartosc)
+        return jezyki
+
+    for skrot, nazwa in podstawowe:
         Jezyk.objects.get_or_create(skrot=skrot, defaults={"nazwa": nazwa})
 
     for pola in get_fixture("jezyk").values():
         pola = dict(pola)
         Jezyk.objects.get_or_create(skrot=pola.pop("skrot"), defaults=pola)
 
-    kody = import_module("bpp.migrations.0480_cerif_mapowania_slownikow")
     kody._uzupelnij(Jezyk, "kod_bcp47", kody.JEZYKI)
 
-    for skrot, crossref in (("pol.", "pl"), ("ang.", "en")):
-        Jezyk.objects.filter(skrot=skrot).update(skrot_crossref=crossref)
+    for skrot, kod in crossref:
+        Jezyk.objects.filter(skrot=skrot).update(skrot_crossref=kod)
 
     return {jezyk.skrot: jezyk for jezyk in Jezyk.objects.all()}
 
@@ -222,6 +295,7 @@ def first_run_wizard_state(db):
 _CHF_POLA_POMIJANE = {"skrot", "lft", "rght", "tree_id", "level"}
 
 
+@functools.cache
 def _charaktery_formalne_stan_docelowy():
     """Stan docelowy tabeli: ``{skrot: {attname: wartosc}}``.
 
@@ -230,6 +304,8 @@ def _charaktery_formalne_stan_docelowy():
     ``delete()`` + ``get_or_create(defaults=...)`` — testy są pisane pod ten
     stan, a NIE pod stan z baseline, gdzie migracje danych ustawiły np.
     ``rodzaj_pbn``/``charakter_ogolny`` także innym charakterom.
+
+    Liczone raz na proces (``functools.cache``) — wynik jest tylko czytany.
     """
     domyslne = {
         f.attname: f.get_default()
@@ -277,31 +353,32 @@ def charaktery_formalne():
     if set(istniejace) == set(cel) and all(
         c.parent_id is None for c in istniejace.values()
     ):
-        do_zapisu = []
-        pola = set()
+        # Różnice baseline vs wzorzec są typowo te same (~10 rekordów, 3 pola,
+        # kilka wartości docelowych), więc jeden ``UPDATE ... WHERE pk IN``
+        # na parę (pole, wartość) zamiast ``bulk_update``, który budował
+        # w Pythonie ``CASE WHEN`` po wszystkich obiektach dla każdego pola.
+        grupy = {}
         for skrot, obj in istniejace.items():
-            rozne = {
-                attname: wartosc
-                for attname, wartosc in cel[skrot].items()
-                if getattr(obj, attname) != wartosc
-            }
-            if rozne:
-                for attname, wartosc in rozne.items():
+            for attname, wartosc in cel[skrot].items():
+                if getattr(obj, attname) != wartosc:
                     setattr(obj, attname, wartosc)
-                do_zapisu.append(obj)
-                pola |= rozne.keys()
-        if do_zapisu:
-            meta = Charakter_Formalny._meta
-            Charakter_Formalny.objects.bulk_update(
-                do_zapisu, sorted(meta.get_field(a).name for a in pola)
+                    grupy.setdefault((attname, wartosc), []).append(obj.pk)
+        meta = Charakter_Formalny._meta
+        for (attname, wartosc), pki in grupy.items():
+            Charakter_Formalny.objects.filter(pk__in=pki).update(
+                **{meta.get_field(attname).name: wartosc}
             )
+        # Obiekty mają już stan zapisany w bazie — bez drugiego SELECT-a.
+        return istniejace
     else:
         Charakter_Formalny.objects.all().delete()
         # Lookup po kluczu naturalnym (skrot jest unique), NIGDY po pk (w
         # JSON-ie pk bywa null) — inaczej wiersz o tym samym skrocie/nazwie
         # pod innym pk => INSERT => IntegrityError.
         for skrot, wartosci in cel.items():
-            Charakter_Formalny.objects.get_or_create(skrot=skrot, defaults=wartosci)
+            Charakter_Formalny.objects.get_or_create(
+                skrot=skrot, defaults=dict(wartosci)
+            )
 
     return {x.skrot: x for x in Charakter_Formalny.objects.all()}
 
@@ -323,15 +400,13 @@ def artykul_w_czasopismie(charaktery_formalne):
 
 @pytest.fixture(scope="function")
 def typy_kbn():
-    for elem in fixture("typ_kbn.json"):
-        Typ_KBN.objects.get_or_create(pk=elem["pk"], **elem["fields"])
+    _zapewnij_wg_pk(Typ_KBN, "typ_kbn.json")
 
 
 @pytest.fixture(scope="function")
 def statusy_korekt():
-    for elem in fixture("status_korekty.json"):
-        Status_Korekty.objects.get_or_create(pk=elem["pk"], **elem["fields"])
-    return {status.nazwa: status for status in Status_Korekty.objects.all()}
+    obiekty = _zapewnij_wg_pk(Status_Korekty, "status_korekty.json")
+    return {status.nazwa: status for status in obiekty.values()}
 
 
 @pytest.fixture(scope="function")

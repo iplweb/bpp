@@ -230,7 +230,7 @@ jobs:
       image: ${{ steps.tag.outputs.image }}
 
     env:
-      PYTHON_VERSION: "3.12"
+      PYTHON_VERSION: "3.14"
       DEBIAN_VERSION: trixie
       NODEJS_VERSION: "24"
       # Lowercase repo owner, since GHCR rejects mixed-case namespaces.
@@ -252,7 +252,7 @@ jobs:
         driver: docker-container
 
     - name: Log in to GHCR
-      uses: docker/login-action@81c6f93d4bc991e510b342a00b419b3bb4efc5c6 # v4.7.0
+      uses: docker/login-action@8aa5831fb8d48d8f76594c7ddde61ae58019f550 # v4.8.0
       with:
         registry: ghcr.io
         username: ${{ github.actor }}
@@ -379,7 +379,7 @@ jobs:
       fail-fast: false
       max-parallel: 12
       matrix:
-        python-version: ["3.12"]
+        python-version: ["3.14"]
         # 0-indexed; MUSI byc spojne z NUM_SHARDS nizej. Duration-split
         # (pytest-split, .test_durations) balansuje dowolne N po czasie, wiec
         # bump jest tani: 8 -> 12 tnie czas testow najwolniejszego sharda
@@ -396,7 +396,7 @@ jobs:
     - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
     - name: Log in to GHCR
-      uses: docker/login-action@81c6f93d4bc991e510b342a00b419b3bb4efc5c6 # v4.7.0
+      uses: docker/login-action@8aa5831fb8d48d8f76594c7ddde61ae58019f550 # v4.8.0
       with:
         registry: ghcr.io
         username: ${{ github.actor }}

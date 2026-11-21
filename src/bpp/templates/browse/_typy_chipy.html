@@ -1,0 +1,10 @@
+{# Typ publikacji jako przełączniki („chipy”): checkbox w etykiecie, ukryty #}
+{# wizualnie, ale fokusowalny; stan pokazuje <span> obok. Oczekuje: typy. #}
+<div class="autor-page__chipy">
+    {% for typ in typy %}
+        <label class="autor-page__chip">
+            <input type="checkbox" name="typ" value="{{ typ }}"/>
+            <span>{{ typ }}</span>
+        </label>
+    {% endfor %}
+</div>

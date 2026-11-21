@@ -5,15 +5,17 @@ from django.db.models import Q
 from django.db.models.expressions import F
 from multiseek import logic
 from multiseek.logic import (
+    DIFFERENT_ALL,
     DIFFERENT_NONE,
     EQUAL_NONE,
+    EQUALITY_OPS_MALE,
     EQUALITY_OPS_NONE,
     AutocompleteQueryObject,
     StringQueryObject,
     UnknownOperation,
 )
 
-from bpp.models import Zrodlo
+from bpp.models import Wydawca, Zrodlo
 from bpp.multiseek_registry.mixins import BppMultiseekVisibilityMixin
 
 from .factories import create_string_query_object
@@ -85,3 +87,21 @@ class ZrodloQueryObject(BppMultiseekVisibilityMixin, AutocompleteQueryObject):
     model = Zrodlo
     field_name = "zrodlo"
     url = "bpp:zrodlo-autocomplete"
+
+
+class WydawcaQueryObject(BppMultiseekVisibilityMixin, AutocompleteQueryObject):
+    """Wydawca — razem z aliasami (prace zapisane pod aliasem też pasują)."""
+
+    label = "Wydawca"
+    ops = EQUALITY_OPS_MALE
+    model = Wydawca
+    field_name = "wydawca"
+    url = "bpp:public-wydawca-autocomplete"
+
+    def real_query(self, value, operation):
+        if operation not in [str(x) for x in EQUALITY_OPS_MALE]:
+            raise UnknownOperation(operation)
+        ret = Q(wydawca_id__in=value.get_toplevel().wszystkie_pk())
+        if operation in [str(x) for x in DIFFERENT_ALL]:
+            return ~ret
+        return ret

@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% load polish_inflection %}
 
 {% load columns %}
 
@@ -123,10 +124,10 @@
                                     </div>
                                 {% endif %}
 
-                                {% if item.rekord_set.count > 0 %}
+                                {% if item.liczba_prac %}
                                     <div class="zrodla__publication-count">
                                         <i class="fi-page-multiple"></i>
-                                        {{ item.rekord_set.count }} {% if item.rekord_set.count == 1 %}publikacja{% elif item.rekord_set.count < 5 %}publikacje{% else %}publikacji{% endif %}
+                                        {{ item.liczba_prac }} {% odmiana_liczebnikowa "publikacja" item.liczba_prac %}
                                     </div>
                                 {% endif %}
                             </div>
@@ -154,7 +155,7 @@
         <div class="modern-pagination">
             <div class="pagination-info">
                 Strona {{ page_obj.number }} z {{ paginator.num_pages }}
-                ({{ paginator.count }} {% if paginator.count == 1 %}źródło{% elif paginator.count < 5 %}źródła{% else %}źródeł{% endif %})
+                ({{ paginator.count }} {% odmiana_liczebnikowa "źródło" paginator.count %})
             </div>
 
             <ul class="pagination" role="navigation" aria-label="Pagination">

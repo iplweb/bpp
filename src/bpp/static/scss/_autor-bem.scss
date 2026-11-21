@@ -210,6 +210,25 @@
     gap: 0.4rem;
   }
 
+  // Podpowiedź nad latami (widoczna tylko z JS — patrz zakres-lat.js).
+  &__lata-podpowiedz {
+    margin: -0.2rem 0 0.5rem;
+    font-size: 0.8rem;
+    color: #666;
+
+    kbd {
+      padding: 0 0.3rem;
+      border: 1px solid #ccc;
+      border-radius: 3px;
+      background: #f7f7f7;
+      font-size: 0.75rem;
+    }
+
+    a {
+      margin-left: 0.4rem;
+    }
+  }
+
   // Lata: równa siatka — rok pod rokiem, bez poszarpanych rzędów.
   &__chipy--lata {
     display: grid;
@@ -258,14 +277,35 @@
       color: #fff;
     }
 
+    // Zakres lat (zakres-lat.js): środek zakresu jaśniejszy, końce pełnym
+    // kolorem — jak zaznaczone daty w kalendarzu rezerwacji.
+    &.autor-page__chip--w-zakresie input:checked + span {
+      background: rgba($primary-color, 0.18);
+      border-color: rgba($primary-color, 0.35);
+      color: $primary-color;
+    }
+
+    // Wybrany początek zakresu (czeka na drugi klik) i podgląd pod myszą.
+    &.autor-page__chip--poczatek span {
+      box-shadow: 0 0 0 2px rgba($primary-color, 0.45);
+    }
+
+    &.autor-page__chip--podglad input:not(:checked) + span {
+      background: rgba($primary-color, 0.1);
+      border-style: dashed;
+      border-color: $primary-color;
+    }
+
     input:focus-visible + span {
       outline: 2px solid $anchor-color;
       outline-offset: 2px;
     }
   }
 
-  // Jednostki: lista w kolumnach (na szerokim ekranie dwie).
-  &__jednostki {
+  // Jednostki (u autora) / autorzy (u jednostki): lista w kolumnach
+  // (na szerokim ekranie dwie).
+  &__jednostki,
+  &__kolumny {
     margin: 0;
     columns: 2 22rem;
     column-gap: 2rem;
@@ -310,6 +350,27 @@
 
   &__unit-icon {
     font-size: 0.9rem;
+  }
+
+  // Zwijana grupa filtra (<details>), np. „Byli pracownicy” u jednostki.
+  &__zwijane-tytul {
+    cursor: pointer;
+
+    // Znacznik rozwinięcia przeglądarki zostaje (dostępność), tylko
+    // wyrównany z ikoną.
+    i {
+      margin-left: 0.25rem;
+    }
+  }
+
+  &__zwijane[open] > summary {
+    margin-bottom: 0.75rem;
+  }
+
+  &__zwijane-liczba {
+    color: #777;
+    font-weight: normal;
+    font-size: 0.85em;
   }
 
   // Stopka formularza: tytuł wyników (rozciągnięty) + przycisk „Szukaj”.
@@ -683,10 +744,44 @@
     list-style: none;
     margin-left: 0;
     columns: 2;
+    column-gap: 2.5rem;
 
     @media screen and (max-width: 39.99875em) {
       columns: 1;
     }
+  }
+
+  // Wiersz: [nazwisko / tytuł] ........ [ludzik (liczba)]
+  // Długi tytuł nie może wypchnąć ludzika z liczbą do osobnej linii.
+  &__wspolautor {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 0.5rem;
+    margin-bottom: 0.4rem;
+    break-inside: avoid;
+  }
+
+  &__wspolautor-osoba {
+    min-width: 0;
+    line-height: 1.25;
+  }
+
+  &__wspolautor-nazwisko,
+  &__wspolautor-tytul {
+    display: block;
+  }
+
+  &__wspolautor-tytul {
+    font-size: 0.8em;
+    color: #777;
+  }
+
+  &__wspolautor-meta {
+    flex-shrink: 0;
+    white-space: nowrap;
+    line-height: 1.25;
+    padding-top: 0.15em;
   }
 
   // Ludzik obok nazwiska współautora — link do jego strony.
@@ -977,4 +1072,45 @@
     content: counter(wpa) ".";
     font-weight: bold;
   }
+}
+
+// Pas wykresów w latach na stronach jednostki i źródła (ten sam szablon co
+// u autora) — oddech przed formularzem wyszukiwania pod spodem.
+.bpp-wykresy-lat {
+  margin-bottom: 1.5rem;
+}
+
+// Strona wydawcy (browse/wydawca.html) — reszta układu ze strony źródła.
+.wydawca__podsumowanie {
+  margin: 0.25rem 0 0;
+  color: #666;
+}
+
+.wydawca__poziomy-tabela {
+  margin: 0;
+
+  td {
+    padding: 0.25rem 0.5rem;
+  }
+}
+
+// Znaczek aktualnego poziomu wydawcy w nagłówku (najnowszy rok wykazu).
+.wydawca__poziom {
+  margin-top: 0.5rem;
+  font-size: 0.9rem;
+  border-radius: 999px;
+
+  .fi-star {
+    margin-right: 0.25rem;
+  }
+}
+
+.wydawca__poziom--2 {
+  background: #b8860b;
+}
+
+// Sekcje „Najczęściej publikujący autorzy” / „Jednostki” pod wyszukiwarką
+// na stronach źródła i wydawcy.
+.bpp-sekcje-top {
+  margin-top: 1.5rem;
 }

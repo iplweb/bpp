@@ -1,0 +1,23 @@
+{# Lista autorów jako checkboxy name=autor (wyszukiwarka jednostki), w #}
+{# kolumnach; ludzik → strona autora, gdy ją ma. Oczekuje: autorzy; #}
+{# opcjonalnie funkcja=True (dopisz funkcję za nazwiskiem). #}
+<ul class="no-bullet autor-page__kolumny">
+    {% for autor in autorzy %}
+        <li class="autor-page__checkbox-item">
+            <input type="checkbox"
+                   name="autor"
+                   value="{{ autor.pk }}"
+                   id="autor_{{ autor.pk }}"
+                   class="autor-page__checkbox"/>
+            <label for="autor_{{ autor.pk }}" class="autor-page__checkbox-label">
+                {{ autor }}{% if funkcja and autor.aktualna_funkcja.pokazuj_za_nazwiskiem %},
+                <span class="jednostka__function-text">{{ autor.aktualna_funkcja }}</span>{% endif %}
+                {% if autor.pokazuj_strone_autora %}
+                    <a href="{% url "bpp:browse_autor" autor.slug %}"
+                       class="autor-page__unit-link"
+                       title="Zobacz profil autora"><i class="fi-torso autor-page__unit-icon"></i></a>
+                {% endif %}
+            </label>
+        </li>
+    {% endfor %}
+</ul>

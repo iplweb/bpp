@@ -52,6 +52,21 @@ def slugify_function(s):
     return non_url.sub("", s)
 
 
+def slugify_wydawca(s):
+    """Slug wydawcy — jak ``slugify_function``, ale nigdy z samych cyfr.
+
+    Adres ``/bpp/wydawca/<cyfry>/`` jest zarezerwowany dla starych linków
+    po pk (301 na adres ze slugiem), więc wydawca o nazwie np. „1984”
+    dostaje slug ``wydawca-1984``. Funkcja jest idempotentna (autoslug
+    woła ją dwa razy)."""
+    if not s or not str(s).strip():
+        return ""
+    slug = slugify_function(s)
+    if slug.isdigit():
+        slug = f"wydawca-{slug}"
+    return slug
+
+
 def zrob_cache(t):
     zle_znaki = [
         " ",

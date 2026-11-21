@@ -1,0 +1,16 @@
+{# Grupa „Rodzaj” na stronie wydawcy: książki / rozdziały / … jako chipy #}
+{# z liczbą prac (pole multiseeka „Charakter formalny ogólny”). #}
+{# Oczekuje: podzial (lista {wartosc, liczba, opis} z podzial_wydawcy). #}
+<div class="autor-page__filtr" role="group" aria-labelledby="filtr-charakter">
+    <div class="autor-page__filtr-tytul" id="filtr-charakter">
+        <i class="fi-book autor-page__icon--mr-sm"></i>Rodzaj
+    </div>
+    <div class="autor-page__chipy">
+        {% for kategoria in podzial %}
+            <label class="autor-page__chip">
+                <input type="checkbox" name="charakter_ogolny" value="{{ kategoria.wartosc }}"/>
+                <span>{{ kategoria.opis }}</span>
+            </label>
+        {% endfor %}
+    </div>
+</div>

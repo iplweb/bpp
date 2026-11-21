@@ -7,6 +7,7 @@
     <ul class="autor-page__wspolautorzy">
         {% for w in dane.wspolautorzy %}
             <li class="autor-page__wspolautor">
+                <span class="autor-page__wspolautor-osoba">
                 {% if w.autor.pokazuj_w_wyszukiwaniu %}
                 {# Brak {% csrf_token %} celowo — BuildSearch jest @csrf_exempt, #}
                 {# a token blokowałby cache_publiczny strony (_ZAWIERA_CSRF). #}
@@ -20,12 +21,14 @@
                            value="{{ autor }} i {{ w.autor }} — wspólne prace"/>
                     <button type="submit"
                             class="autor-page__staty-link"
-                            title="Pokaż wspólne prace: {{ autor }} i {{ w.autor }}">{{ w.autor }}</button>
+                            title="Pokaż wspólne prace: {{ autor }} i {{ w.autor }}">{% include "browse/autor_sekcje/_wspolautor_nazwa.html" with a=w.autor %}</button>
                 </form>
                 {% else %}
                     {# Autor ukryty w wyszukiwaniu — bez linku do multiseeka. #}
-                    {{ w.autor }}
+                    <span class="autor-page__wspolautor-ukryty">{% include "browse/autor_sekcje/_wspolautor_nazwa.html" with a=w.autor %}</span>
                 {% endif %}
+                </span>
+                <span class="autor-page__wspolautor-meta">
                 {% if w.autor.pokazuj_strone_autora %}
                     <a href="{{ w.autor.get_absolute_url }}"
                        class="autor-page__wspolautor-strona"
@@ -33,14 +36,17 @@
                        aria-label="Strona autora: {{ w.autor }}"><i class="fi-torso"></i></a>
                 {% endif %}
                 <span class="autor-page__wspolautor-liczba">({{ w.liczba }})</span>
+                </span>
             </li>
         {% endfor %}
     </ul>
     {% if ma_powiazania %}
-        <a href="{% url 'bpp:browse_autor_powiazania' autor.pk %}"
-           class="button primary autor-page__network-btn">
-            <i class="fi-share autor-page__icon--mr-sm"></i>Zobacz pełną sieć powiązań
-        </a>
+        <div class="text-center">
+            <a href="{% url 'bpp:browse_autor_powiazania' autor.pk %}"
+               class="button primary autor-page__network-btn">
+                <i class="fi-share autor-page__icon--mr-sm"></i>Zobacz pełną sieć powiązań
+            </a>
+        </div>
     {% endif %}
 </div>
 <div class="shaded-hr-div-small"></div>

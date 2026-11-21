@@ -236,10 +236,10 @@ def _wykres_lata(autor, limit, request):
         return None
     dane = _ostatnie_lata(sorted(licznik.items()))
     maks = max(w for _rok, w in dane)
-    return {"dane": dane, "maks": maks, "etykieta": "prac"}
+    return {"dane": dane, "maks": maks, "etykieta": "prac", "miejsca": 0}
 
 
-def _wykres_sumy_lata(autor, pole, etykieta, request):
+def _wykres_sumy_lata(autor, pole, etykieta, request, miejsca=0):
     # Suma ``pole`` na rok. DISTINCT z włączonym ``id`` neutralizuje duplikaty
     # z joinu ``autorzy`` (rok/wartość są funkcją id).
     triple = _prace(autor, request).values_list("id", "rok", pole).distinct()
@@ -253,7 +253,8 @@ def _wykres_sumy_lata(autor, pole, etykieta, request):
     if not sum(w for _rok, w in dane):
         return None
     maks = max(w for _rok, w in dane)
-    return {"dane": dane, "maks": maks, "etykieta": etykieta}
+    # ``miejsca`` — miejsca po przecinku w etykietach (punkty całkowite, IF 2).
+    return {"dane": dane, "maks": maks, "etykieta": etykieta, "miejsca": miejsca}
 
 
 def _wykres_pk_lata(autor, limit, request):
@@ -261,7 +262,7 @@ def _wykres_pk_lata(autor, limit, request):
 
 
 def _wykres_if_lata(autor, limit, request):
-    return _wykres_sumy_lata(autor, "impact_factor", "IF", request)
+    return _wykres_sumy_lata(autor, "impact_factor", "IF", request, miejsca=2)
 
 
 #: Wykresy pasa „Wykresy w latach” — (nazwa, builder, typ raportu multiseeka

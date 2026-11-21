@@ -1,3 +1,4 @@
+from autoslug import AutoSlugField
 from denorm import CountField, denormalized, depend_on_related
 from django.core.exceptions import ValidationError
 from django.db import models
@@ -5,6 +6,7 @@ from django.db.models import JSONField
 
 from bpp.fields import YearField
 from bpp.models import ModelZNazwa, ModelZPBN_UID
+from bpp.util.text import slugify_wydawca
 
 
 class Wydawca(ModelZNazwa, ModelZPBN_UID):
@@ -18,6 +20,11 @@ class Wydawca(ModelZNazwa, ModelZPBN_UID):
         null=True,
         blank=True,
         on_delete=models.SET_NULL,
+    )
+
+    # Slug nigdy nie składa się z samych cyfr — patrz ``slugify_wydawca``.
+    slug = AutoSlugField(
+        populate_from="nazwa", unique=True, max_length=512, slugify=slugify_wydawca
     )
 
     class Meta:
@@ -45,6 +52,41 @@ class Wydawca(ModelZNazwa, ModelZPBN_UID):
         if self.alias_dla_id is not None:
             return self.alias_dla.get_toplevel()
         return self
+
+    def wszystkie_pk(self):
+        """PK tego wydawcy i wszystkich jego aliasów (także pośrednich —
+        alias aliasu). Prace wydane pod aliasem należą do wydawcy, więc
+        strona wydawcy i pole „Wydawca” w multiseeku łapią je razem."""
+        pks = {self.pk}
+        fala = [self.pk]
+        while fala:
+            fala = list(
+                Wydawca.objects.filter(alias_dla_id__in=fala)
+                .exclude(pk__in=pks)
+                .values_list("pk", flat=True)
+            )
+            pks.update(fala)
+        return sorted(pks)
+
+    def get_absolute_url(self):
+        from django.urls import reverse
+
+        return reverse("bpp:browse_wydawca", args=(self.get_toplevel().slug,))
+
+    def prace(self):
+        """Rekordy wydane przez wydawcę (z aliasami)."""
+        from bpp.models.cache import Rekord
+
+        return Rekord.objects.filter(wydawca_id__in=self.wszystkie_pk())
+
+    def prace_w_latach(self):
+        return (
+            self.prace()
+            .exclude(rok=None)
+            .values_list("rok", flat=True)
+            .distinct()
+            .order_by("rok")
+        )
 
     def get_tier(self, rok):
         toplevel = self.get_toplevel()

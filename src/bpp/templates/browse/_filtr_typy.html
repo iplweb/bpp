@@ -1,0 +1,8 @@
+{# Grupa „Typ publikacji” (chipy). Oczekuje: typy. Grupy to div[role=group], #}
+{# nie fieldset — globalne style BPP rysują ramkę wokół fieldset/legend. #}
+<div class="autor-page__filtr" role="group" aria-labelledby="filtr-typ">
+    <div class="autor-page__filtr-tytul" id="filtr-typ">
+        <i class="fi-list autor-page__icon--mr-sm"></i>Typ publikacji
+    </div>
+    {% include "browse/_typy_chipy.html" %}
+</div>

@@ -2,13 +2,11 @@
 oraz pomocniczych funkcji ustaw_dyscypline / real_ustaw_dyscypline."""
 
 import pytest
-from django.contrib.admin import AdminSite
 from django.contrib.messages import get_messages
 
 from bpp.models import Autor_Dyscyplina
 from rozbieznosci_dyscyplin.admin import (
     DYSCYPLINA_AUTORA,
-    RozbieznosciViewAdmin,
     ustaw_druga_dyscypline,
     ustaw_pierwsza_dyscypline,
 )
@@ -60,32 +58,8 @@ def test_admin_usun_rozbieznosci_ustaw_pusta_druga(zle_przypisana_praca, rf):
         ustaw_druga_dyscypline(None, req, None)
         msg = get_messages(req)
 
-    assert "jest żadna" in list(msg)[0].message
+    assert "nie ma drugiej dyscypliny za rok" in list(msg)[0].message
     assert RozbieznosciView.objects.count() == 1
-
-
-def test_RozbieznosciDyscyplinAdmin_przypisz_pierwsza_wszystkim(
-    zle_przypisana_praca, rf, dyscyplina1
-):
-    ra = RozbieznosciViewAdmin(RozbieznosciView, AdminSite())
-    req = rf.get("/")
-    with middleware(req):
-        ra.przypisz_wszystkim(req)
-    assert RozbieznosciView.objects.count() == 0
-    zle_przypisana_praca.refresh_from_db()
-    assert zle_przypisana_praca.autorzy_set.first().dyscyplina_naukowa == dyscyplina1
-
-
-def test_RozbieznosciDyscyplinAdmin_przypisz_druga_wszystkim(
-    zle_przypisana_praca, rf, dyscyplina2
-):
-    ra = RozbieznosciViewAdmin(RozbieznosciView, AdminSite())
-    req = rf.get("/")
-    with middleware(req):
-        ra.przypisz_druga_wszystkim(req)
-    assert RozbieznosciView.objects.count() == 0
-    zle_przypisana_praca.refresh_from_db()
-    assert zle_przypisana_praca.autorzy_set.first().dyscyplina_naukowa == dyscyplina2
 
 
 @pytest.mark.django_db
@@ -117,21 +91,6 @@ def test_ustaw_dyscypline_with_select_across(zle_przypisana_praca, rf, dyscyplin
 
 
 @pytest.mark.django_db
-def test_przypisz_wszystkim_empty_queryset(rf):
-    """Test przypisz_wszystkim with empty queryset shows warning."""
-    ra = RozbieznosciViewAdmin(RozbieznosciView, AdminSite())
-    req = rf.get("/")
-
-    with middleware(req):
-        response = ra.przypisz_wszystkim(req)
-        msgs = list(get_messages(req))
-
-    assert response.status_code == 302
-    assert len(msgs) == 1
-    assert "nie stwierdzono rekordów" in msgs[0].message
-
-
-@pytest.mark.django_db
 def test_real_ustaw_dyscypline_handles_missing_record(rf):
     """Test real_ustaw_dyscypline handles deleted record during processing."""
     from rozbieznosci_dyscyplin.admin import ResultNotifier, real_ustaw_dyscypline
@@ -141,4 +100,41 @@ def test_real_ustaw_dyscypline_handles_missing_record(rf):
     real_ustaw_dyscypline(DYSCYPLINA_AUTORA, [[999, 999, 999]], notifier)
 
     assert len(notifier.retbuf) == 1
-    assert "zmieniła się podczas operacji" in notifier.retbuf[0]
+    assert "zmieniła się podczas operacji" in notifier.retbuf[0][1]
+
+
+@pytest.mark.django_db
+def test_akcja_zachowuje_filtry(zle_przypisana_praca, rf):
+    pk = str(RozbieznosciView.objects.first().pk)
+    req = rf.post(
+        "/admin/x/?rok=2022&pracuje_na_uczelni=tak", data={"_selected_action": [pk]}
+    )
+
+    with middleware(req):
+        res = ustaw_pierwsza_dyscypline(None, req, None)
+
+    assert res.status_code == 302
+    assert res.url == "/admin/x/?rok=2022&pracuje_na_uczelni=tak"
+
+
+@pytest.mark.django_db
+def test_real_ustaw_dyscypline_validation_error(zle_przypisana_praca, mocker):
+    """A record that fails validation is skipped with a warning, not a 500."""
+    from django.core.exceptions import ValidationError
+
+    from bpp.models import Wydawnictwo_Ciagle_Autor
+    from rozbieznosci_dyscyplin.admin import ResultNotifier, real_ustaw_dyscypline
+
+    mocker.patch.object(
+        Wydawnictwo_Ciagle_Autor,
+        "save",
+        side_effect=ValidationError("Zły procent udziału"),
+    )
+    notifier = ResultNotifier()
+    pk = RozbieznosciView.objects.first().pk
+    real_ustaw_dyscypline(DYSCYPLINA_AUTORA, [pk], notifier)
+
+    assert len(notifier.retbuf) == 1
+    assert "nie przechodzi walidacji" in notifier.retbuf[0][1]
+    assert "Zły procent udziału" in notifier.retbuf[0][1]
+    assert RozbieznosciView.objects.count() == 1

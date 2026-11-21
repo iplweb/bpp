@@ -1,6 +1,7 @@
 {% extends "base.html" %}
 
 {% load columns %}
+{% load polish_inflection %}
 
 {% block breadcrumbs %}
     {{ block.super }}
@@ -56,9 +57,7 @@
                                 </div>
                                 <div class="lata__year-count">
                                     {{ year_data.count }}
-                                    {% if year_data.count == 1 %}publikacja
-                                    {% elif year_data.count < 5 %}publikacje
-                                    {% else %}publikacji{% endif %}
+                                    {% odmiana_liczebnikowa "publikacja" year_data.count %}
                                 </div>
                             </a>
                         </div>

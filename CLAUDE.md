@@ -6,7 +6,7 @@ with code in this repository.
 ## Project Overview
 
 BPP (Bibliografia Publikacji Pracownikow) is a Polish academic bibliography
-management system built with Django. Python >=3.10,<3.15.
+management system built with Django. Python >=3.11.5,<3.15 (production and CI: 3.14).
 
 - Architecture: [docs/deweloper/mapa-kodu.md](docs/deweloper/mapa-kodu.md)
 - Commands reference: [docs/deweloper/polecenia.md](docs/deweloper/polecenia.md)
@@ -175,6 +175,18 @@ autologinu czytasz z `.dev_helpers_*` **w worktree PR-a**, nie w głównym
 checkoucie. Przed klikaniem przeczytaj opis PR-a (`gh pr view N`) i odpal
 testy dotknięte zmianą w worktree PR-a. Szczegóły:
 [docs/deweloper/polecenia.md](docs/deweloper/polecenia.md#testowanie-pull-requestów).
+
+## Zrzuty ekranu do dokumentacji i bazy wiedzy
+
+Zrzuty z oznaczeniami (strzałki, ramki, podpisy) do `docs/` i do artykułów
+Freshdeska robi **wyłącznie** `bin/docs-screenshots.py` (scenariusz na
+artykuł) — nie ręcznie i nie ad hoc innym skryptem. Dane demo motyw
+`wiedzmin` z `--bez-prefiksu`, zwykłe konto `yennefer` (nie admin), PNG do
+`docs/images/<sekcja>/<scenariusz>/`. Freshdesk linkuje te pliki z GitHub
+Pages, więc **nie przenoś/nie zmieniaj nazw** istniejących obrazków.
+Każdy wygenerowany zrzut obejrzyj (nakładające się podpisy, niedokończone
+animacje menu). Reguły i setup:
+[docs/deweloper/zrzuty-ekranu.md](docs/deweloper/zrzuty-ekranu.md).
 
 ## Key Commands (Quick Reference)
 

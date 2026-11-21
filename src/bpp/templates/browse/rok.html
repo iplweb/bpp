@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% load polish_inflection %}
 
 {% block breadcrumbs %}
     {{ block.super }}
@@ -32,9 +33,7 @@
                 </h1>
                 <p class="rok__subtitle">
                     Znaleziono {{ total_count }}
-                    {% if total_count == 1 %}publikację
-                    {% elif total_count < 5 %}publikacje
-                    {% else %}publikacji{% endif %}
+                    {% odmiana_liczebnikowa "publikacja" total_count "biernik" %}
                 </p>
             </div>
 
@@ -117,7 +116,7 @@
             <div class="rok__pagination">
                 <div class="rok__pagination-info">
                     Strona {{ page_obj.number }} z {{ paginator.num_pages }}
-                    ({{ paginator.count }} {% if paginator.count == 1 %}publikacja{% elif paginator.count < 5 %}publikacje{% else %}publikacji{% endif %})
+                    ({{ paginator.count }} {% odmiana_liczebnikowa "publikacja" paginator.count %})
                 </div>
 
                 <ul class="pagination rok__pagination-list" role="navigation" aria-label="Pagination">
