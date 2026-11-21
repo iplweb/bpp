@@ -29,6 +29,22 @@ z niedozwolonych znaczników. Konfigurację integracji uczelni (PBN, Clarivate,
 ORCID, DSpace) wraz z danymi dostępowymi widzi i zmienia wyłącznie
 superużytkownik.
 
+## Wgląd w metryki jednostek (bez grupy) {#metryki-jednostek}
+
+Zestawienie PDF [„Metryki jednostek”](../redaktor/metryki-jednostek.md)
+zawiera imienne oceny pracowników. Poza grupą „wprowadzanie danych” (która
+widzi wszystkie jednostki) dostęp do niego daje się **bez żadnej grupy**:
+
+- **kierownik jednostki** widzi swoją jednostkę automatycznie — wystarczy,
+  że jego konto jest powiązane z autorem, a autor ma w jednostce funkcję
+  „kierownik” w bieżących datach,
+- innym osobom administrator wskazuje jednostki w edycji użytkownika:
+  sekcja **„Metryki jednostek”**, pole **„Metryki jednostek — jednostki do
+  wglądu”** (z podjednostkami).
+
+To pole nie daje innych uprawnień. Szczegóły:
+[Kto widzi metryki jednostek](../redaktor/metryki-jednostek.md#kto-widzi).
+
 ## Zalecenia
 
 - **Nadawaj grupy uprzywilejowane tylko zaufanym osobom**, tak samo jak

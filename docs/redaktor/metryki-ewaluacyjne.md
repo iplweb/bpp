@@ -19,7 +19,7 @@ Ta strona prowadzi po kolei przez:
 - [przeliczenie metryk](#przeliczenie-metryk),
 - [czytanie tabeli](#tabela-metryk) i [filtry oraz eksport do Excela](#filtry-i-eksport),
 - [szczegóły jednego autora](#szczegoly-autora) — w tym odpinanie dyscypliny,
-- [statystyki zbiorcze](#statystyki),
+- [statystyki zbiorcze](#statystyki) i [metryki jednostek w PDF](metryki-jednostek.md),
 - [typowe pytania](#typowe-pytania) i [co może pójść nie tak](#co-moze-pojsc-nie-tak).
 
 Pojęcia **punkty MNiSW**, **PKDaut** i **slot** wyjaśnia strona
@@ -277,67 +277,12 @@ Każda sekcja ma własny przycisk **„Export XLSX”**.
 
 ## Metryki jednostek (PDF) {#metryki-jednostek}
 
-Zestawienie PDF dla kierownika jednostki (np. kliniki), z którego może on
-wyciągnąć wnioski przed ewaluacją: kto wypełnia sloty, kto pisze lepiej
-punktowane prace, gdzie są wolne sloty i ile punktów można jeszcze zdobyć.
-
-Otwórz menu **ewaluacja → metryki jednostek (PDF)** albo kliknij przycisk
-**„Metryki jednostek (PDF)”** nad tabelą metryk. Na liście są tylko jednostki,
-które mają metryki w wybranym okresie. Przy każdej jednostce są dwa przyciski:
-**„PDF”** pobiera plik, a **„podgląd”** otwiera to samo w przeglądarce.
-
-### Kto ma dostęp {#metryki-jednostek-dostep}
-
-- **Osoby z pełnymi uprawnieniami do ewaluacji** (grupa „wprowadzanie danych”
-  albo superużytkownik) widzą wszystkie jednostki.
-- **Kierownik jednostki** widzi swoją jednostkę i jej podjednostki
-  automatycznie, jeśli jego konto jest powiązane z autorem, a autor ma
-  w tej jednostce funkcję „kierownik” w bieżących datach zatrudnienia.
-  Po zakończeniu kierowania (data „zakończył pracę”) wgląd znika.
-- **Każdy inny użytkownik** widzi jednostki, które administrator wskaże mu
-  w panelu administracyjnym: **Użytkownicy → (konto) → „Metryki jednostek”**,
-  pole „Metryki jednostek — jednostki do wglądu”. Wgląd obejmuje też
-  podjednostki. To pole nie daje żadnych innych uprawnień (np. do edycji
-  danych ani do metryk pozostałych jednostek).
-
-Kierownik i osoby ze wskazanymi jednostkami znajdą swoje zestawienia na
-stronie **Mój profil**, w bloku „Metryki jednostek”. Lista jednostek
-i pobieranie pokazują tylko jednostki, do których dana osoba ma wgląd.
-
-Pierwsza strona to nagłówek jednostki, a gdy jednostka ma kilka dyscyplin —
-także podsumowanie całej jednostki i tabela dyscyplin. Potem każda dyscyplina
-ma osobną część (średnie za slot w różnych dyscyplinach nie są porównywalne):
-
-- **podsumowanie** — kółko z wypełnieniem slotów, suma punktów, średnia punktów
-  za slot na tle całej uczelni i szacowany potencjał (wolne sloty × mediana
-  jakości jednostki),
-- **najważniejsze wnioski** — kilka zdań wyliczonych z danych, np. że trzy
-  osoby dają ponad połowę punktów albo że duża część slotów to prace poniżej
-  70 pkt,
-- **kółka dla każdej osoby** — wypełnienie slotów (zielone od 90%, żółte
-  50–89%, czerwone poniżej 50%) i punkty nazbierane (pełne kółko ma osoba
-  z największą liczbą punktów w jednostce) oraz ocena jakości prac,
-- **wykres bąbelkowy** (od 3 osób z pracami) — w prawo pełniejsze sloty,
-  w górę wyżej punktowane prace, wielkość bąbla to punkty. Linie dzielą osoby
-  na cztery grupy: „Filar jednostki”, „Dobre prace, niewykorzystane sloty”,
-  „Pełne sloty, słabsze prace” i „Wymaga wsparcia”. Granica jakości to mediana
-  osób w tej jednostce, więc ocena jest zeskalowana do realiów jednostki,
-  a nie całej uczelni,
-- **listę efektywności** — osoby od najwyższej średniej punktów za slot,
-  z porównaniem do mediany jednostki (100% = typowa osoba),
-- **strukturę punktacji prac** — jaka część wypełnionych slotów to prace
-  za 200, 140, 100, 70, 40 i mniej punktów,
-- **„Gdzie leży potencjał”** — osoby z największą liczbą wolnych slotów
-  i szacunkiem punktów do zdobycia,
-- **zalecenia** — co robić z osobami z każdej grupy.
-
-Dyscypliny z jedną lub dwiema osobami mają skrócony układ (same karty osób,
-wnioski, struktura punktacji i zalecenia), żeby nie zajmowały osobnych stron.
-
-Zestawienie zawiera imienne oceny pracowników — przekazuj je tylko osobom
-uprawnionym. Liczby są tak aktualne jak ostatnie
-[przeliczenie metryk](#przeliczenie-metryk). Zestawienie nie porównuje jeszcze
-wyników z poprzednim okresem.
+Z metryk autorów BPP składa też zestawienie PDF dla kierownika jednostki —
+kółka z wypełnieniem slotów i punktami każdej osoby, wykres „kto wypełnia
+sloty, a kto pisze lepsze prace”, potencjał i zalecenia. Menu **ewaluacja →
+metryki jednostek (PDF)** albo przycisk **„Metryki jednostek (PDF)”** nad
+tabelą. Kto je widzi, jak nadać dostęp kierownikom i jak je czytać —
+[Metryki jednostek](metryki-jednostek.md).
 
 ## Typowe pytania {#typowe-pytania}
 
@@ -424,6 +369,7 @@ poprawność bazy”**.
 
 ## Zobacz też
 
+- [Metryki jednostek — zestawienie PDF dla kierownika](metryki-jednostek.md)
 - [Gdzie sprawdzić punkty i sloty](../uzytkownik/punkty-i-sloty.md) —
   punkty MNiSW, PKDaut i sloty na stronach autora i pracy
 - [Obliczanie slotów](sloty.md) — rodzaje autorów i progi algorytmu slotów
