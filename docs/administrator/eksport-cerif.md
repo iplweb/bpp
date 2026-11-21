@@ -310,9 +310,7 @@ while True:
                 osoba.findtext(f"{CERIF}ORCID", ""),
                 "; ".join(
                     jednostka.findtext(f"{CERIF}Name", "")
-                    for jednostka in osoba.findall(
-                        f"{CERIF}Affiliation/{CERIF}OrgUnit"
-                    )
+                    for jednostka in osoba.findall(f"{CERIF}Affiliation/{CERIF}OrgUnit")
                 ),
             ]
         )

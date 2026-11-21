@@ -255,14 +255,14 @@ z 2024 roku pojawią się wszystkie, ponieważ operator `or` działa jak
 dodawanie. Porównajmy pierwsze zapytanie:
 
 ``` python
-10 * 20 * 30     # <-- tak możemy przedstawić pierwsze przykładowe zapytanie
+10 * 20 * 30  # <-- tak możemy przedstawić pierwsze przykładowe zapytanie
 # wynik to 6000
 ```
 
 … a tak drugie:
 
 ``` python
-10 + 20 * 30 * 40 # <-- tak możemy przedstawić drugie przykładowe zapytanie
+10 + 20 * 30 * 40  # <-- tak możemy przedstawić drugie przykładowe zapytanie
 # wynik działań to nie 36000, a 24010...
 ```
 
@@ -275,7 +275,7 @@ Na pierwszy rzut oka widać, co trzeba zrobić — dodać nawiasy:
 Analogicznie w przykładzie matematycznym:
 
 ``` python
-(10 + 20) * 30 * 40 # wynik to 36000
+(10 + 20) * 30 * 40  # wynik to 36000
 ```
 
 ## Samodzielna strona „Szukaj zapytaniem” (`/bpp/zapytanie/`)
