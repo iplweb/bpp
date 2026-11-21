@@ -1,0 +1,1 @@
+Okres ewaluacji wybrany w górnej belce jest zapamiętywany dla użytkownika: obowiązuje na wszystkich stronach ewaluacji, także po ponownym zalogowaniu. Okresy ewaluacji są w panelu administracyjnym tylko do odczytu — ich zmiany wprowadza aktualizacja systemu.
