@@ -131,7 +131,7 @@ def test_fd528_lata_nie_znikaja_przy_kolejnym_snapshocie(admin_user, uczelnia):
     klasa = form_class_dla(DefinicjaRaportu.objects.get(slug="raport-autorow"))
 
     def snapshot():
-        core._LAST_SNAPSHOT.clear()  # jak po upływie TTL / w nowym procesie
+        core.clear_snapshot_cache()  # jak po upływie TTL / w nowym procesie
         core.get_form_defaults(klasa(), "Raport autorów", user=admin_user)
         rep = FormRepresentation.objects.get(full_name=FULL_NAME)
         return rep, set(rep.fields_set.values_list("name", flat=True))

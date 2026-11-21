@@ -261,26 +261,19 @@ def test_akcja_wszedzie_odmawia_powyzej_limitu(admin_user):
 
 
 @pytest.mark.django_db
-def test_zapewnij_wersje_poczatkowa_w_aktywnej_rewizji_nie_scala_sie():
-    """Wołana wewnątrz aktywnej rewizji (np. akcja admina) zapisuje stan
-    „przed” we własnej rewizji, a nie w zewnętrznej."""
+def test_zapewnij_wersje_poczatkowa_w_aktywnej_rewizji_rzuca_wyjatek():
+    """Wołana wewnątrz aktywnej rewizji scaliłaby stan „przed” ze stanem
+    „po” (i nie dałoby się cofnąć zmiany) — zamiast tego głośny błąd,
+    nic nie jest zapisywane."""
     import reversion
 
     from bpp.wersjonowanie import (
-        KOMENTARZ_WERSJI_POCZATKOWEJ,
+        WersjaPoczatkowaWAktywnejRewizji,
         zapewnij_wersje_poczatkowa,
     )
 
     autor = baker.make(Autor, pokazuj_w_api=True)
-    with reversion.create_revision():
-        zapewnij_wersje_poczatkowa(autor)
-        Autor.objects.filter(pk=autor.pk).update(pokazuj_w_api=False)
-        autor.refresh_from_db()
-        reversion.add_to_revision(autor)
-        reversion.set_comment("po")
-
-    po, przed = Version.objects.get_for_object(autor)
-    assert przed.revision.comment == KOMENTARZ_WERSJI_POCZATKOWEJ
-    assert przed.field_dict["pokazuj_w_api"] is True
-    assert po.revision.comment == "po"
-    assert po.field_dict["pokazuj_w_api"] is False
+    with pytest.raises(WersjaPoczatkowaWAktywnejRewizji):
+        with reversion.create_revision():
+            zapewnij_wersje_poczatkowa(autor)
+    assert not Version.objects.exists()

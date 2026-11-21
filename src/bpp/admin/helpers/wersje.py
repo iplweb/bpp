@@ -13,8 +13,16 @@ Stawiać w MRO tuż PRZED ``VersionAdmin``. Dokłada do widoków reversion:
 * odzyskiwanie usuniętych rekordów tylko dla superużytkownika (usuniętego
   rekordu nie da się przypisać do uczelni przez queryset),
 * wpisy ``LogEntry`` sprzed włączenia wersjonowania na stronie „Historia"
-  (reversion pokazuje wyłącznie wersje — starsza historia by zniknęła).
+  (reversion pokazuje wyłącznie wersje — starsza historia by zniknęła),
+* akcje masowe oznaczone ``zapisuje_historie`` wykonują się BEZ rewizji
+  otwieranej przez ``changelist_view`` — same zapisują wersję „przed”
+  i „po” w osobnych rewizjach (w jednej rewizji stan „po” nadpisałby
+  „przed”),
+* zapamiętanie relacji śledzonych przez modele rejestrowane automatycznie
+  (``FOLLOW_REVERSION``, do prefetchu przy hurtowym zapisie wersji).
 """
+
+from contextlib import nullcontext
 
 from django.contrib.admin.models import LogEntry
 from django.contrib.admin.utils import unquote
@@ -23,7 +31,7 @@ from django.core.exceptions import PermissionDenied
 from django.http import Http404
 from reversion.models import Version
 
-from bpp.wersjonowanie import zapewnij_wersje_poczatkowa
+from bpp.wersjonowanie import FOLLOW_REVERSION, zapewnij_wersje_poczatkowa
 
 
 class HistoriaWersjiMixin:
@@ -82,3 +90,31 @@ class HistoriaWersjiMixin:
         if najstarsza is not None:
             wpisy = wpisy.filter(action_time__lt=najstarsza)
         return list(wpisy.order_by("-action_time"))
+
+    def reversion_register(self, model, **kwargs):
+        FOLLOW_REVERSION.setdefault(model, tuple(kwargs.get("follow", ())))
+        super().reversion_register(model, **kwargs)
+
+    def create_revision(self, request):
+        if self._akcja_zapisuje_historie(request):
+            return nullcontext()
+        return super().create_revision(request)
+
+    def _akcja_zapisuje_historie(self, request):
+        """Czy ``request`` to POST listy rekordów uruchamiający akcję
+        oznaczoną ``zapisuje_historie`` (patrz ``bpp.admin.actions``)."""
+        if request.method != "POST" or "action" not in request.POST:
+            return False
+        dopasowanie = getattr(request, "resolver_match", None)
+        opts = self.model._meta
+        lista = f"{opts.app_label}_{opts.model_name}_changelist"
+        if dopasowanie is None or dopasowanie.url_name != lista:
+            return False
+        # Jak ``ModelAdmin.response_action``: przy kilku formularzach akcji
+        # na stronie ``index`` wskazuje, który wysłano.
+        try:
+            nazwa = request.POST.getlist("action")[int(request.POST.get("index", 0))]
+        except (ValueError, IndexError):
+            return False  # niepoprawny POST — ``response_action`` go odrzuci
+        akcja = self.get_actions(request).get(nazwa)
+        return akcja is not None and getattr(akcja[0], "zapisuje_historie", False)

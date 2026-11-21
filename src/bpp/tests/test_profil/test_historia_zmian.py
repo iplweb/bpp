@@ -18,12 +18,11 @@ from django.urls import reverse
 from model_bakery import baker
 from reversion import is_registered
 from reversion.models import Version
-from reversion.revisions import _get_options
 
 from bpp.admin.autor import AutorAdmin
 from bpp.models import Autor, Autor_Jednostka, Rekord, Uczelnia
 from bpp.models.wybrana_publikacja import WybranaPublikacjaAutora
-from bpp.wersjonowanie import KOMENTARZ_WERSJI_POCZATKOWEJ
+from bpp.wersjonowanie import FOLLOW_REVERSION, KOMENTARZ_WERSJI_POCZATKOWEJ
 
 pytestmark = pytest.mark.django_db
 
@@ -42,12 +41,24 @@ def _wersje(autor):
 
 def test_rejestracja_autora_w_reversion():
     assert is_registered(Autor)
-    opcje = _get_options(Autor)
-    assert "search" not in opcje.fields
-    assert "biogram" in opcje.fields
+    autor = baker.make(Autor, biogram="Biogram")
+    wybrana = baker.make(WybranaPublikacjaAutora, autor=autor)
+    with reversion.create_revision():
+        reversion.add_to_revision(autor)
+    wersja = Version.objects.get_for_object(autor).get()
+    assert "search" not in wersja.field_dict
+    assert wersja.field_dict["biogram"] == "Biogram"
     # Zatrudnienie/dyscypliny/absencje NIE są przywracane razem z autorem
     # (cudze uczelnie, ewaluacja); dane wyliczane też nie.
-    assert opcje.follow == ("wybrane_publikacje",)
+    assert FOLLOW_REVERSION[Autor] == ("wybrane_publikacje",)
+    w_rewizji = {
+        (v.content_type.model_class(), v.object_id)
+        for v in wersja.revision.version_set.all()
+    }
+    assert w_rewizji == {
+        (Autor, str(autor.pk)),
+        (WybranaPublikacjaAutora, str(wybrana.pk)),
+    }
 
 
 def test_edycja_profilu_przez_strone_tworzy_wersje_i_logentry(
