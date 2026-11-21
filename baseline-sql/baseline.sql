@@ -16677,6 +16677,10 @@ COPY public.django_countdown_sitecountdown (id, countdown_time, message, long_de
 --
 
 COPY public.django_migrations (id, app, name, applied) FROM stdin;
+1041	bpp	0466_bppuser_zwijaj_dlugie_listy_autorow_and_more	2000-01-01 00:00:00+00
+852	pbn_import	0002_add_task_id_field	2000-01-01 00:00:00+00
+853	pbn_import	0003_add_import_inconsistency	2000-01-01 00:00:00+00
+866	pbn_wysylka_oswiadczen	0002_add_tytul_field	2000-01-01 00:00:00+00
 680	ewaluacja_liczba_n	0008_add_sankcje	2000-01-01 00:00:00+00
 854	pbn_import	0004_add_bpp_publication_content_type	2000-01-01 00:00:00+00
 855	pbn_import	0005_remove_importstatistics	2000-01-01 00:00:00+00
@@ -16775,6 +16779,7 @@ COPY public.django_migrations (id, app, name, applied) FROM stdin;
 946	zglos_publikacje	0012_auto_20220910_1654	2000-01-01 00:00:00+00
 947	zglos_publikacje	0013_auto_20220910_2114	2000-01-01 00:00:00+00
 948	zglos_publikacje	0014_zgloszenie_publikacji_autor_kierunek_studiow	2000-01-01 00:00:00+00
+346	bpp	0254_uczelnia_pbn_uid	2000-01-01 00:00:00+00
 949	zglos_publikacje	0015_zgloszenie_publikacji_autor_oswiadczenie_ken	2000-01-01 00:00:00+00
 950	zglos_publikacje	0016_zgloszenie_publikacji_deleted_at_and_more	2000-01-01 00:00:00+00
 951	zglos_publikacje	0017_zgloszenie_publikacji_zgoda_na_publikacje_pelnego_tekstu	2000-01-01 00:00:00+00
@@ -16867,7 +16872,6 @@ COPY public.django_migrations (id, app, name, applied) FROM stdin;
 1038	rozbieznosci	0001_initial	2000-01-01 00:00:00+00
 1039	rozbieznosci	0002_usun_stare_rozbieznosci	2000-01-01 00:00:00+00
 1040	zglos_publikacje	0026_faza_b_ii2_repoint_wydzial	2000-01-01 00:00:00+00
-1041	bpp	0466_bppuser_zwijaj_dlugie_listy_autorow_and_more	2000-01-01 00:00:00+00
 1042	bpp	0467_seed_crossref_mapper_rows	2000-01-01 00:00:00+00
 1043	import_pracownikow	0010_liveops	2000-01-01 00:00:00+00
 1058	import_pracownikow	0019_alter_importpracownikow_stan	2000-01-01 00:00:00+00
@@ -16963,6 +16967,7 @@ COPY public.django_migrations (id, app, name, applied) FROM stdin;
 903	rozbieznosci_dyscyplin	0002_rok_2017_i_wyzej	2000-01-01 00:00:00+00
 904	rozbieznosci_dyscyplin	0003_brakprzypisaniaview_rozbiezneprzypisaniaview_rozbieznosciview	2000-01-01 00:00:00+00
 905	rozbieznosci_dyscyplin	0004_recreate	2000-01-01 00:00:00+00
+350	bpp	0258_auto_20210407_2320	2000-01-01 00:00:00+00
 906	rozbieznosci_dyscyplin	0005_recreate	2000-01-01 00:00:00+00
 35	pbn_api	0001_initial	2000-01-01 00:00:00+00
 36	pbn_api	0002_institution	2000-01-01 00:00:00+00
@@ -17071,7 +17076,6 @@ COPY public.django_migrations (id, app, name, applied) FROM stdin;
 110	bpp	0033_auto_20151001_1425	2000-01-01 00:00:00+00
 111	bpp	0034_auto_20151011_1514	2000-01-01 00:00:00+00
 112	bpp	0035_nomorefixtures_data_migration	2000-01-01 00:00:00+00
-346	bpp	0254_uczelnia_pbn_uid	2000-01-01 00:00:00+00
 147	bpp	0066_wydawnictwo_zwarte_calkowita_liczba_autorow	2000-01-01 00:00:00+00
 148	bpp	0067_typ_kbn_artykul_pbn	2000-01-01 00:00:00+00
 149	bpp	0068_indeks_liczba_znakow	2000-01-01 00:00:00+00
@@ -17183,6 +17187,7 @@ COPY public.django_migrations (id, app, name, applied) FROM stdin;
 220	bpp	0138_uczelnia_pokazuj_liczbe_cytowan_w_rankingu	2000-01-01 00:00:00+00
 221	bpp	0139_uczelnia_pokazuj_liczbe_cytowan_na_stronie_autora	2000-01-01 00:00:00+00
 222	bpp	0140_auto_20180624_1620	2000-01-01 00:00:00+00
+351	bpp	0259_auto_20210421_2323	2000-01-01 00:00:00+00
 223	bpp	0141_konferencja_typ_konferencji	2000-01-01 00:00:00+00
 224	bpp	0142_auto_20180624_2245	2000-01-01 00:00:00+00
 339	bpp	0246_auto_20210312_1228	2000-01-01 00:00:00+00
@@ -17296,8 +17301,6 @@ COPY public.django_migrations (id, app, name, applied) FROM stdin;
 345	bpp	0253_rekord_mat_slug	2000-01-01 00:00:00+00
 347	bpp	0255_auto_20210407_1138	2000-01-01 00:00:00+00
 349	bpp	0257_wydawca_pbn_uid	2000-01-01 00:00:00+00
-350	bpp	0258_auto_20210407_2320	2000-01-01 00:00:00+00
-351	bpp	0259_auto_20210421_2323	2000-01-01 00:00:00+00
 352	bpp	0260_jednostka_pbn_uid	2000-01-01 00:00:00+00
 353	bpp	0261_auto_20210426_0124	2000-01-01 00:00:00+00
 354	bpp	0262_bppuser_pbn_token	2000-01-01 00:00:00+00
@@ -17762,9 +17765,6 @@ COPY public.django_migrations (id, app, name, applied) FROM stdin;
 847	pbn_export_queue	0004_add_wykluczone_field	2000-01-01 00:00:00+00
 849	pbn_export_queue	0006_reclassify_list_format_validation_errors	2000-01-01 00:00:00+00
 850	pbn_export_queue	0007_reclassify_doiorwwwmissing_errors	2000-01-01 00:00:00+00
-852	pbn_import	0002_add_task_id_field	2000-01-01 00:00:00+00
-853	pbn_import	0003_add_import_inconsistency	2000-01-01 00:00:00+00
-866	pbn_wysylka_oswiadczen	0002_add_tytul_field	2000-01-01 00:00:00+00
 867	pbn_wysylka_oswiadczen	0003_add_synchronized_count	2000-01-01 00:00:00+00
 868	pbn_wysylka_oswiadczen	0004_alter_pbnwysylkalog_content_type_and_more	2000-01-01 00:00:00+00
 869	powiazania_autorow	0001_initial	2000-01-01 00:00:00+00
@@ -17854,28 +17854,28 @@ COPY public.django_migrations (id, app, name, applied) FROM stdin;
 1180	ewaluacja_optymalizacja	0018_okres_ewaluacji_dane	2000-01-01 00:00:00+00
 1181	ewaluacja_optymalizacja	0019_okres_ewaluacji_wymagany	2000-01-01 00:00:00+00
 1182	ewaluacja_common	0007_wybrany_okres_ewaluacji	2000-01-01 00:00:00+00
-1183	pbn_export_queue	0011_pbn_export_queue_operacja	2000-01-01 00:00:00+00
-1184	bpp	0510_slowniki_protect	2000-01-01 00:00:00+00
-1185	bpp	0511_publikacje_soft_delete_fields	2000-01-01 00:00:00+00
-1186	bpp	0512_soft_delete_rekord_views	2000-01-01 00:00:00+00
-1187	bpp	0513_soft_delete_autorzy_przez_publikacje	2000-01-01 00:00:00+00
-1188	bpp	0514_nowe_sumy_bez_skasowanych_publikacji	2000-01-01 00:00:00+00
-1189	bpp	0515_drop_kronika_views	2000-01-01 00:00:00+00
-1190	bpp	0516_praca_habilitacyjna_warunkowy_unique_autora	2000-01-01 00:00:00+00
-1191	bpp	0517_soft_delete_protect_fk	2000-01-01 00:00:00+00
-1192	bpp	0518_autor_soft_delete	2000-01-01 00:00:00+00
-1193	bpp	0519_softdeletelog	2000-01-01 00:00:00+00
-1194	bpp	0520_soft_delete_struktura_i_slowniki	2000-01-01 00:00:00+00
-1195	bpp	0521_slug_unikalny_razem_z_koszem	2000-01-01 00:00:00+00
-1196	bpp	0522_kasowanie_prac_dyplomowych_z_autorzy_mat	2000-01-01 00:00:00+00
-1197	bpp	0523_kosz_zamrozony_trigger	2000-01-01 00:00:00+00
-1198	cerif_export	0001_odpieta_przynaleznosc	2000-01-01 00:00:00+00
-1199	pbn_api	0080_sentdata_withdrawn_at	2000-01-01 00:00:00+00
-1200	pbn_export_queue	0012_zamowil_protect	2000-01-01 00:00:00+00
-1201	pbn_import	0013_alter_importinconsistency_inconsistency_type	2000-01-01 00:00:00+00
-1202	pbn_integrator	0001_initial	2000-01-01 00:00:00+00
-1203	rozbieznosci_dyscyplin	0022_rozbieznosci_zrodel_bez_skasowanych_publikacji	2000-01-01 00:00:00+00
-1204	zglos_publikacje	0029_autor_slowniki_protect	2000-01-01 00:00:00+00
+1183	bpp	0510_slowniki_protect	2000-01-01 00:00:00+00
+1184	zglos_publikacje	0029_autor_slowniki_protect	2000-01-01 00:00:00+00
+1185	pbn_export_queue	0011_pbn_export_queue_operacja	2000-01-01 00:00:00+00
+1186	bpp	0511_publikacje_soft_delete_fields	2000-01-01 00:00:00+00
+1187	bpp	0512_soft_delete_rekord_views	2000-01-01 00:00:00+00
+1188	bpp	0513_soft_delete_autorzy_przez_publikacje	2000-01-01 00:00:00+00
+1189	bpp	0514_nowe_sumy_bez_skasowanych_publikacji	2000-01-01 00:00:00+00
+1190	bpp	0515_drop_kronika_views	2000-01-01 00:00:00+00
+1191	bpp	0516_praca_habilitacyjna_warunkowy_unique_autora	2000-01-01 00:00:00+00
+1192	bpp	0517_soft_delete_protect_fk	2000-01-01 00:00:00+00
+1193	bpp	0518_autor_soft_delete	2000-01-01 00:00:00+00
+1194	bpp	0519_softdeletelog	2000-01-01 00:00:00+00
+1195	bpp	0520_soft_delete_struktura_i_slowniki	2000-01-01 00:00:00+00
+1196	bpp	0521_slug_unikalny_razem_z_koszem	2000-01-01 00:00:00+00
+1197	bpp	0522_kasowanie_prac_dyplomowych_z_autorzy_mat	2000-01-01 00:00:00+00
+1198	bpp	0523_kosz_zamrozony_trigger	2000-01-01 00:00:00+00
+1199	cerif_export	0001_odpieta_przynaleznosc	2000-01-01 00:00:00+00
+1200	pbn_api	0080_sentdata_withdrawn_at	2000-01-01 00:00:00+00
+1201	pbn_export_queue	0012_zamowil_protect	2000-01-01 00:00:00+00
+1202	pbn_import	0013_alter_importinconsistency_inconsistency_type	2000-01-01 00:00:00+00
+1203	pbn_integrator	0001_initial	2000-01-01 00:00:00+00
+1204	rozbieznosci_dyscyplin	0022_rozbieznosci_zrodel_bez_skasowanych_publikacji	2000-01-01 00:00:00+00
 1205	zglos_publikacje	0030_zgloszenie_autor_protect	2000-01-01 00:00:00+00
 \.
 
