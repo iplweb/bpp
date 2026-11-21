@@ -87,6 +87,7 @@ WYKAZ_DEMO_WIERSZE = [
     (201001, "Acta Wiedźmińska", "6746-8071", 100, "filozofia, nauki teologiczne"),
 ]
 DEMO_USER_REDAKTOR = "vesemir"  # demo editor: is_staff + "wprowadzanie danych"
+DEMO_USER_ADMIN = "regis"  # demo superuser for administrator pages
 # The fake POL-on export of the demo university (docs/deweloper/dane-demo.md,
 # "Plik POL-on do importu"); generate it with
 # `manage.py generuj_plik_polon_demo --out <dir>` and point this at it.
@@ -4809,6 +4810,96 @@ def optymalizacja_ewaluacji(page: Page, base: str, out: Path) -> None:
     red.context.close()
 
 
+def admin_zglaszanie_publikacji(page: Page, base: str, out: Path) -> None:
+    """docs/administrator/zglaszanie-publikacji.md: form visibility, login and fee options, per-faculty notifications (superuser); run bin/docs-demo-admin-zglaszanie-publikacji.py first."""
+    adm = new_session(page, base, DEMO_USER_ADMIN)
+
+    # 1. university settings, "Strona wizualna": who sees the button
+    adm.goto(f"{base}/admin/bpp/uczelnia/")
+    adm.wait_for_load_state("networkidle")
+    adm.locator("#result_list tbody a").first.click()
+    adm.wait_for_load_state("networkidle")
+    wiersz = ".form-row.pokazuj_formularz_zglaszania_publikacji"
+    mark(
+        adm,
+        [
+            {
+                "sel": "#id_pokazuj_formularz_zglaszania_publikacji",
+                "arrow": "right",
+                "label": "zawsze / tylko dla zalogowanych / nigdy",
+                "dy": -40,
+            }
+        ],
+    )
+    sekcja = page_box(adm, "fieldset.grp-module > h2", "Strona wizualna")
+    row = page_box(adm, wiersz)
+    stitch(
+        adm,
+        [
+            shot(adm, None, 0, 135),
+            shot(adm, None, sekcja["y"] - 8, sekcja["height"] + 16),
+            # a few neighbouring visibility options above, for context
+            shot(adm, None, row["y"] - 470, row["height"] + 510),
+        ],
+        out / "01-widocznosc-przycisku.png",
+        "przewiń w dół",
+    )
+
+    # 2. "Zgłaszanie publikacji": login required, fee questions per type
+    mark(
+        adm,
+        [
+            {
+                "sel": "label[for=id_wymagaj_logowania_zglos_publikacje]",
+                "arrow": "right",
+                "label": "1. tylko zalogowani",
+                "dx": 320,
+                "dy": -45,
+            },
+            *(
+                {"sel": f"label[for=id_wymagaj_oplatach_{rodzaj}]"}
+                for rodzaj in ("artykul", "monografia", "rozdzial", "inne")
+            ),
+            {
+                "sel": "label[for=id_wymagaj_oplatach_monografia]",
+                "arrow": "right",
+                "label": "2. pytaj o opłaty dla tych rodzajów",
+                "dx": 300,
+                "dy": -40,
+            },
+        ],
+    )
+    fs = page_box(adm, "fieldset.grp-module", "Wymagaj informacji o opłatach")
+    shot(adm, out / "02-zglaszanie-publikacji.png", fs["y"] - 10, fs["height"] + 20)
+
+    # 3. Administracja -> "Obsługa zgłoszeń prac - wydziały" -> add
+    adm.goto(f"{base}/admin/zglos_publikacje/obslugujacy_zgloszenia_wydzialow/add/")
+    adm.wait_for_load_state("networkidle")
+    opcja = adm.locator("#id_user option", has_text=f"({DEMO_USER_REDAKTOR})")
+    adm.select_option("#id_user", value=opcja.get_attribute("value"))
+    adm.select_option("#id_wydzial", label="Wydział Magii i Eliksirów")
+    mark(
+        adm,
+        [
+            {
+                "sel": "#id_user",
+                "arrow": "right",
+                "label": "1. kto dostaje powiadomienia",
+                "dy": -40,
+            },
+            {
+                "sel": "#id_wydzial",
+                "arrow": "right",
+                "label": "2. wydział razem z jednostkami podrzędnymi",
+                "dx": 80,
+                "dy": 0,
+            },
+        ],
+    )
+    shot(adm, out / "03-obsluga-zgloszen-wydzialy.png", 0, 290)
+    adm.context.close()
+
+
 def zgloszenie_publikacji(page: Page, base: str, out: Path) -> None:
     """docs/uzytkownik/zgloszenie-publikacji.md: the "Zgłoś publikację" wizard, end to end."""
     nastepny = ".wizard-nav button:not([name=wizard_goto_step])"
@@ -5100,6 +5191,10 @@ SCENARIOS = {
     "optymalizacja-ewaluacji": (
         "redaktor/optymalizacja-ewaluacji",
         optymalizacja_ewaluacji,
+    ),
+    "admin-zglaszanie-publikacji": (
+        "administrator/zglaszanie-publikacji",
+        admin_zglaszanie_publikacji,
     ),
 }
 
