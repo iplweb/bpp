@@ -4,6 +4,7 @@ and never report the same pair twice."""
 
 import pytest
 from django.contrib.contenttypes.models import ContentType
+from django.urls import reverse
 from model_bakery import baker
 
 from bpp.models import Wydawnictwo_Ciagle, Wydawnictwo_Zwarte
@@ -22,8 +23,8 @@ from import_common.core import matchuj_publikacje
 YEAR = 2024
 
 # Measured query counts per publication (see the query count tests below).
-QUERIES_NO_DUPLICATE = 12
-QUERIES_WORST_CASE = 19
+QUERIES_NO_DUPLICATE = 6
+QUERIES_WORST_CASE = 10
 
 TITLE = (
     "Wpływ długotrwałej suplementacji witaminą D na gęstość mineralną kości "
@@ -254,7 +255,13 @@ def test_liczba_zapytan_na_publikacje_jest_ograniczona(django_assert_max_num_que
         doi="10.1234/abc.2024.1",
         www="https://example.com/a",
     )
-    baker.make(Wydawnictwo_Ciagle, _quantity=10, tytul_oryginalny=TITLE, rok=YEAR)
+    baker.make(
+        Wydawnictwo_Ciagle,
+        _quantity=10,
+        tytul_oryginalny=TITLE,
+        rok=YEAR,
+        doi="10.1234/abc.2024.1",
+    )
 
     with django_assert_max_num_queries(QUERIES_WORST_CASE):
         candidates = _find_duplicates_for_publication(pub, ct, scan_run, set())
@@ -276,3 +283,105 @@ def test_matchuj_publikacje_bez_exclude_dziala_jak_dotad():
         )
         is not None
     )
+
+
+@pytest.mark.django_db
+def test_matchuj_publikacje_bez_dopasowania_po_tytule():
+    """``matchuj_po_tytule=False`` (used by the deduplicator) skips only the
+    title-similarity step; the default keeps it."""
+    baker.make(Wydawnictwo_Ciagle, tytul_oryginalny=TITLE, rok=YEAR)
+
+    assert matchuj_publikacje(Wydawnictwo_Ciagle, title=TITLE, year=YEAR)
+    assert (
+        matchuj_publikacje(
+            Wydawnictwo_Ciagle, title=TITLE, year=YEAR, matchuj_po_tytule=False
+        )
+        is None
+    )
+
+
+@pytest.mark.django_db
+def test_odrzucenie_w_trakcie_skanowania_nie_wraca(monkeypatch):
+    """A pair marked "not a duplicate" (in the list of an earlier scan) while
+    a scan is running does not come back as pending in that scan."""
+    from deduplikator_publikacji import tasks
+
+    a = baker.make(Wydawnictwo_Ciagle, tytul_oryginalny=TITLE, rok=YEAR)
+    b = baker.make(Wydawnictwo_Ciagle, tytul_oryginalny=TITLE_ONE_WORD_ADDED, rok=YEAR)
+    ct = ContentType.objects.get_for_model(Wydawnictwo_Ciagle)
+    old_scan = baker.make(PublicationDuplicateScanRun, year_from=2000, year_to=2000)
+
+    original = tasks._find_duplicates_for_publication
+    calls = []
+
+    def find_and_reject_meanwhile(*args, **kw):
+        if not calls:
+            baker.make(
+                PublicationDuplicateCandidate,
+                scan_run=old_scan,
+                original_content_type=ct,
+                original_object_id=b.pk,
+                duplicate_content_type=ct,
+                duplicate_object_id=a.pk,
+                similarity_score=0.9,
+                status=PublicationDuplicateCandidate.Status.NOT_DUPLICATE,
+            )
+        calls.append(1)
+        return original(*args, **kw)
+
+    monkeypatch.setattr(
+        tasks, "_find_duplicates_for_publication", find_and_reject_meanwhile
+    )
+
+    scan = _run_scan()
+
+    assert not scan.candidates.exists()
+    assert scan.duplicates_found == 0
+
+
+@pytest.mark.django_db
+def test_numery_czesci_nie_zaslaniaja_duplikatu():
+    """Other parts of a series ("cz. 3" ... "cz. 8") are more similar than the
+    real duplicate of "cz. 2", but are filtered out by the part-number check
+    -- they must not use up the title-query limit."""
+    a = baker.make(Wydawnictwo_Ciagle, tytul_oryginalny=f"{TITLE} cz. 2", rok=YEAR)
+    for part in range(3, 9):
+        baker.make(Wydawnictwo_Ciagle, tytul_oryginalny=f"{TITLE} cz. {part}", rok=YEAR)
+    b = baker.make(
+        Wydawnictwo_Ciagle,
+        tytul_oryginalny=f"{TITLE_ONE_WORD_DIFFERENT} cz. 2",
+        rok=YEAR,
+    )
+
+    scan_run = baker.make(PublicationDuplicateScanRun)
+    ct = ContentType.objects.get_for_model(Wydawnictwo_Ciagle)
+
+    candidates = _find_duplicates_for_publication(a, ct, scan_run, set())
+
+    assert [c.duplicate_object_id for c in candidates] == [b.pk]
+
+
+@pytest.mark.django_db
+def test_admin_nie_usuwa_skanowania_z_decyzjami(admin_client):
+    with_decision = baker.make(PublicationDuplicateScanRun)
+    baker.make(
+        PublicationDuplicateCandidate,
+        scan_run=with_decision,
+        similarity_score=0.9,
+        status=PublicationDuplicateCandidate.Status.NOT_DUPLICATE,
+    )
+    without_decision = baker.make(PublicationDuplicateScanRun)
+
+    def delete_url(obj):
+        return reverse(
+            "admin:deduplikator_publikacji_publicationduplicatescanrun_delete",
+            args=[obj.pk],
+        )
+
+    assert admin_client.get(delete_url(with_decision)).status_code == 403
+    assert admin_client.get(delete_url(without_decision)).status_code == 200
+
+    changelist = admin_client.get(
+        reverse("admin:deduplikator_publikacji_publicationduplicatescanrun_changelist")
+    )
+    assert "delete_selected" not in changelist.content.decode()

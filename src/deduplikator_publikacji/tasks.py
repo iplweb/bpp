@@ -17,15 +17,25 @@ PROGRESS_UPDATE_INTERVAL = 100
 MIN_SIMILARITY_TO_STORE = 0.80
 
 # How many times (per publication model) matchuj_publikacje is asked for
-# a match of one publication. Every match found is excluded from the next
+# a match of one publication by identifiers (DOI, source, ISBN, WWW -- all
+# cheap, indexed lookups). Every match found is excluded from the next
 # lookup, so the search stops after one lookup for the vast majority of
 # publications, which have no duplicate at all; the cap bounds the number
 # of queries for "popular" titles.
 MAX_MATCHES_PER_MODEL = 3
 
 # How many most similar titles (per publication model, same year) are
-# considered by the title-similarity query.
+# reported by the title-similarity query -- the only expensive query.
 MAX_TITLE_MATCHES_PER_MODEL = 5
+# How many rows the title query fetches before the part-number check
+# ("cz. II" vs "cz. III") filters them in Python.
+TITLE_QUERY_LIMIT = 10
+
+# Cheap pre-filter for the title query: titles whose length differs too much
+# cannot reach MIN_SIMILARITY_TO_STORE, so trigram similarity is not computed
+# for them. A heuristic with a wide margin.
+TITLE_LENGTH_MIN_RATIO = 0.7
+TITLE_LENGTH_MAX_RATIO = 1.45
 
 
 def _check_doi_match(publication_doi, match, match_reasons):
@@ -205,7 +215,7 @@ def _find_duplicates_for_publication(
         if match_ct == content_type:
             exclude_pks.add(publication.pk)
 
-        # Matches by identifiers (DOI, ISBN, WWW, source) and title ...
+        # Matches by identifiers (DOI, source, ISBN, WWW) ...
         matches = []
         for _ in range(MAX_MATCHES_PER_MODEL):
             match = _try_match_publication(
@@ -248,6 +258,7 @@ def _find_title_matches(klass, title, year, exclude_pks):
     pairs, an editor decides.
     """
     from django.contrib.postgres.search import TrigramSimilarity
+    from django.db.models.functions import Length
 
     from import_common.core.normalize_db import normalized_db_title
     from import_common.core.publikacja import (
@@ -260,16 +271,22 @@ def _find_title_matches(klass, title, year, exclude_pks):
     if not _is_title_long_enough(title):
         return []
 
+    length = len(title)
     qs = (
         klass.objects.filter(rok=year)
         .exclude(pk__in=list(exclude_pks))
+        .annotate(dlugosc_tytulu=Length("tytul_oryginalny"))
+        .filter(
+            dlugosc_tytulu__gte=int(length * TITLE_LENGTH_MIN_RATIO),
+            dlugosc_tytulu__lte=int(length * TITLE_LENGTH_MAX_RATIO) + 1,
+        )
         .annotate(podobienstwo=TrigramSimilarity(normalized_db_title, title.lower()))
         .filter(podobienstwo__gte=MIN_SIMILARITY_TO_STORE)
-        .order_by("-podobienstwo", "pk")[:MAX_TITLE_MATCHES_PER_MODEL]
+        .order_by("-podobienstwo", "pk")[:TITLE_QUERY_LIMIT]
     )
     return [
         match for match in qs if _part_numbers_compatible(title, match.tytul_oryginalny)
-    ]
+    ][:MAX_TITLE_MATCHES_PER_MODEL]
 
 
 def _try_match_publication(
@@ -292,6 +309,9 @@ def _try_match_publication(
             zrodlo=zrodlo,
             DEBUG_MATCHOWANIE=False,
             exclude_pks=exclude_pks,
+            # Title similarity is checked by _find_title_matches (once,
+            # returning several records) -- do not run it twice.
+            matchuj_po_tytule=False,
         )
     except Exception:
         # One malformed record must not stop the whole scan; log it with
@@ -365,6 +385,30 @@ def _get_rejected_pairs():
             "duplicate_object_id",
         )
     }
+
+
+def _delete_rejected_pending(scan_run):
+    """Delete pending candidates of ``scan_run`` whose pair has been marked
+    as "not a duplicate". Returns the number of deleted candidates."""
+    from .models import PublicationDuplicateCandidate
+
+    rejected = _get_rejected_pairs()
+    if not rejected:
+        return 0
+
+    pending = PublicationDuplicateCandidate.objects.filter(
+        scan_run=scan_run, status=PublicationDuplicateCandidate.Status.PENDING
+    ).values_list(
+        "pk",
+        "original_content_type_id",
+        "original_object_id",
+        "duplicate_content_type_id",
+        "duplicate_object_id",
+    )
+    to_delete = [pk for pk, *pair in pending if _pair_key(*pair) in rejected]
+    if not to_delete:
+        return 0
+    return PublicationDuplicateCandidate.objects.filter(pk__in=to_delete).delete()[0]
 
 
 def _delete_orphaned_decisions():
@@ -525,6 +569,10 @@ def scan_for_duplicates(
                 PublicationDuplicateCandidate.objects.bulk_create(
                     candidates_to_create, ignore_conflicts=True
                 )
+
+        # Pairs rejected by an editor while this scan was running (the
+        # snapshot in processed_pairs predates them) must not come back.
+        duplicates_found -= _delete_rejected_pending(scan_run)
 
         # Mark scan as completed
         scan_run.status = PublicationDuplicateScanRun.Status.COMPLETED

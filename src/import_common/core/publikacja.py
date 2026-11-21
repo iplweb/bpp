@@ -295,12 +295,18 @@ def matchuj_publikacje(
     isbn_matchuj_tylko_nadrzedne=True,
     doi_matchuj_tylko_nadrzedne=True,
     exclude_pks=None,
+    matchuj_po_tytule=True,
 ):
     """Zwraca jeden, najlepiej pasujący rekord ``klass`` albo None.
 
     ``exclude_pks`` — klucze rekordów ``klass``, których nie wolno zwrócić
     (np. rekord, dla którego szuka się duplikatów, i duplikaty już
     znalezione). Domyślnie nic nie jest pomijane.
+
+    ``matchuj_po_tytule=False`` wyłącza ostatni krok -- dopasowanie po samym
+    podobieństwie tytułu (kosztowne: liczy podobieństwo dla wszystkich prac
+    z danego roku). Używa tego deduplikator publikacji, który porównuje
+    tytuły osobnym zapytaniem.
     """
     # Próba po DOI (przed normalizacją tytułu)
     if doi is not None:
@@ -346,7 +352,7 @@ def matchuj_publikacje(
         return result
 
     # Próba po podobieństwie tytułu
-    if _is_title_long_enough(title):
+    if matchuj_po_tytule and _is_title_long_enough(title):
         result = _try_match_pub_by_title(
             klass,
             title,

@@ -19,5 +19,7 @@ prace różniące się numerem części
 („cz. II” i „cz. III”) nie są parowane, deduplikator niczego nie scala ani nie
 usuwa, a pary potwierdzone przyciskiem **Potwierdź jako duplikat** nowe
 skanowanie tego samego zakresu lat nadal zastępuje. Po aktualizacji warto
-uruchomić skanowanie ponownie — lista może być dłuższa niż dotąd, a samo
-skanowanie potrwać nieco dłużej.
+uruchomić skanowanie ponownie — lista może być dłuższa niż dotąd; czas
+skanowania pozostaje mniej więcej taki sam jak przed zmianą. Para oznaczona
+jako **Nie jest duplikatem** w trakcie trwającego skanowania również nie
+pojawi się w jego wynikach.
