@@ -64,7 +64,10 @@ class Funkcja_AutoraViewSet(viewsets.ReadOnlyModelViewSet):
 class Autor_JednostkaViewSet(viewsets.ReadOnlyModelViewSet):
     # Bazowy queryset BEZ filtra widoczności — zawężenie robi get_queryset()
     # dla każdego bez uprawnień (analogicznie do AutorViewSet).
-    queryset = Autor_Jednostka.objects.all()
+    # Wiersze autorów / jednostek z kosza są niewidoczne (rodzic w koszu).
+    queryset = Autor_Jednostka.objects.filter(
+        autor__deleted_at__isnull=True, jednostka__deleted_at__isnull=True
+    )
     serializer_class = Autor_JednostkaSerializer
 
     def get_queryset(self):
