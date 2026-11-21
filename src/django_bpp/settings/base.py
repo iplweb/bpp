@@ -386,6 +386,9 @@ MIDDLEWARE = [
     # 'rollbar.contrib.django.middleware.RollbarNotifierMiddleware',
     "bpp.middleware.CustomRollbarNotifierMiddleware",
     "oauth_mcp.middleware.ApiReadOnlyForBearerMiddleware",
+    # Trashed record -> 410 Gone page. Below Rollbar so its process_exception
+    # runs first (an expected signal, not an error to report).
+    "bpp.middleware.RekordUsunietyMiddleware",
     # AxesMiddleware MUSI być ostatnie — przechwytuje AxesBackendPermissionDenied
     # z backendu logowania i renderuje odpowiedź "konto zablokowane".
     "axes.middleware.AxesMiddleware",
