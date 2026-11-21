@@ -1,3 +1,4 @@
+import unicodedata
 from typing import Any
 
 from django.db import models
@@ -26,6 +27,7 @@ from import_common.core import (
     normalized_db_zrodlo_nazwa,
     normalized_db_zrodlo_skrot,
     znajdz_kandydatow_autora,
+    zrodla_po_tytule_bez_diakrytykow,
 )
 from import_common.normalization import (
     normalize_doi,
@@ -495,6 +497,18 @@ class Komparator:
 
         return BRAK_DOPASOWANIA
 
+    @staticmethod
+    def _nazwa_bez_diakrytykow(s):
+        """Klucz grupowania duplikatów źródeł ignorujący diakrytyki.
+
+        „Védelem Tudomány" i „Vedelem Tudomany" to ten sam tytuł; drugi
+        wariant mógł powstać przy wcześniejszym, nieudanym dopasowaniu
+        (FD#460). Bez tego oba lądowały w osobnych grupach i źródło
+        zostawało niedopasowane.
+        """
+        s = unicodedata.normalize("NFKD", normalize_zrodlo_nazwa_for_db_lookup(s))
+        return "".join(c for c in s if not unicodedata.combining(c))
+
     @classmethod
     def porownaj_container_title(cls, wartosc):
         poszukiwania = [wartosc]
@@ -502,6 +516,25 @@ class Komparator:
             poszukiwania.append(wartosc[4:])
 
         for ciag in poszukiwania:
+            # Tytuł zgodny po pominięciu wielkości liter i diakrytyków
+            # („Vedelem Tudomany" ↔ „Védelem Tudomány", FD#460). Sprawdzane
+            # PRZED trygramami: różnica w akcentach potrafi zbić podobieństwo
+            # trygramowe poniżej progu, a podobne-lecz-inne tytuły nad próg.
+            zgodne = zrodla_po_tytule_bez_diakrytykow(ciag)
+            if zgodne is not None:
+                zgodne = list(zgodne[:6])
+            if zgodne:
+                rekordy, zduplikowane = cls._scal_duplikaty_zrodel(
+                    zgodne, "nazwa", cls._nazwa_bez_diakrytykow
+                )
+                return WynikPorownania(
+                    StatusPorownania.LUZNE,
+                    "tytuł zgodny po pominięciu wielkości liter "
+                    "i znaków diakrytycznych",
+                    rekordy=rekordy,
+                    zduplikowane_zrodla=zduplikowane,
+                )
+
             tgrm = perform_trigram_search(
                 Zrodlo.objects.exclude(nazwa="").exclude(nazwa=None),
                 normalized_db_zrodlo_nazwa,
