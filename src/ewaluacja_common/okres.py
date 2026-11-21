@@ -1,5 +1,6 @@
-"""Wybór okresu ewaluacji: domyślny (wg bieżącego roku) albo wybrany przez
-użytkownika w górnej belce stron ewaluacji (pamiętany w sesji).
+"""Wybór okresu ewaluacji: ostatnio wybrany przez użytkownika w górnej belce
+stron ewaluacji (sesja + trwale ``WybranyOkresEwaluacji``), a bez wyboru —
+domyślny wg bieżącego roku.
 
 Użycie w widokach: ``okres = okres_dla_request(request)``, potem
 ``okres.rok_od`` / ``okres.rok_do`` / ``okres.lata``.
@@ -41,7 +42,7 @@ def zasiej_okresy_po_migracji(sender, using="default", **kwargs):
     Kod ewaluacji zakłada, że jest choć jeden okres. Migracja danych odpala
     się raz, a ``flush`` (testy transakcyjne, ``manage.py flush``) czyści
     tabelę i woła tylko ``post_migrate`` — stąd ten handler. Niepustej tabeli
-    nie rusza, więc okresy poprawione w adminie zostają.
+    nie rusza (okresy zmieniamy migracjami danych, nie tutaj).
     """
     from django.db import connections
 
@@ -76,9 +77,24 @@ def okres_domyslny(rok=None):
     return okresy[0] if okresy else None
 
 
+def _zapamietany_dla_uzytkownika(request):
+    """Ostatni okres wybrany przez zalogowanego użytkownika (z poprzednich
+    sesji) albo ``None``."""
+    from ewaluacja_common.models import WybranyOkresEwaluacji
+
+    user = getattr(request, "user", None)
+    if user is None or not user.is_authenticated:
+        return None
+    wybor = (
+        WybranyOkresEwaluacji.objects.filter(user=user).select_related("okres").first()
+    )
+    return wybor.okres if wybor is not None else None
+
+
 def okres_dla_request(request):
-    """Okres wybrany w sesji (jeśli nadal istnieje) albo domyślny.
-    Wynik zapamiętany na obiekcie ``request`` (jedno zapytanie na żądanie)."""
+    """Okres wybrany w sesji (jeśli nadal istnieje), potem ostatnio wybrany
+    przez użytkownika (trwale), na końcu domyślny. Wynik zapamiętany na
+    obiekcie ``request`` (jedno zapytanie na żądanie)."""
     from ewaluacja_common.models import OkresEwaluacji
 
     if request is None:
@@ -91,11 +107,23 @@ def okres_dla_request(request):
     if pk is not None:
         okres = OkresEwaluacji.objects.filter(pk=pk).first()
     if okres is None:
+        okres = _zapamietany_dla_uzytkownika(request)
+        if okres is not None and hasattr(request, "session"):
+            request.session[KLUCZ_SESJI] = okres.pk
+    if okres is None:
         okres = okres_domyslny()
     request._okres_ewaluacji = okres
     return okres
 
 
 def ustaw_okres(request, okres):
+    """Zapamiętaj wybór w sesji i — dla zalogowanego — na stałe."""
+    from ewaluacja_common.models import WybranyOkresEwaluacji
+
     request.session[KLUCZ_SESJI] = okres.pk
     request._okres_ewaluacji = okres
+    user = getattr(request, "user", None)
+    if user is not None and user.is_authenticated:
+        WybranyOkresEwaluacji.objects.update_or_create(
+            user=user, defaults={"okres": okres}
+        )

@@ -89,7 +89,7 @@ def test_post_migrate_zaklada_okresy_gdy_tabela_pusta():
 
 
 @pytest.mark.django_db
-def test_post_migrate_nie_rusza_okresow_z_admina():
+def test_post_migrate_nie_rusza_niepustej_tabeli():
     from django.apps import apps
 
     from ewaluacja_common.okres import zasiej_okresy_po_migracji
@@ -104,3 +104,60 @@ def test_post_migrate_nie_rusza_okresow_z_admina():
 def test_okresy_przezywaja_flush_testu_transakcyjnego():
     """Test transakcyjny przed nami zrobił flush — okresy muszą być."""
     assert OkresEwaluacji.objects.filter(rok_od=2022).exists()
+
+
+@pytest.mark.django_db
+def test_wybor_okresu_zapamietany_po_ponownym_zalogowaniu(client, admin_user):
+    """Ostatnio wybrany okres jest domyślnym także w NOWEJ sesji."""
+    from ewaluacja_common.models import WybranyOkresEwaluacji
+
+    stary = OkresEwaluacji.objects.get(rok_od=2022)
+    client.force_login(admin_user)
+    client.post(reverse("ewaluacja_common:wybierz_okres"), {"okres": stary.pk})
+    assert WybranyOkresEwaluacji.objects.get(user=admin_user).okres == stary
+
+    client.logout()
+    client.force_login(admin_user)
+    assert KLUCZ_SESJI not in client.session
+    resp = client.get(reverse("ewaluacja_metryki:lista"))
+    assert resp.context["okres_ewaluacji"] == stary
+    # ...i przechodząc po kolejnych stronach dalej ten sam:
+    resp = client.get(reverse("ewaluacja_dwudyscyplinowcy:index"))
+    assert resp.context["okres_ewaluacji"] == stary
+
+
+@pytest.mark.django_db
+def test_zmiana_wyboru_nadpisuje_zapamietany(admin_client, admin_user):
+    from ewaluacja_common.models import WybranyOkresEwaluacji
+
+    for rok_od in (2022, 2026):
+        admin_client.post(
+            reverse("ewaluacja_common:wybierz_okres"),
+            {"okres": OkresEwaluacji.objects.get(rok_od=rok_od).pk},
+        )
+    assert WybranyOkresEwaluacji.objects.get(user=admin_user).okres.rok_od == 2026
+    assert WybranyOkresEwaluacji.objects.count() == 1
+
+
+@pytest.mark.django_db
+def test_bez_wyboru_okres_domyslny(admin_client):
+    resp = admin_client.get(reverse("ewaluacja_metryki:lista"))
+    assert resp.context["okres_ewaluacji"] == okres_domyslny()
+
+
+@pytest.mark.django_db
+def test_admin_okresow_tylko_do_odczytu(admin_client):
+    okres = OkresEwaluacji.objects.first()
+    base = "admin:ewaluacja_common_okresewaluacji_"
+    assert admin_client.get(reverse(base + "changelist")).status_code == 200
+    assert admin_client.get(reverse(base + "add")).status_code == 403
+    assert (
+        admin_client.get(reverse(base + "delete", args=[okres.pk])).status_code == 403
+    )
+    # Widok zmiany dla superusera bez prawa zmiany = podgląd, POST nic nie zmienia.
+    admin_client.post(
+        reverse(base + "change", args=[okres.pk]),
+        {"rok_od": okres.rok_od, "rok_do": 2099, "uwagi": "x"},
+    )
+    okres.refresh_from_db()
+    assert okres.rok_do != 2099
