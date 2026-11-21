@@ -246,7 +246,10 @@ def test_konta_demo(demo):
 def test_konta_demo_nie_zmieniaja_istniejacego(tmp_path):
     _zapewnij_slowniki()
     User = get_user_model()
-    User.objects.create_user(username="admin", password="moje-haslo")
+    # Konto bez hasła (nieużywalne) — generator nie może ustawić mu „admin”.
+    # Bez hasła w kodzie: skaner sekretów (GitGuardian) traktuje parę
+    # login + hasło w teście jak wyciek.
+    User.objects.create_user(username="admin")
     _create(
         tmp_path / "m.json",
         "--konta-demo",
@@ -257,7 +260,7 @@ def test_konta_demo_nie_zmieniaja_istniejacego(tmp_path):
         "--bez-zgloszen",
     )
     admin = User.objects.get(username="admin")
-    assert admin.check_password("moje-haslo")
+    assert not admin.has_usable_password()
     assert not admin.is_superuser
     assert User.objects.filter(username="redaktor").exists()
 
