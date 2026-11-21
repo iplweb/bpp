@@ -1,0 +1,201 @@
+@use "sass:color";
+@import "settings_apoz";
+
+// IBM Plex Sans — ten sam krój co w ATOM 2.0. Pliki .woff2 są
+// self-hostowane (src/bpp/static/bpp/fonts/ibm-plex-sans/, z paczki npm
+// @fontsource/ibm-plex-sans 5.3.0, licencja SIL OFL 1.1 — LICENSE.txt obok),
+// bez odpytywania Google Fonts. Tylko podzbiory latin + latin-ext
+// (latin-ext = polskie znaki). Ścieżki względem tego pliku: scss/ → bpp/fonts/.
+$apoz-font-dir: "../bpp/fonts/ibm-plex-sans";
+$apoz-range-latin-ext: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
+$apoz-range-latin: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+
+@each $weight, $style in (400 normal, 400 italic, 600 normal, 700 normal, 700 italic) {
+  @each $subset, $range in (latin-ext $apoz-range-latin-ext, latin $apoz-range-latin) {
+    @font-face {
+      font-family: 'IBM Plex Sans';
+      font-style: $style;
+      font-weight: $weight;
+      font-display: swap;
+      src: url('#{$apoz-font-dir}/ibm-plex-sans-#{$subset}-#{$weight}-#{$style}.woff2') format('woff2');
+      unicode-range: $range;
+    }
+  }
+}
+
+@import "common";
+@import "checkbox";
+@import "main_page_buttons";
+@import "browse";
+@import "browse_autorzy";
+@import "browse_jednostki";
+@import "external_links";
+@import "ranking_autorow";
+@import "pagination";
+@import "wizard_forms";
+
+@import "foundation-includes";
+$info-color: #e6f5fc;
+
+// Kolory marki w pełnym nasyceniu — wyłącznie dekoracyjnie (paski, obwódki,
+// ikony), nigdy jako tło pod małym tekstem. Uzasadnienie w _settings_apoz.scss.
+$apoz-blue: #009ee0;
+$apoz-gold: #b99a4b;
+$apoz-gold-text: #7d6326;
+$apoz-red: #e2001a;
+
+/* app-apoz theme checkbox and radio button accent color */
+input[type=checkbox],
+input[type=radio] {
+  accent-color: $primary-color;
+}
+
+// Theme-specific overrides for browse.scss
+.modern-header {
+  h1, h2 {
+    .fi-foundation {
+      color: $primary-color;
+    }
+  }
+}
+
+.section-header {
+  h2 {
+    .fi-home {
+      color: $primary-color;
+    }
+
+    .fi-torsos-all {
+      color: $apoz-gold-text;
+    }
+  }
+}
+
+.jednostka-name a {
+  &:hover {
+    &.link-aktualne {
+      color: $primary-color;
+    }
+
+    &.link-kola {
+      color: $apoz-gold-text;
+    }
+  }
+}
+
+.button-search {
+  background: $primary-color;
+
+  &:hover {
+    background-color: color.adjust($primary-color, $lightness: -10%);
+  }
+}
+
+.button-show-all {
+  background: $secondary-color;
+  color: $black;
+
+  &:hover {
+    background-color: color.adjust($secondary-color, $lightness: -10%);
+    color: $black;
+  }
+}
+
+.author-profile-link {
+  color: $primary-color;
+}
+
+.ui-state-focus {
+  background: $primary-color !important;
+  border: 1px white !important;
+}
+
+.select2-results__option--highlighted {
+  background: $primary-color !important;
+  color: white;
+}
+
+// --- Styl ATOM 2.0 ------------------------------------------------------------
+
+// Pasek nawigacji jak w ATOM-ie: pełne tło w kolorze głównym z białym
+// tekstem (biały na #0073a6 = 5.25:1, AA), cienka złota linia u dołu
+// i lekki cień. Rozwijane podmenu zostają białe z ciemnym tekstem — jak
+// w pozostałych motywach i jak dropdowny ATOM-a.
+$apoz-navbar: $primary-color;
+
+nav.sticky-header {
+  background: $apoz-navbar;
+  border-bottom: 3px solid $apoz-gold;
+  box-shadow: 0 1px 4px rgba($black, 0.18);
+}
+
+.top-bar,
+.top-bar > .top-bar-left > ul.dropdown.menu,
+.top-bar > .top-bar-right > ul.dropdown.menu {
+  background: $apoz-navbar;
+}
+
+.top-bar .dropdown.menu > li > a {
+  color: $white;
+
+  &:hover,
+  &:focus-visible {
+    background-color: rgba($white, 0.14);
+    color: $white;
+  }
+}
+
+// Strzałki rozwijania pozycji najwyższego poziomu (Foundation rysuje je
+// obramowaniem w kolorze linków — na niebieskim tle byłyby niewidoczne).
+.top-bar .dropdown.menu > li.is-dropdown-submenu-parent > a::after {
+  border-top-color: $white;
+}
+
+// Wylogowanie na najwyższym poziomie (gdyby tam trafiło) — biały, nie szary.
+.top-bar .dropdown.menu > li > a[href*="logout"] {
+  color: $white;
+}
+
+// Logo BPP: na ciemnym tle szara (grayscale) ikona ginie — rozjaśniamy.
+.top-bar .bpp-logo {
+  filter: grayscale(100%) brightness(1.6);
+}
+
+// Cyfry w tabelach w równych kolumnach (lata, punkty, liczby cytowań).
+table {
+  font-variant-numeric: tabular-nums;
+}
+
+// Nagłówki tabel w neutralnym, jasnym tonie z półgrubą czcionką (ATOM:
+// `.table > thead.table-light`).
+table thead th {
+  font-weight: 600;
+}
+
+// Karty: białe na szarym tle strony, jasny nagłówek karty.
+.card {
+  border-radius: $global-radius;
+  box-shadow: 0 1px 2px rgba($black, 0.06);
+}
+
+.card-divider {
+  border-bottom: 1px solid #dde3ea;
+  font-weight: 600;
+}
+
+// Przyciski: półgruba czcionka jak w ATOM-ie.
+.button {
+  font-weight: 600;
+}
+
+// Wyraźny pierścień fokusa z klawiatury (dostępność), w kolorze marki.
+a:focus-visible,
+.button:focus-visible,
+button:focus-visible {
+  outline: 2px solid $apoz-blue;
+  outline-offset: 2px;
+}
+
+// Print styles — MUSZA byc ostatnie: Foundation (foundation-print-styles
+// wyzej) emituje wlasny blok @media print i chcemy byc za nim w kaskadzie.
+@import "print";

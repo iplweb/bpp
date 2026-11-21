@@ -3,6 +3,9 @@
 Patrz docs/superpowers/specs/2026-06-02-motywy-z-settings-design.md
 """
 
+import re
+from pathlib import Path
+
 import pytest
 from django.conf import settings
 
@@ -45,3 +48,40 @@ def test_admin_form_oferuje_motywy_z_settings():
 
     form = UczelniaAdminForm()
     assert list(form.fields["theme_name"].choices) == list(settings.BPP_THEMES)
+
+
+# --- Pliki motywów (FD#609: motyw app-apoz) -----------------------------------
+
+REPO = Path(__file__).resolve().parents[4]
+SCSS_DIR = REPO / "src" / "bpp" / "static" / "scss"
+
+
+@pytest.mark.parametrize("value", [value for value, _ in settings.BPP_THEMES])
+def test_kazdy_motyw_ma_zrodlo_scss_i_target_grunta(value):
+    """Wpis w BPP_THEMES bez pliku SCSS albo targetu w Gruntfile.js daje
+    w produkcji 404 na arkusz stylów (strona bez CSS) — pilnujemy obu."""
+    assert (SCSS_DIR / f"{value}.scss").is_file()
+    gruntfile = (REPO / "Gruntfile.js").read_text(encoding="utf-8")
+    assert f"'src/bpp/static/scss/{value}.css'" in gruntfile
+
+
+def test_motyw_app_apoz_jest_na_liscie():
+    assert "app-apoz" in dict(settings.BPP_THEMES)
+
+
+def test_motyw_app_apoz_fonty_self_hostowane():
+    """IBM Plex Sans jest serwowany z naszych plików statycznych — każdy
+    plik wskazany w @font-face istnieje, a motyw nie sięga do Google Fonts."""
+    src = (SCSS_DIR / "app-apoz.scss").read_text(encoding="utf-8")
+    assert "fonts.googleapis.com" not in src
+    assert "fonts.gstatic.com" not in src
+
+    font_dir = REPO / "src" / "bpp" / "static" / "bpp" / "fonts" / "ibm-plex-sans"
+    weights = re.search(r"@each \$weight, \$style in \(([^)]*)\)", src).group(1)
+    pary = [p.split() for p in weights.split(",")]
+    assert pary, "brak listy wag fontu w app-apoz.scss"
+    for weight, style in pary:
+        for subset in ("latin", "latin-ext"):
+            plik = font_dir / f"ibm-plex-sans-{subset}-{weight}-{style}.woff2"
+            assert plik.is_file(), plik
+    assert (font_dir / "LICENSE.txt").is_file()

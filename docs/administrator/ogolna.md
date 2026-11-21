@@ -14,7 +14,13 @@ Co pokazuje strona startowa modułu redagowania („Panel Sterowania”) i jakie
   na urządzeniach przenośnych), a w sekcji „Strona wizualna” — logo uczelni
   („Logo na stronę WWW”, „Logo wektorowe (SVG)”),
 - w sekcji „Opcje edycji” ustawisz domyślną wartość pola „Afiliuje” dla
-  powiązań autorów z pracami (wydawnictwo ciągłe, zwarte, patent).
+  powiązań autorów z pracami (wydawnictwo ciągłe, zwarte, patent),
+- polem „Motyw kolorystyczny” wybierzesz wygląd stron publicznych BPP
+  (kolory, a w niektórych motywach także czcionkę i zaokrąglenia). Zmiana
+  działa po zapisaniu rekordu i odświeżeniu strony; nie wpływa na dane ani
+  na wygląd modułu redagowania (tam każdy użytkownik wybiera własny motyw).
+  Motyw „Błękitno-złoty (styl ATOM)” ma niebieski pasek menu ze złotą linią,
+  czcionkę IBM Plex Sans i lekko zaokrąglone przyciski oraz pola formularzy.
 
 Sposoby logowania (konta BPP, LDAP/Active Directory, Keycloak, Microsoft,
 ORCID) i ich konfigurację opisuje strona [Metody logowania](metody-logowania.md).

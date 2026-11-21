@@ -9,15 +9,42 @@
 
 ## Theme Files (Color Schemes)
 
-Three theme files in `src/bpp/static/scss/`:
+Theme files in `src/bpp/static/scss/` (the list offered in the admin lives
+in `BPP_THEMES` in `src/django_bpp/settings/base.py`):
 
-| Theme File | Primary Color |
-|------------|---------------|
-| `app-blue.scss` | `#1779ba` (Foundation default) |
-| `app-orange.scss` | `#f26621` |
-| `app-green.scss` | `green` |
+| Theme File | Settings | Primary Color |
+|------------|----------|---------------|
+| `app-blue.scss` | `_settings.scss` | `#1779ba` (Foundation default) |
+| `app-orange.scss` | `_settings_orange.scss` | `#f26621` |
+| `app-green.scss` | `_settings_green.scss` | `green` |
+| `app-vizja.scss` | `_settings_vizja.scss` | `#efa402` |
+| `app-mwsl.scss` | `_settings_mwsl.scss` | `#e35b00` |
+| `app-uafm.scss` | `_settings_uafm.scss` | `#b41906` |
+| `app-apoz.scss` | `_settings_apoz.scss` | `#0073a6` (brand `#009ee0` darkened for WCAG AA), gold `#b99a4b` secondary |
 
 Each theme imports: settings -> common.scss -> components -> Foundation framework.
+
+### Adding a theme
+
+1. `_settings_<name>.scss` (copy of an existing one) + `app-<name>.scss`
+   (entrypoint, copy of an existing one).
+2. Target `sass:<name>` in `Gruntfile.js` (both the `sass` section and
+   `concurrent:themes`).
+3. Entry in `BPP_THEMES` in `src/django_bpp/settings/base.py` — no migration
+   needed (`Uczelnia.theme_name` has no `choices`).
+4. Optional `--admin-hover-bg` colour in
+   `src/django_bpp/templates/admin/base_site.html`.
+
+`src/bpp/tests/test_admin/test_uczelnia_theme.py` checks that every theme in
+`BPP_THEMES` has its SCSS file and Grunt target.
+
+### Theme fonts (`app-apoz`)
+
+`app-apoz` uses IBM Plex Sans (SIL OFL 1.1), self-hosted in
+`src/bpp/static/bpp/fonts/ibm-plex-sans/` — `.woff2` files copied from the npm
+package `@fontsource/ibm-plex-sans` 5.3.0 (latin + latin-ext subsets, weights
+400/600/700, 400/700 italic; licence in `LICENSE.txt`). The `@font-face`
+rules are generated in `app-apoz.scss`; no request goes to Google Fonts.
 
 ## Common.scss
 

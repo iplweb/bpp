@@ -63,6 +63,12 @@ module.exports = function (grunt) {
                         'src/bpp/static/scss/app-uafm.scss'
                 }
             },
+            apoz: {
+                files: {
+                    'src/bpp/static/scss/app-apoz.css':
+                        'src/bpp/static/scss/app-apoz.scss'
+                }
+            },
             adminthemes: {
                 files: {
                     'src/bpp/static/bpp/css/admin-themes.css':
@@ -176,6 +182,7 @@ module.exports = function (grunt) {
                     'sass:vizja',
                     'sass:mwsl',
                     'sass:uafm',
+                    'sass:apoz',
                     'sass:adminthemes',
                     'sass:adminfilterpanel',
                     'sass:adminprint',
