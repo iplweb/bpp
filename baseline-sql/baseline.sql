@@ -16677,6 +16677,30 @@ COPY public.django_countdown_sitecountdown (id, countdown_time, message, long_de
 --
 
 COPY public.django_migrations (id, app, name, applied) FROM stdin;
+155	bpp	0074_django110	2000-01-01 00:00:00+00
+683	ewaluacja_metryki	0002_alter_metrykaautora_jednostka	2000-01-01 00:00:00+00
+898	raport_slotow	0019_alter_raportslotowuczelnia_do_roku	2000-01-01 00:00:00+00
+917	rozbieznosci_dyscyplin	0016_rozbieznosci_dyscyplin_zrodel_v2	2000-01-01 00:00:00+00
+918	rozbieznosci_dyscyplin	0017_add_punkty_kbn_and_charakter_formalny	2000-01-01 00:00:00+00
+920	rozbieznosci_dyscyplin	0019_recreate	2000-01-01 00:00:00+00
+921	rozbieznosci_dyscyplin	0020_recreate	2000-01-01 00:00:00+00
+922	rozbieznosci_dyscyplin	0021_alter_rozbieznosciview_options	2000-01-01 00:00:00+00
+929	snapshot_odpiec	0001_initial	2000-01-01 00:00:00+00
+1063	oauth2_provider	0003_auto_20201211_1314	2000-01-01 00:00:00+00
+1064	oauth2_provider	0004_auto_20200902_2022	2000-01-01 00:00:00+00
+1099	bpp	0470_merge_20260708_1616	2000-01-01 00:00:00+00
+1100	bpp	0473_merge_20260722_1632	2000-01-01 00:00:00+00
+1101	ewaluacja_metryki	0010_dedup_statusgenerowania_bez_uczelni	2000-01-01 00:00:00+00
+1102	ewaluacja_metryki	0011_statusgenerowania_jeden_wiersz_bez_uczelni	2000-01-01 00:00:00+00
+42	pbn_api	0008_auto_20210406_0530	2000-01-01 00:00:00+00
+77	taggit	0002_auto_20150616_2121	2000-01-01 00:00:00+00
+78	taggit	0003_taggeditem_add_unique_index	2000-01-01 00:00:00+00
+153	bpp	0072_gist_to_gin	2000-01-01 00:00:00+00
+154	bpp	0073_auto_20170616_1709	2000-01-01 00:00:00+00
+156	bpp	0075_auto_20170622_0057	2000-01-01 00:00:00+00
+157	bpp	0076_auto_20170622_0058	2000-01-01 00:00:00+00
+158	bpp	0077_auto_20170624_0130	2000-01-01 00:00:00+00
+1207	pbn_downloader_app	0005_task_user_opcjonalny	2000-01-01 00:00:00+00
 643	easyaudit	0010_repr_text	2000-01-01 00:00:00+00
 615	django_celery_results	0006_taskresult_date_created	2000-01-01 00:00:00+00
 709	flexible_reports	0001_initial	2000-01-01 00:00:00+00
@@ -16776,7 +16800,6 @@ COPY public.django_migrations (id, app, name, applied) FROM stdin;
 854	pbn_import	0004_add_bpp_publication_content_type	2000-01-01 00:00:00+00
 855	pbn_import	0005_remove_importstatistics	2000-01-01 00:00:00+00
 862	pbn_komparator_zrodel	0001_initial	2000-01-01 00:00:00+00
-155	bpp	0074_django110	2000-01-01 00:00:00+00
 359	bpp	0266_auto_20210519_0236	2000-01-01 00:00:00+00
 595	denorm	0003_auto_20211002_1955	2000-01-01 00:00:00+00
 856	pbn_import	0006_remove_importstep	2000-01-01 00:00:00+00
@@ -17679,7 +17702,6 @@ COPY public.django_migrations (id, app, name, applied) FROM stdin;
 679	ewaluacja_liczba_n	0007_alter_iloscudzialowdlaautorazacalosc_komentarz	2000-01-01 00:00:00+00
 848	pbn_export_queue	0005_reclassify_old_validation_errors	2000-01-01 00:00:00+00
 681	ewaluacja_liczba_n	0009_alter_dyscyplinanieraportowana_uczelnia_and_more	2000-01-01 00:00:00+00
-683	ewaluacja_metryki	0002_alter_metrykaautora_jednostka	2000-01-01 00:00:00+00
 684	ewaluacja_metryki	0003_add_liczba_do_przetworzenia	2000-01-01 00:00:00+00
 685	ewaluacja_metryki	0004_metrykaautora_rodzaj_autora	2000-01-01 00:00:00+00
 686	ewaluacja_metryki	0005_alter_metrykaautora_rodzaj_autora_and_more	2000-01-01 00:00:00+00
@@ -17857,28 +17879,6 @@ COPY public.django_migrations (id, app, name, applied) FROM stdin;
 873	przemapuj_prace_autora	0001_initial	2000-01-01 00:00:00+00
 874	przemapuj_prace_autora	0002_przemapoaniepracautora_prace_ciagle_historia_and_more	2000-01-01 00:00:00+00
 897	raport_slotow	0018_alter_raportslotowuczelnia_do_roku	2000-01-01 00:00:00+00
-898	raport_slotow	0019_alter_raportslotowuczelnia_do_roku	2000-01-01 00:00:00+00
-917	rozbieznosci_dyscyplin	0016_rozbieznosci_dyscyplin_zrodel_v2	2000-01-01 00:00:00+00
-918	rozbieznosci_dyscyplin	0017_add_punkty_kbn_and_charakter_formalny	2000-01-01 00:00:00+00
-920	rozbieznosci_dyscyplin	0019_recreate	2000-01-01 00:00:00+00
-921	rozbieznosci_dyscyplin	0020_recreate	2000-01-01 00:00:00+00
-922	rozbieznosci_dyscyplin	0021_alter_rozbieznosciview_options	2000-01-01 00:00:00+00
-929	snapshot_odpiec	0001_initial	2000-01-01 00:00:00+00
-1063	oauth2_provider	0003_auto_20201211_1314	2000-01-01 00:00:00+00
-1064	oauth2_provider	0004_auto_20200902_2022	2000-01-01 00:00:00+00
-1099	bpp	0470_merge_20260708_1616	2000-01-01 00:00:00+00
-1100	bpp	0473_merge_20260722_1632	2000-01-01 00:00:00+00
-1101	ewaluacja_metryki	0010_dedup_statusgenerowania_bez_uczelni	2000-01-01 00:00:00+00
-1102	ewaluacja_metryki	0011_statusgenerowania_jeden_wiersz_bez_uczelni	2000-01-01 00:00:00+00
-42	pbn_api	0008_auto_20210406_0530	2000-01-01 00:00:00+00
-77	taggit	0002_auto_20150616_2121	2000-01-01 00:00:00+00
-78	taggit	0003_taggeditem_add_unique_index	2000-01-01 00:00:00+00
-153	bpp	0072_gist_to_gin	2000-01-01 00:00:00+00
-154	bpp	0073_auto_20170616_1709	2000-01-01 00:00:00+00
-156	bpp	0075_auto_20170622_0057	2000-01-01 00:00:00+00
-157	bpp	0076_auto_20170622_0058	2000-01-01 00:00:00+00
-158	bpp	0077_auto_20170624_0130	2000-01-01 00:00:00+00
-1207	pbn_downloader_app	0005_task_user_opcjonalny	2000-01-01 00:00:00+00
 \.
 
 
