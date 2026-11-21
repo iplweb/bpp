@@ -12,8 +12,8 @@ What it does:
 - creates the demo editor ``vesemir`` (password == login, ``is_staff``,
   group "wprowadzanie danych") and the demo superuser ``regis`` (for the
   remap history in the editing module, which only a superuser can open),
-- creates "Jednostka Domyślna" - the catch-all unit an import puts works in
-  when it cannot tell the author's unit,
+- creates "Jednostka Domyślna <skrót uczelni>" - the catch-all unit an
+  import puts works in when it cannot tell the author's unit,
 - files the 6 newest journal articles and 2 newest books of the demo author
   "Eskel z Cintry" (pk 136, unit "Katedra i Zakład Mutacji") under
   "Jednostka Domyślna", as an import would. The demo DB already has a second,
@@ -61,9 +61,11 @@ with transaction.atomic():
     red.groups.add(Group.objects.get(name="wprowadzanie danych"))
     konto("regis", "Emiel", "Regis", superuser=True)
 
+    # named like the current PBN import names it: "Jednostka Domyślna <skrót>"
+    uczelnia = Uczelnia.objects.first()
     jd, _ = Jednostka.objects.get_or_create(
-        nazwa="Jednostka Domyślna",
-        defaults=dict(skrot="JD", uczelnia=Uczelnia.objects.first()),
+        nazwa=f"Jednostka Domyślna {uczelnia.skrot}",
+        defaults=dict(skrot=f"JD-{uczelnia.skrot}", uczelnia=uczelnia),
     )
 
     eskel = Autor.objects.get(pk=ESKEL)

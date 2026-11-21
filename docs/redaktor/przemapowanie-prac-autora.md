@@ -22,9 +22,9 @@ pracy osobno.
 ## Kto może z niego korzystać {#kto-moze}
 
 Przemapowanie i jego cofanie wymagają konta w grupie **„wprowadzanie
-danych”** (albo konta superużytkownika). Przycisk **„Przemapuj prace”**
-widzi na stronie autora każdy zalogowany użytkownik, ale osoba spoza tej
-grupy po kliknięciu dostaje błąd 403. Grupę nadaje administrator BPP
+danych”** (albo konta superużytkownika). Tylko te osoby widzą na stronie
+autora przycisk **„Przemapuj prace”**; ktoś spoza grupy, kto wpisze adres
+narzędzia ręcznie, dostaje błąd 403. Grupę nadaje administrator BPP
 (zob. [Grupy uprawnień](../administrator/grupy-uprawnien.md)).
 
 ## Gdzie to jest {#gdzie}
@@ -71,11 +71,13 @@ sposoby:
     - **„Jednostka źródłowa”** — skąd zabrać prace. Lista zawiera tylko
       jednostki, w których autor ma jakieś prace;
     - **„Jednostka docelowa”** — dokąd je przenieść. Lista zawiera
-      wszystkie jednostki uczelni oprócz „Jednostki Domyślnej”.
+      wszystkie jednostki uczelni oprócz jednostki domyślnej.
 
     Formularz sam podpowiada wybór: gdy autor ma prace tylko w jednej
     jednostce, ustawia ją jako źródłową; gdy ma prace w jednostce
-    nazwanej „Jednostka Domyślna”, ustawia ją jako źródłową. W obu
+    domyślnej (jej nazwa zaczyna się od „Jednostka Domyślna”, np.
+    „Jednostka Domyślna” albo „Jednostka Domyślna” ze skrótem uczelni na
+    końcu), ustawia ją jako źródłową. W obu
     przypadkach jako docelową podpowiada **aktualną jednostkę** autora
     (jeśli jest inna niż źródłowa). Podpowiedź zawsze możesz zmienić.
 
@@ -135,8 +137,8 @@ i statystyk **jednostki docelowej**, a nie źródłowej.
 
 ## Cofanie i historia {#cofanie}
 
-Mimo ostrzeżenia na stronie podglądu („Ta operacja jest nieodwracalna”)
-przemapowanie **można cofnąć**:
+Przemapowanie **można cofnąć** — przypomina o tym też ostrzeżenie na
+stronie podglądu:
 
 1. Otwórz przemapowanie prac tego samego autora. Na dole strony, w tabeli
    **„Historia przemapowań”**, jest 10 ostatnich przemapowań: data, skróty
@@ -162,14 +164,16 @@ wróciły, zostaną pominięte.
 
 **Pełna lista przeniesionych prac.** Tabela na stronie pokazuje tylko
 liczby. Listę tytułów (ID, tytuł, rok, źródło lub wydawnictwo) każdego
-przemapowania widzi **superużytkownik** w module redagowania: ikona lupy
-w kolumnie **„Szczegóły”** otwiera w nowej karcie szczegóły
+przemapowania widzi w module redagowania **superużytkownik** albo osoba,
+której administrator nadał uprawnienie do przeglądania przemapowań prac
+autorów. U nich ikona lupy w kolumnie **„Szczegóły”** otwiera w nowej
+karcie szczegóły
 przemapowania; listy prac są w zwiniętych sekcjach **„Historia
 przemapowanych prac ciągłych”** i **„Historia przemapowanych prac
 zwartych”** (kliknij nagłówek, żeby rozwinąć). Wszystkie przemapowania
-są też w module redagowania pod nazwą **„Przemapowania prac autorów”**. Redaktor bez
-uprawnień superużytkownika widzi w tej kolumnie „-” — jeśli potrzebujesz
-listy tytułów, poproś administratora.
+są też w module redagowania pod nazwą **„Przemapowania prac autorów”**.
+Pozostali redaktorzy widzą w tej kolumnie „-” — jeśli potrzebujesz listy
+tytułów, poproś administratora.
 
 ![Szczegóły przemapowania w module redagowania: autor, jednostki, kto i kiedy, lista przeniesionych prac](../images/redaktor/przemapowanie-prac-autora/06-szczegoly-historii.png)
 
@@ -183,12 +187,10 @@ można je cofnąć przyciskiem „Cofnij”.
 
 **Prace po imporcie trafiły do „Jednostki Domyślnej”.** Import dopisał
 autorowi Eskelowi z Cintry 8 nowych prac, ale nie umiał ustalić
-jednostki, więc odłożył je do „Jednostki Domyślnej”. Eskel pracuje
+jednostki, więc odłożył je do „Jednostki Domyślnej AKM”. Eskel pracuje
 w Katedrze i Zakładzie Mutacji. Na stronie autora kliknij „Przemapuj
-prace” — formularz podpowie „Jednostka Domyślna” → „Katedra i Zakład
-Mutacji” (jeśli jednostka domyślna ma w Twojej bazie inną nazwę, np.
-z dopiskiem skrótu uczelni, wybierz obie jednostki ręcznie). Kliknij
-„Podgląd zmian”, sprawdź liczbę 8 i potwierdź.
+prace” — formularz podpowie „Jednostka Domyślna AKM” → „Katedra i Zakład
+Mutacji”. Kliknij „Podgląd zmian”, sprawdź liczbę 8 i potwierdź.
 
 **Autor zmienił jednostkę i chce mieć cały dorobek w nowej.** Najpierw
 dopisz autorowi nową jednostkę w module redagowania (zakładka jednostek
