@@ -1,3 +1,4 @@
+import os
 import subprocess
 from datetime import timedelta
 from pathlib import Path
@@ -119,6 +120,43 @@ pytest_plugins = [
 # `src/conftest.py` (ładowane PO `django.setup()`).
 # Regresja-guard: src/bpp/tests/test_conftest_preload_safety.py.
 from fixtures import *  # noqa
+from fixtures import xdist_bench  # noqa: E402 - wolny od Django
+
+_XDIST_BENCH_NOTE = pytest.StashKey[str]()
+
+
+@pytest.hookimpl(wrapper=True)
+def pytest_xdist_auto_num_workers(config):
+    """``-n auto`` = min(RAM wg pytest-xdist-memory, wynik ``make xdist-bench``).
+
+    Powyzej pewnej liczby workerow suita juz nie przyspiesza (np. 9950X:
+    16 rdzeni fizycznych, a 16/22/24 workery daja ten sam czas, bo kolejne
+    trafiaja na watki SMT juz zajetych rdzeni). Najlepsze ``-n`` per maszyna
+    i per ``-m`` mierzy ``bin/xdist_bench.py``; tu tylko je stosujemy jako
+    gorny limit. Brak pliku = bez zmian. ``PYTEST_XDIST_AUTO_NUM_WORKERS``
+    (jawne nadpisanie) i jawne ``-n N`` wygrywaja.
+    """
+    workers = yield
+    if workers is None or os.environ.get("PYTEST_XDIST_AUTO_NUM_WORKERS"):
+        return workers
+    best, note = xdist_bench.best_workers(
+        config.rootpath, config.getoption("markexpr", None)
+    )
+    if best is not None and best < workers:
+        config.stash[_XDIST_BENCH_NOTE] = (
+            f"-n auto: {workers} -> {best} workers (limit {note})"
+        )
+        return best
+    if note and best is None:
+        config.stash[_XDIST_BENCH_NOTE] = note
+    return workers
+
+
+def pytest_terminal_summary(terminalreporter, exitstatus, config):
+    note = config.stash.get(_XDIST_BENCH_NOTE, None)
+    if note:
+        terminalreporter.section("xdist-bench")
+        terminalreporter.write_line(note)
 
 
 @pytest.fixture(scope="session")

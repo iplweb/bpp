@@ -681,3 +681,19 @@ def test_admin_user_bledy_formularza_nad_informacja():
     assert 'action="#bledy-formularza"' in body
     assert body.index('id="bledy-formularza"') < body.index("Informacja")
     assert 'href="#id_password1"' in body
+
+
+@pytest.mark.django_db
+def test_konto_techniczne_nie_zamyka_kroku_admina():
+    """Świeża instalacja z kontem technicznym ``bpp-system`` (zakłada je np.
+    ``create_demo_data`` — historia „utworzono”, kolejka PBN): kreator dalej
+    pyta o administratora (django-first-run-wizard >= 0.3.0 patrzy na
+    superużytkowników, nie na „jakiekolwiek konto”). Inaczej bpp-wsl
+    z danymi demo nie miałby żadnego konta, na które da się zalogować."""
+    from first_run_wizard.builtin_steps import AdminUserCreationStep
+
+    from pbn_export_queue.operacje import pobierz_konto_techniczne
+
+    get_user_model().objects.filter(is_superuser=True).delete()
+    pobierz_konto_techniczne()
+    assert AdminUserCreationStep().is_complete() is False
