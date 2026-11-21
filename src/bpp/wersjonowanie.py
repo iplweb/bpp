@@ -23,6 +23,7 @@ Rejestracja jest jawna (a nie automatyczna przez ``VersionAdmin``), bo:
 """
 
 from contextlib import contextmanager
+from types import SimpleNamespace
 
 import reversion
 from django.contrib.admin.models import ADDITION, CHANGE, LogEntry
@@ -83,22 +84,33 @@ def zapewnij_wersje_poczatkowa(obj):
         reversion.set_comment(KOMENTARZ_WERSJI_POCZATKOWEJ)
 
 
+def _zapisz_wersje(user, obj, komentarz):
+    """Nowa wersja ``obj`` w reversion (dla modeli wersjonowanych), ze
+    świeżego odczytu z bazy — żeby zawierała pola wyliczane przez triggery
+    (np. ``aktualna_jednostka`` autora, przeliczaną po każdej zmianie
+    zatrudnienia)."""
+    if not reversion.is_registered(type(obj)):
+        return
+    swiezy = type(obj)._default_manager.get(pk=obj.pk)
+    with transaction.atomic(), reversion.create_revision():
+        reversion.add_to_revision(swiezy)
+        reversion.set_user(user)
+        reversion.set_comment(komentarz)
+
+
 def zarejestruj_utworzenie(user, obj, komentarz):
     """Zarejestruj rekord ``obj`` utworzony poza adminem (importer, task itp.):
     wpis ``LogEntry`` ADDITION + — dla modeli wersjonowanych — pierwsza
     wersja w reversion.
 
     Bez tego rekord „pojawia się znikąd": strona „Historia" w adminie jest
-    pusta, nie wiadomo kto i kiedy go dodał. Wersja jest serializowana ze
-    świeżego odczytu z bazy, żeby zawierała pola wyliczane przez triggery
-    (np. ``aktualna_jednostka`` autora). Wołać PO zapisie (i po zapisie
-    powiązań, które mają być w wersji)."""
-    if reversion.is_registered(type(obj)):
-        swiezy = type(obj)._default_manager.get(pk=obj.pk)
-        with transaction.atomic(), reversion.create_revision():
-            reversion.add_to_revision(swiezy)
-            reversion.set_user(user)
-            reversion.set_comment(komentarz)
+    pusta, nie wiadomo kto i kiedy go dodał. Wołać PO zapisie (i po zapisie
+    powiązań, które mają być w wersji).
+
+    Nie wołać wewnątrz aktywnego bloku ``reversion.create_revision`` —
+    zagnieżdżony blok scaliłby się z zewnętrznym (jedna rewizja z
+    użytkownikiem i komentarzem ostatniego wywołania)."""
+    _zapisz_wersje(user, obj, komentarz)
     LogEntry.objects.log_actions(
         user.pk,
         [obj],
@@ -108,10 +120,28 @@ def zarejestruj_utworzenie(user, obj, komentarz):
     )
 
 
-def zarejestruj_zmiane(user, obj, komentarz):
-    """Wpis ``LogEntry`` CHANGE dla zmiany ``obj`` wykonanej poza adminem,
-    która nie zmienia pól samego rekordu (np. dopisanie zatrudnienia), więc
-    nie wymaga nowej wersji w reversion."""
+@contextmanager
+def zmiana_rekordu(user, obj, komentarz):
+    """Zarejestruj zmianę ``obj`` wykonaną w bloku poza adminem (importer,
+    task itp.): wpis ``LogEntry`` CHANGE + — dla modeli wersjonowanych —
+    nowa wersja w reversion.
+
+    Wersja jest konieczna, nie tylko ozdobna: strona „Historia" modeli
+    wersjonowanych pokazuje wersje, a ``LogEntry`` wyłącznie sprzed pierwszej
+    wersji (``HistoriaWersjiMixin``) — sam ``LogEntry`` byłby tam niewidoczny.
+    Przed blokiem zapisuje stan wyjściowy (``zapewnij_wersje_poczatkowa``),
+    żeby pierwszą taką zmianę dało się cofnąć.
+
+    Blok dostaje obiekt z polem ``pomin``; ustaw ``pomin = True``, gdy
+    okazało się, że nic się nie zmieniło — wtedy nic nie zostanie zapisane.
+    Nie wołać wewnątrz aktywnego ``reversion.create_revision``.
+    """
+    zapewnij_wersje_poczatkowa(obj)
+    zmiana = SimpleNamespace(pomin=False)
+    yield zmiana
+    if zmiana.pomin:
+        return
+    _zapisz_wersje(user, obj, komentarz)
     LogEntry.objects.log_actions(
         user.pk,
         [obj],

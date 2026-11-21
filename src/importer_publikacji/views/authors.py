@@ -10,7 +10,7 @@ from django.db import transaction
 from django.db.models import Count, Q
 
 from bpp.models import Autor, Autor_Jednostka
-from bpp.wersjonowanie import zarejestruj_utworzenie, zarejestruj_zmiane
+from bpp.wersjonowanie import zarejestruj_utworzenie, zmiana_rekordu
 from crossref_bpp.core import Komparator, StatusPorownania
 from import_common.normalization import normalize_doi
 
@@ -251,6 +251,28 @@ def _opis_importu(session):
     )
 
 
+def _zatrudnienia(autor):
+    return set(
+        Autor_Jednostka.objects.filter(autor=autor).values_list(
+            "pk", "jednostka_id", "rozpoczal_prace", "zakonczyl_prace"
+        )
+    )
+
+
+@transaction.atomic
+def _ustaw_orcid_autora(imported, user):
+    """Przepisz ORCID z danych dostawcy dopasowanemu autorowi BPP — z wpisem
+    w historii autora (inaczej ORCID zmieniałby się po cichu)."""
+    autor = imported.matched_autor
+    with zmiana_rekordu(
+        user,
+        autor,
+        f"Ustawiono ORCID {imported.orcid}. {_opis_importu(imported.session)}",
+    ):
+        autor.orcid = imported.orcid
+        autor.save(update_fields=["orcid"])
+
+
 @transaction.atomic
 def _create_single_author(imported, obca, user=None):
     """Utwórz (lub dopasuj po ORCID) rekord ``Autor`` dla pojedynczego
@@ -276,17 +298,19 @@ def _create_single_author(imported, obca, user=None):
     if orcid:
         existing = Autor.objects.filter(orcid=orcid).first()
         if existing:
-            mial_jednostke = Autor_Jednostka.objects.filter(
-                autor=existing, jednostka=obca
-            ).exists()
-            existing.dodaj_jednostke(obca)
-            if not mial_jednostke:
-                zarejestruj_zmiane(
-                    user,
-                    existing,
-                    f"Dopisano jednostkę „{obca}” (dopasowanie po ORCID). "
-                    f"{_opis_importu(session)}",
-                )
+            with zmiana_rekordu(
+                user,
+                existing,
+                f"Dopisano jednostkę „{obca}” (dopasowanie po ORCID). "
+                f"{_opis_importu(session)}",
+            ) as zmiana:
+                # Logujemy tylko faktyczną zmianę zatrudnień. Wartości
+                # zwracanej przez ``dodaj_jednostke`` nie da się tu użyć: bywa
+                # istniejącym wierszem (okres już pokryty), ``None`` (wyścig)
+                # albo wierszem, który ``defragmentuj`` zaraz scalił i usunął.
+                przed = _zatrudnienia(existing)
+                existing.dodaj_jednostke(obca)
+                zmiana.pomin = _zatrudnienia(existing) == przed
             imported.matched_autor = existing
             imported.matched_jednostka = obca
             imported.match_status = ImportedAuthor.MatchStatus.MANUAL
