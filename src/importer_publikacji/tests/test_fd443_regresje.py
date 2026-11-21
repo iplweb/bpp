@@ -891,7 +891,7 @@ def test_task_create_nie_kasuje_odpiecia_zrobionego_w_locie(importer_user):
     zgl = _zgl()
     session = _sesja(importer_user, zgloszenie=zgl)
 
-    def _create(sess):
+    def _create(sess, user=None):
         ImportSession.objects.filter(pk=sess.pk).update(zgloszenie=None)
         return _rekord()
 

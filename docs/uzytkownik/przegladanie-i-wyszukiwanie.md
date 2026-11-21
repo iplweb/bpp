@@ -69,6 +69,11 @@ budujesz zapytanie z wielu warunków jednocześnie — np. autor *oraz* rok
 wydrukować, a po zalogowaniu — pobrać jako plik Word lub Excel (krok po
 kroku: [Jak pobrać listę publikacji](pobieranie-listy-publikacji.md)).
 
+Zamiast listy prac możesz dostać zestawienie: rodzaj raportu **tabela
+krzyżowa** podsumowuje wyniki w tabeli, np. punkty według jednostki
+i charakteru formalnego (krok po kroku:
+[Tabela krzyżowa](tabela-krzyzowa.md)).
+
 Najprościej zacząć od strony autora albo jednostki: przycisk **„Szukaj
 publikacji”** w sekcji „Wyszukaj publikacje…” otwiera ten formularz z już
 wypełnionymi warunkami, które można dalej zmieniać.
@@ -82,6 +87,11 @@ wypełnionymi warunkami, które można dalej zmieniać.
     W menu może pojawić się dodatkowo pozycja **zapytaniem** — to tryb dla
     zalogowanych redaktorów, pozwalający wpisać zapytanie w języku BPP-QL.
     Dla zwykłego odwiedzającego nie jest widoczny.
+
+!!! tip "Wyszukiwanie przez asystenta AI"
+    Bibliografię można też przeszukiwać, rozmawiając z asystentem AI
+    (np. Claude, ChatGPT) — zobacz [Bibliografia w asystencie
+    AI](asystent-ai.md).
 
 ## Przeglądanie
 
@@ -144,7 +154,9 @@ W układzie domyślnym, od góry:
   zdjęcia ani biogramu, wykresy stają obok afiliacji, jeden pod drugim.
 - **Statystyki wg charakteru formalnego** (np. ile artykułów, ile
   rozdziałów) oraz **najczęstsi współautorzy** — z odnośnikiem do
-  wizualnej sieci powiązań.
+  wizualnej sieci powiązań. Jak czytać tę sieć i co można w niej
+  sprawdzić, opisuje strona
+  [Sieć powiązań autorów](powiazania-autorow.md).
 - **Liczba cytowań** (o ile uczelnia pobiera takie dane) oraz **metryki
   ewaluacyjne** — te ostatnie widzi tylko zalogowany autor na własnej
   stronie i osoby uprawnione do metryk.

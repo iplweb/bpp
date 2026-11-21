@@ -1,0 +1,1 @@
+Dodano do dokumentacji stronę „Metody logowania do systemu” (konta BPP, LDAP/Active Directory, Keycloak, Microsoft, ORCID, wiązanie kont i blokada logowania) oraz opis logowania przez ORCID i SSO na stronie dla użytkowników.

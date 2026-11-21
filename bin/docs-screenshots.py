@@ -17,10 +17,11 @@ from __future__ import annotations
 
 import argparse
 import base64
+import hashlib
 import os
 import sys
 from pathlib import Path
-from urllib.parse import quote
+from urllib.parse import quote, urlencode
 
 from playwright.sync_api import Page, sync_playwright
 from playwright.sync_api import TimeoutError as PlaywrightTimeoutError
@@ -37,6 +38,48 @@ DEMO_PASSWORD = DEMO_USER
 DEMO_USER_BEZ_AUTORA = "jaskier"
 # Third demo account in the group "generowanie raportów" (reports, slots).
 DEMO_USER_RAPORTY = "filippa"
+# Co-author network (docs/uzytkownik/powiazania-autorow.md). Overlay marks
+# need CSS selectors, but graph nodes are drawn on a canvas - so we drop
+# invisible "pins" (absolutely positioned divs) over the nodes/edges we want
+# to point at, using Cytoscape's rendered coordinates.
+PIN_CY_JS = r"""
+([pid, kind, a, b, pad]) => {
+  const c = document.getElementById('cytoscape-container');
+  const cy = c._cyreg.cy;
+  let x1, y1, x2, y2;
+  if (kind === 'node') {
+    const bb = cy.getElementById(String(a)).renderedBoundingBox({includeLabels: false});
+    [x1, y1, x2, y2] = [bb.x1, bb.y1, bb.x2, bb.y2];
+  } else {
+    const lo = Math.min(a, b), hi = Math.max(a, b);
+    const m = cy.getElementById('e' + lo + '_' + hi).renderedMidpoint();
+    [x1, y1, x2, y2] = [m.x - 4, m.y - 4, m.x + 4, m.y + 4];
+  }
+  const r = c.getBoundingClientRect();
+  let d = document.getElementById(pid);
+  if (!d) { d = document.createElement('div'); d.id = pid; document.body.appendChild(d); }
+  d.style.cssText = 'position:absolute;pointer-events:none;'
+    + `left:${r.left + scrollX + x1 - pad}px;top:${r.top + scrollY + y1 - pad}px;`
+    + `width:${x2 - x1 + 2 * pad}px;height:${y2 - y1 + 2 * pad}px`;
+  return {x: r.left + scrollX + (x1 + x2) / 2, y: r.top + scrollY + (y1 + y2) / 2};
+}
+"""
+# The centre's strongest co-author (thickest line), as a node id.
+NAJSILNIEJSZY_JS = r"""
+(centrum) => {
+  const cy = document.getElementById('cytoscape-container')._cyreg.cy;
+  const e = cy.getElementById(String(centrum)).connectedEdges()
+    .sort((p, q) => q.data('shared') - p.data('shared'))[0];
+  return Number(e.source().id() === String(centrum) ? e.target().id() : e.source().id());
+}
+"""
+# Node id by its label (first match).
+WEZEL_JS = r"""
+(label) => {
+  const cy = document.getElementById('cytoscape-container')._cyreg.cy;
+  return Number(cy.nodes().filter(n => n.data('label') === label)[0].id());
+}
+"""
 # A made-up staff file in the layout of the template
 # (src/import_pracownikow/static/import_pracownikow/import_pracownikow_przyklad.xlsx)
 # for docs/administrator/import-pracownikow.md. bin/docs-demo-admin-import-pracownikow.py
@@ -275,7 +318,12 @@ def mark(page: Page, marks: list[dict]) -> None:
 
 
 def login(page: Page, base: str, user: str = DEMO_USER) -> None:
-    page.goto(f"{base}/accounts/login/")
+    url = f"{base}/accounts/login/"
+    # With institutional login (OIDC/Microsoft) on, this URL bounces to the
+    # identity provider; the BPP form then lives under /accounts/login/local/.
+    if page.request.get(url, max_redirects=0).status in (301, 302):
+        url = f"{base}/accounts/login/local/"
+    page.goto(url)
     page.fill("input[name=username]", user)
     page.fill("input[name=password]", user)  # demo accounts: password == login
     page.locator("form [type=submit]").first.click()
@@ -6429,6 +6477,1456 @@ def import_pracownikow(page: Page, base: str, out: Path) -> None:
     red.context.close()
 
 
+def pivot_ustaw(page: Page, **wybor: str) -> None:
+    """Set the cross-table selects (pivot_row/pivot_col/pivot_val) one by one;
+    each change reloads the results."""
+    for name, label in wybor.items():
+        sel = f"select[name={name}]"
+        if page.locator(f"{sel} option:checked").inner_text().strip() == label:
+            continue
+        with page.expect_navigation():
+            page.select_option(sel, label=label)
+        page.wait_for_load_state("networkidle")
+
+
+def zaznacz_lata(page: Page, od: str, do: str) -> None:
+    """Pick a year range on the author/unit page: first year, then last."""
+    for rok in (od, do):
+        page.locator(f"label.autor-page__chip:has(input[value='{rok}'])").click()
+    page.mouse.move(5, 5)  # no hover highlight on the last clicked chip
+
+
+def tabela_krzyzowa(page: Page, base: str, out: Path) -> None:
+    """docs/uzytkownik/tabela-krzyzowa.md: cross table (pivot) in the multiseek search."""
+    sekcja = ".autor-page__pas-cela"
+
+    # 1. author page: years 2002-2025, then "Szukaj publikacji"
+    page.goto(f"{base}/bpp/autor/Yennefer-Merigold/")
+    page.wait_for_load_state("networkidle")
+    zaznacz_lata(page, "2002", "2025")
+    mark(
+        page,
+        [
+            {"sel": "label.autor-page__chip:has(input[value='2025'])"},
+            {
+                "sel": "label.autor-page__chip:has(input[value='2002'])",
+                "arrow": "below",
+                "label": "1. kliknij pierwszy i ostatni rok",
+                "dx": -550,
+                "dy": -45,
+            },
+            {
+                "sel": "button.autor-page__search-btn",
+                "arrow": "above",
+                "label": "2. Szukaj publikacji",
+                "dx": -300,
+                "dy": 30,
+            },
+        ],
+    )
+    box = page_box(page, sekcja, "Wyszukaj publikacje autora")
+    shot(page, out / "01-strona-autora-lata.png", box["y"] - 20, box["height"] + 40)
+
+    # 2. the form with the conditions; pick "tabela krzyżowa"
+    page.click("button.autor-page__search-btn")
+    page.wait_for_load_state("networkidle")
+    page.select_option("#id_report_type", label="tabela krzyżowa")
+    page.wait_for_load_state("networkidle")
+    page.wait_for_timeout(1500)
+    mark(
+        page,
+        [
+            {
+                # label right of "Dodaj ramkę", so the arrow passes below it
+                "sel": "#id_report_type",
+                "arrow": "above",
+                "label": "3. Rodzaj raportu: tabela krzyżowa",
+                "dx": 350,
+                "dy": 55,
+            },
+            {
+                "sel": "#multiseek-szukaj",
+                "arrow": "below",
+                "label": "4. Wyświetl wyniki wyszukiwania",
+                "dx": 175,
+                "dy": -60,
+            },
+        ],
+    )
+    shot(
+        page,
+        out / "02-formularz-rodzaj-raportu.png",
+        0,
+        bottom_of(page, "#multiseek-szukaj", 110),
+    )
+
+    # 3. results: rows / columns / value
+    page.click("#multiseek-szukaj")
+    page.wait_for_load_state("networkidle")
+    pivot_ustaw(
+        page,
+        pivot_row="Jednostka",
+        pivot_col="Charakter formalny",
+        pivot_val="Σ punkty PK",
+    )
+    mark(
+        page,
+        [
+            {
+                "sel": "select[name=pivot_row]",
+                "arrow": "above",
+                "label": "5. Wiersze",
+                "dx": 200,
+                "dy": 25,
+            },
+            {
+                "sel": "select[name=pivot_col]",
+                "arrow": "above",
+                "label": "6. Kolumny",
+                "dx": 190,
+                "dy": 25,
+            },
+            {
+                "sel": "select[name=pivot_val]",
+                "arrow": "above",
+                "label": "7. W komórce",
+                "dx": 195,
+                "dy": 25,
+            },
+        ],
+    )
+    ctrl = page_box(page, ".multiseek-pivot-controls")
+    shot(
+        page,
+        out / "03-wiersze-kolumny-wartosc.png",
+        ctrl["y"] - 150,
+        ctrl["height"] + 190,
+    )
+
+    # 4. the result, RAZEM row and column, the note below the table
+    mark(
+        page,
+        [
+            # just a box: an arrow to an inner cell would cross the table
+            # (the page text explains the cell)
+            {
+                "sel": (
+                    "table.multiseek-pivot tbody tr:first-child td:not(.pivot-total)"
+                )
+            },
+            {
+                "sel": "table.multiseek-pivot thead th.pivot-total",
+                "arrow": "right",
+                "label": "suma wiersza",
+                "dy": -30,
+            },
+            {
+                "sel": "table.multiseek-pivot tfoot tr",
+                "arrow": "right",
+                "label": "suma kolumny",
+                "dy": -40,
+            },
+        ],
+    )
+    tabela = page_box(page, ".multiseek-pivot-scroll")
+    shot(page, out / "04-wynik-razem.png", tabela["y"] - 20, tabela["height"] + 110)
+
+    # 5. export (logged-in users only)
+    mark(
+        page,
+        [
+            {
+                "sel": ".multiseek-pivot-export",
+                "arrow": "below",
+                "label": "pobierz: Excel (XLSX) lub CSV",
+                "dx": -130,
+                "dy": -20,
+            }
+        ],
+    )
+    shot(page, out / "05-eksport.png", ctrl["y"] - 20, ctrl["height"] + 170)
+
+    # 6. example: year x kind of work, number of works, same search
+    pivot_ustaw(page, pivot_row="Rok", pivot_val="Liczba prac")
+    mark(
+        page,
+        [
+            {"sel": "select[name=pivot_row]"},
+            {"sel": "select[name=pivot_col]"},
+            {"sel": "select[name=pivot_val]"},
+        ],
+    )
+    # top rows, then the last three years and the RAZEM row
+    koniec = bottom_of(page, "table.multiseek-pivot tbody tr:nth-child(12)", 0)
+    gora = shot(page, None, ctrl["y"] - 20, koniec - ctrl["y"] + 20)
+    od = page_box(page, "table.multiseek-pivot tbody tr:nth-last-child(3)")["y"]
+    dol = shot(page, None, od, bottom_of(page, "table.multiseek-pivot", 20) - od)
+    stitch(page, [gora, dol], out / "06-rok-charakter.png", "kolejne lata, aż do 2002")
+
+    # 7. example: a unit's works - authors x years, sorted by RAZEM
+    page.goto(f"{base}/bpp/jednostka/Klinika-Szermierki/")
+    page.wait_for_load_state("networkidle")
+    zaznacz_lata(page, "2020", "2025")
+    page.click("button.autor-page__search-btn")
+    page.wait_for_load_state("networkidle")
+    page.select_option("#id_report_type", label="tabela krzyżowa")
+    page.wait_for_load_state("networkidle")
+    page.click("#multiseek-szukaj")
+    page.wait_for_load_state("networkidle")
+    pivot_ustaw(
+        page,
+        pivot_row="Autor",
+        pivot_col="Rok",
+        pivot_val="Liczba prac",
+        pivot_per_page="25",
+    )
+    with page.expect_navigation():
+        page.click("table.multiseek-pivot thead th.pivot-total a")
+    page.wait_for_load_state("networkidle")
+    mark(
+        page,
+        [
+            {
+                "sel": "table.multiseek-pivot thead th.pivot-total",
+                "arrow": "right",
+                "label": "posortowane wg RAZEM ▼",
+                "dx": 20,
+                "dy": -20,
+            },
+        ],
+    )
+    ctrl = page_box(page, ".multiseek-pivot-controls")
+    dol = bottom_of(page, ".multiseek-pivot-note", 20)
+    shot(
+        page,
+        out / "07-jednostka-autorzy-lata.png",
+        ctrl["y"] - 20,
+        dol - ctrl["y"] + 20,
+    )
+
+
+def asystent_ai(page: Page, base: str, out: Path) -> None:
+    """docs/uzytkownik/asystent-ai.md: the /mcp/ page (public and logged-in), the OAuth consent screen, MCP switched off; run bin/docs-demo-asystent-ai.py first."""
+
+    def sesja(user: str | None = None) -> Page:
+        # The page prints absolute MCP addresses, so it is shown at PUBLIC_BPP.
+        # Logging in through the proxy would trip CSRF (Origin != Host), so we
+        # log in on the local stack and hand the cookies to PUBLIC_BPP.
+        other = api_session(page, base)
+        if user:
+            log = other.context.new_page()
+            login(log, base, user)
+            other.context.add_cookies(
+                [
+                    {"name": c["name"], "value": c["value"], "url": PUBLIC_BPP}
+                    for c in other.context.cookies(base)
+                ]
+            )
+            log.close()
+        other.goto(f"{PUBLIC_BPP}/mcp/")
+        other.wait_for_load_state("networkidle")
+        close_cookie_banner(other)
+        other.wait_for_load_state("networkidle")
+        other.wait_for_selector("h1")
+        return other
+
+    # 1. anonymous: the public variant and the "Zaloguj się" button
+    anon = sesja()
+    mark(
+        anon,
+        [
+            {
+                "sel": "#mcp-bez-konta a.button",
+                "arrow": "below",
+                "label": "masz konto? zaloguj się",
+                "dx": 60,
+                "dy": -50,
+            },
+        ],
+    )
+    top = page_box(anon, "h1")["y"] - 20
+    shot(
+        anon,
+        out / "01-bez-logowania.png",
+        top,
+        bottom_of(anon, "#mcp-bez-konta", 45) - top,
+    )
+    close_api_session(anon)
+
+    # 2.-3. logged in (an ordinary author account): the message for the
+    #       assistant, the server address and the Claude instructions
+    zal = sesja(DEMO_USER)
+    mark(
+        zal,
+        [
+            {
+                "sel": "#mcp-prompt",
+                "arrow": "below",
+                "label": "kliknij w pole, aby skopiować",
+                "dx": 40,
+                "dy": -78,
+            },
+        ],
+    )
+    top = page_box(zal, "#mcp-najprosciej")["y"] - 30
+    shot(
+        zal,
+        out / "02-wiadomosc-dla-asystenta.png",
+        top,
+        bottom_of(zal, "#mcp-prompt", 68) - top,
+    )
+
+    zal.locator("#mcp-klient-claude summary").click()
+    zal.wait_for_timeout(300)
+    mark(
+        zal,
+        [
+            {
+                "sel": "#mcp-adres",
+                "arrow": "above",
+                "label": "1. adres serwera — kliknij, aby skopiować",
+                "dx": -120,
+                "dy": 50,
+            },
+            {
+                "sel": "#mcp-klient-claude a.mcp-strona__instaluj",
+                "arrow": "right",
+                "label": "2. Claude: „Dodaj serwer”",
+                "dx": 60,
+                "dy": -40,
+            },
+        ],
+    )
+    top = page_box(zal, "#mcp-adresy")["y"] - 70
+    shot(
+        zal,
+        out / "03-adres-i-claude.png",
+        top,
+        bottom_of(zal, "#mcp-klient-claude") - top,
+    )
+    close_api_session(zal)
+
+    # 4. the consent screen a client opens after "/mcp/auth" (a client
+    #    registered the way Claude does it: dynamic registration, PKCE S256)
+    rejestracja = page.request.post(
+        f"{base}/o/register/",
+        data={
+            "client_name": "Claude",
+            "redirect_uris": ["https://claude.ai/api/mcp/auth_callback"],
+            "grant_types": ["authorization_code", "refresh_token"],
+            "response_types": ["code"],
+            "token_endpoint_auth_method": "none",
+        },
+    )
+    if not rejestracja.ok:
+        raise SystemExit(f"DCR failed: {rejestracja.status} {rejestracja.text()}")
+    client_id = rejestracja.json()["client_id"]
+    weryfikator = base64.urlsafe_b64encode(os.urandom(32)).rstrip(b"=")
+    wyzwanie = (
+        base64.urlsafe_b64encode(hashlib.sha256(weryfikator).digest())
+        .rstrip(b"=")
+        .decode()
+    )
+    zgoda = new_session(page, base, DEMO_USER)
+    zgoda.goto(
+        f"{base}/o/authorize/?"
+        + urlencode(
+            {
+                "response_type": "code",
+                "client_id": client_id,
+                "redirect_uri": "https://claude.ai/api/mcp/auth_callback",
+                "scope": "read",
+                "code_challenge": wyzwanie,
+                "code_challenge_method": "S256",
+                "state": "demo",
+            }
+        )
+    )
+    zgoda.wait_for_load_state("networkidle")
+    mark(
+        zgoda,
+        [
+            {
+                "sel": "p strong",
+                "text": "claude.ai",
+                "arrow": "right",
+                "label": "sprawdź, dokąd trafi zgoda",
+                "dx": 60,
+                "dy": -40,
+            },
+            {
+                "sel": "button[value=Authorize]",
+                "arrow": "right",
+                "label": "zezwól na odczyt",
+                "dx": 60,
+                "dy": -40,
+            },
+        ],
+    )
+    top = page_box(zgoda, "h3:has(.fi-key)")["y"] - 20
+    shot(
+        zgoda,
+        out / "04-zgoda.png",
+        top,
+        bottom_of(zgoda, "form[action*='/o/authorize/']") - top,
+    )
+    zgoda.context.close()
+
+    # 5.-6. the switch in the university form, and the page with MCP off
+    adm = new_session(page, base, DEMO_USER_ADMIN)
+    otworz_uczelnie(adm, base)
+    form_url = adm.url
+    tytul = "Serwer MCP dla asystentów AI (/mcp)"
+
+    def ustaw(wartosc: bool | None) -> None:
+        adm.goto(form_url)
+        adm.wait_for_load_state("networkidle")
+        adm.evaluate(
+            """(t) => { const h = [...document.querySelectorAll('h2.grp-collapse-handler')]
+                .find(e => e.textContent.trim() === t);
+              h.parentElement.classList.remove('grp-closed');
+              h.parentElement.classList.add('grp-open'); }""",
+            tytul,
+        )
+        adm.wait_for_timeout(300)
+        if wartosc is not None:
+            adm.locator("#id_mcp_wlaczone").set_checked(wartosc)
+
+    ustaw(None)
+    mark(
+        adm,
+        [
+            {
+                "sel": "label[for=id_mcp_wlaczone]",
+                "arrow": "right",
+                "label": "odznacz, aby wyłączyć",
+                "dx": 260,
+                "dy": -40,
+            },
+        ],
+    )
+    fieldset_shot(adm, out / "05-przelacznik-uczelnia.png", tytul)
+
+    ustaw(False)
+    adm.locator("input[name=_continue]").click()
+    adm.wait_for_load_state("networkidle")
+    try:
+        if adm.locator(".errornote, .grp-errornote").count():
+            raise SystemExit("Uczelnia form did not save - see the admin page.")
+        wyl = sesja()
+        mark(wyl, [{"sel": ".row p", "text": "wyłączony"}])
+        top = page_box(wyl, "h1")["y"] - 20
+        shot(wyl, out / "06-wylaczony.png", top, 130)
+        close_api_session(wyl)
+    finally:
+        ustaw(True)
+        adm.locator("input[name=_continue]").click()
+        adm.wait_for_load_state("networkidle")
+    adm.context.close()
+
+
+def zaladuj_wykresy_panelu(page: Page) -> None:
+    """The dashboard charts load lazily as they scroll into view: bring each
+    one into view, wait until all are drawn, then go back to the top."""
+    for el in page.locator(".lazy-chart[data-chart-url]").all():
+        el.scroll_into_view_if_needed()
+        page.wait_for_timeout(300)
+    page.wait_for_function(
+        "() => [...document.querySelectorAll('.lazy-chart[data-chart-url]')]"
+        ".every(e => e.classList.contains('is-loaded'))",
+        timeout=60000,
+    )
+    page.wait_for_timeout(1000)  # fade-in
+    page.evaluate("window.scrollTo(0, 0)")
+
+
+def ukryj_kolumny(page: Page, ktore: list[int]) -> None:
+    """Blank out dashboard columns (1-3) so the labels have empty space; the
+    layout stays as it is (visibility, not display)."""
+    page.evaluate(
+        """(ktore) => document.querySelectorAll('.dashboard-column').forEach(
+            (c, i) => { c.style.visibility = ktore.includes(i + 1) ? 'hidden' : ''; })""",
+        ktore,
+    )
+
+
+def modul(page: Page, naglowek: str) -> str:
+    """Tag a dashboard box by its heading; returns a CSS selector."""
+    return "#" + page.evaluate(
+        """(n) => {
+        const h = [...document.querySelectorAll('.dashboard-column > .grp-module > h2')]
+            .find(e => e.textContent.trim() === n);
+        const m = h.parentElement;
+        m.id = m.id || 'kb-mod-' + n.toLowerCase().replace(/[^a-z0-9]+/g, '-');
+        return m.id; }""",
+        naglowek,
+    )
+
+
+def panel_administracyjny(page: Page, base: str, out: Path) -> None:
+    """docs/administrator/panel-administracyjny.md: the admin dashboard, its boxes and charts, menu-click and login logs (superuser); run bin/docs-demo-panel-administracyjny.py first."""
+    adm = new_session(page, base, DEMO_USER_ADMIN)
+    adm.goto(f"{base}/admin/")
+    adm.wait_for_load_state("networkidle")
+    zaladuj_wykresy_panelu(adm)
+    w = VIEWPORT["width"]
+    kol = [page_box(adm, f".dashboard-column:nth-child({i})") for i in (1, 2, 3)]
+
+    # 1. the whole dashboard, top part (the app list below goes on for screens)
+    shot(
+        adm,
+        out / "01-panel-sterowania.png",
+        0,
+        bottom_of(adm, modul(adm, "Prace w bazie")),
+    )
+
+    # 2. left column: own recent edits, recent logins, version info
+    edyt, logi, info = (
+        modul(adm, n)
+        for n in ("Ostatnio edytowane", "Ostatnie logowania", "Informacje")
+    )
+    ukryj_kolumny(adm, [2, 3])
+    mark(
+        adm,
+        [
+            {
+                "sel": edyt,
+                "arrow": "right",
+                "label": "1. Twoje ostatnie zmiany",
+                "dy": -120,
+            },
+            {
+                "sel": logi,
+                "arrow": "right",
+                "label": "2. kto i kiedy się logował",
+                "dy": -60,
+            },
+            {
+                "sel": info,
+                "arrow": "right",
+                "label": "3. wersja BPP i pomoc",
+                "dy": -30,
+            },
+        ],
+    )
+    top = page_box(adm, edyt)["y"] - 20
+    adm.evaluate("window.scrollTo(0, 0)")
+    adm.screenshot(
+        path=out / "02-ostatnie-zmiany-i-logowania.png",
+        full_page=True,
+        clip={
+            "x": 0,
+            "y": top,
+            "width": kol[1]["x"] + kol[1]["width"],
+            "height": bottom_of(adm, info) - top,
+        },
+    )
+    adm.evaluate("document.getElementById('kb-overlay')?.remove()")
+
+    # 3. right column: most-used menu items, counters, app search
+    ukryj_kolumny(adm, [1, 2])
+    najcz, stat, apl = (
+        modul(adm, n)
+        for n in ("Najczęściej używane", "Statystyki", "Aplikacje i modele")
+    )
+    mark(
+        adm,
+        [
+            {
+                "sel": najcz,
+                "arrow": "left",
+                "label": "1. Twoje najczęstsze pozycje menu",
+                "dy": -110,
+            },
+            {
+                "sel": stat,
+                "arrow": "left",
+                "label": "2. liczba rekordów w bazie",
+                "dy": -60,
+            },
+            {
+                "sel": "#app-list-search",
+                "arrow": "left",
+                "label": "3. szukaj modelu",
+                "dy": -10,
+            },
+        ],
+    )
+    top = page_box(adm, najcz)["y"] - 20
+    x0 = kol[2]["x"] - 520
+    adm.evaluate("window.scrollTo(0, 0)")
+    adm.screenshot(
+        path=out / "03-najczesciej-uzywane-i-statystyki.png",
+        full_page=True,
+        clip={
+            "x": x0,
+            "y": top,
+            "width": w - x0,
+            "height": bottom_of(adm, "#app-list-search", 140) - top,
+        },
+    )
+    adm.evaluate("document.getElementById('kb-overlay')?.remove()")
+    ukryj_kolumny(adm, [])
+
+    # 4. editing activity: weekdays (last month), days of month (6 months)
+    tydz = modul(adm, "Edycje w dni tygodnia")
+    mies = modul(adm, "Aktywność w dniach miesiąca")
+    ukryj_kolumny(adm, [1, 3])
+    mark(
+        adm,
+        [
+            {
+                "sel": f"{tydz} > h2",
+                "arrow": "left",
+                "label": "1. ostatnie 30 dni",
+                "dy": 40,
+            },
+            {
+                "sel": f"{mies} > h2",
+                "arrow": "left",
+                "label": "2. ostatnie 6 miesięcy",
+                "dy": 40,
+            },
+        ],
+    )
+    top = page_box(adm, tydz)["y"] - 20
+    adm.evaluate("window.scrollTo(0, 0)")
+    adm.screenshot(
+        path=out / "04-aktywnosc-redakcji.png",
+        full_page=True,
+        clip={
+            "x": 0,
+            "y": top,
+            "width": kol[2]["x"],
+            "height": bottom_of(adm, mies) - top,
+        },
+    )
+    adm.evaluate("document.getElementById('kb-overlay')?.remove()")
+    ukryj_kolumny(adm, [])
+
+    # 5. the publication charts: totals by year, points, IF, newly added
+    prace, pkt, impf, nowe = (
+        modul(adm, n)
+        for n in (
+            "Prace w bazie",
+            "Łączne punkty MNiSW",
+            "Łączny Impact Factor",
+            "Nowo dodane prace",
+        )
+    )
+    mark(adm, [{"sel": f"{m} > h2"} for m in (prace, pkt, impf, nowe)])
+    top = min(page_box(adm, prace)["y"], page_box(adm, impf)["y"]) - 20
+    adm.evaluate("window.scrollTo(0, 0)")
+    adm.screenshot(
+        path=out / "05-wykresy-dorobku.png",
+        full_page=True,
+        clip={
+            "x": 0,
+            "y": top,
+            "width": kol[2]["x"] - 4,
+            "height": max(bottom_of(adm, pkt), bottom_of(adm, nowe)) - top,
+        },
+    )
+    adm.evaluate("document.getElementById('kb-overlay')?.remove()")
+
+    # 6. formal types: hover a slice (tooltip), a click opens the list
+    top90 = modul(adm, "Charaktery formalne - Top 90%")
+    ukryj_kolumny(adm, [3])
+    # slices are sorted by size: the first is "Inne" (no link), the second
+    # the most common formal type. Hover the middle of its ring segment.
+    adm.locator("#charakter-formalny-chart-top90").scroll_into_view_if_needed()
+    xy = adm.evaluate(
+        """() => {
+        const p = document.querySelectorAll(
+            '#charakter-formalny-chart-top90 g.slice path.surface')[1];
+        const m = p.getScreenCTM(), n = 40, L = p.getTotalLength();
+        let x = 0, y = 0;
+        for (let i = 0; i < n; i++) {
+            const q = p.getPointAtLength(L * i / n).matrixTransform(m);
+            x += q.x; y += q.y;
+        }
+        return [x / n, y / n]; }"""
+    )
+    adm.mouse.move(*xy)
+    adm.wait_for_timeout(800)
+    mark(
+        adm,
+        [
+            {
+                "sel": f"{top90} .hoverlayer .hovertext",
+                "arrow": "right",
+                "label": "kliknij wycinek: lista prac",
+                "dx": 0,
+                "dy": -40,
+            },
+        ],
+    )
+    top = page_box(adm, top90)["y"] - 20
+    x0 = kol[1]["x"] - 20
+    adm.screenshot(
+        path=out / "06-charaktery-formalne.png",
+        full_page=True,
+        clip={
+            "x": x0,
+            "y": top,
+            "width": w - x0,
+            "height": bottom_of(adm, top90) - top,
+        },
+    )
+    adm.context.close()
+
+    # 7. the menu-click log in the admin (Dashboard Administracyjny)
+    adm = new_session(page, base, DEMO_USER_ADMIN)
+    adm.goto(f"{base}/admin/admin_dashboard/menuclick/")
+    adm.wait_for_load_state("networkidle")
+    mark(
+        adm,
+        [
+            {
+                "sel": "#result_list thead",
+                "arrow": "right",
+                "label": "kto, co, kiedy",
+                "dx": 0,
+                "dy": -40,
+            },
+        ],
+    )
+    adm.screenshot(
+        path=out / "07-klikniecia-w-menu.png",
+        clip={
+            "x": 0,
+            "y": 0,
+            "width": w,
+            "height": bottom_of(adm, "#result_list tbody tr:nth-child(8)", 20),
+        },
+    )
+
+    # 8. login log (easyaudit): user, IP, time
+    adm.goto(f"{base}/admin/easyaudit/loginevent/")
+    adm.wait_for_load_state("networkidle")
+    mark(
+        adm,
+        [
+            {
+                "sel": "#result_list thead",
+                "arrow": "right",
+                "label": "logowania z adresem IP",
+                "dx": 0,
+                "dy": -40,
+            },
+        ],
+    )
+    adm.screenshot(
+        path=out / "08-logi-logowania.png",
+        clip={
+            "x": 0,
+            "y": 0,
+            "width": w,
+            "height": bottom_of(adm, "#result_list tbody tr:nth-child(8)", 20),
+        },
+    )
+    adm.context.close()
+
+
+def czekaj_na_graf(page: Page) -> None:
+    """Wait until the 2D graph is drawn and its layout animation has settled."""
+    page.wait_for_function(
+        "() => { const c = document.getElementById('cytoscape-container');"
+        " return c && c._cyreg && c._cyreg.cy.nodes().length > 1; }"
+    )
+    pozycje = None
+    for _ in range(20):
+        page.wait_for_timeout(500)
+        teraz = page.evaluate(
+            "() => document.getElementById('cytoscape-container')._cyreg.cy"
+            ".nodes().map(n => Math.round(n.position('x')) + ',' + Math.round(n.position('y'))).join(';')"
+        )
+        if teraz == pozycje:
+            break
+        pozycje = teraz
+    page.wait_for_timeout(500)  # fade-in of edges
+
+
+def powiazania_autorow(page: Page, base: str, out: Path) -> None:
+    """docs/uzytkownik/powiazania-autorow.md: the co-author network (2D and 3D).
+
+    Run bin/docs-demo-powiazania-autorow.py first (fills the network table).
+    The 3D view needs WebGL: headless Chromium has it (SwiftShader) only when
+    no X display is configured, so run this scenario as `env -u DISPLAY …`.
+    """
+    autor = f"{base}/bpp/autor/{AUTOR_NOWY_ROK}/"  # Yennefer Merigold
+    page.goto(autor)
+    page.wait_for_load_state("networkidle")
+
+    # 1. author page: the button next to "Pokaż wszystkie prace"
+    mark(
+        page,
+        [
+            {
+                "sel": ".autor-page__quick-actions .autor-page__network-btn",
+                "arrow": "below",
+                "label": "Zobacz sieć powiązań",
+                "dx": 40,
+                "dy": -20,
+            }
+        ],
+    )
+    przyciski = page_box(page, ".autor-page__quick-actions")
+    shot(page, out / "01-strona-autora-przycisk.png", 0, przyciski["y"] + 200)
+
+    # 2. "Najczęstsi współautorzy" section further down: top of the page + the section
+    page.goto(autor)
+    page.wait_for_load_state("networkidle")
+    sekcja = ".author-info-section"
+    box = page_box(page, sekcja, "współautorzy")
+    page.evaluate(
+        """(t) => { const el = [...document.querySelectorAll('.author-info-section')]
+             .find(e => e.textContent.includes(t)); el.id = 'kb-wspolautorzy';
+           el.querySelector('.autor-page__wspolautor').id = 'kb-pierwszy';
+           el.querySelector('.autor-page__wspolautor-liczba').id = 'kb-liczba'; }""",
+        "współautorzy",
+    )
+    mark(
+        page,
+        [
+            {
+                "sel": "#kb-liczba",
+                "arrow": "below",
+                "label": "liczba wspólnych prac",
+                "dx": -420,
+                "dy": 230,
+            },
+            {
+                "sel": "#kb-wspolautorzy .autor-page__network-btn",
+                "arrow": "below",
+                "label": "otwiera sieć",
+                "dx": 40,
+                "dy": 20,
+            },
+        ],
+    )
+    gora = shot(page, None, 0, 230)
+    dol = shot(page, None, box["y"] - 20, box["height"] + 260)
+    stitch(
+        page,
+        [gora, dol],
+        out / "02-najczestsi-wspolautorzy.png",
+        "przewiń w dół do sekcji „Najczęstsi współautorzy”",
+    )
+
+    # 3. the graph: centre, thickest line, legend
+    page.goto(f"{autor}powiazania/")
+    page.wait_for_load_state("networkidle")
+    czekaj_na_graf(page)
+    centrum = AUTOR_NOWY_ROK
+    silny = page.evaluate(NAJSILNIEJSZY_JS, centrum)
+    # pad -8: the box hugs the inside of the node, so the name under it stays readable
+    page.evaluate(PIN_CY_JS, ["kb-centrum", "node", centrum, 0, -8])
+    page.evaluate(PIN_CY_JS, ["kb-krawedz", "edge", centrum, silny, 6])
+    k = page_box(page, "#kb-krawedz")
+    graf = page_box(page, "#graf-wrapper")
+    mark(
+        page,
+        [
+            {
+                # short label in the gap left of the centre, right of the
+                # "Gaunter ze Stygga" node; nearly level arrow
+                "sel": "#kb-centrum",
+                "arrow": "left",
+                "label": "1. ten autor",
+                "dx": 60,
+                "dy": -30,
+            },
+            {
+                # label in the empty band right of the graph, arrow passes
+                # between the node labels
+                "sel": "#kb-krawedz",
+                "arrow": "right",
+                "label": "2. więcej wspólnych prac",
+                "dx": graf["x"] + graf["width"] - 300 - (k["x"] + k["width"] + 6 + 110),
+                "dy": -48,
+            },
+            {
+                "sel": "#graf-legenda",
+                "arrow": "below",
+                "label": "3. legenda",
+                "dx": -20,
+                "dy": -50,
+            },
+        ],
+    )
+    graf = page_box(page, "#graf-wrapper")
+    shot(page, out / "03-graf-elementy.png", 100, graf["y"] + graf["height"] + 10 - 100)
+
+    # 4. controls above the graph
+    page.goto(f"{autor}powiazania/")
+    page.wait_for_load_state("networkidle")
+    czekaj_na_graf(page)
+    mark(
+        page,
+        [
+            {
+                "sel": "label[for=graf-topn]",
+                "arrow": "below",
+                "label": "1",
+                "dx": -40,
+                "dy": -40,
+            },
+            {
+                "sel": "label[for=graf-glebokosc]",
+                "arrow": "below",
+                "label": "2",
+                "dx": -40,
+                "dy": -40,
+            },
+            {"sel": "#graf-uklad", "arrow": "above", "label": "3", "dx": -40, "dy": 30},
+            {
+                "sel": "#graf-metryka",
+                "arrow": "above",
+                "label": "4",
+                "dx": -40,
+                "dy": 30,
+            },
+            {
+                "sel": "#graf-zaawansowane-toggle",
+                "arrow": "above",
+                "label": "5",
+                "dx": -40,
+                "dy": 30,
+            },
+            {
+                "sel": "a[href$='/powiazania/3d/']",
+                "arrow": "above",
+                "label": "6",
+                "dx": -40,
+                "dy": 30,
+            },
+        ],
+    )
+    shot(page, out / "04-kontrolki.png", 80, 300)
+
+    # 5. hover over a line: how many joint works
+    page.goto(f"{autor}powiazania/")
+    page.wait_for_load_state("networkidle")
+    czekaj_na_graf(page)
+    silny = page.evaluate(NAJSILNIEJSZY_JS, centrum)
+    srodek = page.evaluate(PIN_CY_JS, ["kb-krawedz", "edge", centrum, silny, 6])
+    page.mouse.move(srodek["x"], srodek["y"])
+    page.wait_for_selector("#graf-tooltip", state="visible")
+    page.wait_for_timeout(400)
+    mark(
+        page,
+        [
+            {
+                "sel": "#graf-tooltip",
+                "arrow": "right",
+                "label": "najechanie na linię",
+                "dx": -50,
+                "dy": 40,
+            }
+        ],
+    )
+    x0 = srodek["x"] - 300
+    page.screenshot(
+        path=out / "05-linia-wspolne-prace.png",
+        clip={
+            "x": x0,
+            "y": srodek["y"] - 170,
+            "width": min(940, VIEWPORT["width"] - x0),
+            "height": 340,
+        },
+    )
+
+    # 6. click on a node: action panel + its co-authors unfold around it
+    page.goto(f"{autor}powiazania/")
+    page.wait_for_load_state("networkidle")
+    czekaj_na_graf(page)
+    silny = page.evaluate(NAJSILNIEJSZY_JS, centrum)
+    srodek = page.evaluate(PIN_CY_JS, ["kb-klik", "node", silny, 0, 4])
+    page.mouse.click(srodek["x"], srodek["y"])
+    page.wait_for_selector("#graf-panel", state="visible")
+    page.mouse.move(graf["x"] + 5, graf["y"] + graf["height"] - 5)
+    czekaj_na_graf(page)
+    page.evaluate("document.getElementById('graf-tooltip').style.display = 'none'")
+    page.evaluate(PIN_CY_JS, ["kb-klik", "node", silny, 0, 4])
+    mark(
+        page,
+        [
+            {
+                "sel": "#graf-panel",
+                "arrow": "right",
+                "label": "menu akcji",
+                "dx": 10,
+                "dy": -30,
+            },
+            {
+                "sel": "#kb-klik",
+                "arrow": "right",
+                "label": "kliknięty autor",
+                "dx": 150,
+                "dy": 20,
+            },
+        ],
+    )
+    shot(page, out / "06-klik-menu-akcji.png", graf["y"] - 10, graf["height"] + 20)
+
+    # 7. advanced options: links inside the group (orange, dashed)
+    page.goto(f"{autor}powiazania/")
+    page.wait_for_load_state("networkidle")
+    czekaj_na_graf(page)
+    page.click("#graf-zaawansowane-toggle")
+    page.check("#graf-wewnetrzne-chk")
+    page.wait_for_timeout(1500)
+    mark(
+        page,
+        [
+            {
+                "sel": "label:has(#graf-wewnetrzne-chk)",
+                "arrow": "below",
+                "label": "przerywane pomarańczowe linie",
+                "dx": -560,
+                "dy": 40,
+            },
+        ],
+    )
+    zaaw = page_box(page, "#graf-zaawansowane")
+    shot(page, out / "07-opcje-zaawansowane.png", zaaw["y"] - 70, 560)
+
+    # 8. search: two authors with the same name light up (possible duplicate)
+    page.goto(f"{autor}powiazania/")
+    page.wait_for_load_state("networkidle")
+    czekaj_na_graf(page)
+    page.click("#graf-zaawansowane-toggle")
+    page.fill("#graf-szukaj", "Cahir z Vengerbergu")
+    page.wait_for_timeout(1000)
+    ids = page.evaluate(
+        "() => document.getElementById('cytoscape-container')._cyreg.cy"
+        ".nodes('.znaleziony').map(n => Number(n.id()))"
+    )
+    for i, wid in enumerate(ids[:2]):
+        page.evaluate(PIN_CY_JS, [f"kb-szukany-{i}", "node", wid, 0, 4])
+    marks = [
+        {
+            "sel": "#graf-szukaj",
+            "arrow": "below",
+            "label": "wpisz nazwisko",
+            "dx": -300,
+            "dy": 20,
+        }
+    ]
+    piny = [f"#kb-szukany-{i}" for i in range(min(2, len(ids)))]
+    marks += [{"sel": p} for p in piny]
+    if len(piny) == 2:
+        # label under the upper of the two hits, in the faded part of the graph
+        gorny = min(piny, key=lambda p: page_box(page, p)["y"])
+        next(m for m in marks if m["sel"] == gorny).update(
+            arrow="below", label="ten sam autor dwa razy?", dx=-100, dy=20
+        )
+    mark(page, marks)
+    zaaw = page_box(page, "#graf-zaawansowane")
+    graf = page_box(page, "#graf-wrapper")
+    shot(
+        page,
+        out / "08-szukaj-autora.png",
+        zaaw["y"] - 10,
+        graf["y"] + graf["height"] - zaaw["y"] + 20,
+    )
+
+    # 9. 3D view (WebGL): labels on, after the force layout cooled down
+    page.goto(f"{autor}powiazania/3d/")
+    page.wait_for_load_state("networkidle")
+    page.wait_for_selector("#siec3d-container canvas")
+    page.check("#siec3d-etykiety-chk")
+    page.wait_for_timeout(9000)
+    # zoom in a little (mouse wheel), so the cloud fills the scene
+    scena = page_box(page, "#siec3d-container")
+    page.mouse.move(scena["x"] + scena["width"] / 2, scena["y"] + scena["height"] / 2)
+    for _ in range(2):
+        page.mouse.wheel(0, -150)
+        page.wait_for_timeout(300)
+    # move off the scene, or a node tooltip stays in the shot
+    page.mouse.move(scena["x"] + 5, scena["y"] + scena["height"] - 5)
+    page.wait_for_timeout(1500)
+    mark(
+        page,
+        [
+            {
+                # label on the "Widok 2D" row, right below the checkbox:
+                # a short hook up to it, clear of "Etykiety" and the help text
+                "sel": "label:has(#siec3d-etykiety-chk)",
+                "arrow": "below",
+                "label": "nazwiska 25 najważniejszych",
+                "dx": -20,
+                "dy": -86,
+            },
+            {
+                "sel": "a[href$='/powiazania/'].button",
+                "arrow": "right",
+                "label": "powrót do 2D",
+                "dx": -60,
+                "dy": -40,
+            },
+        ],
+    )
+    shot(page, out / "09-widok-3d.png", 100, 770)
+
+
+def logowanie_metody(page: Page, base: str, out: Path) -> None:
+    """docs/administrator/metody-logowania.md: login menu with every method,
+    the BPP login form, linking an account with SSO/ORCID, the ORCID section
+    of the university, the lockout list.
+
+    Needs bin/docs-demo-logowanie-metody.py and a run-site started with the
+    fake DJANGO_BPP_OIDC_* variables described there (closed local issuer).
+    """
+    # 1. "zaloguj" menu with institutional, ORCID and BPP login
+    anon = new_session(page, base)
+    li = open_top_menu(anon, "fi-lock")
+    menu = f"{li} > ul"
+    mark(
+        anon,
+        [
+            {
+                "sel": f"{menu} a[href*='/oidc/authenticate'] i",
+                "arrow": "left",
+                "label": "Keycloak / Microsoft",
+                "dx": -10,
+                "dy": -40,
+            },
+            {
+                "sel": f"{menu} a[href*='/orcid/login'] span",
+                "arrow": "left",
+                "label": "ORCID",
+                "dx": -10,
+                "dy": 0,
+            },
+            {
+                "sel": f"{menu} a[href*='/accounts/login/local'] i",
+                "arrow": "left",
+                "label": "login i hasło BPP",
+                "dx": -10,
+                "dy": 30,
+            },
+        ],
+    )
+    box = page_box(anon, menu)
+    shot(anon, out / "01-menu-zaloguj.png", 0, box["y"] + box["height"] + 70)
+
+    # 2. the BPP login form ("logowanie BPP")
+    anon.goto(f"{base}/accounts/login/local/")
+    anon.wait_for_load_state("networkidle")
+    mark(
+        anon,
+        [
+            {
+                "sel": "form input[name=username]",
+                "arrow": "left",
+                "label": "login BPP / LDAP",
+                "dx": -10,
+                "dy": -20,
+            },
+            {
+                "sel": "a.button[href*='/orcid/login']",
+                "arrow": "left",
+                "label": "ORCID",
+                "dx": -10,
+                "dy": -20,
+            },
+            {
+                "sel": "a[href*='password_reset']",
+                "arrow": "right",
+                "label": "reset hasła",
+                "dx": 30,
+                "dy": -30,
+            },
+        ],
+    )
+    shot(
+        anon,
+        out / "02-logowanie-bpp.png",
+        0,
+        bottom_of(anon, "a[href*='password_reset']", 50),
+    )
+    anon.context.close()
+
+    # 3. "Mój profil": SSO and ORCID linking (an account with a local password)
+    usr = new_session(page, base, DEMO_USER)
+    usr.goto(f"{base}/bpp/profil/")
+    usr.wait_for_load_state("networkidle")
+    close_cookie_banner(usr)
+    mark(
+        usr,
+        [
+            {
+                "sel": "a[href*='/oidc/polacz']",
+                "arrow": "right",
+                "label": "1. połącz z SSO",
+                "dx": 40,
+                "dy": -40,
+            },
+            {
+                "sel": "a[href*='/orcid/polacz']",
+                "arrow": "right",
+                "label": "połącz z ORCID",
+                "dx": 40,
+                "dy": -40,
+            },
+        ],
+    )
+    top = shot(usr, None, 0, bottom_of(usr, "h2 + .callout", 12))
+    sso = page_box(usr, "h3", "Logowanie SSO")
+    dol = bottom_of(usr, "a[href*='/orcid/polacz']", 30)
+    sekcja = shot(usr, None, sso["y"] - 20, dol - sso["y"] + 20)
+    stitch(
+        usr, [top, sekcja], out / "03-profil-polacz.png", "na dole strony „Mój profil”"
+    )
+
+    # 4. confirming the local password before going to the identity provider
+    usr.goto(f"{base}/oidc/polacz/")
+    usr.wait_for_load_state("networkidle")
+    mark(
+        usr,
+        [
+            {"sel": "#id_password"},
+            {
+                "sel": "form button[type=submit]",
+                "arrow": "right",
+                "label": "2. hasło do BPP i kliknij",
+                "dx": 40,
+                "dy": -30,
+            },
+        ],
+    )
+    shot(
+        usr,
+        out / "04-polacz-sso-haslo.png",
+        0,
+        bottom_of(usr, "form button[type=submit]", 70),
+    )
+    usr.context.close()
+
+    # 5. Uczelnia: the "ORCID" section (fake client id, secret never shown)
+    adm = new_session(page, base, DEMO_USER_ADMIN)
+    otworz_uczelnie(adm, base)
+    sel = open_fieldset(adm, "ORCID")
+    mark(
+        adm,
+        [
+            # whole row, no label: an arrow would cross the field's own text
+            {"sel": "div.grp-row.orcid_sandbox"},
+        ],
+    )
+    box = page_box(adm, sel)
+    shot(adm, out / "05-uczelnia-orcid.png", box["y"] - 16, box["height"] + 40)
+
+    # 6. Axes: list of blocked logins, unlocking by deleting the row
+    adm.goto(f"{base}/admin/axes/accessattempt/")
+    adm.wait_for_load_state("networkidle")
+    mark(
+        adm,
+        [
+            {
+                "sel": "#result_list tbody tr",
+                "arrow": "below",
+                "label": "zaznacz i usuń = odblokuj",
+                "dx": 60,
+                "dy": 0,
+            },
+        ],
+    )
+    shot(adm, out / "06-blokady-logowania.png", 0, bottom_of(adm, "#result_list", 160))
+    adm.context.close()
+
+
+def dwudyscyplinowcy(page: Page, base: str, out: Path) -> None:
+    """docs/redaktor/dwudyscyplinowcy.md: authors with two disciplines (editor).
+
+    Run bin/docs-demo-dwudyscyplinowcy.py first. The last step really changes
+    an author's discipline on one work and then changes it back, so the
+    scenario can be re-run on the same DB.
+    """
+    red = new_session(page, base, DEMO_USER_REDAKTOR)
+    idx = f"{base}/ewaluacja_dwudyscyplinowcy/"
+
+    # 1. ewaluacja menu -> optymalizacja ewaluacji
+    red.goto(f"{base}/")
+    red.wait_for_load_state("networkidle")
+    li = open_top_menu(red, "fi-graph-bar")
+    mark(
+        red,
+        [
+            {
+                "sel": f"{li} a[href$='/ewaluacja_optymalizacja/']",
+                "arrow": "right",
+                "label": "1. optymalizacja ewaluacji",
+                "dx": 40,
+            }
+        ],
+    )
+    menu = page_box(red, f"{li} > .menu-columns-wrapper")
+    shot(red, out / "01-menu-ewaluacja.png", 0, menu["y"] + menu["height"] + 40)
+
+    # 2. the "Dwudyscyplinowcy" button on the optimisation page
+    red.goto(f"{base}/ewaluacja_optymalizacja/")
+    red.wait_for_load_state("networkidle")
+    mark(
+        red,
+        [
+            {
+                "sel": "a[href$='/ewaluacja_dwudyscyplinowcy/']",
+                "arrow": "above",
+                "label": "2. Dwudyscyplinowcy",
+                "dx": 60,
+            }
+        ],
+    )
+    grupa = page_box(red, "a[href$='/ewaluacja_dwudyscyplinowcy/']")
+    shot(red, out / "02-przycisk.png", 0, grupa["y"] + grupa["height"] + 170)
+
+    # 3. the list: explanation and the number of authors found
+    red.goto(idx)
+    red.wait_for_load_state("networkidle")
+    red.add_style_tag(content=".callout.success h4 { width: fit-content; }")
+    mark(
+        red,
+        [
+            {"sel": ".callout.secondary"},
+            {
+                "sel": ".callout.success h4",
+                "arrow": "right",
+                "label": "tylko autorzy z pracami zgodnymi",
+                "dx": 20,
+                "dy": 10,
+            },
+        ],
+    )
+    karta = page_box(red, ".ewaluacja-dwudyscyplinowcy__author-card")
+    shot(red, out / "03-lista.png", 0, karta["y"] + 200)
+
+    # 4. one author's card
+    karta_sel = ".ewaluacja-dwudyscyplinowcy__author-card"
+    red.evaluate(
+        """(sel) => { const c = [...document.querySelectorAll(sel)]
+            .find(e => e.textContent.includes('Merigold Yennefer'));
+            c.id = 'kb-karta'; }""",
+        karta_sel,
+    )
+    # shrink the full-width blocks to their text, so the boxes hug it
+    red.add_style_tag(
+        content="#kb-karta .ewaluacja-dwudyscyplinowcy__disciplines-section,"
+        " #kb-karta .ewaluacja-dwudyscyplinowcy__publications-summary"
+        " { width: fit-content; }"
+    )
+    mark(
+        red,
+        [
+            {
+                "sel": "#kb-karta .ewaluacja-dwudyscyplinowcy__disciplines-section",
+                "arrow": "right",
+                "label": "1. dyscypliny w każdym roku",
+                "dx": 200,
+                "dy": -60,
+            },
+            {
+                "sel": "#kb-karta .ewaluacja-dwudyscyplinowcy__publications-summary",
+                "arrow": "right",
+                "label": "2. zgodne / niezgodne",
+                "dx": 200,
+                "dy": -50,
+            },
+            {"sel": "#kb-karta th", "text": "Status"},
+            {"sel": "#kb-karta th", "text": "Sloty"},
+        ],
+    )
+    k = page_box(red, "#kb-karta")
+    r = page_box(red, "#kb-karta tbody tr:nth-child(6)")
+    shot(
+        red,
+        out / "04-karta-autora.png",
+        k["y"] - 20,
+        r["y"] + r["height"] - k["y"] + 40,
+    )
+
+    # 5. the only action: "Optymalizuj" on a matching 2022 work
+    red.evaluate(
+        """() => { const row = [...document.querySelectorAll('#kb-karta tbody tr')]
+            .find(r => r.querySelector('.fi-check') && r.children[1].textContent.trim() === '2022');
+            row.id = 'kb-wiersz'; }"""
+    )
+    mark(
+        red,
+        [
+            {"sel": "#kb-wiersz"},
+            {
+                "sel": "#kb-wiersz a.button",
+                "arrow": "left",
+                "label": "Optymalizuj",
+                "dy": 30,
+            },
+        ],
+    )
+    w = page_box(red, "#kb-wiersz")
+    shot(red, out / "05-optymalizuj.png", w["y"] - 230, w["height"] + 400)
+
+    # 6. "Optymalizacja publikacji": switch the author to the second discipline
+    red.locator("#kb-wiersz a.button").click()
+    red.wait_for_load_state("networkidle")
+    red.wait_for_timeout(800)
+    zmien = ".ewaluacja-optymalizuj__badge--change-discipline"
+    autor_karta = red.locator(
+        ".ewaluacja-optymalizuj__author-card", has_text="Merigold"
+    )
+    autor_karta.evaluate("e => e.id = 'kb-autor'")
+    mark(
+        red,
+        [
+            {
+                "sel": f"#kb-autor {zmien}",
+                "arrow": "below",
+                "label": "zmień na drugą dyscyplinę",
+                "dx": -380,
+                "dy": -68,
+            }
+        ],
+    )
+    a = page_box(red, "#kb-autor")
+    top = shot(red, None, 0, 300)
+    bottom = shot(red, None, a["y"] - 70, a["height"] + 150)
+    stitch(red, [top, bottom], out / "06-zmien-dyscypline.png", "karta autora")
+
+    # 7. after the change: the work counts in the second discipline
+    red.locator(f"#kb-autor {zmien}").click()
+    red.wait_for_load_state("networkidle")
+    red.wait_for_timeout(1500)
+    autor_karta = red.locator(
+        ".ewaluacja-optymalizuj__author-card", has_text="Merigold"
+    )
+    autor_karta.evaluate("e => e.id = 'kb-autor'")
+    mark(
+        red,
+        [
+            {
+                "sel": f"#kb-autor {zmien}",
+                "arrow": "below",
+                "label": "powrót do dyscypliny głównej",
+                "dx": -420,
+                "dy": -68,
+            }
+        ],
+    )
+    a = page_box(red, "#kb-autor")
+    h = page_box(red, ".ewaluacja-optymalizuj__discipline-header", "archeologia")
+    shot(
+        red, out / "07-po-zmianie.png", h["y"] - 20, a["y"] + a["height"] - h["y"] + 150
+    )
+
+    # restore the demo state: back to the main discipline
+    red.locator(f"#kb-autor {zmien}").click()
+    red.wait_for_load_state("networkidle")
+    red.wait_for_timeout(1000)
+    red.context.close()
+
+
 def zgloszenie_publikacji(page: Page, base: str, out: Path) -> None:
     """docs/uzytkownik/zgloszenie-publikacji.md: the "Zgłoś publikację" wizard, end to end."""
     nastepny = ".wizard-nav button:not([name=wizard_goto_step])"
@@ -6740,6 +8238,15 @@ SCENARIOS = {
     "panel-uczelnia-autorzy": ("redaktor/autorzy", panel_uczelnia_autorzy),
     "panel-uczelnia-wydawnictwa": ("redaktor/wydawnictwa", panel_uczelnia_wydawnictwa),
     "import-pracownikow": ("administrator/import-pracownikow", import_pracownikow),
+    "tabela-krzyzowa": ("uzytkownik/tabela-krzyzowa", tabela_krzyzowa),
+    "asystent-ai": ("uzytkownik/asystent-ai", asystent_ai),
+    "panel-administracyjny": (
+        "administrator/panel-administracyjny",
+        panel_administracyjny,
+    ),
+    "powiazania-autorow": ("uzytkownik/powiazania-autorow", powiazania_autorow),
+    "logowanie-metody": ("administrator/logowanie-metody", logowanie_metody),
+    "dwudyscyplinowcy": ("redaktor/dwudyscyplinowcy", dwudyscyplinowcy),
 }
 
 

@@ -407,7 +407,7 @@ class Uczelnia(ModelZAdnotacjami, ModelZPBN_ID, NazwaISkrot, NazwaWDopelniaczu):
         blank=True,
         default="",
         help_text="Nazwa pokazywana przy linku z pola „Adres profilu "
-        "w portalu uczelni” autora, np. „PPM UML”. Puste = „Profil "
+        "w portalu uczelni” autora, np. „Portal Pracowników”. Puste = „Profil "
         "w portalu uczelni”.",
     )
 
@@ -715,13 +715,12 @@ class Uczelnia(ModelZAdnotacjami, ModelZPBN_ID, NazwaISkrot, NazwaWDopelniaczu):
         "Kasuj oświadczenia selektywnie (per osoba)",
         default=True,
         help_text=(
-            "Gdy zaznaczone: ``sync_publication`` usuwa oświadczenia "
-            "selektywnie per-osoba (DELETE ``/publications/{id}`` z "
-            "``{personId, role}``) i wysyła tylko brakujące. Gdy "
-            "odznaczone: usuwa wszystkie oświadczenia publikacji jednym "
-            "DELETE (``{all: True}``), a następnie wysyła wszystkie "
-            "lokalne jako batch. Wariant selektywny zachowuje metadata "
-            "PBN (``addedTimestamp`` itd.) dla identycznych rekordów."
+            "Gdy zaznaczone: przy wysyłce pracy do PBN usuwane są tylko te "
+            "oświadczenia, które w BPP zmieniły się albo zniknęły, a "
+            "wysyłane tylko brakujące. Oświadczenia bez zmian zostają w PBN "
+            "nietknięte (zachowują m.in. datę dodania). Gdy odznaczone: przy "
+            "każdej wysyłce wszystkie oświadczenia pracy są w PBN usuwane i "
+            "wysyłane od nowa."
         ),
     )
     pbn_api_nie_wysylaj_prac_bez_pk = models.BooleanField(
@@ -1061,7 +1060,7 @@ class Uczelnia(ModelZAdnotacjami, ModelZPBN_ID, NazwaISkrot, NazwaWDopelniaczu):
                 if not pbn_user_token:
                     raise WillNotExportError(
                         "Najpierw wykonaj autoryzację w PBN API za pomocą menu dostępnego "
-                        "na głównej stronie (operacje -> autoryzuj w PBN)"
+                        "na głównej stronie (PBN → autoryzuj PBN API)"
                     )
                 self.access_token = pbn_user_token
                 return True

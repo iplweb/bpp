@@ -1,7 +1,8 @@
 {% extends "base.html" %}
+{% load polish_inflection %}
 
 {% block extratitle %}
-    Import pracowników i jednostek — przegląd {{ parent_object.plik_xls.name }}
+    Import pracowników i jednostek — przegląd {{ parent_object.nazwa_pliku }}
 {% endblock %}
 
 {% block breadcrumbs %}
@@ -13,7 +14,7 @@
 {% block content %}
     <h1>Przegląd importu</h1>
     <p>
-        Plik: <strong>{{ parent_object.plik_xls.name }}</strong><br>
+        Plik: <strong>{{ parent_object.nazwa_pliku }}</strong><br>
         Stan: <span class="label secondary">{{ parent_object.get_stan_display }}</span>
     </p>
 
@@ -29,7 +30,7 @@
             {% if pokaz_jednostki %}
                 <p>
                     <span class="fi-info"></span>
-                    {{ liczniki_jednostek.do_utworzenia }} jednostek do utworzenia ·
+                    {{ liczniki_jednostek.do_utworzenia }} {% odmiana_liczebnikowa "jednostka" liczniki_jednostek.do_utworzenia %} do utworzenia ·
                     {{ liczniki_jednostek.do_sprawdzenia }} do sprawdzenia.
                     <a href="{% url "import_pracownikow:jednostki" parent_object.pk %}"
                        class="button success">Zweryfikuj jednostki</a>
@@ -43,7 +44,7 @@
                 <p>
                     <span class="fi-crown"></span>
                     {% if pokaz_tytuly %}
-                        {{ liczniki_tytulow.do_utworzenia }} tytułów do utworzenia ·
+                        {{ liczniki_tytulow.do_utworzenia }} {% odmiana_liczebnikowa "tytuł" liczniki_tytulow.do_utworzenia %} do utworzenia ·
                         {{ liczniki_tytulow.do_sprawdzenia }} do sprawdzenia.
                         <a href="{% url "import_pracownikow:tytuly" parent_object.pk %}"
                            class="button success">Zobacz tytuły</a>
@@ -58,7 +59,7 @@
             {% if pokaz_stopnie %}
                 <p>
                     <span class="fi-shield"></span>
-                    {{ liczniki_stopni.do_utworzenia }} stopni służbowych do utworzenia ·
+                    Stopnie służbowe: {{ liczniki_stopni.do_utworzenia }} do utworzenia ·
                     {{ liczniki_stopni.do_sprawdzenia }} do sprawdzenia.
                     <a href="{% url "import_pracownikow:stopnie" parent_object.pk %}"
                        class="button success">Zobacz stopnie</a>
@@ -67,7 +68,7 @@
             {% if pokaz_stanowiska %}
                 <p>
                     <span class="fi-torso-business"></span>
-                    {{ liczniki_stanowisk.do_utworzenia }} stanowisk dydaktycznych do utworzenia ·
+                    Stanowiska dydaktyczne: {{ liczniki_stanowisk.do_utworzenia }} do utworzenia ·
                     {{ liczniki_stanowisk.do_sprawdzenia }} do sprawdzenia.
                     <a href="{% url "import_pracownikow:stanowiska" parent_object.pk %}"
                        class="button success">Zobacz stanowiska</a>
@@ -147,7 +148,7 @@
                     {% if pokaz_tytuly %}
                         <p>
                             <span class="fi-crown"></span>
-                            {{ liczniki_tytulow.do_utworzenia }} tytułów do utworzenia ·
+                            {{ liczniki_tytulow.do_utworzenia }} {% odmiana_liczebnikowa "tytuł" liczniki_tytulow.do_utworzenia %} do utworzenia ·
                             {{ liczniki_tytulow.do_sprawdzenia }} do sprawdzenia.
                             <a href="{% url "import_pracownikow:tytuly" parent_object.pk %}"
                                class="button success">Zobacz tytuły</a>
@@ -156,7 +157,7 @@
                     {% if pokaz_stopnie %}
                         <p>
                             <span class="fi-shield"></span>
-                            {{ liczniki_stopni.do_utworzenia }} stopni służbowych do utworzenia ·
+                            Stopnie służbowe: {{ liczniki_stopni.do_utworzenia }} do utworzenia ·
                             {{ liczniki_stopni.do_sprawdzenia }} do sprawdzenia.
                             <a href="{% url "import_pracownikow:stopnie" parent_object.pk %}"
                                class="button success">Zobacz stopnie</a>
@@ -165,7 +166,7 @@
                     {% if pokaz_stanowiska %}
                         <p>
                             <span class="fi-torso-business"></span>
-                            {{ liczniki_stanowisk.do_utworzenia }} stanowisk dydaktycznych do utworzenia ·
+                            Stanowiska dydaktyczne: {{ liczniki_stanowisk.do_utworzenia }} do utworzenia ·
                             {{ liczniki_stanowisk.do_sprawdzenia }} do sprawdzenia.
                             <a href="{% url "import_pracownikow:stanowiska" parent_object.pk %}"
                                class="button success">Zobacz stanowiska</a>

@@ -262,7 +262,7 @@ ten sam powód bywa poprzedzony nazwą błędu, np. `DOIorWWWMissing:`).
 
 | Komunikat (fragment) | Przyczyna | Co zrobić |
 |---|---|---|
-| „Najpierw wykonaj autoryzację w PBN API …” | nie jesteś zalogowany do PBN | **PBN** → **autoryzuj PBN API** (w komunikacie stoi „operacje → autoryzuj w PBN” — to stara nazwa menu) |
+| „Najpierw wykonaj autoryzację w PBN API …” | nie jesteś zalogowany do PBN | **PBN** → **autoryzuj PBN API** |
 | „Brak dostępu z powodu nieprawidłowego tokena -- wymagana autoryzacja w PBN” / w kolejce „Użytkownik bez autoryzacji w PBN, spróbuję po zalogowaniu do PBN.” | autoryzacja wygasła | autoryzuj się ponownie; wpisy z kolejki ruszą same |
 | „Brak dostępu -- najprawdopodobniej użytkownik nie posiada odpowiednich uprawnień po stronie PBN/POLON” / w kolejce „Brak uprawnień …” | Twoje konto PBN nie ma uprawnień do publikacji instytucji | poproś osobę zarządzającą kontami PBN w uczelni o nadanie roli |
 | „Musi być DOI lub adres WWW” | praca nie ma DOI ani adresu WWW | uzupełnij DOI albo WWW |
