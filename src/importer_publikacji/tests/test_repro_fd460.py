@@ -37,6 +37,13 @@ def test_fd460_matchuj_zrodlo_bez_diakrytykow(w_bazie, z_importu):
 
 
 @pytest.mark.django_db
+def test_fd460_scisle_dopasowanie_bez_luznego_tytulu():
+    """Importy hurtowe (``disable_fuzzy=True``) chcą ścisłego dopasowania."""
+    baker.make(Zrodlo, nazwa="Védelem Tudomány", skrot="", issn="", e_issn="")
+    assert matchuj_zrodlo("Vedelem Tudomany", disable_fuzzy=True) is None
+
+
+@pytest.mark.django_db
 def test_fd460_matchuj_zrodlo_skrot_bez_diakrytykow():
     zrodlo = baker.make(
         Zrodlo, nazwa="Coś innego", skrot="Véd. Tud.", issn="", e_issn=""

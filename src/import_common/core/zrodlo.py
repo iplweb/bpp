@@ -163,9 +163,14 @@ def _try_match_zrodlo_by_title_single(
     except Zrodlo.DoesNotExist:
         pass
 
-    # Tytuł różniący się tylko diakrytykami (FD#460).
+    # Tytuł różniący się tylko diakrytykami (FD#460). Tylko gdy wolno
+    # dopasowywać luźniej: importy hurtowe (listy ministerialne, punktacja)
+    # wołają z ``disable_fuzzy=True`` po ścisłe dopasowanie, a to zapytanie
+    # robi pełny skan tabeli źródeł (``unaccent`` nie ma indeksu).
     pola = ("nazwa",) if disable_skrot else ("nazwa", "skrot")
-    bez_diakrytykow = zrodla_po_tytule_bez_diakrytykow(elem, pola)
+    bez_diakrytykow = (
+        None if disable_fuzzy else zrodla_po_tytule_bez_diakrytykow(elem, pola)
+    )
     if bez_diakrytykow is not None:
         kandydaci = list(bez_diakrytykow[:2])
         if len(kandydaci) == 1:
