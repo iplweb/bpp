@@ -6,6 +6,10 @@ from pathlib import Path
 import pytest
 
 _SCIEZKA = Path(__file__).resolve().parents[3] / "bin" / "check-fd-newsfragments.py"
+if not _SCIEZKA.exists():
+    # The CI test-runner image ships src/ only, without bin/; the script itself
+    # runs on every PR in the "Newsfragments" workflow.
+    pytest.skip("bin/ not available in this environment", allow_module_level=True)
 _spec = importlib.util.spec_from_file_location("check_fd_newsfragments", _SCIEZKA)
 modul = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(modul)
