@@ -14,7 +14,9 @@ from django.contrib import messages
 from django.urls import clear_url_caches, reverse
 from django.utils.html import escapejs
 from model_bakery import baker
+from mozilla_django_oidc.auth import OIDCAuthenticationBackend
 
+from oidc_integration import backends as oidc_backends
 from oidc_integration.backends import BppOIDCBackend
 
 ISSUER = "https://sso.uczelnia.example.org/realms/uczelnia"
@@ -41,13 +43,22 @@ def oidc_callback(settings, monkeypatch):
             BACKEND,
         ]
 
-    # Zero ruchu sieciowego: token i jego weryfikacja zaślepione; userinfo
-    # przechodzi przez prawdziwą normalizację backendu.
-    payload = {
-        "iss": ISSUER,
-        "sub": "sub-123",
-        "aud": "bpp",
-        "email_verified": True,
+    # Zero ruchu sieciowego: token, jego weryfikacja i odpowiedź userinfo
+    # zaślepione; claimy przechodzą przez PRAWDZIWE ``get_userinfo`` backendu
+    # (scalenie z payloadem + normalizacja e-maila). Test może nadpisać
+    # ``state["payload"]`` / ``state["userinfo"]``.
+    state = {
+        "payload": {
+            "iss": ISSUER,
+            "sub": "sub-123",
+            "aud": "bpp",
+            "email_verified": True,
+        },
+        "userinfo": {
+            "sub": "sub-123",
+            "email": "jan.kowalski@uczelnia.example.org",
+            "preferred_username": "jkowalski",
+        },
     }
     monkeypatch.setattr(
         BppOIDCBackend,
@@ -55,23 +66,21 @@ def oidc_callback(settings, monkeypatch):
         lambda self, token_payload: {"id_token": "it", "access_token": "at"},
     )
     monkeypatch.setattr(
-        BppOIDCBackend, "verify_token", lambda self, token, **kw: dict(payload)
-    )
-    monkeypatch.setattr(
         BppOIDCBackend,
+        "verify_token",
+        lambda self, token, **kw: dict(state["payload"]),
+    )
+    # Bazowe (mozilla) ``get_userinfo`` robi GET na userinfo endpoint —
+    # zaślepiamy tylko je, nadpisanie w ``BppOIDCBackend`` działa naprawdę.
+    monkeypatch.setattr(
+        OIDCAuthenticationBackend,
         "get_userinfo",
-        lambda self, at, it, p: self._normalized(
-            {
-                **payload,
-                "email": "jan.kowalski@uczelnia.example.org",
-                "preferred_username": "jkowalski",
-            }
-        ),
+        lambda self, at, it, p: dict(state["userinfo"]),
     )
 
     importlib.reload(django_bpp.urls)
     clear_url_caches()
-    yield
+    yield state
     settings.OIDC_LOGIN_ENABLED = False
     importlib.reload(django_bpp.urls)
     clear_url_caches()
@@ -88,6 +97,22 @@ def _start_callback(client):
     )
 
 
+def _assert_shown_once(client, resp, expected):
+    assert resp.redirect_chain, "callback powinien przekierować"
+    assert resp.status_code == 200
+    assert not resp.wsgi_request.user.is_authenticated
+
+    shown = [m for m in resp.context["messages"] if m.level == messages.ERROR]
+    assert [m.message for m in shown] == [expected]
+    assert escapejs(expected) in resp.content.decode()
+    # Komunikat dla użytkownika — bez technicznego żargonu.
+    assert "OIDC" not in expected
+
+    # Flash-once: kolejna odsłona nie pokazuje komunikatu ponownie.
+    again = client.get("/")
+    assert escapejs(expected) not in again.content.decode()
+
+
 @pytest.mark.django_db
 def test_odmowa_oidc_pokazuje_komunikat_raz(client, uczelnia, oidc_callback):
     # Konto z tym adresem już istnieje i nie jest związane z SSO → fail-closed.
@@ -95,16 +120,53 @@ def test_odmowa_oidc_pokazuje_komunikat_raz(client, uczelnia, oidc_callback):
 
     resp = _start_callback(client)
 
-    assert resp.redirect_chain, "callback powinien przekierować"
-    assert resp.status_code == 200
-    assert not resp.wsgi_request.user.is_authenticated
+    _assert_shown_once(client, resp, oidc_backends.MSG_KONTO_ISTNIEJE)
 
-    shown = [m for m in resp.context["messages"] if m.level == messages.ERROR]
-    assert len(shown) == 1
-    text = shown[0].message
-    assert "konto z tym adresem już istnieje" in text
-    assert escapejs(text) in resp.content.decode()
 
-    # Flash-once: kolejna odsłona nie pokazuje komunikatu ponownie.
-    again = client.get("/")
-    assert escapejs(text) not in again.content.decode()
+@pytest.mark.django_db
+def test_odmowa_oidc_niepotwierdzony_email(client, uczelnia, oidc_callback):
+    oidc_callback["payload"]["email_verified"] = False
+
+    resp = _start_callback(client)
+
+    _assert_shown_once(client, resp, oidc_backends.MSG_EMAIL_NIEPOTWIERDZONY)
+
+
+@pytest.mark.django_db
+def test_odmowa_oidc_brak_emaila(client, uczelnia, oidc_callback):
+    oidc_callback["userinfo"] = {"sub": "sub-123", "preferred_username": "jk"}
+
+    resp = _start_callback(client)
+
+    _assert_shown_once(client, resp, oidc_backends.MSG_BRAK_EMAILA)
+
+
+@pytest.mark.django_db
+def test_odmowa_oidc_konto_nieaktywne(client, uczelnia, oidc_callback):
+    from oidc_integration.models import OIDCIdentity
+
+    u = baker.make(
+        "bpp.BppUser",
+        email="jan.kowalski@uczelnia.example.org",
+        is_active=False,
+    )
+    OIDCIdentity.objects.create(user=u, issuer=ISSUER, sub="sub-123")
+
+    resp = _start_callback(client)
+
+    _assert_shown_once(client, resp, oidc_backends.MSG_KONTO_NIEAKTYWNE)
+
+
+@pytest.mark.django_db
+def test_odmowa_oidc_jedyne_konto_z_adresem_nieaktywne(client, uczelnia, oidc_callback):
+    # Konto z adresem istnieje, ale jest nieaktywne — nie każemy logować się
+    # hasłem (i tak by nie zadziałało), tylko mówimy, że jest nieaktywne.
+    baker.make(
+        "bpp.BppUser",
+        email="jan.kowalski@uczelnia.example.org",
+        is_active=False,
+    )
+
+    resp = _start_callback(client)
+
+    _assert_shown_once(client, resp, oidc_backends.MSG_KONTO_NIEAKTYWNE)
