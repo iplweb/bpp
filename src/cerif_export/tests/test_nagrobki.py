@@ -220,6 +220,12 @@ def _ukryj_kosz(praca, uczelnia):
     praca.delete()
 
 
+def _ukryj_odpiecie_autora(praca, uczelnia):
+    # Twarde skasowanie wiersza ``*_Autor`` — jak usunięcie z inline'a.
+    for autorstwo in praca.autorzy_set.all():
+        autorstwo.delete()
+
+
 def _ukryj_opt_out(praca, uczelnia):
     praca.nie_eksportuj_przez_api = True
     praca.save()
@@ -247,17 +253,17 @@ def _ukryj_status(praca, uczelnia):
 @pytest.mark.django_db
 @pytest.mark.parametrize(
     "ukryj",
-    [_ukryj_kosz, _ukryj_opt_out, _ukryj_status],
-    ids=["kosz", "opt_out", "ukryty_status"],
+    [_ukryj_kosz, _ukryj_opt_out, _ukryj_status, _ukryj_odpiecie_autora],
+    ids=["kosz", "opt_out", "ukryty_status", "odpiecie_ostatniego_autora"],
 )
 def test_kazda_droga_znikniecia_daje_nagrobek(uczelnia, jednostka, typ_autor, ukryj):
-    """Trzy drogi, jeden skutek dla harvestera — więc jeden nagrobek.
+    """Cztery drogi, jeden skutek dla harvestera — więc jeden nagrobek.
 
     Przypadek ``kosz`` dowodzi, że ``przynaleznosc`` widzi rekord z kosza
     (``global_objects``) i jego autorstwa (``all_objects`` — domyślny
     menedżer ``*_Autor`` je ukrywa). Odpięcie ostatniego autora uczelni
-    (twarde skasowanie wiersza ``*_Autor``) NIE daje nagrobka — atrybucja
-    znika razem z wierszem (patrz docs/deweloper/soft-delete.md).
+    (twarde skasowanie wiersza ``*_Autor``) trzyma rekord w nadzbiorze przez
+    ``OdpietaPrzynaleznosc``.
     """
     from model_bakery import baker
 
@@ -510,3 +516,91 @@ def test_jednostka_w_koszu_dostaje_nagrobek(uczelnia):
     j.delete()
 
     assert provider.nagrobki(uczelnia, Jednostka).filter(pk=j.pk).exists()
+
+
+# -- odpięcie ostatniego autora uczelni ---------------------------------
+
+
+def _praca_z_autorem(jednostka, model_nazwa="Wydawnictwo_Ciagle"):
+    from model_bakery import baker
+
+    from bpp.models import Autor
+
+    praca = baker.make(f"bpp.{model_nazwa}")
+    praca.dodaj_autora(baker.make(Autor, nazwisko="Kowalski", imiona="Jan"), jednostka)
+    return praca
+
+
+def _nagrobek(uczelnia, model, praca, set_spec=None):
+    from cerif_export import const
+
+    provider = rejestr_providerow()[set_spec or const.SET_PUBLICATIONS]
+    return provider.nagrobki(uczelnia, model).filter(pk=praca.pk).exists()
+
+
+@pytest.mark.django_db
+def test_odpiecie_ostatniego_autora_podbija_datestamp(uczelnia, jednostka, typ_autor):
+    """Bez podbicia ``ostatnio_zmieniony`` harvester przyrostowy (``from=``)
+    nagrobka by nie zobaczył."""
+    from bpp.models import Wydawnictwo_Ciagle
+
+    praca = _praca_z_autorem(jednostka)
+    Wydawnictwo_Ciagle.objects.filter(pk=praca.pk).update(
+        ostatnio_zmieniony="2001-01-01T00:00:00Z"
+    )
+
+    praca.autorzy_set.get().delete()
+
+    praca.refresh_from_db()
+    assert praca.ostatnio_zmieniony.year > 2001
+    assert _nagrobek(uczelnia, Wydawnictwo_Ciagle, praca)
+
+
+@pytest.mark.django_db
+def test_drugi_autor_uczelni_trzyma_rekord_w_secie(uczelnia, jednostka, typ_autor):
+    """Odpięcie NIE-ostatniego autora uczelni nie robi nagrobka."""
+    from model_bakery import baker
+
+    from bpp.models import Autor, Wydawnictwo_Ciagle
+    from cerif_export.models import OdpietaPrzynaleznosc
+
+    praca = _praca_z_autorem(jednostka)
+    praca.dodaj_autora(baker.make(Autor, nazwisko="Nowak", imiona="Jan"), jednostka)
+
+    praca.autorzy_set.filter(autor__nazwisko="Kowalski").get().delete()
+
+    assert not OdpietaPrzynaleznosc.objects.exists()
+    assert not _nagrobek(uczelnia, Wydawnictwo_Ciagle, praca)
+
+
+@pytest.mark.django_db
+def test_powrot_autora_uczelni_zdejmuje_nagrobek(uczelnia, jednostka, typ_autor):
+    from model_bakery import baker
+
+    from bpp.models import Autor, Wydawnictwo_Ciagle
+    from cerif_export import const
+    from cerif_export.models import OdpietaPrzynaleznosc
+
+    praca = _praca_z_autorem(jednostka)
+    praca.autorzy_set.get().delete()
+    assert _nagrobek(uczelnia, Wydawnictwo_Ciagle, praca)
+
+    praca.dodaj_autora(baker.make(Autor, nazwisko="Nowak", imiona="Jan"), jednostka)
+
+    assert not OdpietaPrzynaleznosc.objects.exists()
+    assert not _nagrobek(uczelnia, Wydawnictwo_Ciagle, praca)
+    provider = rejestr_providerow()[const.SET_PUBLICATIONS]
+    assert provider.queryset(uczelnia, Wydawnictwo_Ciagle).filter(pk=praca.pk).exists()
+
+
+@pytest.mark.django_db
+def test_odpiecie_ostatniego_tworcy_patentu_daje_nagrobek(
+    uczelnia, jednostka, typ_autor
+):
+    from bpp.models import Patent
+    from cerif_export import const
+
+    patent = _praca_z_autorem(jednostka, "Patent")
+    patent.autorzy_set.get().delete()
+
+    assert _nagrobek(uczelnia, Patent, patent, const.SET_PATENTS)

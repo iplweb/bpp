@@ -17,6 +17,18 @@ from cerif_export.kontekst import Kursor, ZbioryWidocznosci
 ADNOTACJA_TS = "_cerif_ts"
 
 
+def odpiete_przynaleznosci(model, uczelnia):
+    """``object_id`` rekordów ``model``, które wypadły z setu uczelni po
+    odpięciu jej ostatniego autora (``cerif_export.signals``)."""
+    from django.contrib.contenttypes.models import ContentType
+
+    from cerif_export.models import OdpietaPrzynaleznosc
+
+    return OdpietaPrzynaleznosc.objects.filter(
+        content_type=ContentType.objects.get_for_model(model), uczelnia=uczelnia
+    ).values("object_id")
+
+
 def z_datestampem(queryset, pole="ostatnio_zmieniony"):
     """Dodaj adnotację ``_cerif_ts`` = DATE_TRUNC('second', COALESCE(pole, EPOKA)).
 

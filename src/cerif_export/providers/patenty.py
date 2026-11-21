@@ -5,13 +5,13 @@ publikacji nie może iść po widoku ``bpp_rekord``, który unionuje patenty
 razem z wydawnictwami.
 """
 
-from django.db.models import Prefetch
+from django.db.models import Prefetch, Q
 
 from bpp.models.patent import Patent, Patent_Autor
 from cerif_export import const
 from cerif_export.identyfikatory import BlednyIdentyfikator
 from cerif_export.kontekst import ZbioryWidocznosci
-from cerif_export.providers.base import ProviderEncji
+from cerif_export.providers.base import ProviderEncji, odpiete_przynaleznosci
 from cerif_export.providers.jednostki import (
     widoczne_jednostki,
     widoczne_pk,
@@ -64,9 +64,12 @@ def nalezace_patenty(uczelnia):
     """
     wymagaj_uczelni(uczelnia)
     return Patent.global_objects.filter(
-        pk__in=Patent_Autor.all_objects.filter(jednostka__uczelnia=uczelnia).values(
-            "rekord_id"
+        Q(
+            pk__in=Patent_Autor.all_objects.filter(jednostka__uczelnia=uczelnia).values(
+                "rekord_id"
+            )
         )
+        | Q(pk__in=odpiete_przynaleznosci(Patent, uczelnia))
     )
 
 

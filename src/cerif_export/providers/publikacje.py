@@ -40,7 +40,7 @@ from bpp.models.zrodlo import Zrodlo
 from cerif_export import const
 from cerif_export.identyfikatory import BlednyIdentyfikator, slug_dla
 from cerif_export.kontekst import ZbioryWidocznosci
-from cerif_export.providers.base import ProviderEncji
+from cerif_export.providers.base import ProviderEncji, odpiete_przynaleznosci
 from cerif_export.providers.jednostki import (
     widoczne_jednostki,
     widoczne_pk,
@@ -162,9 +162,12 @@ def naleza_wydawnictwa(model, uczelnia):
     """
     wymagaj_uczelni(uczelnia)
     return model.global_objects.filter(
-        pk__in=model.autor_rekordu_klass.all_objects.filter(
-            jednostka__uczelnia=uczelnia
-        ).values("rekord_id")
+        Q(
+            pk__in=model.autor_rekordu_klass.all_objects.filter(
+                jednostka__uczelnia=uczelnia
+            ).values("rekord_id")
+        )
+        | Q(pk__in=odpiete_przynaleznosci(model, uczelnia))
     )
 
 

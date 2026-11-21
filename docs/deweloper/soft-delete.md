@@ -106,10 +106,15 @@ jest pusty, a rekord z kosza w adminie jest **tylko do odczytu** — najpierw
 atrybucja tenanta, guardy), używa `all_objects`/`_base_manager`
 (`manager_z_koszem()`).
 
-Znane ograniczenie: odpięcie OSTATNIEGO autora uczelni od publikacji
-(twarde kasowanie wiersza `*_Autor`) nie daje nagrobka OAI — atrybucja
-znika razem z wierszem. Docelowo pomoże etap 2 (historia relacji
-w reversion).
+Odpięcie OSTATNIEGO autora uczelni od publikacji (twarde kasowanie wiersza
+`*_Autor` w wydawnictwie ciągłym, zwartym albo patencie) daje nagrobek
+OAI-PMH/CERIF: receiver `cerif_export.signals` zakłada wiersz
+`cerif_export.OdpietaPrzynaleznosc` (publikacja × uczelnia), który trzyma
+rekord w nadzbiorze `przynaleznosc`, i podbija `ostatnio_zmieniony`
+publikacji (datestamp nagrobka). Gdy autor tej uczelni wróci, wiersz jest
+kasowany — rekord jest znów w secie zwykłą drogą. Przepięcie istniejącego
+autorstwa do jednostki innej uczelni (edycja, nie kasowanie) nagrobka nie
+daje.
 
 ### Autorzy — TAK, tylko „pusty" autor
 

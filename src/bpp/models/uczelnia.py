@@ -251,6 +251,7 @@ class Uczelnia(
             "pbn_api.PublikacjaInstytucji.uczelnia",
             "pbn_api.PublikacjaInstytucji_V2.uczelnia",
             "pbn_api.SentData.uczelnia",
+            "cerif_export.OdpietaPrzynaleznosc.uczelnia",
             "dspace_api.Mapowanie_DSpace.uczelnia",
             "dspace_api.SentToDSpace.uczelnia",
             "pbn_export_queue.PBN_Export_Queue.uczelnia",
