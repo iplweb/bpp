@@ -16567,6 +16567,25 @@ COPY public.django_countdown_sitecountdown (id, countdown_time, message, long_de
 
 COPY public.django_migrations (id, app, name, applied) FROM stdin;
 999	bpp	0456_faza_b_i3	2000-01-01 00:00:00+00
+397	bpp	0304_auto_20211010_2247	2000-01-01 00:00:00+00
+779	import_polon	0015_move_files_to_protected	2000-01-01 00:00:00+00
+960	denorm	0001_squashed_0012_alter_dirtyinstance_object_id	2000-01-01 00:00:00+00
+1120	bpp	0478_uczelnia_oai_pmh_aktywny	2000-01-01 00:00:00+00
+492	bpp	0385_alter_crossref_mapper_charakter_crossref_and_more	2000-01-01 00:00:00+00
+961	bpp	0165_cache_punktacja_autora_cache_punktacja_dyscypliny_squashed_0167_auto_20190707_2029	2000-01-01 00:00:00+00
+962	easyaudit	0004_auto_20170620_1354_squashed_0019_alter_crudevent_changed_fields_and_more	2000-01-01 00:00:00+00
+963	bpp	0443_drop_pl_PL_collation	2000-01-01 00:00:00+00
+964	bpp	0411_uczelnia_site_theme_user_sites	2000-01-01 00:00:00+00
+965	bpp	0412_link_uczelnia_to_site	2000-01-01 00:00:00+00
+966	bpp	0413_uczelnia_constance_fields	2000-01-01 00:00:00+00
+967	bpp	0414_copy_constance_to_uczelnia	2000-01-01 00:00:00+00
+968	bpp	0415_rename_accessible_sites_to_uczelnie	2000-01-01 00:00:00+00
+971	bpp	0418_merge_20260521_1015	2000-01-01 00:00:00+00
+972	bpp	0419_merge_20260601_0952	2000-01-01 00:00:00+00
+973	bpp	0420_merge_20260601_1246	2000-01-01 00:00:00+00
+974	bpp	0421_alter_uczelnia_theme_name	2000-01-01 00:00:00+00
+975	bpp	0422_alter_uczelnia_theme_name	2000-01-01 00:00:00+00
+976	bpp	0423_merge_20260602_1430	2000-01-01 00:00:00+00
 180	bpp	0099_nagrody	2000-01-01 00:00:00+00
 288	bpp	0201_rekord_mat_z_www	2000-01-01 00:00:00+00
 1103	import_list_if	0005_liveops	2000-01-01 00:00:00+00
@@ -17101,7 +17120,6 @@ COPY public.django_migrations (id, app, name, applied) FROM stdin;
 394	bpp	0301_doktorska_habilitacyjna_denorm	2000-01-01 00:00:00+00
 395	bpp	0302_denorm_autor_dyscyplina_new_trigger	2000-01-01 00:00:00+00
 396	bpp	0303_denorm_cleanup_cachequeue_gone	2000-01-01 00:00:00+00
-397	bpp	0304_auto_20211010_2247	2000-01-01 00:00:00+00
 398	bpp	0297_liczba_n_uczelni	2000-01-01 00:00:00+00
 399	bpp	0305_merge_20211010_2323	2000-01-01 00:00:00+00
 400	bpp	0306_delete_ewaluacja2021liczbandlauczelni	2000-01-01 00:00:00+00
@@ -17463,8 +17481,8 @@ COPY public.django_migrations (id, app, name, applied) FROM stdin;
 776	import_polon	0012_importpolonoverride	2000-01-01 00:00:00+00
 777	import_polon	0013_alter_importpolonoverride_options_and_more	2000-01-01 00:00:00+00
 778	import_polon	0014_add_ignoruj_miejsce_pracy	2000-01-01 00:00:00+00
-779	import_polon	0015_move_files_to_protected	2000-01-01 00:00:00+00
 780	import_pracownikow	0001_initial	2000-01-01 00:00:00+00
+1004	bpp	0460_faza_b_ii2_repoint	2000-01-01 00:00:00+00
 781	import_pracownikow	0002_importpracownikowrow	2000-01-01 00:00:00+00
 782	import_pracownikow	0003_auto_20210228_1916	2000-01-01 00:00:00+00
 783	import_pracownikow	0004_auto_20210307_1110	2000-01-01 00:00:00+00
@@ -17646,26 +17664,8 @@ COPY public.django_migrations (id, app, name, applied) FROM stdin;
 957	zglos_publikacje	0023_nowy_formularz_zgloszenia	2000-01-01 00:00:00+00
 958	zglos_publikacje	0024_migracja_danych_nowy_formularz	2000-01-01 00:00:00+00
 959	zglos_publikacje	0025_alter_obslugujacy_zgloszenia_wydzialow_user	2000-01-01 00:00:00+00
-960	denorm	0001_squashed_0012_alter_dirtyinstance_object_id	2000-01-01 00:00:00+00
-1120	bpp	0478_uczelnia_oai_pmh_aktywny	2000-01-01 00:00:00+00
-492	bpp	0385_alter_crossref_mapper_charakter_crossref_and_more	2000-01-01 00:00:00+00
-961	bpp	0165_cache_punktacja_autora_cache_punktacja_dyscypliny_squashed_0167_auto_20190707_2029	2000-01-01 00:00:00+00
-962	easyaudit	0004_auto_20170620_1354_squashed_0019_alter_crudevent_changed_fields_and_more	2000-01-01 00:00:00+00
-963	bpp	0443_drop_pl_PL_collation	2000-01-01 00:00:00+00
-964	bpp	0411_uczelnia_site_theme_user_sites	2000-01-01 00:00:00+00
-965	bpp	0412_link_uczelnia_to_site	2000-01-01 00:00:00+00
-966	bpp	0413_uczelnia_constance_fields	2000-01-01 00:00:00+00
-967	bpp	0414_copy_constance_to_uczelnia	2000-01-01 00:00:00+00
-968	bpp	0415_rename_accessible_sites_to_uczelnie	2000-01-01 00:00:00+00
-971	bpp	0418_merge_20260521_1015	2000-01-01 00:00:00+00
-972	bpp	0419_merge_20260601_0952	2000-01-01 00:00:00+00
-973	bpp	0420_merge_20260601_1246	2000-01-01 00:00:00+00
-974	bpp	0421_alter_uczelnia_theme_name	2000-01-01 00:00:00+00
-975	bpp	0422_alter_uczelnia_theme_name	2000-01-01 00:00:00+00
-976	bpp	0423_merge_20260602_1430	2000-01-01 00:00:00+00
 977	bpp	0424_cache_punktacja_dyscypliny_uczelnia_and_more	2000-01-01 00:00:00+00
 1003	bpp	0459_faza_b_ii1_retarget	2000-01-01 00:00:00+00
-1004	bpp	0460_faza_b_ii2_repoint	2000-01-01 00:00:00+00
 1005	bpp	0461_faza_b_iii1_usun_rodzaj_jednostki	2000-01-01 00:00:00+00
 1006	bpp	0462_faza_b_iv1_przelicz_aktualna	2000-01-01 00:00:00+00
 1062	oauth2_provider	0002_auto_20190406_1805	2000-01-01 00:00:00+00
@@ -17728,6 +17728,7 @@ COPY public.django_migrations (id, app, name, applied) FROM stdin;
 1165	bpp	0504_wydawca_slug	2000-01-01 00:00:00+00
 1166	bpp	0505_wydawca_slug_dane	2000-01-01 00:00:00+00
 1167	bpp	0506_wydawca_slug_unique	2000-01-01 00:00:00+00
+1168	bpp	0507_zrodlo_issn_norm_indexes	2000-01-01 00:00:00+00
 \.
 
 
@@ -18107,6 +18108,21 @@ COPY public.formdefaults_formfieldrepresentation (id, name, label, klass, "order
 314	sortowanie	Sortowanie	django.forms.fields.ChoiceField	3	nowe_raporty.forms_dynamiczne.RaportForm_raport_wydzialow
 315	sortowanie	Sortowanie	django.forms.fields.ChoiceField	3	nowe_raporty.forms_dynamiczne.RaportForm_raport_jednostek
 316	sortowanie	Sortowanie	django.forms.fields.ChoiceField	3	nowe_raporty.forms_dynamiczne.RaportForm_raport_autorow
+422	od_roku	Od roku	django.forms.fields.IntegerField	1	raport_slotow.forms.autor.AutorRaportSlotowForm
+423	do_roku	Do roku	django.forms.fields.IntegerField	2	raport_slotow.forms.autor.AutorRaportSlotowForm
+424	od_roku	Od roku	django.forms.fields.IntegerField	0	raport_slotow.forms.ewaluacja.ParametryRaportSlotowEwaluacjaForm
+425	do_roku	Do roku	django.forms.fields.IntegerField	1	raport_slotow.forms.ewaluacja.ParametryRaportSlotowEwaluacjaForm
+426	od_roku	Od roku	django.forms.fields.IntegerField	0	raport_slotow.forms.uczelnia.UtworzRaportSlotowUczelniaForm
+427	do_roku	Do roku	django.forms.fields.IntegerField	1	raport_slotow.forms.uczelnia.UtworzRaportSlotowUczelniaForm
+428	slot	Slot	django.forms.fields.DecimalField	3	raport_slotow.forms.uczelnia.UtworzRaportSlotowUczelniaForm
+429	od_roku	Od roku	django.forms.fields.IntegerField	0	nowe_raporty.forms_dynamiczne.RaportForm_raport_uczelni
+430	do_roku	Do roku	django.forms.fields.IntegerField	1	nowe_raporty.forms_dynamiczne.RaportForm_raport_uczelni
+431	od_roku	Od roku	django.forms.fields.IntegerField	0	nowe_raporty.forms_dynamiczne.RaportForm_raport_wydzialow
+432	do_roku	Do roku	django.forms.fields.IntegerField	1	nowe_raporty.forms_dynamiczne.RaportForm_raport_wydzialow
+433	od_roku	Od roku	django.forms.fields.IntegerField	0	nowe_raporty.forms_dynamiczne.RaportForm_raport_jednostek
+434	do_roku	Do roku	django.forms.fields.IntegerField	1	nowe_raporty.forms_dynamiczne.RaportForm_raport_jednostek
+435	od_roku	Od roku	django.forms.fields.IntegerField	0	nowe_raporty.forms_dynamiczne.RaportForm_raport_autorow
+436	do_roku	Do roku	django.forms.fields.IntegerField	1	nowe_raporty.forms_dynamiczne.RaportForm_raport_autorow
 \.
 
 
@@ -19730,7 +19746,7 @@ SELECT pg_catalog.setval('public.django_countdown_sitecountdown_id_seq', 1, fals
 -- Name: django_migrations_id_seq; Type: SEQUENCE SET; Schema: public; Owner: -
 --
 
-SELECT pg_catalog.setval('public.django_migrations_id_seq', 1167, true);
+SELECT pg_catalog.setval('public.django_migrations_id_seq', 1168, true);
 
 
 --
@@ -19968,7 +19984,7 @@ SELECT pg_catalog.setval('public.formdefaults_formfielddefaultvalue_id_seq', 46,
 -- Name: formdefaults_formfieldrepresentation_id_seq; Type: SEQUENCE SET; Schema: public; Owner: -
 --
 
-SELECT pg_catalog.setval('public.formdefaults_formfieldrepresentation_id_seq', 421, true);
+SELECT pg_catalog.setval('public.formdefaults_formfieldrepresentation_id_seq', 436, true);
 
 
 --
@@ -31911,6 +31927,20 @@ CREATE INDEX zglos_publikacje_zgloszenie_publikacji_zaimportowal_id_72fa0947 ON 
 --
 
 CREATE INDEX zglos_publikacje_zgloszenie_publikacji_zaimportowano_df54ec15 ON public.zglos_publikacje_zgloszenie_publikacji USING btree (zaimportowano);
+
+
+--
+-- Name: zrodlo_e_issn_norm; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX zrodlo_e_issn_norm ON public.bpp_zrodlo USING btree (upper(replace(replace((e_issn)::text, '-'::text, ''::text), ' '::text, ''::text)));
+
+
+--
+-- Name: zrodlo_issn_norm; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX zrodlo_issn_norm ON public.bpp_zrodlo USING btree (upper(replace(replace((issn)::text, '-'::text, ''::text), ' '::text, ''::text)));
 
 
 --

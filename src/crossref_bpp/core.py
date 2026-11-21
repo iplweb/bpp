@@ -18,6 +18,7 @@ from bpp.models import (
 )
 from crossref_bpp.utils import json_format_with_wrap, perform_trigram_search
 from import_common.core import (
+    _try_match_zrodlo_by_issn,
     matchuj_wydawce,
     normalize_zrodlo_nazwa_for_db_lookup,
     normalize_zrodlo_skrot_for_db_lookup,
@@ -518,6 +519,26 @@ class Komparator:
                 )
 
         return BRAK_DOPASOWANIA
+
+    @classmethod
+    def porownaj_zrodlo(cls, tytul, issn=None, e_issn=None):
+        """Dopasuj źródło: najpierw po ISSN/e-ISSN, tytuł tylko jako fallback.
+
+        ISSN jednoznacznie identyfikuje czasopismo, a tytuły bywają mylące
+        (np. „Applied Sciences" vs „Applied Sciences-Basel", FD#451) —
+        trygramowe dopasowanie tytułu wybierało wtedy złe źródło, a za nim
+        złą punktację.
+        """
+        zrodlo = _try_match_zrodlo_by_issn(issn, e_issn)
+        if zrodlo is not None:
+            return WynikPorownania(
+                StatusPorownania.DOKLADNE,
+                "dokładne dopasowanie po ISSN lub e-ISSN",
+                rekordy=[zrodlo],
+            )
+        if not tytul:
+            return BRAK_DOPASOWANIA
+        return cls.porownaj_container_title(tytul)
 
     @classmethod
     def porownaj_publisher(cls, wartosc):
