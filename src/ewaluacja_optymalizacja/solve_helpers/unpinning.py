@@ -20,6 +20,7 @@ def handle_unpinning(
     output,
     verbose,
     algorithm_mode="two-phase",
+    okres=None,
 ):
     """Unpin disciplines for publications not selected by the optimizer."""
     stdout.write("\n" + "=" * 80)
@@ -88,6 +89,8 @@ def handle_unpinning(
             "rerun_after_unpin": False,
             "algorithm_mode": algorithm_mode,
         }
+        if okres is not None:
+            rerun_kwargs["okres"] = okres.rok_od
 
         if output:
             base, ext = os.path.splitext(output)

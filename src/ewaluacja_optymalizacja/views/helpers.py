@@ -5,6 +5,8 @@ from decimal import Decimal
 
 from django.db.models import Q
 
+from ..okres import filtr_lat, pobierz_okres
+
 logger = logging.getLogger(__name__)
 
 # Klucze sesji dla śledzenia postępu denormalizacji
@@ -23,13 +25,15 @@ def _add_run_statistics(run, uczelnia):
     # Dodaj procent slotów poza N do obiektu run
     run.outside_n_slots_pct = stats["non_n_slots_pct"]
 
-    # Dodaj statystyki przypięć dla dyscypliny
-    run.pin_stats = _get_discipline_pin_stats(run.dyscyplina_naukowa)
+    # Dodaj statystyki przypięć dla dyscypliny (w latach okresu runa)
+    run.pin_stats = _get_discipline_pin_stats(run.dyscyplina_naukowa, run.okres)
 
     # Pobierz liczbę N dla dyscypliny i oblicz 3*N oraz procent wypełnienia slotów
     try:
         liczba_n_obj = LiczbaNDlaUczelni.objects.get(
-            uczelnia=uczelnia, dyscyplina_naukowa=run.dyscyplina_naukowa
+            uczelnia=uczelnia,
+            dyscyplina_naukowa=run.dyscyplina_naukowa,
+            okres_id=run.okres_id,
         )
         run.liczba_3n = liczba_n_obj.liczba_n_ostateczna
         if run.liczba_3n > 0:
@@ -129,20 +133,21 @@ def _calculate_summary_statistics(recent_runs):
     return summary
 
 
-def _check_for_problematic_slots():
-    """Check if there are problematic slots < 0.1 for authors with disciplines."""
+def _check_for_problematic_slots(okres=None):
+    """Check if there are problematic slots < 0.1 for authors with disciplines
+    (w latach okresu ewaluacji; ``None`` = okres domyślny)."""
     from bpp.models import Autor_Dyscyplina, Cache_Punktacja_Autora_Query
 
+    okres = pobierz_okres(okres)
     autorzy_z_dyscyplinami = set(
-        Autor_Dyscyplina.objects.filter(rok__gte=2022, rok__lte=2025)
+        Autor_Dyscyplina.objects.filter(**filtr_lat(okres))
         .values_list("autor_id", flat=True)
         .distinct()
     )
 
     return Cache_Punktacja_Autora_Query.objects.filter(
         slot__lt=Decimal("0.1"),
-        rekord__rok__gte=2022,
-        rekord__rok__lte=2025,
+        **filtr_lat(okres, "rekord__"),
         autor_id__in=autorzy_z_dyscyplinami,
     ).exists()
 
@@ -221,15 +226,17 @@ def _calculate_liczba_n_stats(run, author_results):
     }
 
 
-def _get_discipline_pin_stats(dyscyplina_naukowa):
+def _get_discipline_pin_stats(dyscyplina_naukowa, okres=None):
     """
-    Oblicza statystyki przypięć/odpięć dla danej dyscypliny w latach 2022-2025.
+    Oblicza statystyki przypięć/odpięć dla danej dyscypliny w latach okresu
+    ewaluacji.
 
-    Liczy tylko rekordy gdzie autor ma Autor_Dyscyplina w latach 2022-2025
+    Liczy tylko rekordy gdzie autor ma Autor_Dyscyplina w latach okresu
     dla tej dyscypliny.
 
     Args:
         dyscyplina_naukowa: Obiekt Dyscyplina_Naukowa
+        okres: OkresEwaluacji (albo pk); ``None`` = okres domyślny
 
     Returns:
         dict: {'pinned': int, 'unpinned': int, 'total': int,
@@ -242,11 +249,12 @@ def _get_discipline_pin_stats(dyscyplina_naukowa):
         Wydawnictwo_Zwarte_Autor,
     )
 
-    # Pobierz autorów którzy mają Autor_Dyscyplina w latach 2022-2025 dla tej dyscypliny
+    okres = pobierz_okres(okres)
+
+    # Pobierz autorów którzy mają Autor_Dyscyplina w latach okresu dla tej dyscypliny
     autorzy_ids = set(
         Autor_Dyscyplina.objects.filter(
-            rok__gte=2022,
-            rok__lte=2025,
+            **filtr_lat(okres),
             dyscyplina_naukowa=dyscyplina_naukowa,
         )
         .values_list("autor_id", flat=True)
@@ -264,8 +272,7 @@ def _get_discipline_pin_stats(dyscyplina_naukowa):
 
     # Filtr bazowy dla wszystkich modeli
     base_filter = Q(
-        rekord__rok__gte=2022,
-        rekord__rok__lte=2025,
+        **filtr_lat(okres, "rekord__"),
         dyscyplina_naukowa=dyscyplina_naukowa,
         autor_id__in=autorzy_ids,
     )

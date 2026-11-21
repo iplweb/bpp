@@ -22,6 +22,7 @@ from bpp.demo_data.generators.polon import (
 )
 from bpp.demo_data.preflight import REQUIRED_DICTIONARIES
 from bpp.models import Autor_Dyscyplina, Uczelnia
+from ewaluacja_common.models import OkresEwaluacji
 from ewaluacja_liczba_n.models import LiczbaNDlaUczelni
 from ewaluacja_liczba_n.utils import (
     oblicz_dyscypliny_nieraportowane,
@@ -120,11 +121,14 @@ def test_e2e_plik_polon_import_i_liczba_n(slowniki, tmp_path):
             rok=rok, rodzaj_autora__skrot="Z"
         ).exists()
 
-    oblicz_liczby_n_dla_ewaluacji_2022_2025(uczelnia)
+    # Okres jawnie: domyślny zależy od bieżącego roku (od 2026 → 2026–2030),
+    # a plik POL-on pokrywa lata 2022–2025.
+    okres = OkresEwaluacji.objects.get(rok_od=LATA[0])
+    oblicz_liczby_n_dla_ewaluacji_2022_2025(uczelnia, okres=okres)
 
     liczba_n = {
         o.dyscyplina_naukowa.nazwa: o.liczba_n
-        for o in LiczbaNDlaUczelni.objects.filter(uczelnia=uczelnia)
+        for o in LiczbaNDlaUczelni.objects.filter(uczelnia=uczelnia, okres=okres)
     }
     for nazwa, cel in DOMYSLNE_DYSCYPLINY:
         if cel >= 12:
@@ -132,9 +136,9 @@ def test_e2e_plik_polon_import_i_liczba_n(slowniki, tmp_path):
         else:
             assert Decimal("0") < liczba_n[nazwa] < 12, (nazwa, liczba_n)
 
-    nieraportowane = oblicz_dyscypliny_nieraportowane(uczelnia)
+    nieraportowane = oblicz_dyscypliny_nieraportowane(uczelnia, okres=okres)
     assert {nazwa for nazwa, _ in DOMYSLNE_DYSCYPLINY if nazwa in liczba_n} & set(
         LiczbaNDlaUczelni.objects.filter(
-            dyscyplina_naukowa_id__in=nieraportowane
+            okres=okres, dyscyplina_naukowa_id__in=nieraportowane
         ).values_list("dyscyplina_naukowa__nazwa", flat=True)
     ) == {"nauki teologiczne"}

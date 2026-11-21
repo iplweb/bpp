@@ -10,6 +10,7 @@ from django.utils.html import format_html
 from django.views.decorators.http import require_POST
 
 from bpp.models import Uczelnia
+from ewaluacja_common.okres import okres_dla_request
 
 from ..models import (
     OptimizationAuthorResult,
@@ -21,7 +22,16 @@ from ..tasks import solve_all_reported_disciplines
 logger = logging.getLogger(__name__)
 
 
-def _process_discipline_optimization_status(liczba_n_obj, uczelnia):
+def _okres_zadania_bulk(request, task_id):
+    """Okres, dla którego uruchomiono zadanie bulk ``task_id`` (zapisany
+    w singletonie statusu); gdy to nie to zadanie — okres z sesji."""
+    status = StatusOptymalizacjiBulk.get_or_create()
+    if status.task_id == str(task_id) and status.okres_id is not None:
+        return status.okres
+    return okres_dla_request(request)
+
+
+def _process_discipline_optimization_status(liczba_n_obj, uczelnia, okres=None):
     """Process optimization status for a single discipline.
 
     Returns dict with discipline info including status, points, publications, etc.
@@ -36,7 +46,9 @@ def _process_discipline_optimization_status(liczba_n_obj, uczelnia):
 
     # Znajdź najnowszy OptimizationRun dla tej dyscypliny
     opt_run = (
-        OptimizationRun.objects.filter(uczelnia=uczelnia, dyscyplina_naukowa=dyscyplina)
+        OptimizationRun.objects.filter(
+            uczelnia=uczelnia, dyscyplina_naukowa=dyscyplina, okres=okres
+        )
         .order_by("-started_at")
         .first()
     )
@@ -207,10 +219,14 @@ def start_bulk_optimization(request):
             messages.error(request, "Nie znaleziono uczelni w systemie.")
             return redirect("ewaluacja_optymalizacja:index")
 
+        okres = okres_dla_request(request)
+
         # WALIDACJA: Sprawdź czy istnieją dane liczby N dla uczelni
-        liczba_n_count = LiczbaNDlaUczelni.objects.filter(uczelnia=uczelnia).count()
+        liczba_n_count = LiczbaNDlaUczelni.objects.filter(
+            uczelnia=uczelnia, okres=okres
+        ).count()
         liczba_n_raportowane = LiczbaNDlaUczelni.objects.filter(
-            uczelnia=uczelnia, liczba_n__gte=12
+            uczelnia=uczelnia, okres=okres, liczba_n__gte=12
         ).count()
 
         if liczba_n_count == 0:
@@ -235,11 +251,13 @@ def start_bulk_optimization(request):
             )
             return redirect("ewaluacja_optymalizacja:index")
 
-        # Skasuj stare rekordy OptimizationRun dla tej uczelni
-        deleted_count = OptimizationRun.objects.filter(uczelnia=uczelnia).delete()[0]
+        # Skasuj stare rekordy OptimizationRun dla tej uczelni (w tym okresie)
+        deleted_count = OptimizationRun.objects.filter(
+            uczelnia=uczelnia, okres=okres
+        ).delete()[0]
         logger.info(
             f"Cleared {deleted_count} old OptimizationRun records for uczelnia "
-            f"{uczelnia.pk}"
+            f"{uczelnia.pk}, okres {okres}"
         )
 
         # Pobierz wybrany tryb algorytmu z formularza (domyślnie two-phase)
@@ -254,11 +272,13 @@ def start_bulk_optimization(request):
         )
 
         # Uruchom zadanie Celery
-        task = solve_all_reported_disciplines.delay(uczelnia.pk, algorithm_mode)
+        task = solve_all_reported_disciplines.delay(
+            uczelnia.pk, algorithm_mode, okres_pk=okres.pk
+        )
 
         # Zapisz status w modelu singleton - WEWNĄTRZ TRANSAKCJI
         # aby drugi request widział zaktualizowany status
-        status.rozpocznij(task_id=str(task.id), uczelnia=uczelnia)
+        status.rozpocznij(task_id=str(task.id), uczelnia=uczelnia, okres=okres)
 
     # Nie pokazuj natychmiastowego komunikatu sukcesu - zadanie dopiero się rozpoczęło
     # Komunikat pojawi się na stronie statusu po faktycznym zakończeniu wszystkich operacji
@@ -297,9 +317,11 @@ def bulk_optimization_status(request, uczelnia_id, task_id):
             request, "ewaluacja_optymalizacja/bulk_optimization_status.html", context
         )
 
+    okres = _okres_zadania_bulk(request, task_id)
+
     # Pobierz listę dyscyplin raportowanych dla uczelni
     raportowane_dyscypliny = LiczbaNDlaUczelni.objects.filter(
-        uczelnia=uczelnia, liczba_n__gte=12
+        uczelnia=uczelnia, okres=okres, liczba_n__gte=12
     ).select_related("dyscyplina_naukowa")
 
     total_disciplines = raportowane_dyscypliny.count()
@@ -333,7 +355,7 @@ def bulk_optimization_status(request, uczelnia_id, task_id):
 
     for liczba_n_obj in raportowane_dyscypliny:
         disc_info, status = _process_discipline_optimization_status(
-            liczba_n_obj, uczelnia
+            liczba_n_obj, uczelnia, okres
         )
         status_counts[status] += 1
         disciplines_info.append(disc_info)
@@ -416,6 +438,8 @@ def cancel_bulk_optimization(request, uczelnia_id, task_id):
             uczelnia_id=uczelnia_id,
             status="running",
         )
+        if status.okres_id is not None:
+            running_runs = running_runs.filter(okres_id=status.okres_id)
         running_runs.update(status="failed", notes="Anulowane przez użytkownika")
 
         # Clear from database

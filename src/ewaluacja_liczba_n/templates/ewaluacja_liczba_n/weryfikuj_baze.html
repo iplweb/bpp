@@ -13,11 +13,11 @@
 <div class="row">
     <div class="large-12 columns">
         <h1><i class="fi-magnifying-glass"></i> Weryfikacja poprawności bazy danych</h1>
-        <p class="lead">Analiza poprawności danych Autor_Dyscyplina dla lat 2022-2025</p>
+        <p class="lead">Analiza poprawności danych Autor_Dyscyplina dla lat {{ okres_ewaluacji }}</p>
 
         <!-- Section 1: By rodzaj_pracownika -->
         <div class="callout">
-            <h3>1. Autor_Dyscyplina według rodzaju pracownika (2022-2025)</h3>
+            <h3>1. Autor_Dyscyplina według rodzaju pracownika ({{ okres_ewaluacji }})</h3>
             <table class="hover stack">
                 <thead>
                     <tr>
@@ -300,7 +300,7 @@
                 <li>Liczba autorów (unikalnych):
                     <strong>{{ distinct_authors_count }}</strong>
                 </li>
-                <li>Całkowita liczba rekordów Autor_Dyscyplina (2022-2025):
+                <li>Całkowita liczba rekordów Autor_Dyscyplina ({{ okres_ewaluacji }}):
                     <strong>{{ total_count }}</strong>
                 </li>
                 {% if bez_wymiaru_etatu > 0 %}

@@ -59,3 +59,26 @@ def rodzaj_autora_z(db):
         ),
     )
     return obj
+
+
+@pytest.fixture
+def okres_2022_2025(db):
+    """Okres ewaluacji 2022–2025 (zasiany migracją; get_or_create na wypadek
+    wyczyszczenia tabeli przez testy transakcyjne)."""
+    from ewaluacja_common.models import OkresEwaluacji
+
+    obj, _ = OkresEwaluacji.objects.get_or_create(
+        rok_od=2022, defaults={"rok_do": 2025}
+    )
+    return obj
+
+
+@pytest.fixture
+def okres_2026_2030(db):
+    """Okres ewaluacji 2026–2030 (5-letni)."""
+    from ewaluacja_common.models import OkresEwaluacji
+
+    obj, _ = OkresEwaluacji.objects.get_or_create(
+        rok_od=2026, defaults={"rok_do": 2030}
+    )
+    return obj

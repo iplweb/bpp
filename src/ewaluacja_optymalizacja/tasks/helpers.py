@@ -2,16 +2,20 @@
 
 import logging
 
+from ..okres import filtr_lat, pobierz_okres
+
 logger = logging.getLogger(__name__)
 
 
-def _validate_all_disciplines_optimized(uczelnia, logger_func):
-    """Validate that all reported disciplines have completed optimization."""
+def _validate_all_disciplines_optimized(uczelnia, logger_func, okres=None):
+    """Validate that all reported disciplines have completed optimization
+    (w danym okresie ewaluacji; ``None`` = okres domyślny)."""
     from ewaluacja_liczba_n.models import LiczbaNDlaUczelni
     from ewaluacja_optymalizacja.models import OptimizationRun
 
+    okres = pobierz_okres(okres)
     liczba_n_raportowane = LiczbaNDlaUczelni.objects.filter(
-        uczelnia=uczelnia, liczba_n__gte=12
+        uczelnia=uczelnia, okres=okres, liczba_n__gte=12
     )
 
     if liczba_n_raportowane.count() == 0:
@@ -21,6 +25,7 @@ def _validate_all_disciplines_optimized(uczelnia, logger_func):
         if not OptimizationRun.objects.filter(
             dyscyplina_naukowa=liczba_n_obj.dyscyplina_naukowa,
             uczelnia=uczelnia,
+            okres=okres,
             status="completed",
         ).exists():
             raise ValueError(
@@ -33,7 +38,7 @@ def _validate_all_disciplines_optimized(uczelnia, logger_func):
     )
 
 
-def _create_optimization_snapshot(uczelnia, logger_func):
+def _create_optimization_snapshot(uczelnia, logger_func, okres=None):
     """Create snapshot before optimization with unpinning."""
     from django.db.models import Sum
 
@@ -41,22 +46,23 @@ def _create_optimization_snapshot(uczelnia, logger_func):
 
     from ..models import OptimizationRun
 
+    okres = pobierz_okres(okres)
     suma_punktow_przed = (
-        OptimizationRun.objects.filter(uczelnia=uczelnia, status="completed").aggregate(
-            suma=Sum("total_points")
-        )["suma"]
+        OptimizationRun.objects.filter(
+            uczelnia=uczelnia, okres=okres, status="completed"
+        ).aggregate(suma=Sum("total_points"))["suma"]
         or 0
     )
 
     suma_slotow_przed = (
-        OptimizationRun.objects.filter(uczelnia=uczelnia, status="completed").aggregate(
-            suma=Sum("total_slots")
-        )["suma"]
+        OptimizationRun.objects.filter(
+            uczelnia=uczelnia, okres=okres, status="completed"
+        ).aggregate(suma=Sum("total_slots"))["suma"]
         or 0
     )
 
     snapshot_comment = (
-        f"Snapshot przed optymalizacją z odpinaniem. "
+        f"Snapshot przed optymalizacją z odpinaniem (okres {okres}). "
         f"Suma punktów: {suma_punktow_przed}, "
         f"Suma slotów: {suma_slotow_przed}"
     )
@@ -67,10 +73,11 @@ def _create_optimization_snapshot(uczelnia, logger_func):
     return snapshot, suma_punktow_przed, suma_slotow_przed
 
 
-def _collect_ids_to_unpin(uczelnia, autorzy_z_wynikami, logger_func):
+def _collect_ids_to_unpin(uczelnia, autorzy_z_wynikami, logger_func, okres=None):
     """Collect IDs of publications to unpin.
 
-    Only considers publications from years 2022-2025 (rok >= 2022 and rok < 2026).
+    Only considers publications from the years of ``okres`` (okres ewaluacji;
+    ``None`` = okres domyślny).
     Unpins publications that are either:
     - Not in optimization results, OR
     - In optimization results but with slot < 1.0
@@ -89,6 +96,9 @@ def _collect_ids_to_unpin(uczelnia, autorzy_z_wynikami, logger_func):
 
     from ..models import OptimizationPublication
 
+    okres = pobierz_okres(okres)
+    lata_okresu = filtr_lat(okres, "rekord__")
+
     ct_ciagle = ContentType.objects.get_for_model(Wydawnictwo_Ciagle)
     ct_zwarte = ContentType.objects.get_for_model(Wydawnictwo_Zwarte)
 
@@ -99,7 +109,7 @@ def _collect_ids_to_unpin(uczelnia, autorzy_z_wynikami, logger_func):
         # Pobierz prace nazbierane dla tego autora (z wszystkich dyscyplin)
         # Te prace NIE powinny być odpinane, nawet jeśli mają slot < 1.0
         autor_prace_nazbierane = set()
-        for metryka in MetrykaAutora.objects.filter(autor_id=autor_id):
+        for metryka in MetrykaAutora.objects.filter(autor_id=autor_id, okres=okres):
             if metryka.prace_nazbierane:
                 for praca_id in metryka.prace_nazbierane:
                     # JSONField może zwrócić list zamiast tuple - konwertuj
@@ -113,16 +123,16 @@ def _collect_ids_to_unpin(uczelnia, autorzy_z_wynikami, logger_func):
             for rekord_id, slots in OptimizationPublication.objects.filter(
                 author_result__autor_id=autor_id,
                 author_result__optimization_run__uczelnia=uczelnia,
+                author_result__optimization_run__okres=okres,
                 author_result__optimization_run__status="completed",
             ).values_list("rekord_id", "slots")
         }
 
-        # Wydawnictwa ciągłe - only years 2022-2025
+        # Wydawnictwa ciągłe - tylko lata okresu ewaluacji
         for udział in Wydawnictwo_Ciagle_Autor.objects.filter(
             autor_id=autor_id,
             przypieta=True,
-            rekord__rok__gte=2022,
-            rekord__rok__lt=2026,
+            **lata_okresu,
         ).select_related("rekord"):
             rekord_id = (ct_ciagle.pk, udział.rekord.pk)
 
@@ -135,12 +145,11 @@ def _collect_ids_to_unpin(uczelnia, autorzy_z_wynikami, logger_func):
             ):
                 ids_to_unpin_ciagle.append(udział.pk)
 
-        # Wydawnictwa zwarte - only years 2022-2025
+        # Wydawnictwa zwarte - tylko lata okresu ewaluacji
         for udział in Wydawnictwo_Zwarte_Autor.objects.filter(
             autor_id=autor_id,
             przypieta=True,
-            rekord__rok__gte=2022,
-            rekord__rok__lt=2026,
+            **lata_okresu,
         ).select_related("rekord"):
             rekord_id = (ct_zwarte.pk, udział.rekord.pk)
 

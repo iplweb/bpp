@@ -8,6 +8,7 @@ from django.contrib.auth.decorators import login_required
 from django.http import JsonResponse
 from django.shortcuts import render
 
+from ewaluacja_common.okres import okres_dla_request
 from raport_slotow.uczelnia_helper import uczelnia_dla_odczytu
 
 from ..models import (
@@ -50,9 +51,11 @@ def index(request):
         request.session.pop(DENORM_INITIAL_COUNT_SESSION_KEY, None)
         request.session.pop(DENORM_START_TIME_SESSION_KEY, None)
 
+    okres = okres_dla_request(request)
+
     runs = OptimizationRun.objects.select_related(
-        "dyscyplina_naukowa", "uczelnia"
-    ).all()
+        "dyscyplina_naukowa", "uczelnia", "okres"
+    ).filter(okres=okres)
 
     # Pobierz uczelnię dla dalszych obliczeń
     uczelnia = uczelnia_dla_odczytu(request)
@@ -65,9 +68,11 @@ def index(request):
     liczba_n_raportowane = 0
 
     if uczelnia:
-        liczba_n_count = LiczbaNDlaUczelni.objects.filter(uczelnia=uczelnia).count()
+        liczba_n_count = LiczbaNDlaUczelni.objects.filter(
+            uczelnia=uczelnia, okres=okres
+        ).count()
         liczba_n_raportowane = LiczbaNDlaUczelni.objects.filter(
-            uczelnia=uczelnia, liczba_n__gte=12
+            uczelnia=uczelnia, okres=okres, liczba_n__gte=12
         ).count()
 
     # Oblicz agregacje dla ostatnich 10 wierszy (dla podsumowania w tabeli)
@@ -75,7 +80,7 @@ def index(request):
     summary = _calculate_summary_statistics(recent_runs)
 
     # Sprawdź czy są problematyczne sloty < 0.1 dla przycisku weryfikacji
-    has_problematic_slots = _check_for_problematic_slots()
+    has_problematic_slots = _check_for_problematic_slots(okres)
 
     # Sprawdź czy działa optymalizacja z odpinaniem
     status_odpinania = StatusOptymalizacjiZOdpinaniem.get_or_create()
@@ -96,6 +101,7 @@ def index(request):
 
     context = {
         "optimization_runs": runs_with_stats,
+        "okres": okres,
         "liczba_n_count": liczba_n_count,
         "liczba_n_raportowane": liczba_n_raportowane,
         "summary": summary,

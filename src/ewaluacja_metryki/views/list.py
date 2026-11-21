@@ -3,6 +3,7 @@ from django.views.generic import ListView
 
 from bpp.models import Jednostka
 from ewaluacja_common.models import Rodzaj_Autora
+from ewaluacja_common.okres import okres_dla_request
 from raport_slotow.uczelnia_helper import uczelnia_dla_odczytu
 
 from ..models import MetrykaAutora, StatusGenerowania
@@ -133,6 +134,7 @@ class MetrykiListView(EwaluacjaRequiredMixin, ListView):
             MetrykaAutora.objects.filter(
                 autor=OuterRef("autor"),
                 uczelnia=OuterRef("uczelnia"),
+                okres=OuterRef("okres"),
             )
             .values("autor")
             .annotate(count=Count("dyscyplina_naukowa"))
@@ -151,6 +153,7 @@ class MetrykiListView(EwaluacjaRequiredMixin, ListView):
             )
             .annotate(autor_discipline_count=Subquery(discipline_count)),
             uczelnia,
+            okres_dla_request(self.request),
         )
 
         queryset = self._apply_filters(queryset)
@@ -184,7 +187,9 @@ class MetrykiListView(EwaluacjaRequiredMixin, ListView):
 
         # Autorzy mający metryki w bieżącej uczelni (scoped)
         scoped_metryki_autorzy = (
-            scope_metryki(MetrykaAutora.objects.all(), uczelnia)
+            scope_metryki(
+                MetrykaAutora.objects.all(), uczelnia, okres_dla_request(self.request)
+            )
             .values_list("autor_id", flat=True)
             .distinct()
         )
@@ -246,7 +251,9 @@ class MetrykiListView(EwaluacjaRequiredMixin, ListView):
 
         uczelnia = uczelnia_dla_odczytu(self.request)
         scoped_dyscypliny_ids = (
-            scope_metryki(MetrykaAutora.objects.all(), uczelnia)
+            scope_metryki(
+                MetrykaAutora.objects.all(), uczelnia, okres_dla_request(self.request)
+            )
             .values_list("dyscyplina_naukowa_id", flat=True)
             .distinct()
         )

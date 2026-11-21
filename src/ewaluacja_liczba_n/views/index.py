@@ -11,12 +11,13 @@ from django.views.generic import TemplateView
 
 from bpp.const import GR_WPROWADZANIE_DANYCH
 from bpp.models import Autor_Dyscyplina, Uczelnia
+from ewaluacja_common.okres import okres_dla_request
 
 from ..forms import SankcjeFormSet
 from ..models import LiczbaNDlaUczelni
 from ..utils import (
-    oblicz_liczbe_n_na_koniec_2025,
-    oblicz_liczby_n_dla_ewaluacji_2022_2025,
+    oblicz_liczbe_n_na_koniec_okresu,
+    oblicz_liczby_n_dla_okresu,
 )
 
 
@@ -29,26 +30,30 @@ class LiczbaNIndexView(GroupRequiredMixin, TemplateView):
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         uczelnia = Uczelnia.objects.get_for_request(self.request)
+        okres = okres_dla_request(self.request)
 
-        # Pobierz wszystkie dane liczby N dla uczelni (średnia z 2022-2025)
+        # Pobierz wszystkie dane liczby N dla uczelni (średnia z lat okresu)
         wszystkie_liczby_n = (
-            LiczbaNDlaUczelni.objects.filter(uczelnia=uczelnia)
+            LiczbaNDlaUczelni.objects.filter(uczelnia=uczelnia, okres=okres)
             .select_related("dyscyplina_naukowa")
             .order_by("-liczba_n")
         )
 
-        # Oblicz liczby N na koniec 2025 dla każdej dyscypliny
-        liczby_n_2025 = oblicz_liczbe_n_na_koniec_2025(uczelnia)
+        # Oblicz liczby N na koniec okresu dla każdej dyscypliny
+        liczby_n_koniec = oblicz_liczbe_n_na_koniec_okresu(uczelnia, okres=okres)
 
-        # Dodaj liczby N na koniec 2025 do każdego obiektu i podziel na raportowane/nieraportowane
+        # Dodaj liczby N na koniec okresu do każdego obiektu i podziel na
+        # raportowane/nieraportowane
         liczby_n_raportowane = []
         liczby_n_nieraportowane = []
 
         for liczba in wszystkie_liczby_n:
-            liczba.liczba_n_2025 = liczby_n_2025.get(liczba.dyscyplina_naukowa_id, 0)
+            liczba.liczba_n_koniec = liczby_n_koniec.get(
+                liczba.dyscyplina_naukowa_id, 0
+            )
 
-            # Dyscyplina jest nieraportowana jeśli liczba N na koniec 2025 < 12
-            if liczba.liczba_n_2025 < 12:
+            # Dyscyplina jest nieraportowana jeśli liczba N na koniec okresu < 12
+            if liczba.liczba_n_koniec < 12:
                 liczby_n_nieraportowane.append(liczba)
             else:
                 liczby_n_raportowane.append(liczba)
@@ -58,9 +63,9 @@ class LiczbaNIndexView(GroupRequiredMixin, TemplateView):
 
         # Formset do edycji sankcji
         context["formset"] = SankcjeFormSet(
-            queryset=LiczbaNDlaUczelni.objects.filter(uczelnia=uczelnia).order_by(
-                "-liczba_n"
-            )
+            queryset=LiczbaNDlaUczelni.objects.filter(
+                uczelnia=uczelnia, okres=okres
+            ).order_by("-liczba_n")
         )
 
         # Słownik mapujący id obiektu LiczbaNDlaUczelni na formularz
@@ -81,12 +86,13 @@ class LiczbaNIndexView(GroupRequiredMixin, TemplateView):
             float(liczba.liczba_n_ostateczna) for liczba in liczby_n_raportowane
         )
 
-        # Oblicz sumę liczby N na koniec 2025 - tylko dla dyscyplin raportowanych
-        context["suma_liczby_n_2025"] = sum(
-            float(liczba.liczba_n_2025) for liczba in liczby_n_raportowane
+        # Oblicz sumę liczby N na koniec okresu - tylko dla dyscyplin raportowanych
+        context["suma_liczby_n_koniec"] = sum(
+            float(liczba.liczba_n_koniec) for liczba in liczby_n_raportowane
         )
 
         context["uczelnia"] = uczelnia
+        context["okres"] = okres
         return context
 
 
@@ -97,11 +103,12 @@ class ObliczLiczbeNView(GroupRequiredMixin, View):
 
     def post(self, request, *args, **kwargs):
         uczelnia = Uczelnia.objects.get_for_request(request)
+        okres = okres_dla_request(request)
 
         try:
-            oblicz_liczby_n_dla_ewaluacji_2022_2025(uczelnia)
+            oblicz_liczby_n_dla_okresu(uczelnia, okres=okres)
             messages.success(
-                request, "Pomyślnie obliczono liczbę N dla ewaluacji 2022-2025"
+                request, f"Pomyślnie obliczono liczbę N dla ewaluacji {okres}"
             )
         except Autor_Dyscyplina.DoesNotExist:
             traceback.print_exc()
@@ -139,7 +146,13 @@ class SaveSankcjeView(GroupRequiredMixin, View):
     group_required = GR_WPROWADZANIE_DANYCH
 
     def post(self, request, *args, **kwargs):
-        formset = SankcjeFormSet(request.POST)
+        uczelnia = Uczelnia.objects.get_for_request(request)
+        formset = SankcjeFormSet(
+            request.POST,
+            queryset=LiczbaNDlaUczelni.objects.filter(
+                uczelnia=uczelnia, okres=okres_dla_request(request)
+            ),
+        )
         if formset.is_valid():
             formset.save()
             messages.success(request, "Sankcje zostały zapisane.")

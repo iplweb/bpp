@@ -14,6 +14,10 @@ from bpp.demo_data.confirm import ConfirmAborted, double_confirm
 from bpp.demo_data.generators.autorzy import create_autorzy
 from bpp.demo_data.generators.dyscypliny import create_autor_dyscypliny
 from bpp.demo_data.generators.jednostki import create_jednostki
+from bpp.demo_data.generators.punktacja import (
+    create_poziomy_wydawcow,
+    create_punktacja_zrodel,
+)
 from bpp.demo_data.generators.uczelnia import ensure_uczelnia
 from bpp.demo_data.generators.wydawcy import create_wydawcy
 from bpp.demo_data.generators.wydawnictwa_ciagle import create_wc
@@ -52,6 +56,7 @@ class CreateOptions:
     polon_plik: Path | None = None
     polon_dyscypliny: list[str] | None = None
     polon_bez_blednych_wierszy: bool = False
+    bez_ewaluacji: bool = False
 
 
 def run_create(opts: CreateOptions, *, stdin=None, stdout=None):
@@ -62,8 +67,11 @@ def run_create(opts: CreateOptions, *, stdin=None, stdout=None):
        co i tak sie nie wykona).
     3. Manifest + RNG init.
     4. Generatory w sztywnej kolejnosci dependency: uczelnia → wydzialy →
-       jednostki → autorzy → dyscypliny → zrodla → wydawcy → WC → WZ.
-    5. Manifest save + summary do stdout.
+       jednostki → autorzy → dyscypliny → zrodla (+ punktacja) → wydawcy
+       (+ poziomy) → WC → WZ.
+    5. Przeliczenie ewaluacji (cache punktow/slotow, liczba N, metryki) —
+       pomijane z `--bez-ewaluacji`.
+    6. Manifest save + summary do stdout.
     """
     stdin = stdin or sys.stdin
     stdout = stdout or sys.stdout
@@ -149,7 +157,7 @@ def run_create(opts: CreateOptions, *, stdin=None, stdout=None):
         batch_size=opts.batch_size,
         disable_progress=opts.disable_progress,
     )
-    create_autor_dyscypliny(
+    autor_dyscypliny = create_autor_dyscypliny(
         autorzy=autorzy,
         lata=range(opts.od_roku, opts.do_roku + 1),
         procent_z_dyscyplina=opts.procent_z_dyscyplina,
@@ -175,6 +183,24 @@ def run_create(opts: CreateOptions, *, stdin=None, stdout=None):
         manifest=manifest,
         rng=rng,
         prefix=prefix,
+        batch_size=opts.batch_size,
+        disable_progress=opts.disable_progress,
+    )
+    lata = range(opts.od_roku, opts.do_roku + 1)
+    create_punktacja_zrodel(
+        zrodla=zrodla,
+        lata=lata,
+        dyscypliny_preferowane=[ad.dyscyplina_naukowa for ad in autor_dyscypliny],
+        manifest=manifest,
+        rng=rng,
+        batch_size=opts.batch_size,
+        disable_progress=opts.disable_progress,
+    )
+    create_poziomy_wydawcow(
+        wydawcy=wydawcy,
+        lata=lata,
+        manifest=manifest,
+        rng=rng,
         batch_size=opts.batch_size,
         disable_progress=opts.disable_progress,
     )
@@ -212,6 +238,20 @@ def run_create(opts: CreateOptions, *, stdin=None, stdout=None):
         batch_size=opts.batch_size,
         disable_progress=opts.disable_progress,
     )
+
+    if not opts.bez_ewaluacji:
+        from bpp.demo_data.ewaluacja import przelicz_ewaluacje
+
+        przelicz_ewaluacje(
+            uczelnia=uczelnia,
+            prace_wc=wc,
+            prace_wz=wz,
+            od_roku=opts.od_roku,
+            do_roku=opts.do_roku,
+            manifest=manifest,
+            stdout=stdout,
+            disable_progress=opts.disable_progress,
+        )
 
     manifest.save()
     stdout.write(
@@ -301,6 +341,17 @@ def run_cleanup(opts: CleanupOptions, *, stdin=None, stdout=None):
     from django.apps import apps
     from django.db import transaction
 
+    from bpp.demo_data.ewaluacja import (
+        przelicz_liczbe_n_po_cleanup,
+        usun_cache_punktacji,
+    )
+
+    # Cache punktacji nie ma FK do rekordu (klucz-krotka) — kasujemy jawnie
+    # PRZED rekordami.
+    usunieto = usun_cache_punktacji(manifest)
+    if usunieto:
+        stdout.write(f"[OK] Usunięto {usunieto} wierszy cache punktacji.\n")
+
     for label, pks in manifest.objects_in_cleanup_order():
         app_label, model_name = label.split(".")
         try:
@@ -325,6 +376,8 @@ def run_cleanup(opts: CleanupOptions, *, stdin=None, stdout=None):
             chunk = sorted_pks[start : start + opts.batch_size]
             with transaction.atomic():
                 model.objects.filter(pk__in=chunk).delete()
+
+    przelicz_liczbe_n_po_cleanup(manifest, stdout)
 
     ts = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
     applied = opts.manifest.with_suffix(opts.manifest.suffix + f".applied.{ts}")
