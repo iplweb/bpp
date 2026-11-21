@@ -1,40 +1,60 @@
 {% extends "adminsortable2/change_list.html" %}{% load i18n admin_urls %}
 {% block object-tools-items %}
-    {% if rekord_id %}
-        <li><a href="/admin/bpp/wydawnictwo_zwarte/{{ rekord_id }}/change/">Edycja rekordu</a></li>
-        <li><a href="{% url "bpp:browse_praca_by_slug" rekord.slug %}" class="grp-state-focus"
-               target="_blank">{% trans "View on site" %}</a></li>
-        {% if has_add_permission %}
+    {% if rekord %}
+        <li><a href="{{ rekord_change_url }}">Edycja rekordu</a></li>
+        {# Publiczna strona rekordu z kosza zwraca 404 — nie linkujemy do niej. #}
+        {% if rekord.slug and not rekord_w_koszu %}
+            <li><a href="{% url "bpp:browse_praca_by_slug" rekord.slug %}" class="grp-state-focus"
+                   target="_blank">{% trans "View on site" %}</a></li>
+        {% endif %}
+        {% if has_add_permission and not rekord_w_koszu %}
             {% url cl.opts|admin_urlname:'add' as add_url %}
             <li><a href="{% add_preserved_filters add_url is_popup to_field %}" name="_add_wa"
                    class="grp-add-link grp-state-focus">Dodaj powiązanie autora z rekordem</a></li>
         {% endif %}
     {% endif %}
-
-
 {% endblock %}
 
 {% block extrahead %}
     {{ block.super }}
     <script type="text/javascript">
         django.jQuery(document).ready(function () {
-            django.jQuery(".grp-results").last().remove();
-            django.jQuery(".grp-results")[1].remove();
-
+            var wyniki = django.jQuery(".grp-results");
+            wyniki.last().remove();
+            if (wyniki.length > 1) {
+                wyniki[1].remove();
+            }
         });
     </script>
 {% endblock %}
 
 {% block content_title %}
-    {% if rekord_id %}
-        <h1>Edycja autorów rekordu "{{ rekord.tytul_oryginalny|truncatechars_html:300 }}"</h1>
+    {% if rekord %}
+        <h1>Edycja autorów rekordu "{{ rekord.tytul_oryginalny|truncatechars_html:300 }}"{% if rekord_w_koszu %} 🗑️ (w koszu){% endif %}</h1>
+    {% elif rekord_nie_istnieje %}
+        <h1>Edycja autorów rekordu</h1>
     {% else %}
         <h1>{{ cl.opts.verbose_name_plural|capfirst }}</h1>
     {% endif %}
 {% endblock %}
 
 {% block content %}
-    {% if rekord_id %}
+    {% if rekord_w_koszu %}
+        <ul class="grp-messagelist">
+            <li class="grp-info">
+                🗑️ Rekord jest w koszu — autorów nie można edytować; przywróć rekord,
+                aby je zmienić.
+                <a href="{{ rekord_change_url }}">Przejdź do rekordu</a>
+            </li>
+        </ul>
+    {% elif rekord_nie_istnieje %}
+        <ul class="grp-messagelist">
+            <li class="grp-warning">
+                Rekord o ID {{ rekord_id }} nie istnieje — mógł zostać trwale usunięty.
+                <a href="/admin/bpp/wydawnictwo_zwarte/">Wróć do listy rekordów.</a>
+            </li>
+        </ul>
+    {% elif rekord_id %}
         {{ block.super }}
     {% else %}
         <p>Musisz wejść w edycję rekordu, następnie kliknąć przycisk "Autorzy", aby skorzystać z tej opcji.
