@@ -6,6 +6,7 @@ from django.core.exceptions import ValidationError
 from bpp.admin.core import DynamicAdminFilterMixin
 from bpp.admin.filters import PBN_UID_IDObecnyFilter
 from bpp.admin.helpers.djangoql import BppDjangoQLSearchMixin
+from bpp.admin.helpers.mixins import BppSoftDeleteAdminMixin
 from bpp.const import PBN_UID_LEN
 from bpp.models import Wydawca
 from bpp.models.wydawca import Poziom_Wydawcy
@@ -92,7 +93,12 @@ class WydawcaForm(forms.ModelForm):
 
 
 @admin.register(Wydawca)
-class WydawcaAdmin(DynamicAdminFilterMixin, BppDjangoQLSearchMixin, admin.ModelAdmin):
+class WydawcaAdmin(
+    DynamicAdminFilterMixin,
+    BppDjangoQLSearchMixin,
+    BppSoftDeleteAdminMixin,
+    admin.ModelAdmin,
+):
     djangoql_completion_enabled_by_default = False
     djangoql_completion = True
 

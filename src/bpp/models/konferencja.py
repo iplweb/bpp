@@ -3,9 +3,16 @@ from collections import defaultdict
 from django.db import models
 
 from bpp.models.abstract import ModelZAdnotacjami, ModelZNazwa
+from bpp.models.soft_delete import BppSoftDeleteSlownikMixin
 
 
-class Konferencja(ModelZNazwa, ModelZAdnotacjami):
+class Konferencja(BppSoftDeleteSlownikMixin, ModelZNazwa, ModelZAdnotacjami):
+    """Konferencja. Kosz: tylko konferencja bez publikacji (także w koszu).
+
+    Do soft-delete skasowanie konferencji kaskadowało TWARDO na publikacje
+    (FK ``CASCADE``) — dziś FK jest ``PROTECT``, a guard pilnuje kosza.
+    """
+
     nazwa = models.CharField(max_length=512, db_index=True)
 
     # noqa: DJ001 - pre-existing null=True na CharField (sprzed naszego brancha).

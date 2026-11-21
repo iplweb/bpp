@@ -7,6 +7,7 @@ from model_bakery import baker
 from bpp.models import Jednostka, Patent, Rodzaj_Prawa_Patentowego, Uczelnia
 from cerif_export import const
 from cerif_export.providers import provider_dla_setu
+from cerif_export.tests.pomocnicze import strona_zywych
 
 
 @pytest.mark.django_db
@@ -49,7 +50,9 @@ def test_znak_towarowy_nie_wychodzi_w_eksporcie(
     )
     towarowy.dodaj_autora(autor, jednostka)
 
-    obiekty, _ = provider_dla_setu(const.SET_PATENTS).strona(uczelnia, rozmiar=100)
+    obiekty, _ = strona_zywych(
+        provider_dla_setu(const.SET_PATENTS), uczelnia, rozmiar=100
+    )
     pki = {o.pk for o in obiekty}
 
     assert prawdziwy.pk in pki
@@ -72,7 +75,9 @@ def test_patent_bez_rodzaju_prawa_nadal_wychodzi(
     )
     patent.dodaj_autora(fabryka_autorow("Autor"), jednostka)
 
-    obiekty, _ = provider_dla_setu(const.SET_PATENTS).strona(uczelnia, rozmiar=100)
+    obiekty, _ = strona_zywych(
+        provider_dla_setu(const.SET_PATENTS), uczelnia, rozmiar=100
+    )
 
     assert patent.pk in {o.pk for o in obiekty}
 

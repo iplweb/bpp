@@ -1,4 +1,5 @@
 from django.contrib.contenttypes.models import ContentType
+from django.http import Http404
 from django.http.response import (
     HttpResponseBadRequest,
     HttpResponseNotAllowed,
@@ -63,6 +64,15 @@ def _resolve_lookup_url(lookup_map, klass, source):
     return url, f
 
 
+def _obiekt_spoza_kosza(klass, object_id):
+    """``get_object_for_this_type`` pyta ``_base_manager`` (widzi kosz) —
+    przekierowanie zdradziłoby slug rekordu z kosza, więc 404."""
+    obiekt = klass.get_object_for_this_type(pk=object_id)
+    if getattr(obiekt, "deleted_at", None) is not None:
+        raise Http404
+    return obiekt
+
+
 def global_nav_redir(request, param):
     if request.method != "GET":
         return HttpResponseNotAllowed(["GET"])
@@ -99,7 +109,7 @@ def global_nav_redir(request, param):
             for x in object_id.replace("(", "").replace(")", "").split(",")
         ]
 
-    object = klass.get_object_for_this_type(pk=object_id)
+    object = _obiekt_spoza_kosza(klass, object_id)
 
     url, f = _resolve_lookup_url(lookup_map, klass, source)
     args, kwargs = f(object)

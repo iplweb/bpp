@@ -252,6 +252,10 @@ class ImportInconsistency(models.Model):
             "leftover_affiliation_data",
             "Pozostałe dane afiliacji po przetworzeniu autorów",
         ),
+        (
+            "record_in_trash",
+            "Rekord jest w PBN, ale w BPP jest usunięty (w koszu) — pominięto",
+        ),
     ]
 
     # Auto-indeks FK redundantny: pokrywa go Meta.Index [session, -timestamp].

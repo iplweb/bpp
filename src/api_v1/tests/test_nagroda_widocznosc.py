@@ -60,7 +60,14 @@ def _ukryty_autor(uczelnia, przed_korekta):
     return baker.make("bpp.Autor", pokazuj_w_api=False)
 
 
+def _w_koszu(uczelnia, przed_korekta):
+    obj = baker.make("bpp.Wydawnictwo_Zwarte")
+    obj.delete()
+    return obj
+
+
 UKRYTE_OBIEKTY = [
+    pytest.param(_w_koszu, id="obiekt_w_koszu"),
     pytest.param(_ukryty_status, id="ukryty_status"),
     pytest.param(_nie_eksportowany, id="nie_eksportuj_przez_api"),
     pytest.param(_ukryty_autor, id="autor_pokazuj_false"),

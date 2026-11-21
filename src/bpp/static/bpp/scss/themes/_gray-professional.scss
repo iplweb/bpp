@@ -18,7 +18,7 @@ body.theme-gray-professional {
         ul#navigation-menu li a:hover,
         ul#navigation-menu li.over > a {
             background-color: #4a4a4a !important;
-            color: #ff6939 !important;
+            color: #ffa27f !important;
         }
 
         ul#navigation-menu li ul {
@@ -37,7 +37,7 @@ body.theme-gray-professional {
                     &:hover {
                         background-color: #555555 !important;
                         border-left: 3px solid #ff6939 !important;
-                        color: #ff6939 !important;
+                        color: #ffc2a6 !important;
                     }
                 }
             }
@@ -73,13 +73,13 @@ body.theme-gray-professional {
         border-bottom: 1px solid #e0e0e0 !important;
 
         ul li {
-            color: #757575 !important;
+            color: #616161 !important;
 
             a {
                 color: #424242 !important;
 
                 &:hover {
-                    color: #ff6939 !important;
+                    color: #c2410c !important;
                 }
             }
         }
@@ -88,12 +88,12 @@ body.theme-gray-professional {
     /* Buttons for Gray Professional theme */
     .grp-button {
         background-image: none !important;
-        background: #ff6939 !important;
+        background: #c2410c !important;
         border: 1px solid #e5502a !important;
         color: #ffffff !important;
 
         &:hover {
-            background: #e5502a !important;
+            background: #a8380a !important;
             border: 1px solid #cc3d1a !important;
         }
 
@@ -115,12 +115,16 @@ body.theme-gray-professional {
         background: #404040 !important;
         border-top: 1px solid rgba(255, 255, 255, 0.12) !important;
 
+        // Text colour must be set here too: this rule also repaints
+        // .grp-default ("Zapisz") and the "Wybrano x z y" counter, which
+        // otherwise keep their own light text on this background.
         .grp-button {
-            background: #ff6939 !important;
+            background: #c2410c !important;
+            color: #ffffff !important;
             border: 1px solid #e5502a !important;
 
             &:hover {
-                background: #e5502a !important;
+                background: #a8380a !important;
             }
         }
     }
@@ -159,7 +163,7 @@ body.theme-gray-professional {
     }
 
     .select2-container--default .select2-results__option--highlighted[aria-selected] {
-        background: #ff6939 !important;
+        background: #c2410c !important;
         color: #ffffff !important;
     }
 
@@ -184,17 +188,17 @@ body.theme-gray-professional {
         }
 
         .selected-filter-value {
-            color: #e5502a !important;
+            color: #a83a12 !important;
         }
     }
 
     /* Support button for Gray Professional theme */
     .bpp-support-button {
-        background-color: #ff6939 !important;
+        background-color: #c2410c !important;
         color: #ffffff !important;
 
         &:hover {
-            background-color: #e5502a !important;
+            background-color: #a8380a !important;
         }
 
         &:focus {
@@ -204,10 +208,10 @@ body.theme-gray-professional {
 
     /* Link colors for Gray Professional theme */
     a {
-        color: #17a2b8 !important; /* Teal for professional look */
+        color: #0b6370 !important; /* Teal for professional look */
 
         &:hover {
-            color: #138496 !important;
+            color: #084c56 !important;
         }
     }
 
@@ -219,7 +223,7 @@ body.theme-gray-professional {
         color: #006064 !important;
 
         a {
-            color: #138496 !important;
+            color: #084c56 !important;
             font-weight: bold !important;
 
             &:hover {
@@ -230,44 +234,44 @@ body.theme-gray-professional {
 
     /* Menu icon styles for Gray Professional theme */
     .menu-icon {
-        background-color: #ff6939 !important;
+        background-color: #c2410c !important;
     }
 
     .menu-click-item:hover .menu-icon {
-        background-color: #e5502a !important;
+        background-color: #a8380a !important;
     }
 
     /* Add link and focus state buttons for Gray Professional theme */
     .grp-add-link {
-        background: #ff6939 !important;
+        background: #c2410c !important;
         color: #ffffff !important;
         border: 1px solid #e5502a !important;
 
         &:hover {
-            background: #e5502a !important;
+            background: #a8380a !important;
             border: 1px solid #cc3d1a !important;
             color: #ffffff !important;
         }
     }
 
     .grp-state-focus {
-        background: #555555 !important;
-        color: #ff6939 !important;
+        background: #404040 !important;
+        color: #ffa27f !important;
         border: 2px solid #ff6939 !important;
 
         &:hover {
-            background: linear-gradient(#ff6939, #e55a2e) !important;
+            background: linear-gradient(#c2410c, #a8380a) !important;
             color: #ffffff !important;
         }
     }
 
     ul.grp-object-tools li a {
-        background: #555555 !important;
-        color: #ff6939 !important;
+        background: #404040 !important;
+        color: #ffa27f !important;
         border: 2px solid #ff6939 !important;
 
         &:hover {
-            background: linear-gradient(#ff6939, #e55a2e) !important;
+            background: linear-gradient(#c2410c, #a8380a) !important;
             color: #ffffff !important;
             border-color: #e55a2e !important;
         }
@@ -277,11 +281,11 @@ body.theme-gray-professional {
     ul.grp-object-tools li a[target="_blank"],
     ul.grp-object-tools li a.grp-viewsite-link {
         background: url('/static/grappelli/images/icons-s79f97b581c.png') 0 -935px no-repeat,
-                    #555555 !important;
+                    #404040 !important;
 
         &:hover {
             background: url('/static/grappelli/images/icons-s79f97b581c.png') 0 -935px no-repeat,
-                        linear-gradient(#ff6939, #e55a2e) !important;
+                        linear-gradient(#c2410c, #a8380a) !important;
         }
     }
 

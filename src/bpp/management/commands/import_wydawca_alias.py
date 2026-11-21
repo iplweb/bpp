@@ -5,6 +5,7 @@ from django.core.exceptions import ValidationError
 from django.core.management import BaseCommand
 
 from bpp.models import Wydawca
+from pbn_integrator.kosz import pomin_jesli_koliduje
 
 logger = logging.getLogger("django")
 
@@ -39,6 +40,14 @@ class Command(BaseCommand):
                 logger.info(f"{wydawca} zdefiniowany w pliku XLS nie istnieje")
                 continue
 
+            if pomin_jesli_koliduje(
+                Wydawca,
+                "import_wydawca_alias",
+                alias,
+                skad="pliku",
+                nazwa=alias.strip(),
+            ):
+                continue  # wydawca z kosza — pominięty i zgłoszony
             a = Wydawca.objects.get_or_create(nazwa=alias.strip())[0]
 
             if a.alias_dla != w:

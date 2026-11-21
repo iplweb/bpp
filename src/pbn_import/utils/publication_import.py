@@ -2,6 +2,8 @@
 
 import logging
 
+from django.db import transaction
+
 from bpp.models import (
     Dyscyplina_Naukowa,
     Rekord,
@@ -130,8 +132,32 @@ class PublicationImporter(ImportStepBase):
         )
         self.log("warning", "Usuwanie istniejących publikacji PBN")
 
-        deleted_zwarte = Wydawnictwo_Zwarte.objects.exclude(pbn_uid_id=None).delete()[0]
-        deleted_ciagle = Wydawnictwo_Ciagle.objects.exclude(pbn_uid_id=None).delete()[0]
+        # ⚠️ `global_objects` ORAZ `hard_delete()` — jedno i drugie konieczne.
+        #
+        # `hard_delete()`, bo po fazie 02 `QuerySet.delete()` na modelu
+        # soft-delete jest MIĘKKIE: publikacje zostałyby w bazie, a ten krok
+        # ma dać czysty stan przed pełnym re-importem z PBN.
+        #
+        # `global_objects`, bo `objects` nie widzi kosza: publikacje PBN
+        # z kosza przetrwałyby „usuwanie istniejących", a re-import by je
+        # pominął (``pbn_integrator/kosz.py``) — ten krok ma dać czysty stan.
+        # Rozdziały trzeba najpierw odpiąć: ``wydawnictwo_nadrzedne`` jest
+        # PROTECT, a kolektor sprawdza go, zanim zauważy, że książka i tak
+        # znika (jak ``wyczysc_publikacje_importu._odepnij_rozdzialy``).
+        # ``operacja_kosza`` — odpinany rozdział może leżeć w koszu
+        # (zamrożony triggerem).
+        from bpp.models.soft_delete import operacja_kosza
+
+        with transaction.atomic(), operacja_kosza():
+            Wydawnictwo_Zwarte._base_manager.filter(
+                wydawnictwo_nadrzedne__pbn_uid__isnull=False
+            ).update(wydawnictwo_nadrzedne=None)
+        deleted_zwarte = Wydawnictwo_Zwarte.global_objects.exclude(
+            pbn_uid_id=None
+        ).hard_delete()[0]
+        deleted_ciagle = Wydawnictwo_Ciagle.global_objects.exclude(
+            pbn_uid_id=None
+        ).hard_delete()[0]
 
         self.log(
             "info",

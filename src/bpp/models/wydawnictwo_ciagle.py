@@ -2,7 +2,7 @@ from denorm import denormalized, depend_on_fields, depend_on_related
 from dirtyfields.dirtyfields import DirtyFieldsMixin
 from django.contrib.postgres.fields import ArrayField
 from django.db import models
-from django.db.models import CASCADE, SET_NULL, JSONField
+from django.db.models import CASCADE, PROTECT, SET_NULL, JSONField, Q
 
 from bpp.models import (
     BazaModeluStreszczen,
@@ -46,12 +46,18 @@ from bpp.models.abstract import (
     ModelZWWW,
     Wydawnictwo_Baza,
 )
+from bpp.models.soft_delete import (
+    BppDzieckoPublikacjiMixin,
+    BppPublikacjaSoftDeleteMixin,
+    BppSoftDeleteManager,
+)
 from bpp.models.system import Zewnetrzna_Baza_Danych
 from bpp.models.util import ZapobiegajNiewlasciwymCharakterom
 
 
 class Wydawnictwo_Ciagle_Autor(
     DirtyFieldsMixin,
+    BppDzieckoPublikacjiMixin,
     BazaModeluOdpowiedzialnosciAutorow,
 ):
     """Powiązanie autora do wydawnictwa ciągłego."""
@@ -92,11 +98,30 @@ class ModelZOpenAccessWydawnictwoCiagle(ModelZOpenAccess):
         abstract = True
 
 
-class Wydawnictwo_Ciagle_Manager(ManagerModeliZOplataZaPublikacjeMixin, models.Manager):
-    pass
+class Wydawnictwo_Ciagle_Manager(
+    ManagerModeliZOplataZaPublikacjeMixin, BppSoftDeleteManager
+):
+    """Menedżer opłat PRZEPLECIONY z filtrem soft-delete (faza 02).
+
+    Nośna jest DRUGA BAZA, nie kolejność. Do fazy 02 stało tu
+    ``models.Manager``, więc ``objects`` w ogóle nie znało ``deleted_at``
+    i pokazywało kosz — mimo że model dziedziczył już
+    ``BppPublikacjaSoftDeleteMixin`` (menedżer zadeklarowany w ciele klasy
+    przesłania ten wniesiony przez bazę abstrakcyjną). Podmiana na
+    ``BppSoftDeleteManager`` to naprawia.
+
+    Kolejność baz jest natomiast WYŁĄCZNIE konwencją (mixiny przed klasą
+    bazową) — sprawdzone mutacyjnie: odwrócenie jej nie zmienia zachowania.
+    Powód: ``ManagerModeliZOplataZaPublikacjeMixin`` NIE jest menedżerem,
+    tylko czystym mixinem z jedną metodą (``self.exclude(...)``), więc nie
+    wnosi własnego ``get_queryset()`` i nie ma o co konkurować w MRO.
+    Dzięki temu ``rekordy_z_oplata()`` operuje na już-przefiltrowanym
+    querysecie bez jednej linijki kodu o soft-delete.
+    """
 
 
 class Wydawnictwo_Ciagle(
+    BppPublikacjaSoftDeleteMixin,
     ZapobiegajNiewlasciwymCharakterom,
     Wydawnictwo_Baza,
     DwaTytuly,
@@ -152,6 +177,22 @@ class Wydawnictwo_Ciagle(
         verbose_name = "wydawnictwo ciągłe"
         verbose_name_plural = "wydawnictwa ciągłe"
         app_label = "bpp"
+        indexes = [
+            # Indeks CZĘŚCIOWY (`WHERE deleted_at IS NOT NULL`) — ten sam
+            # wzorzec i to samo uzasadnienie, co `wc_autor_deleted_at_idx`
+            # wyżej (faza 01): predykat `deleted_at IS NULL` pasuje do ~100%
+            # wierszy, więc planner nigdy nie wybrałby pod niego indeksu, a
+            # pełny btree byłby wyłącznie kosztem (rozmiar + wpis przy
+            # każdym INSERT/UPDATE publikacji). Selektywne jest zapytanie
+            # ODWROTNE — kosz/audyt (`deleted_objects`) — i to ono dostaje
+            # tu mikroskopijny indeks. KANONICZNE UZASADNIENIE dla
+            # wszystkich pięciu tabel publikacji.
+            models.Index(
+                fields=["deleted_at"],
+                name="wc_deleted_at_idx",
+                condition=Q(deleted_at__isnull=False),
+            ),
+        ]
 
     def punktacja_zrodla(self):
         """Funkcja - skrót do użycia w templatkach, zwraca punktację zrodla
@@ -284,11 +325,13 @@ class Wydawnictwo_Ciagle(
         ModelZOplataZaPublikacje.clean(self)
 
 
-class Wydawnictwo_Ciagle_Zewnetrzna_Baza_Danych(models.Model):
+class Wydawnictwo_Ciagle_Zewnetrzna_Baza_Danych(
+    BppDzieckoPublikacjiMixin, models.Model
+):
     rekord = models.ForeignKey(
         Wydawnictwo_Ciagle, CASCADE, related_name="zewnetrzna_baza_danych"
     )
-    baza = models.ForeignKey(Zewnetrzna_Baza_Danych, CASCADE)
+    baza = models.ForeignKey(Zewnetrzna_Baza_Danych, PROTECT)
     info = models.CharField(
         verbose_name="Informacje dodatkowe", max_length=512, blank=True, default=""
     )
@@ -315,7 +358,7 @@ class Wydawnictwo_Ciagle_Tytul(BazaModeluTytulow):
         return f"Tytuł rekordu {self.rekord_id} w języku {self.kod_jezyka_pbn}"
 
 
-class Wydawnictwo_Ciagle_Streszczenie(BazaModeluStreszczen):
+class Wydawnictwo_Ciagle_Streszczenie(BppDzieckoPublikacjiMixin, BazaModeluStreszczen):
     rekord = models.ForeignKey(Wydawnictwo_Ciagle, CASCADE, related_name="streszczenia")
 
     class Meta:

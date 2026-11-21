@@ -45,7 +45,10 @@ def task_sprobuj_wyslac_do_pbn(pk):
 
         match res:
             case SendStatus.RETRY_LATER:
-                task_sprobuj_wyslac_do_pbn.apply_async(args=[pk], countdown=5 * 60)
+                p.refresh_from_db()
+                task_sprobuj_wyslac_do_pbn.apply_async(
+                    args=[pk], countdown=p.odstep_ponowienia(5 * 60)
+                )
 
             case SendStatus.RETRY_SOON:
                 # np. 423 Locked
@@ -103,9 +106,22 @@ def check_and_send_next_in_queue():
 
 @app.task
 def kolejka_wyczysc_wpisy_bez_rekordow():
-    for elem in PBN_Export_Queue.objects.all():
-        if not elem.check_if_record_still_exists():
+    """Usuwa wpisy WYSYŁKI, których rekordu fizycznie nie ma w bazie.
+
+    Historia wysyłek rekordów z kosza zostaje (rekord istnieje), zlecenia
+    wycofania — zawsze (to historia, ``WycofanieZablokowane``).
+    """
+    from pbn_export_queue.models import WpisWTrakcieWysylki
+
+    for elem in PBN_Export_Queue.objects.exclude(
+        operacja=PBN_Export_Queue.Operacja.WYCOFANIE
+    ):
+        if elem.rekord_istnieje_w_bazie():
+            continue
+        try:
             elem.delete()
+        except WpisWTrakcieWysylki:
+            continue  # worker go właśnie obsługuje — następnym razem
 
 
 @app.task

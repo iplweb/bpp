@@ -2,9 +2,12 @@ from django.contrib import admin
 
 from ..models.seria_wydawnicza import Seria_Wydawnicza
 from .core import BaseBppAdminMixin
+from .helpers.mixins import BppSoftDeleteAdminMixin
 
 
-class Seria_WydawniczaAdmin(BaseBppAdminMixin, admin.ModelAdmin):
+class Seria_WydawniczaAdmin(
+    BaseBppAdminMixin, BppSoftDeleteAdminMixin, admin.ModelAdmin
+):
     list_display = [
         "nazwa",
     ]

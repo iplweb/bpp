@@ -3,13 +3,13 @@ Modele abstrakcyjne związane z Open Access.
 """
 
 from django.db import models
-from django.db.models import CASCADE
+from django.db.models import PROTECT
 
 
 class ModelZOpenAccess(models.Model):
     openaccess_wersja_tekstu = models.ForeignKey(
         "Wersja_Tekstu_OpenAccess",
-        CASCADE,
+        PROTECT,
         verbose_name="OpenAccess: wersja tekstu",
         blank=True,
         null=True,
@@ -17,7 +17,7 @@ class ModelZOpenAccess(models.Model):
 
     openaccess_licencja = models.ForeignKey(
         "Licencja_OpenAccess",
-        CASCADE,
+        PROTECT,
         verbose_name="OpenAccess: licencja",
         blank=True,
         null=True,
@@ -25,7 +25,7 @@ class ModelZOpenAccess(models.Model):
 
     openaccess_czas_publikacji = models.ForeignKey(
         "Czas_Udostepnienia_OpenAccess",
-        CASCADE,
+        PROTECT,
         verbose_name="OpenAccess: czas udostępnienia",
         blank=True,
         null=True,
