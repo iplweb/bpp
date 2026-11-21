@@ -149,13 +149,25 @@
             </button>
         </div>
     </div>
+    {# Klucz do odczytu grafu stoi TUTAJ, nie w nakladce #graf-legenda: #}
+    {# legenda jest chowana ponizej 640 px (graf_powiazan.scss), a bez tego #}
+    {# zdania uzytkownik telefonu widzi kola roznej wielkosci i linie roznej #}
+    {# grubosci, nie wiedzac, co znacza. Chowanie TRESCI na malym ekranie to #}
+    {# strata informacji, nie dekoracji — czyli dokladnie to, przed czym #}
+    {# stoi 1.3.1. W legendzie zostaja wylacznie podpowiedzi o najechaniu #}
+    {# kursorem, ktorych na ekranie dotykowym i tak nie ma. #}
     <small style="display: block; color: #666; margin: 6px 0 12px;">
         Na każdym węźle pokazujemy najpierw współautorów z największą liczbą
         wspólnych publikacji. Klik w węzeł dowija jego dalszych współautorów.
+        Wielkość koła odpowiada wybranej metryce (liczba prac / IF / PK),
+        a grubość linii — liczbie wspólnych publikacji.
     </small>
 
     <div id="graf-wrapper" style="position: relative;">
         <div id="cytoscape-container"
+             tabindex="0"
+             role="application"
+             aria-label="Graf powiązań autorów. Strzałki przesuwają widok, plus i minus przybliżają, klawisz Home dopasowuje graf do ekranu."
              data-autor-id="{{ autor.pk }}"
              data-autor-label="{{ autor.imiona }} {{ autor.nazwisko }}"
              data-dane-url-template="{% url 'bpp:browse_autor_powiazania_dane' 0 %}"
@@ -171,9 +183,7 @@
                     color: #444; pointer-events: none; z-index: 1001;">
             Najedź na węzeł, aby zobaczyć autora; najedź na linię, aby zobaczyć
             liczbę wspólnych publikacji. Kliknij węzeł, aby rozwinąć jego
-            współautorów i otworzyć menu akcji. Wielkość koła odpowiada wybranej
-            metryce (liczba prac / IF / PK), a grubość linii — liczbie wspólnych
-            publikacji.
+            współautorów i otworzyć menu akcji.
         </div>
         <div id="graf-tooltip"
              style="position: absolute; display: none; pointer-events: none;
@@ -196,6 +206,25 @@
             Pokazano część sieci — przy tej głębokości i liczbie współautorów
             sieć przekroczyła limit węzłów. Zmniejsz głębokość lub liczbę
             współautorów, aby zobaczyć węższy, pełny wycinek.
+        </div>
+        {# WCAG 2.5.7: nawigacja bez przeciagania. Prawy dolny rog to #}
+        {# jedyny wolny — lewy gorny zajmuje #graf-panel, prawy gorny #}
+        {# #graf-legenda, lewy dolny #graf-notka (przy przycietej sieci). #}
+        <div id="graf-nawigacja" class="graf-nawigacja">
+            <button type="button" id="graf-nav-gora" class="graf-nawigacja__btn"
+                    aria-label="Przesuń widok w górę"><span aria-hidden="true">↑</span></button>
+            <button type="button" id="graf-nav-lewo" class="graf-nawigacja__btn"
+                    aria-label="Przesuń widok w lewo"><span aria-hidden="true">←</span></button>
+            <button type="button" id="graf-nav-dopasuj" class="graf-nawigacja__btn"
+                    aria-label="Dopasuj graf do ekranu"><span aria-hidden="true">⤢</span></button>
+            <button type="button" id="graf-nav-prawo" class="graf-nawigacja__btn"
+                    aria-label="Przesuń widok w prawo"><span aria-hidden="true">→</span></button>
+            <button type="button" id="graf-nav-dol" class="graf-nawigacja__btn"
+                    aria-label="Przesuń widok w dół"><span aria-hidden="true">↓</span></button>
+            <button type="button" id="graf-nav-zoom-in" class="graf-nawigacja__btn"
+                    aria-label="Przybliż"><span aria-hidden="true">+</span></button>
+            <button type="button" id="graf-nav-zoom-out" class="graf-nawigacja__btn"
+                    aria-label="Oddal"><span aria-hidden="true">−</span></button>
         </div>
     </div>
 

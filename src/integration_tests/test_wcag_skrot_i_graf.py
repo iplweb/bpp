@@ -1,0 +1,480 @@
+"""WCAG 2.1.4 i 2.5.7/2.1.1 — testy zachowania w przeglądarce.
+
+Testy szablonowe (``src/bpp/tests/test_wcag/``) dowodzą, że kod jest w
+pliku; te dowodzą, że działa. Bez nich usunięcie warunku
+``bppSkrotyWlaczone()`` z handlera skrótu ``/``, albo ``preventDefault``
+z obsługi klawiatury grafu, albo samych handlerów kliknięcia przycisków
+nawigacji — nie wywaliłoby żadnego testu.
+
+Większość testów jedzie po stronie autora (``bpp:browse_autor``), bo nie
+wymaga obiektu ``Uczelnia`` w bazie (patrz też ``test_siec3d_bez_webgl.py``,
+który idzie tą samą drogą), a stopka i modal wyszukiwarki renderują się na
+niej tak samo.
+
+Wyjątkiem jest ``test_baner_skrotu_na_stronie_uczelni_slucha_preferencji``:
+strona uczelni ma WŁASNY, inline'owy skrypt reklamujący skrót, którego nie
+ma nigdzie indziej, więc tam trzeba zapłacić za seed ``Uczelnia``. Bez tego
+testu odwrócenie guardu (``|| !bppSkrotyWlaczone()``) przechodziło całą
+suitę: testy szablonowe sprawdzają regexem obecność, nie semantykę.
+
+WYMAGANIE WSTĘPNE: ``make assets`` — bez zbudowanego bundla strona nie ma
+czego wykonać i testy padną na braku elementów / błędnym zachowaniu JS.
+"""
+
+import pytest
+from django.urls import reverse
+from model_bakery import baker
+from playwright.sync_api import Page, expect
+
+from bpp.models import Autor, Uczelnia
+from powiazania_autorow.models import AuthorConnection
+
+
+def _url_autora(channels_live_server):
+    autor = baker.make(Autor, imiona="Jan", nazwisko="Kowalski", pokazuj=True)
+    return f"{channels_live_server.url}{reverse('bpp:browse_autor', args=[autor.slug])}"
+
+
+def _url_grafu(channels_live_server):
+    # Autor MUSI mieć co najmniej jednego współautora: sieć BFS o <=1 węźle
+    # trafia w gałąź "pusta sieć" w renderujSiec() (graph.js:172-178), która
+    # asynchronicznie chowa #cytoscape-container (`style.display = "none"`).
+    # Bez współautora testy klawiatury/kliknięć poniżej są wyścigiem: klawisz
+    # albo klik trafiały czasem w kontener tuż przed jego ukryciem, więc
+    # cy.pan()/cy.zoom() się nie zmieniało (~20-30% flaky, znalezisko z
+    # code review — patrz raport).
+    autor = baker.make(Autor, imiona="Jan", nazwisko="Kowalski", pokazuj=True)
+    wspolautor = baker.make(Autor, imiona="Anna", nazwisko="Nowak", pokazuj=True)
+    baker.make(
+        AuthorConnection,
+        primary_author=autor,
+        secondary_author=wspolautor,
+        shared_publications_count=3,
+    )
+    return (
+        f"{channels_live_server.url}"
+        f"{reverse('bpp:browse_autor_powiazania', args=[autor.pk])}"
+    )
+
+
+def _idz_na_strone(page: Page, url: str) -> None:
+    """Nawiguje na `url`, obchodząc dwa źródła flakiness NIEZWIĄZANE z
+    testowaną logiką (odkryte empirycznie przy pisaniu tego pliku):
+
+    1. Baner RODO (``#CookielawBanner``, ``fixed``, wysoki z-index) renderuje
+       się serwerowo, dopóki request nie niesie ciasteczka
+       ``cookielaw_accepted`` (patrz ``cookielaw.templatetags`` w pakiecie
+       ``cookielaw``) — bez tego ciasteczka przechwytuje kliknięcia na
+       ``#bpp-przelacznik-skrotow`` i przyciskach nawigacji grafu, więc
+       ustawiamy je PRZED nawigacją zamiast klikać "Zgadzam się" w każdym
+       teście.
+    2. Realne zdarzenia klawiatury (CDP ``Input.dispatchKeyEvent``) potrafią
+       trafić w nieaktywną kartę, gdy w kontekście przeglądarki istnieje
+       więcej niż jedna strona (współdzielony ``channels_live_server`` +
+       fixture ``page`` w wielu testach) — bez ``bring_to_front()``
+       ``document.activeElement`` po naciśnięciu klawisza gubi fokus
+       ustawiony chwilę wcześniej przez ``locator.focus()``.
+    """
+    page.context.add_cookies([{"name": "cookielaw_accepted", "value": "1", "url": url}])
+    page.goto(url, wait_until="domcontentloaded")
+    page.bring_to_front()
+
+
+# --- WCAG 2.1.4: skrót klawiszowy `/` i jego wyłącznik --------------------
+
+
+@pytest.mark.django_db(transaction=True)
+def test_skrot_otwiera_wyszukiwarke_domyslnie(
+    channels_live_server, page: Page, transactional_db
+):
+    _idz_na_strone(page, _url_autora(channels_live_server))
+
+    page.keyboard.press("/")
+
+    expect(page.locator("#globalSearchModal")).to_be_visible(timeout=5000)
+
+
+@pytest.mark.django_db(transaction=True)
+def test_wylaczenie_skrotu_dziala(channels_live_server, page: Page, transactional_db):
+    _idz_na_strone(page, _url_autora(channels_live_server))
+
+    page.locator("#bpp-przelacznik-skrotow").click()
+    page.keyboard.press("/")
+
+    # Handler "/" jest synchroniczny (brak fetchy/await), więc jeśli miałby
+    # otworzyć modal mimo wyłączenia, zrobiłby to natychmiast — `expect`
+    # sam odpytuje aż do timeoutu, więc twardy `wait_for_timeout` jest tu
+    # zbędny.
+    expect(page.locator("#globalSearchModal")).not_to_be_visible()
+
+
+@pytest.mark.django_db(transaction=True)
+def test_ponowne_wlaczenie_przywraca_skrot(
+    channels_live_server, page: Page, transactional_db
+):
+    _idz_na_strone(page, _url_autora(channels_live_server))
+
+    przelacznik = page.locator("#bpp-przelacznik-skrotow")
+    przelacznik.click()
+    przelacznik.click()
+    page.keyboard.press("/")
+
+    expect(page.locator("#globalSearchModal")).to_be_visible(timeout=5000)
+
+
+@pytest.mark.django_db(transaction=True)
+def test_przelacznik_aktualizuje_aria_pressed(
+    channels_live_server, page: Page, transactional_db
+):
+    _idz_na_strone(page, _url_autora(channels_live_server))
+
+    przelacznik = page.locator("#bpp-przelacznik-skrotow")
+    expect(przelacznik).to_have_attribute("aria-pressed", "true")
+
+    przelacznik.click()
+    expect(przelacznik).to_have_attribute("aria-pressed", "false")
+
+
+@pytest.mark.django_db(transaction=True)
+def test_preferencja_przezywa_przeladowanie(
+    channels_live_server, page: Page, transactional_db
+):
+    url = _url_autora(channels_live_server)
+    _idz_na_strone(page, url)
+
+    page.locator("#bpp-przelacznik-skrotow").click()
+    page.reload(wait_until="domcontentloaded")
+
+    expect(page.locator("#bpp-przelacznik-skrotow")).to_have_attribute(
+        "aria-pressed", "false"
+    )
+
+
+# --- WCAG 2.5.7 / 2.1.1: nawigacja po grafie powiązań ----------------------
+#
+# Samo sprawdzenie widoczności przycisku nie wystarczy: przycisk zostałby
+# widoczny, nawet gdyby ktoś odpiął mu handler kliknięcia. Cytoscape.js
+# przechowuje żywą instancję na `container._cyreg.cy` (wewnętrzny rejestr
+# biblioteki, ale stabilny w praktyce) — czytamy z niej realny stan widoku
+# (zoom/pan) PRZED i PO interakcji, więc test faktycznie pada, gdy handler
+# zniknie, a nie tylko gdy zniknie sam element z DOM.
+
+
+def _cy_zoom(page):
+    return page.evaluate(
+        "document.getElementById('cytoscape-container')._cyreg.cy.zoom()"
+    )
+
+
+def _cy_pan(page):
+    return page.evaluate(
+        "document.getElementById('cytoscape-container')._cyreg.cy.pan()"
+    )
+
+
+def _ustaw_zoom_z_zapasem(page):
+    """Ustawia zoom na 1 i sprawdza, że do `maxZoom` został zapas.
+
+    Po wyrenderowaniu sieci `renderujSiec()` woła `cy.fit()`, a przy
+    dwuwęzłowej sieci testowej dopasowanie dobija do `maxZoom` (4, patrz
+    ``powiazania/cy.js``). `zoomuj()` przycina wynik do `cy.maxZoom()`, więc
+    przybliżanie jest wtedy — całkiem poprawnie — operacją pustą i asercja
+    "zoom wzrósł" pada mimo sprawnego handlera. Zamiast dobierać liczbę
+    współautorów tak, żeby `fit()` przypadkiem zostawił zapas (kruche:
+    zależy od geometrii układu i rozmiaru viewportu), ustawiamy punkt
+    startowy jawnie.
+    """
+    page.evaluate("document.getElementById('cytoscape-container')._cyreg.cy.zoom(1)")
+    assert _cy_zoom(page) < page.evaluate(
+        "document.getElementById('cytoscape-container')._cyreg.cy.maxZoom()"
+    ), "brak zapasu do maxZoom -- test przybliżania nie mógłby niczego dowieść"
+
+
+def _czekaj_na_graf(page):
+    """Czeka, aż `renderujSiec()` (``powiazania/graph.js``) SKOŃCZY
+    renderowanie sieci — nie tylko na to, że instancja Cytoscape istnieje.
+
+    Samo `_cyreg.cy` powstaje synchronicznie przy starcie (`utworzCy()`),
+    ZANIM fetch `siec.json` w ogóle wystartuje, więc czekanie na nie było
+    czekaniem na nic: klawisz albo klik w oknie między "cy istnieje" a
+    "render się skończył" trafiał w pusty, jeszcze nieustawiony widok
+    i `cy.pan()`/`cy.zoom()` się nie zmieniało (~20-30% flaky).
+
+    Czekamy więc na sygnał POZYTYWNY — obecność węzłów. `cy.nodes()`
+    zapełnia dopiero `renderujSiec()`, przechodząc `data.nodes` już po
+    odpowiedzi z `siec.json`, więc niezerowa liczba węzłów dowodzi, że
+    asynchroniczna gałąź się zakończyła. Warunek "kontener nie jest
+    ukryty" byłby tu bezużyteczny: ``#cytoscape-container`` nie ma w
+    szablonie reguły ``display``, więc `getComputedStyle` zwraca "block"
+    od chwili sparsowania elementu — spełniałby się PRZED renderem,
+    a gałąź pustej sieci (`graph.js:172-178`) ustawia `display: none`
+    dopiero potem. `_url_grafu` seeduje współautora, żeby w tę gałąź
+    w ogóle nie wejść.
+    """
+    page.wait_for_function(
+        "() => {"
+        " const k = document.getElementById('cytoscape-container');"
+        " return !!(k && k._cyreg && k._cyreg.cy"
+        " && k._cyreg.cy.nodes().length > 0);"
+        "}",
+        timeout=15000,
+    )
+
+
+@pytest.mark.django_db(transaction=True)
+def test_graf_ma_przyciski_nawigacji_i_jest_fokusowalny(
+    channels_live_server, page: Page, transactional_db
+):
+    _idz_na_strone(page, _url_grafu(channels_live_server))
+    _czekaj_na_graf(page)
+
+    kontener = page.locator("#cytoscape-container")
+    expect(kontener).to_have_attribute("tabindex", "0")
+    expect(page.locator("#graf-nav-dopasuj")).to_be_visible(timeout=10000)
+
+
+@pytest.mark.django_db(transaction=True)
+def test_graf_przycisk_zoom_realnie_zmienia_widok(
+    channels_live_server, page: Page, transactional_db
+):
+    _idz_na_strone(page, _url_grafu(channels_live_server))
+    expect(page.locator("#graf-nav-zoom-in")).to_be_visible(timeout=10000)
+    _czekaj_na_graf(page)
+    _ustaw_zoom_z_zapasem(page)
+
+    zoom_przed = _cy_zoom(page)
+    page.locator("#graf-nav-zoom-in").click()
+    zoom_po = _cy_zoom(page)
+
+    assert zoom_po > zoom_przed, (
+        "klik #graf-nav-zoom-in nie zmienil cy.zoom() -- handler kliknięcia "
+        "odpiety albo usuniety?"
+    )
+
+
+@pytest.mark.django_db(transaction=True)
+def test_graf_przycisk_kierunkowy_realnie_przesuwa_widok(
+    channels_live_server, page: Page, transactional_db
+):
+    _idz_na_strone(page, _url_grafu(channels_live_server))
+    expect(page.locator("#graf-nav-gora")).to_be_visible(timeout=10000)
+    _czekaj_na_graf(page)
+
+    pan_przed = _cy_pan(page)
+    page.locator("#graf-nav-gora").click()
+    pan_po = _cy_pan(page)
+
+    assert pan_po != pan_przed, (
+        "klik #graf-nav-gora nie zmienil cy.pan() -- handler kliknięcia "
+        "odpiety albo usuniety?"
+    )
+
+
+@pytest.mark.django_db(transaction=True)
+def test_graf_strzalka_z_klawiatury_realnie_przesuwa_widok(
+    channels_live_server, page: Page, transactional_db
+):
+    # Dowód wiązania klawiatura -> nawigacja (WCAG 2.1.1): funkcja dostępna
+    # myszką jako "przesuń w górę" musi być dostępna też z klawiatury.
+    _idz_na_strone(page, _url_grafu(channels_live_server))
+    _czekaj_na_graf(page)
+
+    kontener = page.locator("#cytoscape-container")
+    kontener.focus()
+
+    pan_przed = _cy_pan(page)
+    page.keyboard.press("ArrowUp")
+    pan_po = _cy_pan(page)
+
+    assert pan_po != pan_przed, (
+        "ArrowUp na sfokusowanym #cytoscape-container nie zmienil cy.pan() "
+        "-- obsluzKlawisz odpiety od kontenera?"
+    )
+
+
+@pytest.mark.django_db(transaction=True)
+def test_graf_nie_jest_pulapka_klawiaturowa(
+    channels_live_server, page: Page, transactional_db
+):
+    # Handler robi preventDefault WYŁĄCZNIE dla obsłużonych klawiszy. Gdyby
+    # blokował wszystko, Tab przestałby wyprowadzać focus — czyli naprawiając
+    # 2.1.1 stworzylibyśmy pułapkę klawiaturową i złamalibyśmy 2.1.2.
+    _idz_na_strone(page, _url_grafu(channels_live_server))
+    _czekaj_na_graf(page)
+
+    kontener = page.locator("#cytoscape-container")
+    kontener.focus()
+    expect(kontener).to_be_focused()
+
+    page.keyboard.press("Tab")
+
+    assert page.evaluate("document.activeElement.id") != "cytoscape-container"
+
+
+def _url_grafu_bez_powiazan(channels_live_server):
+    """Autor BEZ współautorów — sieć jednowęzłowa, gałąź „pusta" w
+    ``renderujSiec()``. To nie jest przypadek egzotyczny: ``AuthorConnection``
+    liczy się raz na dobę, więc każdy świeżo dodany autor trafia tu zawsze.
+    """
+    autor = baker.make(Autor, imiona="Samotny", nazwisko="Badacz", pokazuj=True)
+    return (
+        f"{channels_live_server.url}"
+        f"{reverse('bpp:browse_autor_powiazania', args=[autor.pk])}"
+    )
+
+
+@pytest.mark.django_db(transaction=True)
+def test_graf_pusty_chowa_nawigacje(channels_live_server, page: Page, transactional_db):
+    # Po ukryciu płótna `#graf-wrapper` zapada się do wysokości akapitu,
+    # a nawigacja — pozycjonowana absolutnie względem niego — wychodziła
+    # PONAD wrapper i nachodziła na komunikat „Brak powiązań". Przyciski
+    # były przy tym martwe (`cy.width()` ukrytego kontenera to 0, więc
+    # `przesun` robi `panBy({x: 0, y: 0})`) i zostawały w kolejności Taba:
+    # siedem kontrolek, które nic nie robią, a audyt widzi je jako spełnienie
+    # 2.5.7.
+    _idz_na_strone(page, _url_grafu_bez_powiazan(channels_live_server))
+
+    expect(page.locator("#graf-empty")).to_be_visible(timeout=10000)
+    expect(page.locator("#graf-nawigacja")).not_to_be_visible()
+
+
+@pytest.mark.django_db(transaction=True)
+def test_przyciski_grafu_maja_cel_dotykowy_24px(
+    channels_live_server, page: Page, transactional_db
+):
+    # WCAG 2.5.8: cel nie mniejszy niż 24x24 px CSS. SCSS deklaruje
+    # `min-width/height: 28px`, ale nic tego nie pilnowało — zejście do
+    # 10px przechodziło całą suitę.
+    _idz_na_strone(page, _url_grafu(channels_live_server))
+    _czekaj_na_graf(page)
+
+    przyciski = page.locator(".graf-nawigacja__btn")
+    assert przyciski.count() == 7
+    for i in range(przyciski.count()):
+        bb = przyciski.nth(i).bounding_box()
+        nazwa = przyciski.nth(i).get_attribute("id")
+        assert bb["width"] >= 24 and bb["height"] >= 24, (
+            f"{nazwa}: cel {bb['width']}x{bb['height']} px, próg 2.5.8 to 24x24"
+        )
+
+
+@pytest.mark.django_db(transaction=True)
+def test_przelacznik_skrotow_ma_cel_dotykowy_24px(
+    channels_live_server, page: Page, transactional_db
+):
+    # Ten sam próg dla przełącznika w stopce. `.footer__content` ma
+    # `font-size: 70%`, więc bez paddingu cel miał 15 px wysokości — a to
+    # JEDYNY sposób skorzystania z naprawy 2.1.4, adresowanej do osób ze
+    # sterowaniem głosem i zaburzeniami motoryki.
+    _idz_na_strone(page, _url_autora(channels_live_server))
+
+    bb = page.locator("#bpp-przelacznik-skrotow").bounding_box()
+    assert bb["height"] >= 24, (
+        f"przełącznik ma {bb['height']} px wysokości, próg 2.5.8 to 24"
+    )
+
+
+@pytest.mark.django_db(transaction=True)
+def test_kontener_grafu_ma_widoczny_pierscien_focusa(
+    channels_live_server, page: Page, transactional_db
+):
+    # WCAG 2.4.7. Przy `role="application"` + `tabindex="0"` to nie jest
+    # ozdoba: bez widocznego focusa użytkownik nie wie, że strzałki zaczęły
+    # sterować grafem, a nie przewijaniem strony. Skasowanie bloku
+    # `:focus-visible` przechodziło wcześniej całą suitę.
+    _idz_na_strone(page, _url_grafu(channels_live_server))
+    _czekaj_na_graf(page)
+
+    page.locator("#cytoscape-container").focus()
+    obrys = page.evaluate(
+        "getComputedStyle(document.getElementById('cytoscape-container')).outlineWidth"
+    )
+
+    assert obrys not in ("", "0px"), (
+        f"kontener grafu nie ma pierścienia focusa (outline-width={obrys!r})"
+    )
+
+
+def _url_uczelni(channels_live_server):
+    uczelnia = baker.make(Uczelnia, nazwa="Uczelnia Testowa", skrot="UT")
+    return (
+        f"{channels_live_server.url}"
+        f"{reverse('bpp:browse_uczelnia', args=[uczelnia.slug])}"
+    )
+
+
+@pytest.mark.django_db(transaction=True)
+def test_baner_skrotu_na_stronie_uczelni_slucha_preferencji(
+    channels_live_server, page: Page, transactional_db
+):
+    # Strona uczelni ma WŁASNY, inline'owy skrypt reklamujący skrót `/`.
+    # Testy szablonowe sprawdzają go regexem po źródle, więc przepuszczają
+    # odwróconą logikę (`|| !bppSkrotyWlaczone()`): guard nadal tam jest,
+    # nadal ma `typeof`, nadal nazywa się `skrotyWl` — a baner reklamuje
+    # skrót DOKŁADNIE wtedy, gdy użytkownik go wyłączył. Wyłapie to tylko
+    # test sprawdzający skutek, i to jest ten test.
+    url = _url_uczelni(channels_live_server)
+    _idz_na_strone(page, url)
+
+    baner = page.locator("#search-shortcut-banner")
+    expect(baner).to_be_visible(timeout=5000)
+
+    page.locator("#bpp-przelacznik-skrotow").click()
+    page.reload(wait_until="domcontentloaded")
+
+    # Baner wstaje przez `setTimeout(..., 500)`, więc dajemy mu szansę się
+    # pojawić i dopiero potem stwierdzamy, że go nie ma.
+    expect(page.locator("#bpp-przelacznik-skrotow")).to_have_attribute(
+        "aria-pressed", "false"
+    )
+    expect(baner).not_to_be_visible(timeout=2000)
+
+
+@pytest.mark.django_db(transaction=True)
+def test_graf_na_waskim_ekranie_nawigacja_nie_zaslania_plotna(
+    channels_live_server, page: Page, transactional_db
+):
+    # Graf ma cztery nakładki w narożnikach. Przy 390 px legenda (260 px)
+    # zasłaniała większość obszaru rysowania, a notka (320 px) stykała się
+    # z nawigacją. Media query wyprowadza nawigację spod nakładek — poniżej
+    # płótna — i chowa legendę, która i tak opisuje interakcje myszy.
+    #
+    # Bez tego testu regresja w arkuszu przechodzi niezauważona: przyciski
+    # nadal istnieją i nadal działają, więc pozostałe testy są zielone.
+    page.set_viewport_size({"width": 390, "height": 844})
+    _idz_na_strone(page, _url_grafu(channels_live_server))
+    _czekaj_na_graf(page)
+
+    expect(page.locator("#graf-legenda")).not_to_be_visible()
+
+    # Legenda może zniknąć, ale klucz do ODCZYTU grafu — co znaczy wielkość
+    # koła i grubość linii — musi zostać. Chowanie treści na małym ekranie
+    # to strata informacji, nie dekoracji (1.3.1). Dlatego to zdanie żyje
+    # w `<small>` nad grafem, nie w chowanej nakładce.
+    expect(page.get_by_text("Wielkość koła odpowiada")).to_be_visible()
+
+    plotno = page.locator("#cytoscape-container").bounding_box()
+    nawigacja = page.locator("#graf-nawigacja").bounding_box()
+    assert nawigacja["y"] >= plotno["y"] + plotno["height"] - 1, (
+        "nawigacja nadal leży NA płótnie przy 390 px — media query nie działa"
+    )
+
+
+@pytest.mark.django_db(transaction=True)
+def test_graf_na_szerokim_ekranie_nawigacja_zostaje_na_plotnie(
+    channels_live_server, page: Page, transactional_db
+):
+    # Kontrola dla testu wyżej: na desktopie nakładka ma pozostać nakładką.
+    # Inaczej "naprawa" wąskich ekranów mogłaby po cichu przenieść przyciski
+    # pod graf na wszystkich rozdzielczościach.
+    page.set_viewport_size({"width": 1440, "height": 900})
+    _idz_na_strone(page, _url_grafu(channels_live_server))
+    _czekaj_na_graf(page)
+
+    expect(page.locator("#graf-legenda")).to_be_visible()
+
+    plotno = page.locator("#cytoscape-container").bounding_box()
+    nawigacja = page.locator("#graf-nawigacja").bounding_box()
+    assert nawigacja["y"] < plotno["y"] + plotno["height"], (
+        "nawigacja zjechała pod płótno na desktopie"
+    )
