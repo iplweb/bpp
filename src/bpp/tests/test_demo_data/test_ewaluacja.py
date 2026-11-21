@@ -6,8 +6,10 @@ from collections import Counter
 from decimal import Decimal
 
 import pytest
+from django.apps import apps
 from django.core.management import call_command
 from django.db import connection
+from model_bakery import baker
 
 from bpp.demo_data.default_dyscypliny import seed_default_dyscypliny
 from bpp.demo_data.generators.autorzy import create_autorzy
@@ -21,6 +23,7 @@ from bpp.demo_data.generators.punktacja import (
 from bpp.demo_data.generators.uczelnia import ensure_uczelnia
 from bpp.demo_data.generators.wydzialy import create_wydzialy
 from bpp.demo_data.manifest import Manifest
+from bpp.demo_data.preflight import REQUIRED_DICTIONARIES
 from bpp.demo_data.themes.registry import get_theme
 from bpp.models import (
     Autor,
@@ -91,7 +94,18 @@ def test_rodzaj_autora_proporcje(tmp_manifest_path):
         assert sum(u for _, u in ad.policz_udzialy()) == Decimal(1)
 
 
+def _zapewnij_slowniki():
+    """Słowniki wymagane przez preflight ``create_demo_data``. Zwykle są
+    w baseline, ale test transakcyjny wcześniej na tym samym workerze xdist
+    mógł je wyczyścić (TRUNCATE) — wtedy komenda kończy się SystemExit(1)."""
+    for label, _ in REQUIRED_DICTIONARIES:
+        model = apps.get_model(*label.split("."))
+        if not model.objects.exists():
+            baker.make(model)
+
+
 def _create_demo(tmp_path, *extra):
+    _zapewnij_slowniki()
     manifest = tmp_path / "m.json"
     db_name = connection.settings_dict["NAME"]
     call_command(
