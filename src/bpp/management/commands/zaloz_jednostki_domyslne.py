@@ -29,15 +29,15 @@ class Command(BaseCommand):
         "domyślną' i kasuje pozostałe (puste) jednostki tego wydziału. "
         "Jeżeli któraś jednostka nie jest pusta — przerywa z błędem.\n\n"
         "Przykłady:\n"
-        "  python manage.py zaloz_jednostki_domyslne UAFM --dry-run\n"
-        "  python manage.py zaloz_jednostki_domyslne UAFM"
+        "  python manage.py zaloz_jednostki_domyslne UCZELNIA --dry-run\n"
+        "  python manage.py zaloz_jednostki_domyslne UCZELNIA"
     )
 
     def add_arguments(self, parser):
         parser.add_argument(
             "skrot_uczelni",
             type=str,
-            help="Skrót uczelni (Uczelnia.skrot), np. UAFM",
+            help="Skrót uczelni (Uczelnia.skrot), np. UCZELNIA",
         )
         parser.add_argument(
             "--dry-run",

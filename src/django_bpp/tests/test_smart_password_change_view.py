@@ -24,13 +24,15 @@ def test_external_provider_info_orcid():
     assert url
 
 
-@override_settings(OIDC_ACCOUNT_CONSOLE_URL="https://kc.example/realms/uafm/account")
+@override_settings(
+    OIDC_ACCOUNT_CONSOLE_URL="https://kc.example/realms/uczelnia/account"
+)
 def test_external_provider_info_oidc_uses_account_console_url():
     # Regresja na KeyError → 500: backend OIDC jest w EXTERNAL_AUTH_BACKENDS, ale
     # brakowało go w mapie URL-i, więc dispatch wywalał się na słowniku.
     provider, url = SmartPasswordChangeView._external_provider_info(OIDC_BACKEND)
     assert "Keycloak" in provider
-    assert url == "https://kc.example/realms/uafm/account"
+    assert url == "https://kc.example/realms/uczelnia/account"
 
 
 def test_external_provider_info_oidc_without_console_url_does_not_crash():
