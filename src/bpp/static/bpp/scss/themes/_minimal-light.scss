@@ -78,7 +78,7 @@ body.theme-minimal-light {
         border-bottom: 1px solid #f0f0f0 !important;
 
         ul li {
-            color: #999999 !important;
+            color: #666666 !important;
 
             a {
                 color: #666666 !important;
@@ -121,8 +121,12 @@ body.theme-minimal-light {
         background: #fafafa !important;
         border-top: 1px solid #e8e8e8 !important;
 
+        // Text colour must be set here too: this rule also repaints
+        // .grp-default ("Zapisz") and the "Wybrano x z y" counter, which
+        // otherwise keep their own light text on this background.
         .grp-button {
             background: #1a1a1a !important;
+            color: #ffffff !important;
             border: 1px solid #000000 !important;
 
             &:hover {

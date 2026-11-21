@@ -73,7 +73,7 @@ body.theme-navy-academic {
         border-bottom: 1px solid #e5e2da !important;
 
         ul li {
-            color: #7a7265 !important;
+            color: #6b6357 !important;
 
             a {
                 color: #4a453d !important;
@@ -185,7 +185,7 @@ body.theme-navy-academic {
         }
 
         .selected-filter-value {
-            color: #b8962e !important;
+            color: #7a5f10 !important;
         }
     }
 
@@ -205,10 +205,10 @@ body.theme-navy-academic {
 
     /* Link colors for Navy Academic theme */
     a {
-        color: #4a9fd8 !important;
+        color: #245f94 !important;
 
         &:hover {
-            color: #d4af37 !important; /* Gold accent on hover */
+            color: #7a5f10 !important; /* Gold accent on hover */
         }
     }
 
@@ -217,14 +217,14 @@ body.theme-navy-academic {
     ul.grp-messagelist li.info {
         background: linear-gradient(135deg, #e1f5fe 0%, #b3e5fc 100%) !important;
         border-left: 3px solid #4a9fd8 !important;
-        color: #0277bd !important;
+        color: #01579b !important;
 
         a {
             color: #1a2332 !important;
             font-weight: bold !important;
 
             &:hover {
-                color: #d4af37 !important;
+                color: #7a5f10 !important;
             }
         }
     }

@@ -1,3 +1,10 @@
+// Text colour tokens for the filter panel (WCAG AA: >= 4.5:1 on the light
+// blue / light red selection backgrounds and on the grey count badges).
+// #0275d8 / #6c757d were 3.3-4.1:1 there.
+$filter-accent-text: #0258a8;
+$filter-accent-text-strong: #014a8c;
+$filter-muted-text: #495057;
+
 // Admin Filter Panel Styles
 // Sliding panel from the right side for admin changelist filters
 
@@ -473,7 +480,7 @@
                         // Selected filter value styling
                         .selected-filter-value {
                             font-weight: 700;
-                            color: #0275d8;
+                            color: $filter-accent-text;
                             margin-left: 4px;
 
                             // Count in header for selected filters
@@ -495,7 +502,7 @@
 
                     .filter-toggle-icon {
                         font-size: 1rem;
-                        color: #6c757d;
+                        color: $filter-muted-text;
                         transition: transform 0.2s ease;
                         margin-left: 8px;
                         flex-shrink: 0;
@@ -603,7 +610,7 @@
                         margin-right: 12px;
                         padding: 2px 7px;
                         background-color: #e9ecef;
-                        color: #6c757d;
+                        color: $filter-muted-text;
                         font-size: 0.75rem;
                         font-weight: 600;
                         border-radius: 10px;
@@ -646,13 +653,13 @@
                         }
 
                         .filter-option-link {
-                            color: #0275d8;
+                            color: $filter-accent-text;
                             font-weight: 600;
                         }
 
                         .filter-count {
                             background-color: #b8dff0;
-                            color: #0275d8;
+                            color: $filter-accent-text;
                             font-weight: 700;
                         }
 
@@ -661,7 +668,7 @@
 
                             .filter-count {
                                 background-color: #a3d5eb;
-                                color: #025aa5;
+                                color: $filter-accent-text-strong;
                             }
                         }
                     }

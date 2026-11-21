@@ -122,8 +122,12 @@ body.theme-mario-bros {
         background: linear-gradient(180deg, #fff5d6 0%, #ffe89d 100%) !important;
         border-top: 3px solid #ffd54f !important;
 
+        // Text colour must be set here too: this rule also repaints
+        // .grp-default ("Zapisz") and the "Wybrano x z y" counter, which
+        // otherwise keep their own light text on this background.
         .grp-button {
             background: linear-gradient(180deg, #0066cc 0%, #0052a3 100%) !important;
+            color: #ffffff !important;
             border: 2px solid #003d7a !important;
 
             &:hover {
@@ -199,7 +203,7 @@ body.theme-mario-bros {
         }
 
         .selected-filter-value {
-            color: #c91e1a !important;
+            color: #9e1310 !important;
             font-weight: bold !important;
         }
     }
@@ -228,10 +232,10 @@ body.theme-mario-bros {
 
     /* Link colors for Mario Bros theme */
     a {
-        color: #0066cc !important; /* Nintendo blue */
+        color: #0059b3 !important; /* Nintendo blue */
 
         &:hover {
-            color: #e52521 !important; /* Mario red on hover */
+            color: #b01b17 !important; /* Mario red on hover */
         }
     }
 

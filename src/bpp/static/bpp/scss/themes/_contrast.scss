@@ -1,0 +1,72 @@
+/* -------------------------------------------------------------------------------- */
+/* WCAG AA contrast fixes for grappelli defaults                                     */
+/* -------------------------------------------------------------------------------- */
+
+// Grappelli 5 exposes its palette as CSS custom properties on :root. Several of
+// the stock values are too light for text (e.g. #9a9a9a help text on #eee,
+// white on #4fb2d3 buttons, #59afcc sort links on #e0e0e0). We darken those
+// tokens here instead of overriding individual elements. This is what the
+// "Domyslny (ciemny)" theme uses directly; the other themes override most
+// colours themselves, but still inherit help texts, tabular inline headers,
+// table header text etc. from these tokens.
+//
+// Target: >= 4.5:1 for normal text, >= 3:1 for large text / UI boundaries.
+
+:root {
+    // Text
+    --grp-font-color-quiet: #595959;           // was #888 (table headers on #e0e0e0)
+    --grp-help-font-color: #666;               // was #9a9a9a (help texts on #eee)
+    --grp-tabular-head-font-color: #666;       // was #aaa (inline table headers)
+    --grp-selector-filter-font-color: #595959; // was #666
+
+    // Links
+    --grp-link-color: #1a6f8f;                 // was #309bbf
+    --grp-link-color-subtle: #155e7a;          // was #59afcc (sort links, pagination)
+    --grp-link-color-quiet: #1a6f8f;           // was #62bbd9
+
+    // Primary buttons (white text)
+    --grp-form-button-gradient-from: #20799b;  // was #4fb2d3
+    --grp-form-button-background-color: #1a6f8f; // was #309bbf
+    --grp-form-button-border-color: #155e7a;   // was #2b8aab
+
+    // Delete / reset / cancel buttons (white text)
+    --grp-form-button-delete-gradient-from: #c9302c;  // was #d34f4f
+    --grp-form-button-reset-gradient-from: #6b6b6b;   // was #a2a2a2
+    --grp-form-button-reset-background-color: #5e5e5e; // was #888
+    --grp-form-button-cancel-gradient-from: #6b6b6b;  // was #a2a2a2
+    --grp-form-button-cancel-background-color: #5e5e5e; // was #888
+
+    // Object tools ("Dodaj", "Eksport", "Historia"...; white text)
+    --grp-object-tools-gradient-from: #6b6b6b;        // was #999
+    --grp-object-tools-background-color: #5e5e5e;    // was #888
+    --grp-object-tools-border-color: #4d4d4d;        // was #777
+    --grp-object-tools-background-color-hover: #1d7fa3; // was #36b0d9
+}
+
+// Grappelli renders secondary submit-row buttons ("Zapisz i dodaj nowy",
+// "Usun", the changelist "Wykonaj") at 75% opacity, which blends the button
+// into the light footer and drops white text to ~3-4:1 even on dark button
+// colours. (Object tools get the same treatment in themes/_base.scss.)
+.grp-submit-row input.grp-button,
+.grp-submit-row a.grp-button,
+.grp-submit-row button.grp-button {
+    opacity: 1;
+}
+
+// "Kolumny" pill from django-dynamic-admin-columns: #79aec8 with white text
+// (2.4:1). Use its own darker hover shades as the resting state.
+body:not([class*="theme-"]) .grp-object-tools a#dyncol-button {
+    border-color: #2f5f74;
+    background-image: linear-gradient(#417690, #2f5f74);
+
+    &:hover,
+    &:focus {
+        background-image: linear-gradient(#2f5f74, #244a5a);
+    }
+}
+
+// Select2 placeholder ("Wpisz, aby wyszukac...") is #999 on white (2.8:1).
+.select2-container--default .select2-selection--single .select2-selection__placeholder,
+.select2-container--default .select2-selection--multiple .select2-selection__placeholder {
+    color: #707070;
+}
