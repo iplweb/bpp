@@ -80,6 +80,7 @@ from .naming import (
 from .openaccess import (
     ModelZLiczbaCytowan,
     ModelZOpenAccess,
+    ModelZOpenAccessRokUdostepnienia,
 )
 
 # PBN models
@@ -202,6 +203,7 @@ __all__ = [
     "ModelZNazwa",
     "ModelZNumeremZeszytu",
     "ModelZOpenAccess",
+    "ModelZOpenAccessRokUdostepnienia",
     "ModelZOplataZaPublikacje",
     "ModelZPBN_ID",
     "ModelZPBN_UID",

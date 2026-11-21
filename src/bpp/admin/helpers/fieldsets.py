@@ -39,6 +39,7 @@ OPENACCESS_FIELDSET = (
             "openaccess_czas_publikacji",
             "openaccess_ilosc_miesiecy",
             "openaccess_data_opublikowania",
+            "openaccess_rok_udostepnienia",
         ),
     },
 )
@@ -53,7 +54,9 @@ OPENACCESS_LABELS = {
 OPENACCESS_HELP_TEXTS = {
     "openaccess_data_opublikowania": (
         "Data udostępnienia pracy w otwartym dostępie, wysyłana do PBN jako "
-        "data udostępnienia OpenAccess. Gdy puste, eksport użyje daty "
+        "data udostępnienia OpenAccess. Gdy znasz tylko rok, zostaw to pole "
+        "puste i wpisz rok w polu „OpenAccess: rok udostępnienia” (nie "
+        "wypełniaj obu). Gdy puste są oba pola, eksport użyje daty "
         "dostępu do strony WWW (o ile ją podano); w przeciwnym razie "
         "data udostępnienia nie zostanie wysłana."
     ),

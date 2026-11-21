@@ -243,26 +243,40 @@ class WydawnictwoPBNAdapter:
 
         Priorytet źródeł (od najbardziej dedykowanego):
 
-        1. ``openaccess_data_opublikowania`` — pole dedykowane OpenAccess
-           (``ModelZOpenAccess``), ustawiane przez importer z PBN i przez
-           redakcję ręcznie. To powinno być podstawowe źródło.
-        2. ``public_dostep_dnia`` — data wolnego dostępu do strony WWW
+        1. ``openaccess_data_opublikowania`` — pełna data udostępnienia OA
+           (``ModelZOpenAccess``), wpisana przez redakcję albo przez importer
+           z PBN. Wysyłana jako ``releaseDate``.
+        2. ``openaccess_rok_udostepnienia`` — sam rok udostępnienia OA
+           (Freshdesk #281), wysyłany jako ``releaseDateYear`` BEZ
+           ``releaseDateMonth``. Formularz nie pozwala wypełnić 1. i 2.
+           naraz. Rok wpisany jawnie w sekcji OpenAccess wygrywa z datami
+           WWW niżej: tamte są tylko przybliżeniem (data dostępu do strony),
+           a redakcja wpisując rok OA mówi wprost, kiedy udostępniono pracę.
+        3. ``public_dostep_dnia`` — data wolnego dostępu do strony WWW
            (``ModelZWWW``). Fallback dla starszych rekordów bez dedykowanej
            daty OpenAccess.
-        3. ``dostep_dnia`` — data płatnego dostępu. Ostatni fallback.
+        4. ``dostep_dnia`` — data płatnego dostępu. Ostatni fallback.
 
-        Gdy żadna z dat nie jest wypełniona, pola ``releaseDate``,
+        Gdy żadne z pól nie jest wypełnione, pola ``releaseDate``,
         ``releaseDateMonth``, ``releaseDateYear`` NIE są ustawiane.
         Wcześniejsza implementacja wstawiała hardcoded
         ``{"releaseDateMonth": "JANUARY", "releaseDateYear": str(rok)}``,
         co wysyłało do PBN nieprawdziwe dane (styczeń niezależnie od
-        faktycznego miesiąca publikacji). Lepiej pominąć pola i zmusić
-        PBN do zwrócenia validation error (lub zaakceptowania, jeśli
-        spec pozwala), niż wysyłać kłamliwy miesiąc.
+        faktycznego miesiąca publikacji). Miesiąca nie zgadujemy także
+        przy samym roku OA.
+
+        Uwaga: specyfikacja OpenAPI PBN (``OpenAccessData``) nie oznacza
+        żadnego z pól daty jako wymaganego, ale walidacja serwera PBN
+        zwracała dotąd komunikat „Data udostępnienia w otwartym dostępie
+        (pełna data albo miesiąc i rok) jest wymagana!”. Jeśli PBN odrzuci
+        sam rok, redakcja zobaczy ten komunikat walidacji przy wysyłce.
         """
         data_oa = getattr(self.original, "openaccess_data_opublikowania", None)
+        rok_oa = getattr(self.original, "openaccess_rok_udostepnienia", None)
         if data_oa is not None:
             oa["releaseDate"] = str(data_oa)
+        elif rok_oa is not None:
+            oa["releaseDateYear"] = int(rok_oa)
         elif self.original.public_dostep_dnia is not None:
             oa["releaseDate"] = str(self.original.public_dostep_dnia)
         elif self.original.dostep_dnia is not None:

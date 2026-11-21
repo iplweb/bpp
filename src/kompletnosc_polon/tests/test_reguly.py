@@ -651,6 +651,37 @@ def test_pole_szczegoly_ratuje_puste_strony():
 
 
 @pytest.mark.django_db
+@pytest.mark.parametrize("kod", ["ART_OA_DATA", "MON_OA_DATA"])
+def test_sam_rok_udostepnienia_ratuje_brak_daty_oa(kod):
+    """FD#281: sam rok udostępnienia OA to dopuszczalna alternatywa daty."""
+    powiazanie = _zbuduj_kompletne_powiazanie(REGULA_PO_KODZIE[kod].dotyczy)
+    _psuj_oa("openaccess_data_opublikowania")(powiazanie)
+    rekord = powiazanie.rekord
+    rekord.openaccess_rok_udostepnienia = ROK
+    rekord.save()
+
+    assert not _lapie(kod, powiazanie)
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize("kod", ["ART_OA_TRYB", "MON_OA_TRYB"])
+def test_sam_rok_udostepnienia_bez_trybu_to_zaczete_oa(kod):
+    """FD#281: rok udostępnienia OA jest sygnałem otwartego dostępu."""
+    powiazanie = _zbuduj_kompletne_powiazanie(REGULA_PO_KODZIE[kod].dotyczy)
+    rekord = powiazanie.rekord
+    rekord.openaccess_tryb_dostepu = None
+    rekord.openaccess_wersja_tekstu = None
+    rekord.openaccess_licencja = None
+    rekord.openaccess_data_opublikowania = None
+    rekord.openaccess_czas_publikacji = None
+    rekord.openaccess_ilosc_miesiecy = None
+    rekord.openaccess_rok_udostepnienia = ROK
+    rekord.save()
+
+    assert _lapie(kod, powiazanie)
+
+
+@pytest.mark.django_db
 def test_e_isbn_ratuje_monografie_bez_isbn():
     powiazanie = _zbuduj_kompletne_powiazanie(Osiagniecie.MONOGRAFIA)
     _psuj_pole_rekordu(isbn="", e_isbn="978-83-01-99999-9")(powiazanie)

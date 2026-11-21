@@ -147,6 +147,7 @@ JAKIS_SYGNAL_OPEN_ACCESS = (
     Q(rekord__openaccess_wersja_tekstu__isnull=False)
     | Q(rekord__openaccess_licencja__isnull=False)
     | Q(rekord__openaccess_data_opublikowania__isnull=False)
+    | Q(rekord__openaccess_rok_udostepnienia__isnull=False)
     | Q(rekord__openaccess_czas_publikacji__isnull=False)
     | Q(rekord__openaccess_ilosc_miesiecy__isnull=False)
 )
@@ -240,10 +241,13 @@ def _reguly_open_access(
         Regula(
             kod=f"{prefiks_kodu}_OA_DATA",
             dotyczy=dotyczy,
+            # Freshdesk #281: sam rok udostępnienia to dopuszczalna
+            # alternatywa dla pełnej daty (formularz przyjmuje jedno z nich).
             warunek=OZNACZONO_OPEN_ACCESS
-            & Q(rekord__openaccess_data_opublikowania__isnull=True),
+            & Q(rekord__openaccess_data_opublikowania__isnull=True)
+            & Q(rekord__openaccess_rok_udostepnienia__isnull=True),
             opis="Praca jest oznaczona jako Open Access, ale nie podano daty "
-            "udostępnienia w otwartym dostępie.",
+            "ani roku udostępnienia w otwartym dostępie.",
             paragraf=paragraf,
         ),
         Regula(

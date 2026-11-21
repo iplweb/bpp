@@ -238,6 +238,7 @@ class Wydawnictwo_CiagleForm(CleanDOIWWWPublicWWWMixin, forms.ModelForm):
             "openaccess_czas_publikacji",
             "openaccess_ilosc_miesiecy",
             "openaccess_data_opublikowania",
+            "openaccess_rok_udostepnienia",
             "liczba_cytowan",
             "numer_odbitki",
             "nie_eksportuj_przez_api",

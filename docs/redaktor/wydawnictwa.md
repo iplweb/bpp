@@ -27,6 +27,38 @@ Działania te również prezentuje film [Zmiana kolejności autorów](https://ww
 
 <iframe width="560" height="315" src="https://www.youtube.com/embed/oruEX3CykH8" frameborder="0" allow="autoplay; encrypted-media" allowfullscreen></iframe>
 
+## Data albo rok udostępnienia w otwartym dostępie {#data-udostepnienia-oa}
+
+W formularzu artykułu (wydawnictwa ciągłego) oraz książki i rozdziału
+(wydawnictwa zwartego), w zwijanej sekcji **OpenAccess**, są dwa pola:
+
+- **OpenAccess: data udostępnienia** — pełna data (dzień, miesiąc, rok),
+  w której praca została udostępniona w otwartym dostępie,
+- **OpenAccess: rok udostępnienia** — sam rok, gdy dokładna data nie jest
+  znana.
+
+Wypełnij **jedno z nich, nie oba** — przy zapisie z wypełnionymi obydwoma
+polami formularz pokaże błąd. Rok musi mieścić się w zakresie od 1900 do
+bieżącego roku powiększonego o 10 lat.
+
+Przy wysyłce do PBN:
+
+- wpisana data trafia do PBN jako pełna data udostępnienia,
+- wpisany sam rok trafia do PBN jako rok udostępnienia — **bez miesiąca**;
+  BPP nie dopisuje żadnego miesiąca ani dnia,
+- gdy oba pola są puste, BPP użyje daty dostępu do strony WWW
+  („Dostęp dnia (wolny dostęp)”, a potem „Dostęp dnia (płatny dostęp)”),
+  o ile ją podano; inaczej data udostępnienia nie jest wysyłana.
+  Rok wpisany w sekcji OpenAccess ma pierwszeństwo przed tymi datami.
+
+PBN może nie przyjąć samego roku — jego walidacja żąda „pełnej daty albo
+miesiąca i roku”. Jeśli przy wysyłce pojawi się taki komunikat, wpisz
+w pracy pełną datę udostępnienia (zob.
+[czytanie błędów wysyłki](pbn-wysylka-i-synchronizacja.md)).
+
+Prace pobierane z PBN, dla których PBN zna tylko rok udostępnienia, mają
+ten rok wpisany w polu **OpenAccess: rok udostępnienia**.
+
 ## Dlaczego nie można usunąć pracy z wpisanym „Odpowiednikiem w PBN"
 
 Przy próbie skasowania wydawnictwa ciągłego lub zwartego może się okazać, że

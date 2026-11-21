@@ -513,7 +513,7 @@ def _importuj_openaccess_daty(ret, oa_json):
         oa_json.pop("releaseDateMonth", None)
         return
 
-    if "releaseDateYear" in oa_json and "releaseDateMonth" in oa_json:
+    if "releaseDateYear" in oa_json and oa_json.get("releaseDateMonth"):
         strMonth = {
             "JANUARY": 1,
             "FEBRUARY": 2,
@@ -542,11 +542,13 @@ def _importuj_openaccess_daty(ret, oa_json):
             )
 
     if "releaseDateYear" in oa_json:  # sam rok
-        ret.openaccess_data_opublikowania = date(
-            int(oa_json.pop("releaseDateYear")),
-            1,
-            1,
-        )
+        # Freshdesk #281: PBN zna tylko rok udostępnienia — zapisujemy go
+        # w polu na sam rok, zamiast zmyślać datę 1 stycznia (która potem
+        # wracałaby do PBN jako pełna data udostępnienia).
+        rok = oa_json.pop("releaseDateYear")
+        oa_json.pop("releaseDateMonth", None)  # ew. jawne ``null``
+        if rok is not None:
+            ret.openaccess_rok_udostepnienia = int(rok)
 
 
 def get_or_download_publication(mongoId, client):
