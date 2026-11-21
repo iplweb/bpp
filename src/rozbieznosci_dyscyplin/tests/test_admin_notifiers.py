@@ -45,7 +45,7 @@ def test_result_notifier_info_appends_to_buffer():
     notifier.info("Message 1")
     notifier.info("Message 2")
 
-    assert notifier.retbuf == ["Message 1", "Message 2"]
+    assert notifier.retbuf == [["info", "Message 1"], ["info", "Message 2"]]
 
 
 def test_result_notifier_warning_appends_to_buffer():
@@ -56,7 +56,7 @@ def test_result_notifier_warning_appends_to_buffer():
     notifier.warning("Warning 1")
     notifier.warning("Warning 2")
 
-    assert notifier.retbuf == ["Warning 1", "Warning 2"]
+    assert notifier.retbuf == [["warning", "Warning 1"], ["warning", "Warning 2"]]
 
 
 def test_readonly_admin_mixin_has_no_delete_permission():
