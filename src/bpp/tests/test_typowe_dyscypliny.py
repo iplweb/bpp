@@ -240,3 +240,34 @@ def test_zadanie_w_harmonogramie_beat():
 
     wpis = settings.CELERYBEAT_SCHEDULE["odswiez-typowe-dyscypliny"]
     assert wpis["task"] == odswiez_typowe_dyscypliny.name
+
+
+@pytest.mark.django_db
+def test_autor_ukryty_anonim_bez_podpowiedzi(app, autor_jan_kowalski, dyscyplina1, rok):
+    """Niezalogowany (formularz zgłoszeń) nie dostaje dyscyplin ukrytego
+    autora z innych lat ani informacji, czy ma przypisanie na rok."""
+    Autor_Dyscyplina.objects.create(
+        autor=autor_jan_kowalski, rok=rok - 1, dyscyplina_naukowa=dyscyplina1
+    )
+    autor_jan_kowalski.pokazuj_w_wyszukiwaniu = False
+    autor_jan_kowalski.save()
+
+    res = _get(app, autor=autor_jan_kowalski.pk, rok=rok, typowe=True)
+
+    assert res["results"] == [{"id": None, "text": f"Brak przypisania dla roku {rok}"}]
+    assert "brak_przypisania" not in res
+
+
+@pytest.mark.django_db
+def test_autor_ukryty_redaktor_dostaje_podpowiedz(
+    admin_app, autor_jan_kowalski, dyscyplina1, rok
+):
+    Autor_Dyscyplina.objects.create(
+        autor=autor_jan_kowalski, rok=rok - 1, dyscyplina_naukowa=dyscyplina1
+    )
+    autor_jan_kowalski.pokazuj_w_wyszukiwaniu = False
+    autor_jan_kowalski.save()
+
+    res = _get(admin_app, autor=autor_jan_kowalski.pk, rok=rok, typowe=True)
+
+    assert res["brak_przypisania"]["rok_zrodla"] == rok - 1

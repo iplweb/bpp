@@ -783,6 +783,13 @@ $(document).ready(function() {
         }).done(function(data) {
             var withId = [];
             var $target = $d;
+            // Handler „ostatnia jednostka i dyscyplina” mógł już dopisać
+            // opcję — usuń ją, żeby nie było duplikatu (lista z serwera ma
+            // pierwszeństwo, zaznaczenie odtwarza ``cur``).
+            if (!cur) { cur = $d.val(); }
+            $d.find('option').filter(function() {
+                return this.value !== '';
+            }).remove();
             data.results.forEach(function(item) {
                 if (item.children) {
                     $target = $('<optgroup>').attr('label', item.text);

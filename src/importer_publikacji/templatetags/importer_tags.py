@@ -45,10 +45,33 @@ def admin_change_url(obj):
 @register.filter(name="dyscyplina_do_przypisania")
 def dyscyplina_do_przypisania(author, session):
     """FD#620: czy wybrana dyscyplina zostanie przypisana autorowi na rok
-    pracy przy tworzeniu rekordu (autor nie ma przypisania na ten rok)."""
-    from importer_publikacji.dyscypliny import ma_przypisanie_na_rok
+    pracy przy tworzeniu rekordu (autor nie ma przypisania na ten rok) —
+    te same warunki, co ``przypisz_brakujace_dyscypliny``.
 
-    if not author.matched_autor_id or not author.matched_dyscyplina_id:
+    Autorów z przypisaniem na rok liczymy raz na sesję (atrybut obiektu
+    sesji żyje przez jedno renderowanie) — bez zapytania na każdy wiersz."""
+    from bpp.models import Autor_Dyscyplina
+    from importer_publikacji.models import ImportedAuthor
+
+    if (
+        not author.matched_autor_id
+        or not author.matched_jednostka_id
+        or not author.matched_dyscyplina_id
+        or author.match_status == ImportedAuthor.MatchStatus.UNMATCHED
+    ):
         return False
     rok = (session.normalized_data or {}).get("year")
-    return not ma_przypisanie_na_rok(author.matched_autor, rok)
+    if not rok:
+        return False
+    z_przypisaniem = getattr(session, "_fd620_autorzy_z_przypisaniem", None)
+    if z_przypisaniem is None:
+        z_przypisaniem = set(
+            Autor_Dyscyplina.all_objects.filter(
+                rok=rok,
+                autor_id__in=session.authors.exclude(matched_autor=None).values(
+                    "matched_autor_id"
+                ),
+            ).values_list("autor_id", flat=True)
+        )
+        session._fd620_autorzy_z_przypisaniem = z_przypisaniem
+    return author.matched_autor_id not in z_przypisaniem

@@ -570,8 +570,16 @@ class Dyscyplina_Naukowa_PrzypisanieAutocomplete(
         rok, error = self._validate_rok(self.forwarded.get("rok", None))
         if error:
             return None
-        # ``all_objects``: przypisanie autora z kosza też blokuje (unique
-        # rok+autor); ukryte przed oglądającym przypisanie to nie „brak".
+        # Autor ukryty przed oglądającym (np. niezalogowanym w formularzu
+        # zgłoszeń) albo w koszu — zachowanie jak dotąd, bez zdradzania jego
+        # dyscyplin z innych lat ani tego, czy ma przypisanie na ten rok.
+        if not widoczni_autorzy(
+            Autor.objects.filter(pk=autor),
+            getattr(self, "request", None),
+            lookup="pokazuj_w_wyszukiwaniu",
+        ).exists():
+            return None
+        # ``all_objects``: przypisanie z kosza też blokuje (unique rok+autor).
         if Autor_Dyscyplina.all_objects.filter(autor_id=autor, rok=rok).exists():
             return None
 

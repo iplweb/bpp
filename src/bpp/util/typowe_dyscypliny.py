@@ -187,7 +187,7 @@ def propozycja_dla_autora_bez_przypisania(autor_id, rok, uczelnia=None):
     from bpp.models import Autor_Dyscyplina
 
     poprzednie = (
-        Autor_Dyscyplina.all_objects.filter(autor_id=autor_id, rok__lt=rok)
+        Autor_Dyscyplina.objects.filter(autor_id=autor_id, rok__lt=rok)
         .select_related("dyscyplina_naukowa", "subdyscyplina_naukowa")
         .order_by("-rok")
         .first()

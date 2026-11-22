@@ -164,6 +164,8 @@ def test_wiersz_autora_informuje_o_przypisaniu(sesja, autor, jednostka, dyscypli
     Autor_Dyscyplina.objects.create(
         autor=autor, rok=ROK, dyscyplina_naukowa=dyscyplina1
     )
+    # Nowe żądanie = świeży obiekt sesji (wynik liczony raz na renderowanie).
+    ctx["session"] = type(sesja).objects.get(pk=sesja.pk)
     html = render_to_string("importer_publikacji/partials/author_row.html", ctx)
     assert "przypiszę na rok" not in html
 
@@ -181,3 +183,13 @@ def test_modal_wysyla_id_autora_jako_napis_i_prosi_o_propozycje():
     ).read_text()
     assert "autor: String(autorId), rok: String(rok), typowe: true" in szablon
     assert "modal-dyscyplina-brak-przypisania" in szablon
+
+
+@pytest.mark.django_db
+def test_wiersz_bez_jednostki_bez_etykiety(sesja, autor, dyscyplina1):
+    imported = _dopasuj(sesja, autor, None, dyscyplina1)
+    html = render_to_string(
+        "importer_publikacji/partials/author_row.html",
+        {"session": sesja, "author": imported},
+    )
+    assert "przypiszę na rok" not in html
