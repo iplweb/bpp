@@ -12,6 +12,7 @@ from bpp.demo_data.generators._publikacje_common import (
     autor_dyscyplina_mapping,
     autor_jednostka_mapping,
     charaktery_wg,
+    jezyki_uczelni,
     make_doi,
     make_tytul,
     typy_kbn_liczone,
@@ -88,7 +89,7 @@ def _load_slowniki() -> _Slowniki:
         # Artykuly: charakter „art" — inaczej kalkulator slotow nie dopasuje.
         charaktery=charaktery_wg(charaktery, charakter_ogolny="art"),
         typy_kbn=typy_kbn_liczone(list(Typ_KBN.objects.all())),
-        jezyki=list(Jezyk.objects.all()),
+        jezyki=jezyki_uczelni(list(Jezyk.objects.all())),
         statusy=list(Status_Korekty.objects.all()),
         aut_typ=aut_typ,
     )
