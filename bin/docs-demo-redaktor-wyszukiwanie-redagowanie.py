@@ -12,7 +12,8 @@ something on the demo data:
 - creates the demo editor ``vesemir`` (password == login, ``is_staff``,
   group "wprowadzanie danych"),
 - adds a student research club unit "SKN Alchemików" (unit kind
-  "Koło naukowe") with three authors whose public profile is hidden, and
+  "Koło naukowe", pod pierwszym alfabetycznie wydziałem) with three
+  authors whose public profile is hidden, and
   files a few of their works under it,
 - hides the public profile of two more (staff) authors,
 - links six 2021 articles to (local, made-up) PBN publication records and
@@ -61,7 +62,14 @@ with transaction.atomic():
     rodzaj, _ = RodzajJednostki.objects.get_or_create(
         nazwa="Koło naukowe", defaults=dict(skrot="SKN", kolejnosc=90)
     )
-    wydzial = Jednostka.objects.get(nazwa="Wydział Magii i Eliksirów")
+    # Wydział z bazy, a nie po nazwie (nazwy losuje generator danych demo):
+    # pierwszy alfabetycznie wydział (jednostka najwyższego poziomu).
+    wydzial = Jednostka.objects.filter(parent=None).order_by("nazwa").first()
+    if wydzial is None:
+        raise SystemExit(
+            "Brak wydziałów w bazie demo — wygeneruj dane wg "
+            "docs/deweloper/zrzuty-ekranu.md."
+        )
     skn = Jednostka.objects.filter(nazwa="SKN Alchemików").first()
     if skn is None:
         skn = Jednostka.objects.create(
