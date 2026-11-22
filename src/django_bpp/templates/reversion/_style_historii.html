@@ -18,7 +18,8 @@
     table.bpp-historia-tabela { width: 100%; table-layout: auto; }
     table.bpp-historia-tabela th, table.bpp-historia-tabela td { vertical-align: top; font-size: 12px; line-height: 17px; }
     table.bpp-historia-tabela .bpp-kol-ab { width: 1%; white-space: nowrap; text-align: center; }
-    table.bpp-historia-tabela .bpp-kol-ab label { display: inline-block; margin: 0 3px; cursor: pointer; }
+    table.bpp-historia-tabela .bpp-kol-ab .bpp-ab { display: inline-block; width: 46px; margin: 0 2px; text-align: center; cursor: pointer; }
+    table.bpp-historia-tabela th.bpp-kol-ab .bpp-ab { font-size: 10px; text-transform: none; letter-spacing: 0; }
     table.bpp-historia-tabela .bpp-kol-data { width: 1%; white-space: nowrap; }
     table.bpp-historia-tabela .bpp-kol-user { width: 15%; }
     table.bpp-historia-tabela .bpp-kol-zrodlo { width: 1%; white-space: nowrap; }
@@ -62,6 +63,17 @@
         background: #2e8b57;
         white-space: nowrap;
     }
+    .bpp-najstarsza {
+        display: inline-block;
+        margin-top: 2px;
+        padding: 1px 8px;
+        border-radius: 9px;
+        font-size: 11px;
+        font-weight: bold;
+        color: #fff;
+        background: #6c757d;
+        white-space: nowrap;
+    }
     .bpp-nieaktywny { opacity: .45; cursor: not-allowed; pointer-events: none; }
 
     /* Porównanie wersji */
@@ -78,7 +90,8 @@
     .bpp-wersja-a { border-top: 3px solid #c0392b; }
     .bpp-wersja-b { border-top: 3px solid #2e8b57; }
     table.bpp-porownanie { width: 100%; table-layout: fixed; }
-    table.bpp-porownanie th.bpp-kol-pole { width: 18%; }
+    table.bpp-porownanie th.bpp-kol-pole { width: 16%; }
+    table.bpp-porownanie .bpp-kol-zmiana-diff { width: 28%; background: var(--bpp-tlo-pow-2, #fafafa); }
     table.bpp-porownanie td, table.bpp-porownanie th { vertical-align: top; font-size: 12px; line-height: 18px; word-wrap: break-word; overflow-wrap: anywhere; white-space: pre-line; }
     table.bpp-porownanie td ul { margin: 0; padding-left: 16px; list-style: disc; white-space: normal; }
     table.bpp-porownanie td ul ul { list-style: circle; }

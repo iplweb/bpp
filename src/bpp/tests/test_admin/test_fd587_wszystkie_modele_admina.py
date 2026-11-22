@@ -31,6 +31,11 @@ FABRYKI = {
     "siteblog.article": lambda model: model.objects.create(
         title="Artykuł FD587", article_body="Treść"
     ),
+    # Klucz główny to ścieżka formularza; baker losuje tekst dłuższy niż
+    # 191 znaków ``Version.object_id`` — prawdziwe ścieżki są krótkie.
+    "formdefaults.formrepresentation": lambda model: model.objects.create(
+        full_name="bpp.tests.FormularzFD587", label="Formularz FD587"
+    ),
 }
 
 

@@ -11,13 +11,15 @@ pliki w repozytorium i słowa kluczowe. Strona „Historia” (przycisk
 w prawym górnym rogu formularza) ma nowy, czytelny wygląd: przy każdej
 zmianie widać, kto i kiedy ją wprowadził oraz skąd przyszła (moduł
 redagowania, strona, import lub narzędzie, API, system). Po zaznaczeniu
-wersji w kolumnach A i B przycisk „Porównaj zaznaczone wersje” pokazuje
-tabelę tylko ze zmienionymi polami — usunięte słowa przekreślone na
-czerwono, dodane podświetlone na zielono, a przy autorach i innych listach
-pozycje dodane, usunięte i zmienione (np. „Afiliuje: tak → nie”).
-Kliknięcie daty otwiera formularz w stanie z tej wersji; nad formularzem
-wypisane są pozycje (np. autorzy dopisani później), które przywrócenie
-usunie lub przywróci, a zapisanie formularza przywraca wersję. Hasła
+wersji starszej i nowszej przycisk „Porównaj zaznaczone wersje” pokazuje
+tabelę tylko ze zmienionymi polami: pełne wartości z wersji starszej
+i nowszej po bokach, a pośrodku sama zmiana — usunięte słowa przekreślone
+na czerwono, dodane podświetlone na zielono, przy autorach i innych
+listach pozycje dodane, usunięte i zmienione (np. „Afiliuje: tak → nie”).
+Kliknięcie daty pokazuje rekord w stanie z tej wersji (tylko do podglądu,
+bez edycji) wraz z pozycjami (np. autorami dopisanymi później), które
+przywrócenie usunie lub przywróci; przycisk „♻️ Przywróć tę wersję”
+przywraca rekord do tego stanu. Hasła
 i tokeny użytkowników nie są zapisywane w historii ani cofane przy
 przywracaniu. Wersje zapisują się od chwili aktualizacji i są trzymane bez
 limitu czasu; starsze zmiany widać w tabeli „Wcześniejsza historia”, bez

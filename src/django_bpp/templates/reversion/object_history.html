@@ -27,7 +27,7 @@
             <div class="bpp-historia-pasek">
                 {% if compare_view and comparable %}
                     <button type="submit" class="grp-button grp-default">Porównaj zaznaczone wersje</button>
-                    <span class="bpp-historia-pomoc">Zaznacz wersję starszą (kolumna A) i nowszą (kolumna B), aby zobaczyć, co się zmieniło.{% if not rekord_w_koszu %} Kliknij datę, aby obejrzeć wersję i ją przywrócić.{% endif %}</span>
+                    <span class="bpp-historia-pomoc">Zaznacz wersję starszą (lewe kółko) i nowszą (prawe kółko), aby zobaczyć, co się zmieniło.{% if not rekord_w_koszu %} Kliknij datę, aby obejrzeć wersję i ją przywrócić.{% endif %}</span>
                 {% else %}
                     <span class="bpp-historia-pomoc">{% if not rekord_w_koszu %}Kliknij datę, aby obejrzeć wersję i ją przywrócić. {% endif %}Porównanie będzie dostępne, gdy rekord będzie miał co najmniej dwie wersje.</span>
                 {% endif %}
@@ -36,7 +36,7 @@
                 <thead>
                     <tr>
                         {% if compare_view and comparable %}
-                            <th scope="col" class="bpp-kol-ab" title="A — wersja starsza, B — wersja nowsza">A&nbsp;&nbsp;&nbsp;B</th>
+                            <th scope="col" class="bpp-kol-ab" title="Lewe kółko — wersja starsza, prawe — wersja nowsza"><span class="bpp-ab">starsza</span> <span class="bpp-ab">nowsza</span></th>
                         {% endif %}
                         <th scope="col" class="bpp-kol-data">Data i godzina</th>
                         <th scope="col" class="bpp-kol-user">Użytkownik</th>
@@ -49,8 +49,8 @@
                         <tr>
                             {% if compare_view and comparable %}
                                 <td class="bpp-kol-ab">
-                                    <label title="A — wersja starsza"><input type="radio" name="version_id1" value="{{ action.version.pk|unlocalize }}" aria-label="Wersja starsza (A)" {% if forloop.first %}style="visibility:hidden"{% endif %} {% if action.second %}checked{% endif %}></label>
-                                    <label title="B — wersja nowsza"><input type="radio" name="version_id2" value="{{ action.version.pk|unlocalize }}" aria-label="Wersja nowsza (B)" {% if forloop.last %}style="visibility:hidden"{% endif %} {% if action.first %}checked{% endif %}></label>
+                                    <label class="bpp-ab" title="Wersja starsza"><input type="radio" name="version_id1" value="{{ action.version.pk|unlocalize }}" aria-label="Wersja starsza" {% if forloop.first %}style="visibility:hidden"{% endif %} {% if action.second %}checked{% endif %}></label>
+                                    <label class="bpp-ab" title="Wersja nowsza"><input type="radio" name="version_id2" value="{{ action.version.pk|unlocalize }}" aria-label="Wersja nowsza" {% if forloop.last %}style="visibility:hidden"{% endif %} {% if action.first %}checked{% endif %}></label>
                                 </td>
                             {% endif %}
                             <td class="bpp-kol-data">
@@ -59,7 +59,7 @@
                                 {% else %}
                                     {{ action.revision.date_created|date:"j E Y, H:i" }}
                                 {% endif %}
-                                {% if action.version.pk == aktualna_wersja_pk %}<br><span class="bpp-aktualna" title="Najnowsza zapisana wersja — obecny stan rekordu">wersja aktualna</span>{% endif %}
+                                {% if action.version.pk == aktualna_wersja_pk %}<br><span class="bpp-aktualna" title="Najnowsza zapisana wersja — obecny stan rekordu">wersja aktualna</span>{% elif action.version.pk == najstarsza_wersja_pk %}<br><span class="bpp-najstarsza" title="Pierwsza zapisana wersja rekordu">wersja najstarsza</span>{% endif %}
                             </td>
                             <td class="bpp-kol-user">
                                 {% if action.revision.user %}

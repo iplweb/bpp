@@ -461,6 +461,15 @@ def test_wersja_aktualna_oznaczona(admin_client, wydawnictwo_ciagle):
         {"version_id1": starsza.pk, "version_id2": nowsza.pk},
     ).content.decode()
     assert porownanie.count('class="bpp-aktualna"') == 1
+    assert porownanie.count('class="bpp-najstarsza"') == 1
+    # Układ „wersja starsza | zmiana | wersja nowsza”: boczne kolumny bez
+    # skreśleń, różnica tylko w środku.
+    assert "Wersja starsza" in porownanie
+    assert "Wersja nowsza" in porownanie
+    assert 'class="bpp-kol-zmiana-diff"' in porownanie
+    assert "Wersja A" not in porownanie
+    # Nowsza wersja jest aktualna — nie ma czego przywracać.
+    assert "Przywróć wersję nowszą" not in porownanie
 
 
 def test_komunikat_po_przywroceniu_linkuje_do_rekordu(admin_app, wydawnictwo_ciagle):
@@ -492,3 +501,69 @@ def test_wersja_o_tresci_jak_aktualna_nie_udaje_wczesniejszej(
     tresc = admin_app.get(url).text
     assert "taka sama jak aktualna" in tresc
     assert "Podgląd wcześniejszej wersji" not in tresc
+
+
+def test_podglad_wersji_tylko_do_odczytu(admin_client, wydawnictwo_ciagle):
+    """Podgląd wersji to NIE jest formularz edycji: bez edytowalnych pól,
+    bez „Zapisz” i „Usuń” — jedyna akcja to „Przywróć tę wersję”. Dane
+    wysłane POST-em są ignorowane: przywracana jest dokładnie zapisana
+    wersja."""
+    starsza, nowsza = _wersje_wydawnictwa(wydawnictwo_ciagle)
+    pk = wydawnictwo_ciagle.pk
+    url = reverse("admin:bpp_wydawnictwo_ciagle_revision", args=(pk, starsza.pk))
+
+    tresc = admin_client.get(url).content.decode()
+    assert 'name="tytul_oryginalny"' not in tresc
+    assert 'name="_save"' not in tresc
+    assert "grp-delete-link" not in tresc
+    assert "♻️ Przywróć tę wersję" in tresc
+
+    res = admin_client.post(url, {"tytul_oryginalny": "Wpisane ręcznie w podglądzie"})
+    assert res.status_code == 302
+    assert res.url == reverse("admin:bpp_wydawnictwo_ciagle_change", args=(pk,))
+    wydawnictwo_ciagle.refresh_from_db()
+    assert wydawnictwo_ciagle.tytul_oryginalny == starsza.field_dict["tytul_oryginalny"]
+    najnowsza = Version.objects.get_for_object(wydawnictwo_ciagle).first()
+    assert najnowsza.revision.comment.startswith("Przywrócono wersję z ")
+
+    # Wersja aktualna: nie ma czego przywracać — brak przycisku.
+    aktualna = admin_client.get(
+        reverse("admin:bpp_wydawnictwo_ciagle_revision", args=(pk, najnowsza.pk))
+    ).content.decode()
+    assert "♻️ Przywróć tę wersję" not in aktualna
+    assert "grp-delete-link" not in aktualna
+
+
+def test_przywrocenie_nie_cofa_innych_rekordow_z_tej_samej_rewizji(
+    admin_client, wydawnictwo_ciagle
+):
+    """Stare rewizje (np. akcji masowych sprzed FD#587) obejmują wiele
+    rekordów — przywrócenie wersji jednego nie może cofnąć pozostałych."""
+    drugi = baker.make(
+        Wydawnictwo_Ciagle,
+        rok=wydawnictwo_ciagle.rok,
+        charakter_formalny=wydawnictwo_ciagle.charakter_formalny,
+        jezyk=wydawnictwo_ciagle.jezyk,
+        typ_kbn=wydawnictwo_ciagle.typ_kbn,
+        status_korekty=wydawnictwo_ciagle.status_korekty,
+    )
+    with reversion.create_revision():
+        wydawnictwo_ciagle.save()
+        drugi.save()
+    wspolna = Version.objects.get_for_object(wydawnictwo_ciagle).get()
+
+    for rekord in (wydawnictwo_ciagle, drugi):
+        rekord.tytul_oryginalny = f"Nowy tytuł {rekord.pk}"
+        with reversion.create_revision():
+            rekord.save()
+
+    admin_client.post(
+        reverse(
+            "admin:bpp_wydawnictwo_ciagle_revision",
+            args=(wydawnictwo_ciagle.pk, wspolna.pk),
+        )
+    )
+    wydawnictwo_ciagle.refresh_from_db()
+    drugi.refresh_from_db()
+    assert wydawnictwo_ciagle.tytul_oryginalny == wspolna.field_dict["tytul_oryginalny"]
+    assert drugi.tytul_oryginalny == f"Nowy tytuł {drugi.pk}"

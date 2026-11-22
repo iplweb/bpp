@@ -54,6 +54,11 @@ from .wersje_modele import POLA_WRAZLIWE
 #: sekrety) z bazy, zamiast zostawić wartości domyślne.
 _przywracanie_wersji = ContextVar("przywracanie_wersji", default=False)
 
+#: Ustawiane na czas podglądu wersji (GET ``revision_view``): formularz
+#: rekordu jest wtedy tylko do odczytu — bez zapisu, bez „Usuń”, także
+#: w listach powiązanych (inline'y). Przywrócenie to osobna akcja (POST).
+_podglad_wersji = ContextVar("podglad_wersji", default=False)
+
 
 def zachowaj_pola_wrazliwe(sender, instance, raw=False, **kwargs):
     """Przy przywracaniu wersji (zapis surowy) pola z ``POLA_WRAZLIWE``
@@ -205,10 +210,16 @@ class HistoriaWersjiMixin:
             "version1": wersja1,
             "version2": wersja2,
             "wersje_porownania": [
-                (wersja1, "A", "starsza", "bpp-wersja-a"),
-                (wersja2, "B", "nowsza", "bpp-wersja-b"),
+                (wersja1, "Wersja starsza", "bpp-wersja-a"),
+                (wersja2, "Wersja nowsza", "bpp-wersja-b"),
             ],
             "aktualna_wersja_pk": self._aktualna_wersja_pk(str(obj.pk)),
+            "najstarsza_wersja_pk": wersje.order_by("pk")
+            .values_list("pk", flat=True)
+            .first(),
+            "przywroc_nowsza_url": reverse(
+                f"{nazwa}_revision", args=(quote(wersja2.object_id), wersja2.pk)
+            ),
             "changelist_url": reverse(f"{nazwa}_changelist"),
             "history_url": reverse(f"{nazwa}_history", args=(quote(obj.pk),)),
             "save_url": reverse(
@@ -275,26 +286,6 @@ class HistoriaWersjiMixin:
             False,
         )
 
-    def response_change(self, request, obj):
-        # Przy przywracaniu wersji formularz jest wysyłany na adres wersji
-        # (``…/history/<nr>/``), a Django składa z ``request.path`` link
-        # w komunikacie „…pomyślnie zmieniony” i przekierowanie „Zapisz
-        # i kontynuuj” — prowadziłyby do podglądu starej wersji zamiast do
-        # aktualnego rekordu.
-        dopasowanie = getattr(request, "resolver_match", None)
-        if dopasowanie is not None and (dopasowanie.url_name or "").endswith(
-            "_revision"
-        ):
-            from django.contrib.admin.utils import quote
-            from django.urls import reverse
-
-            opts = self.model._meta
-            request.path = reverse(
-                f"admin:{opts.app_label}_{opts.model_name}_change",
-                args=(quote(obj.pk),),
-            )
-        return super().response_change(request, obj)
-
     def po_przywroceniu_wersji(self, request, obj):
         """Hook po udanym przywróceniu wersji ``obj`` (już zapisanej
         formularzem). Domyślnie nic nie robi."""
@@ -342,32 +333,151 @@ class HistoriaWersjiMixin:
             .exists()
         ):
             raise Http404("Brak takiej wersji tego rekordu.")
-        if request.method == "GET":
-            wersja = Version.objects.select_related("revision").get(pk=version_id)
-            aktualna_pk = self._aktualna_wersja_pk(unquote(object_id))
-            extra_context = {
-                "zmiany_powiazanych": self._zmiany_powiazanych(obj, version_id),
-                "wersja_podgladu": wersja,
-                "wersja_aktualna": wersja.pk == aktualna_pk,
-                "wersja_jak_aktualna": wersja.pk != aktualna_pk
-                and self._tresc_jak_aktualna(obj, wersja, aktualna_pk),
-                **(extra_context or {}),
-            }
+        wersja = Version.objects.select_related("revision").get(pk=version_id)
+        aktualna_pk = self._aktualna_wersja_pk(unquote(object_id))
+        bez_zmian = wersja.pk == aktualna_pk or self._tresc_jak_aktualna(
+            obj, wersja, aktualna_pk
+        )
+        if request.method == "POST":
+            return self._przywroc_wersje(request, obj, wersja, bez_zmian)
+        extra_context = {
+            "zmiany_powiazanych": self._zmiany_powiazanych(obj, version_id),
+            "wersja_podgladu": wersja,
+            "wersja_aktualna": wersja.pk == aktualna_pk,
+            "wersja_jak_aktualna": wersja.pk != aktualna_pk and bez_zmian,
+            "pokaz_przywroc": not bez_zmian
+            and self.has_change_permission(request, obj),
+            **(extra_context or {}),
+        }
+        # Podgląd: reversion odtwarza wersję w transakcji wycofywanej po
+        # wyrenderowaniu strony i pokazuje formularz rekordu — u nas tylko
+        # do odczytu (``_podglad_wersji``).
+        przywracanie = _przywracanie_wersji.set(True)
+        podglad = _podglad_wersji.set(True)
+        try:
+            return super().revision_view(request, object_id, version_id, extra_context)
+        finally:
+            _podglad_wersji.reset(podglad)
+            _przywracanie_wersji.reset(przywracanie)
+
+    def _wersje_rekordu_w_rewizji(self, obj, wersja):
+        """``wersja`` + wersje śledzonych pozycji (autorzy, granty, pliki…)
+        należących do TEGO rekordu. Stare rewizje akcji masowych obejmują
+        wiele rekordów naraz — przywracamy tylko ten jeden."""
+        wynik = [wersja]
+        pozostale = list(
+            wersja.revision.version_set.exclude(pk=wersja.pk).select_related(
+                "content_type"
+            )
+        )
+        for akcesor in FOLLOW_REVERSION.get(self.model, ()):
+            menedzer = getattr(obj, akcesor)
+            wynik.extend(
+                v
+                for v in pozostale
+                if v.content_type.model_class() is menedzer.model
+                and _nalezy_do(v, obj, menedzer)
+            )
+        return wynik
+
+    def _przywroc_wersje(self, request, obj, wersja, bez_zmian):
+        """Przywróć ``wersja`` rekordu ``obj`` (przycisk „♻️ Przywróć tę
+        wersję”). NIE jest to zapis formularza z podglądu — odtwarzamy
+        dokładnie zapisaną wersję: rekord i jego śledzone listy (pozycje
+        dodane później są usuwane), potem zwykły ``save()`` (denormy, MPTT,
+        data zmiany), przeliczenie punktacji i nowa rewizja w historii."""
+        import reversion
+        from django.contrib import messages
+        from django.contrib.admin.utils import quote
+        from django.db import transaction
+        from django.http import HttpResponseRedirect
+        from django.urls import reverse
+        from django.utils import formats, timezone
+        from django.utils.html import format_html
+
+        if not self.has_change_permission(request, obj):
+            raise PermissionDenied
+        opts = self.model._meta
+        nazwa = f"admin:{opts.app_label}_{opts.model_name}"
+        data = formats.date_format(
+            timezone.localtime(wersja.revision.date_created), "j E Y, H:i"
+        )
+        if bez_zmian:
+            self.message_user(
+                request,
+                f"Wersja z {data} ma taką samą treść jak obecny stan rekordu — "
+                "nic nie zmieniono.",
+                level=messages.INFO,
+            )
+            return HttpResponseRedirect(
+                reverse(f"{nazwa}_history", args=(quote(obj.pk),))
+            )
+
+        komentarz = f"Przywrócono wersję z {data}"
+        do_przywrocenia = self._wersje_rekordu_w_rewizji(obj, wersja)
         token = _przywracanie_wersji.set(True)
         try:
-            response = super().revision_view(
-                request, object_id, version_id, extra_context
-            )
+            with transaction.atomic(), self.create_revision(request):
+                for v in do_przywrocenia:
+                    v.revert()
+                # Pozycje list dopisane po tej wersji — usuwane (pokazane
+                # wcześniej w podglądzie jako „Zostaną usunięte”).
+                w_wersji = {(v.content_type_id, v.object_id) for v in do_przywrocenia}
+                for akcesor in FOLLOW_REVERSION.get(self.model, ()):
+                    menedzer = getattr(obj, akcesor)
+                    ct = ContentType.objects.get_for_model(menedzer.model)
+                    for pozycja in menedzer.all():
+                        if (ct.pk, str(pozycja.pk)) not in w_wersji:
+                            pozycja.delete()
+                swiezy = self.model._default_manager.get(pk=obj.pk)
+                swiezy.save()
+                reversion.add_to_revision(swiezy)
+                reversion.set_comment(komentarz)
         finally:
             _przywracanie_wersji.reset(token)
-        # Jak reversion: POST zakończony przekierowaniem = wersja przywrócona.
-        # Błąd przywracania też kończy się przekierowaniem (na listę), więc
-        # hook musi być bezpieczny do wywołania bez zmiany.
-        if request.method == "POST" and response.status_code == 302:
-            self.po_przywroceniu_wersji(
-                request, self.model._default_manager.get(pk=obj.pk)
-            )
-        return response
+        self.log_change(request, swiezy, komentarz)
+
+        from bpp.models.sloty.core import IPunktacjaCacher
+
+        cacher = IPunktacjaCacher(swiezy)
+        if cacher.canAdapt():
+            cacher.removeEntries()
+            cacher.rebuildEntries()
+        self.po_przywroceniu_wersji(request, swiezy)
+
+        url = reverse(f"{nazwa}_change", args=(quote(swiezy.pk),))
+        self.message_user(
+            request,
+            format_html(
+                '♻️ Przywrócono wersję z {} rekordu „<a href="{}">{}</a>”.',
+                data,
+                url,
+                swiezy,
+            ),
+            level=messages.SUCCESS,
+        )
+        return HttpResponseRedirect(url)
+
+    # --- podgląd wersji tylko do odczytu --------------------------------
+
+    def has_change_permission(self, request, obj=None):
+        if _podglad_wersji.get():
+            return False
+        return super().has_change_permission(request, obj)
+
+    def has_delete_permission(self, request, obj=None):
+        if _podglad_wersji.get():
+            return False
+        return super().has_delete_permission(request, obj)
+
+    def get_inline_instances(self, request, obj=None):
+        instancje = super().get_inline_instances(request, obj)
+        if _podglad_wersji.get():
+            for inline in instancje:
+                inline.has_add_permission = lambda *args, **kwargs: False
+                inline.has_change_permission = lambda *args, **kwargs: False
+                inline.has_delete_permission = lambda *args, **kwargs: False
+        return instancje
 
     def _zmiany_powiazanych(self, obj, version_id):
         """Co przywrócenie wersji zrobi ze śledzonymi listami rekordu
@@ -420,6 +530,12 @@ class HistoriaWersjiMixin:
             ),
             **self._stan_kosza(request, self.get_object(request, unquote(object_id))),
             "aktualna_wersja_pk": self._aktualna_wersja_pk(unquote(object_id)),
+            "najstarsza_wersja_pk": Version.objects.get_for_object_reference(
+                self.model, unquote(object_id)
+            )
+            .order_by("pk")
+            .values_list("pk", flat=True)
+            .first(),
         }
         context.update(extra_context or {})
         return super().history_view(request, object_id, context)

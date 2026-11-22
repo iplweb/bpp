@@ -116,7 +116,8 @@ zostaje przed nimi). Mixin dodatkowo:
 - `po_przywroceniu_wersji` — hook; `JednostkaAdmin` przebudowuje drzewo
   MPTT (zapis surowy omija MPTT),
 - `compare` — własne porównanie (`porownanie_wersji.py`) zamiast diffu
-  reversion-compare: tabela „pole | wersja A | wersja B”, wartości po
+  reversion-compare: tabela „pole | wersja starsza | zmiana | wersja nowsza”
+  (boczne kolumny — pełne wartości, środkowa — sama różnica), wartości po
   ludzku (nazwy ze słowników, tak/nie, daty), diff słów w tekstach, listy
   śledzone jako dodane/usunięte/zmienione z polami,
 - `revision_view` (GET) — `zmiany_powiazanych`: formularz przywracania

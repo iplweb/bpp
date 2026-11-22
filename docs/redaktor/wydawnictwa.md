@@ -78,16 +78,25 @@ narzędzie, API / MCP z nazwą aplikacji, system) i co zmieniono (np.
 „Zmodyfikowano Tytuł oryginalny”, „Przeniesiono do kosza (powód: …)”,
 „Ustawiono status korekty: po korekcie (akcja masowa)”).
 
-- **Porównanie wersji** — zaznacz wersję starszą w kolumnie **A** i nowszą
-  w kolumnie **B**, a potem kliknij **„Porównaj zaznaczone wersje”**.
-  Tabela pokazuje tylko pola, które się zmieniły: usunięte słowa są
-  przekreślone na czerwono, dodane — podświetlone na zielono. Dla list
-  (autorzy, granty, pliki…) widać pozycje dodane, usunięte i zmienione,
-  np. „Afiliuje: tak → nie”. Przyciski „Wcześniejsza zmiana” / „Następna
-  zmiana” przechodzą po kolejnych parach wersji.
-- **Przywrócenie wersji** — kliknięcie daty otwiera formularz w stanie
-  z tej wersji; **zapisanie go przywraca tę wersję** (samo przywrócenie też
-  trafia do historii, więc da się je cofnąć). Przywrócenie wersji
+- **Porównanie wersji** — zaznacz wersję starszą (lewe kółko, kolumna
+  „starsza”) i nowszą (prawe kółko, kolumna „nowsza”), a potem kliknij
+  **„Porównaj zaznaczone wersje”**. Tabela pokazuje tylko pola, które się
+  zmieniły, w czterech kolumnach: nazwa pola, **wersja starsza**,
+  **zmiana** i **wersja nowsza**. Kolumny boczne zawierają pełne wartości
+  z obu wersji, a środkowa samą różnicę: usunięte słowa przekreślone na
+  czerwono, dodane podświetlone na zielono, w pozostałych polach „stare →
+  nowe”. Dla list (autorzy, granty, pliki…) po bokach są pełne listy, a
+  w środku pozycje usunięte (−), dodane (+) i zmienione, np. „Afiliuje:
+  tak → nie”. Plakietki „wersja aktualna” i „wersja najstarsza” pokazują,
+  gdzie w historii leży wersja. Przyciski „Wcześniejsza zmiana” /
+  „Następna zmiana” przechodzą po kolejnych parach wersji, a „Przywróć
+  wersję starszą…” / „Przywróć wersję nowszą…” otwierają podgląd danej
+  wersji z przyciskiem przywracania.
+- **Przywrócenie wersji** — kliknięcie daty pokazuje rekord w stanie z tej
+  wersji (tylko do podglądu, bez edycji). Przycisk **„♻️ Przywróć tę
+  wersję”** na dole strony przywraca rekord do tego stanu (samo
+  przywrócenie też trafia do historii, więc da się je cofnąć). Przy wersji
+  aktualnej przycisku nie ma — nie ma czego przywracać. Przywrócenie wersji
   publikacji przywraca też listy powiązane — nad formularzem wypisane są
   pozycje, które **zostaną usunięte** (np. autorzy dopisani po tej wersji)
   i które **zostaną przywrócone**.
