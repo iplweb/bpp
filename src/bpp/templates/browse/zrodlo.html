@@ -41,7 +41,7 @@
     </div>
 
     {# Ile punktów daje artykuł w bieżącej ewaluacji (bpp.punkty_ewaluacji). #}
-    {% include "browse/_punkty_ewaluacji_zrodla.html" %}
+    {% include "browse/_okresy_ewaluacji.html" with szablon="browse/_punkty_ewaluacji_zrodla.html" %}
 
     <!-- Banner for sources without publications -->
     {% if not has_publications %}

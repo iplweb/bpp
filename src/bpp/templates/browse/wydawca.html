@@ -42,7 +42,7 @@
     </div>
 
     {# Punkty za monografię/rozdział/redakcję w ewaluacji (bpp.punkty_ewaluacji). #}
-    {% include "browse/_punkty_ewaluacji_wydawcy.html" %}
+    {% include "browse/_okresy_ewaluacji.html" with szablon="browse/_punkty_ewaluacji_wydawcy.html" %}
 
     {% if liczba_prac %}
         <div class="source-quick-actions">
