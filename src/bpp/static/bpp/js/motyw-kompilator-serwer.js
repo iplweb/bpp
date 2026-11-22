@@ -6,6 +6,16 @@
  * do appservera (baza, sekrety) — kontener nie ma bazy, sekretów, dostępu
  * do internetu ani zapisu na dysk (patrz bpp-deploy).
  *
+ * Uruchamiany na gotowym obrazie `node:22-alpine` — bez własnego obrazu.
+ * Ten plik i zasoby kompilatora leżą w plikach statycznych BPP, które
+ * appserver przy każdym starcie kopiuje na wolumen `staticfiles`; kontener
+ * kompilatora montuje ten wolumen TYLKO DO ODCZYTU. Dzięki temu kompilator
+ * zawsze ma pliki z wersji BPP, która właśnie działa:
+ *   - zmiana zasobów (aktualizacja BPP) → przeładowanie przy kolejnym
+ *     zapytaniu, bez restartu,
+ *   - zmiana tego pliku → proces kończy się, Docker (restart: always)
+ *     uruchamia nową wersję.
+ *
  * Uruchamia DOKŁADNIE te same pliki co podgląd w przeglądarce, w kontekście
  * `vm` bez API Node'a (bez `require`, `process`, systemu plików):
  *   - dist/sass-przegladarka.js   (dart-sass, Grunt: shell:esbuildSass),
@@ -14,14 +24,17 @@
  * Na wejściu wyłącznie dane (ustawienia motywu), nigdy kod.
  *
  * API:
- *   GET  /zdrowie   → 200 "ok"
+ *   GET  /zywy      → 200 (proces działa; healthcheck kontenera)
+ *   GET  /zdrowie   → 200 "ok" | 503 (brak zasobów — np. starsza wersja BPP)
  *   POST /kompiluj  {konfig, czcionkiUrl} → 200 text/css
- *                                          | 400 {blad, bledy} | 413 | 500
- * Tryb jednorazowy (dev/testy, bez serwera): `node serwer.js --jednorazowo`
- * czyta JSON z stdin, CSS na stdout, błąd → kod 1 i JSON na stderr.
+ *                                          | 400 {blad, bledy} | 413 | 500 | 503
+ * Tryb jednorazowy (dev, bez serwera): `node motyw-kompilator-serwer.js
+ * --jednorazowo` czyta JSON z stdin, CSS na stdout, błąd → kod 1 i JSON
+ * na stderr.
  *
- * Zmienne środowiskowe: BPP_MOTYW_JS (katalog motyw-*.js), BPP_MOTYW_DIST
- * (katalog dist/), PORT (domyślnie 8095).
+ * Zmienne środowiskowe (opcjonalne): BPP_MOTYW_JS (katalog motyw-*.js,
+ * domyślnie katalog tego pliku), BPP_MOTYW_DIST (domyślnie <BPP_MOTYW_JS>/dist),
+ * PORT (domyślnie 8095).
  */
 "use strict";
 
@@ -30,8 +43,8 @@ const http = require("http");
 const path = require("path");
 const vm = require("vm");
 
-const KATALOG_JS = process.env.BPP_MOTYW_JS || "/app/js";
-const KATALOG_DIST = process.env.BPP_MOTYW_DIST || "/app/dist";
+const KATALOG_JS = process.env.BPP_MOTYW_JS || __dirname;
+const KATALOG_DIST = process.env.BPP_MOTYW_DIST || path.join(KATALOG_JS, "dist");
 const PORT = Number(process.env.PORT || 8095);
 // Ustawienia z obrazkiem tła (data URL do ~700 KB) mieszczą się z zapasem.
 const MAKS_ZAPYTANIE = 2 * 1024 * 1024;
@@ -40,8 +53,28 @@ const LIMIT_CZASU_MS = 60000;
 // PO KOLEI. Ile ich naraz przychodzi, ogranicza appserver (blokada w cache,
 // bpp/motyw_kompilator.py), nie ten serwis.
 
+const ZASOBY = [
+    [KATALOG_DIST, "sass-przegladarka.js"],
+    [KATALOG_JS, "motyw-konfig.js"],
+    [KATALOG_JS, "motyw-kompilator.js"],
+    [KATALOG_DIST, "motyw-zrodla-scss.json"],
+];
+
 function czytaj(katalog, plik) {
     return fs.readFileSync(path.join(katalog, plik), "utf8");
+}
+
+// Odcisk plików (rozmiar + czas zmiany); null, gdy któregoś brakuje.
+function odcisk(pliki) {
+    try {
+        return pliki.map(([k, p]) => {
+            const st = fs.statSync(path.join(k, p));
+            return st.size + ":" + st.mtimeMs;
+        }).join("|");
+    } catch (e) {
+        if (e.code === "ENOENT") return null;
+        throw e;
+    }
 }
 
 // Kontekst bez API Node'a — jak web worker w przeglądarce. dart-sass widzi
@@ -65,7 +98,31 @@ function zbudujKontekst() {
     return ctx;
 }
 
-const ctx = zbudujKontekst();
+const ODCISK_SERWERA = odcisk([[__dirname, path.basename(__filename)]]);
+let ctx = null;
+let odciskZasobow = null;
+
+// Kontekst z aktualnymi plikami albo null (brak zasobów). Gdy pliki właśnie
+// się podmieniają (kopiowanie przy starcie appservera) i nie da się ich
+// wczytać — zostaje poprzedni kontekst, próba przy kolejnym zapytaniu.
+function aktualnyKontekst() {
+    if (odcisk([[__dirname, path.basename(__filename)]]) !== ODCISK_SERWERA) {
+        console.log("Nowa wersja serwera kompilatora — restart.");
+        process.exit(0);
+    }
+    const teraz = odcisk(ZASOBY);
+    if (teraz === null) return null;
+    if (teraz !== odciskZasobow) {
+        try {
+            ctx = zbudujKontekst();
+            odciskZasobow = teraz;
+            console.log("Wczytano zasoby kompilatora motywów.");
+        } catch (e) {
+            console.error("Nie udało się wczytać zasobów kompilatora:", e);
+        }
+    }
+    return ctx;
+}
 
 class BladUstawien extends Error {
     constructor(bledy) {
@@ -74,7 +131,11 @@ class BladUstawien extends Error {
     }
 }
 
+class BrakZasobow extends Error {}
+
 function kompiluj(dane) {
+    const ctx = aktualnyKontekst();
+    if (!ctx) throw new BrakZasobow("Brak zasobów kompilatora motywów.");
     if (!dane || typeof dane !== "object" || typeof dane.konfig !== "object" || !dane.konfig) {
         throw new BladUstawien([{ pole: "konfig", komunikat: "Brak ustawień motywu." }]);
     }
@@ -105,9 +166,15 @@ function odpowiedzBledem(res, status, blad, bledy) {
 }
 
 function obsluz(req, res) {
-    if (req.method === "GET" && req.url === "/zdrowie") {
+    if (req.method === "GET" && req.url === "/zywy") {
         res.writeHead(200, { "Content-Type": "text/plain" });
         res.end("ok");
+        return;
+    }
+    if (req.method === "GET" && req.url === "/zdrowie") {
+        const gotowy = aktualnyKontekst() !== null;
+        res.writeHead(gotowy ? 200 : 503, { "Content-Type": "text/plain" });
+        res.end(gotowy ? "ok" : "brak zasobow");
         return;
     }
     if (req.method !== "POST" || req.url !== "/kompiluj") {
@@ -147,6 +214,10 @@ function obsluz(req, res) {
                 odpowiedzBledem(res, 400, e.message, e.bledy);
                 return;
             }
+            if (e instanceof BrakZasobow) {
+                odpowiedzBledem(res, 503, e.message);
+                return;
+            }
             // Błąd kompilacji / limit czasu: zgłaszamy, serwis działa dalej.
             console.error("Błąd kompilacji motywu:", e);
             odpowiedzBledem(res, 500, "Kompilacja motywu nie powiodła się: " + String(e.message || e).split("\n")[0]);
@@ -171,4 +242,7 @@ if (process.argv.includes("--jednorazowo")) {
     http.createServer(obsluz).listen(PORT, () => {
         console.log("Kompilator motywów BPP nasłuchuje na porcie " + PORT);
     });
+    aktualnyKontekst();
+    // Także bez ruchu: nowa wersja tego pliku → restart, nowe zasoby → wczytanie.
+    setInterval(aktualnyKontekst, 60000).unref();
 }

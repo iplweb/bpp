@@ -32,8 +32,6 @@ jobs:
             desc: "Serwer autentykacji (SSO) dla BPP."
           - image: bpp_denorm_queue
             desc: "Kolejka denormalizacji danych dla BPP."
-          - image: bpp_motyw_kompilator
-            desc: "Kompilator motywów konfiguratora wyglądu BPP (odizolowany serwis Node)."
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 

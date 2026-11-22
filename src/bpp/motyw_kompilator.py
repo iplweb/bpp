@@ -1,9 +1,10 @@
 """Kompilacja motywu z konfiguratora wyglądu po stronie serwera.
 
-Kompiluje osobny, odizolowany serwis ``motyw-kompilator``
-(``docker/motyw-kompilator/serwer.js``, obraz ``iplweb/bpp_motyw_kompilator``
-w tej samej wersji co appserver). Wykonuje ten sam kod JS co podgląd
-w przeglądarce, więc wynik jest identyczny. Appserver nie uruchamia
+Kompiluje osobny, odizolowany serwis ``motyw-kompilator``: gotowy obraz
+``node:22-alpine`` uruchamiający ``bpp/js/motyw-kompilator-serwer.js``
+z wolumenu plików statycznych (tylko do odczytu), więc zawsze w tej samej
+wersji co appserver. Wykonuje ten sam kod JS co podgląd w przeglądarce,
+więc wynik jest identyczny. Appserver nie uruchamia
 cudzego silnika JS: ewentualna dziura w kompilatorze zostaje w kontenerze
 bez bazy, sekretów i internetu.
 
@@ -43,12 +44,7 @@ RE_OBRAZ = re.compile(
     r"^data:image/(png|jpeg|webp|gif|svg\+xml);base64,[A-Za-z0-9+/=]+$"
 )
 
-SKRYPT_DEV = (
-    Path(__file__).resolve().parent.parent.parent
-    / "docker"
-    / "motyw-kompilator"
-    / "serwer.js"
-)
+SKRYPT = "bpp/js/motyw-kompilator-serwer.js"
 
 NIEDOSTEPNY = "Kompilator motywów jest teraz niedostępny."
 ZAJETY = "Trwa budowanie innego motywu — spróbuj za chwilę."
@@ -147,6 +143,10 @@ def _z_serwisu(url, dane):
         return WynikKompilacji(rodzaj=BRAK_KOMPILATORA, blad=NIEDOSTEPNY)
     if odp.status_code == 200:
         return WynikKompilacji(css=odp.text)
+    if odp.status_code == 503:
+        # Serwis działa, ale nie ma jeszcze zasobów (start appservera).
+        logger.warning("Kompilator motywów bez zasobów: %s", odp.text[:200])
+        return WynikKompilacji(rodzaj=BRAK_KOMPILATORA, blad=NIEDOSTEPNY)
     return _odpowiedz_kompilatora(odp.status_code, odp.text)
 
 
@@ -154,14 +154,15 @@ def _z_node(dane):
     node = shutil.which("node")
     js = finders.find("bpp/js/motyw-konfig.js")
     dist = finders.find("bpp/js/dist/motyw-zrodla-scss.json")
-    if not node or not js or not dist or not SKRYPT_DEV.exists():
+    skrypt = finders.find(SKRYPT)
+    if not node or not js or not dist or not skrypt:
         logger.warning(
             "Kompilator motywów niedostępny: brak BPP_MOTYW_KOMPILATOR_URL, "
             "a lokalnie brak Node'a albo zbudowanych assetów (make assets)."
         )
         return WynikKompilacji(rodzaj=BRAK_KOMPILATORA, blad=NIEDOSTEPNY)
     wynik = subprocess.run(
-        [node, str(SKRYPT_DEV), "--jednorazowo"],
+        [node, skrypt, "--jednorazowo"],
         input=json.dumps(dane),
         capture_output=True,
         text=True,
@@ -254,5 +255,5 @@ def kompilator_dostepny():
     return bool(
         shutil.which("node")
         and finders.find("bpp/js/dist/motyw-zrodla-scss.json")
-        and SKRYPT_DEV.exists()
+        and finders.find(SKRYPT)
     )

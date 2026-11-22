@@ -4,8 +4,8 @@
 # Obraz test-runner w CI jest odchudzony — bez Node'a — ale ma zbudowane
 # zasoby kompilatora (grunt: shell:esbuildSass + motywyZrodla). Wyciągamy je
 # z obrazu i uruchamiamy serwis `motyw-kompilator` (docker-compose.test.ci.yml:
-# oficjalny node:22-alpine + docker/motyw-kompilator/serwer.js, tylko do
-# odczytu). Testy rozmawiają z nim przez HTTP — tą samą ścieżką co produkcja
+# oficjalny node:22-alpine, pliki tylko do odczytu — jak w bpp-deploy,
+# gdzie ten sam obraz czyta je z wolumenu plików statycznych). Testy rozmawiają z nim przez HTTP — tą samą ścieżką co produkcja
 # (DJANGO_BPP_MOTYW_KOMPILATOR_URL).
 #
 # Wymaga zmiennej COMPOSE_FILES (jak pozostałe kroki workflow testów).
@@ -19,7 +19,7 @@ mkdir -p "$KATALOG"
 # shellcheck disable=SC2086  # COMPOSE_FILES to lista flag
 docker compose $COMPOSE_FILES run --rm --no-deps -T test-runner \
     tar -C /src/src/bpp/static/bpp/js -cf - \
-        motyw-konfig.js motyw-kompilator.js \
+        motyw-konfig.js motyw-kompilator.js motyw-kompilator-serwer.js \
         dist/sass-przegladarka.js dist/motyw-zrodla-scss.json \
     | tar -C "$KATALOG" -xf -
 

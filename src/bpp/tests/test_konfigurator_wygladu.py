@@ -745,3 +745,19 @@ def test_koniec_przymiarki_nie_przekierowuje_na_obca_domene(staff_client, uczeln
         {"next": "https://zly.example.com/"},
     )
     assert res["Location"] == "/"
+
+
+def test_kompilator_bez_zasobow_to_niedostepny(settings, monkeypatch):
+    """Serwis działa, ale wolumen plików statycznych nie ma jeszcze jego
+    zasobów (start appservera, starsza wersja BPP) — 503 = „niedostępny”,
+    konfigurator proponuje zapisanie motywu."""
+    from bpp import motyw_kompilator
+
+    settings.BPP_MOTYW_KOMPILATOR_URL = "http://motyw-kompilator:8095"
+    monkeypatch.setattr(
+        motyw_kompilator.requests,
+        "post",
+        lambda url, json, timeout: _Odpowiedz(503, tekst='{"blad": "brak"}'),
+    )
+    wynik = motyw_kompilator.skompiluj(KONFIG)
+    assert wynik.rodzaj == motyw_kompilator.BRAK_KOMPILATORA

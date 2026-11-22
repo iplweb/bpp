@@ -241,7 +241,7 @@ jobs:
         run: |
           docker buildx bake \
             base appserver workerserver \
-            beatserver authserver denorm-queue motyw-kompilator \
+            beatserver authserver denorm-queue \
             --file docker-bake.hcl \
             --set "base.args.GIT_SHA=${GIT_SHA}" \
             --set "base.args.BUILD_CACHE_EPOCH=${BUILD_CACHE_EPOCH}" \
@@ -371,7 +371,6 @@ jobs:
             iplweb/bpp_beatserver
             iplweb/bpp_authserver
             iplweb/bpp_denorm_queue
-            iplweb/bpp_motyw_kompilator
           )
 
           # Cache Trivy vulndb miedzy skanami (6 obrazow x ~200MB db = znaczna
@@ -439,7 +438,6 @@ jobs:
             iplweb/bpp_beatserver
             iplweb/bpp_authserver
             iplweb/bpp_denorm_queue
-            iplweb/bpp_motyw_kompilator
           )
 
           {
@@ -524,7 +522,6 @@ jobs:
             iplweb/bpp_beatserver
             iplweb/bpp_authserver
             iplweb/bpp_denorm_queue
-            iplweb/bpp_motyw_kompilator
           )
 
           echo "::notice::Promocja: ${STAGING_TAG} → ${FINAL_TAG}"

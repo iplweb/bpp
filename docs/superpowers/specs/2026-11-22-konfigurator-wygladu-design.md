@@ -56,13 +56,19 @@ Gdzie działa kompilacja:
    `window.top.BppKonfiguratorCss` przed startem JS Foundation (ten odczytuje
    breakpointy z CSS-a).
 2. **„Zastosuj”** — osobny serwis `motyw-kompilator`
-   (`docker/motyw-kompilator/`, obraz `iplweb/bpp_motyw_kompilator` w tej
-   samej wersji co appserver). Node bez zależności npm uruchamia te same
+   (gotowy obraz `node:22-alpine`, bez własnego obrazu). Uruchamia
+   `bpp/js/motyw-kompilator-serwer.js` z wolumenu `staticfiles` (tylko do
+   odczytu), który appserver przy każdym starcie wypełnia plikami swojej
+   wersji — kompilator zawsze pasuje do appservera; nowe zasoby wczytuje
+   przy kolejnym zapytaniu, nowa wersja serwera = restart procesu
+   (`restart: always`). Node bez zależności npm uruchamia te same
    pliki co przeglądarka w kontekście `vm` bez API Node'a, waliduje ustawienia
    i kompiluje (~1,8 s). Appserver (`bpp/motyw_kompilator.py`) wysyła mu
    tylko dane (`POST /kompiluj {konfig, czcionkiUrl}`), nigdy kod; gotowego
-   CSS-a z przeglądarki nie przyjmuje. Dev i testy bez serwisu: jednorazowe
-   `node serwer.js --jednorazowo` na plikach z `src/`.
+   CSS-a z przeglądarki nie przyjmuje. CI: ten sam `node:22-alpine` z plikami
+   wyciągniętymi z obrazu testowego (`bin/ci-motyw-kompilator.sh`). Dev bez
+   serwisu: jednorazowe `node motyw-kompilator-serwer.js --jednorazowo`
+   na plikach z `src/`.
 3. **Build** (opcjonalnie) — `src/bpp/static/scss/motywy/<nazwa>.json`
    kompiluje task Grunta `motywy` do `app-<nazwa>.css` (motyw wbudowany
    w obraz, sam trafia do `BPP_THEMES`).
@@ -136,12 +142,13 @@ podbicia `WERSJA` w `motyw-konfig.js` i funkcji przenoszącej stare konfigi
 
 ## Izolacja kompilatora (bpp-deploy)
 
-Serwis `motyw-kompilator` w bpp-deploy (profil, opt-in — obraz istnieje
-dopiero od wersji BPP z konfiguratorem, a host z przypiętą starszą
-`DOCKER_VERSION` nie mógłby go pobrać):
+Serwis `motyw-kompilator` w bpp-deploy (włączony domyślnie; obraz
+`node:22-alpine` istnieje zawsze, więc działa też przy starszej wersji BPP —
+wtedy w wolumenie nie ma jego plików i serwis tylko czeka):
 
 - sieć `internal: true` wspólna tylko z appserverem — bez internetu,
-- bez bazy, sekretów, wolumenów i publikowanego portu,
+- bez bazy, sekretów i publikowanego portu; jedyny wolumen to `staticfiles`
+  tylko do odczytu (pliki i tak publiczne, serwowane przez nginx),
 - `read_only`, `cap_drop: ALL`, `no-new-privileges`, użytkownik `node`,
 - limity: pamięć 512 MB, 1 CPU, 64 procesy; zapytanie do 2 MB; 60 s na
   kompilację (`vm` timeout).
@@ -186,12 +193,13 @@ powtarza ich kolory z selektorem `html …`, żeby przeliczenie je objęło.
 
 ## Koszty i ryzyka
 
-- Obraz `iplweb/bpp_motyw_kompilator`: ~245 MB (głównie `node:22-alpine`),
-  osobny — appserver nie rośnie. Rozważane i odrzucone: V8 w appserverze
+- Gotowy obraz `node:22-alpine` (~160 MB), bez własnego obrazu do budowania,
+  skanowania i promowania — appserver nie rośnie. Rozważane i odrzucone: V8 w appserverze
   (`mini-racer`, +82 MB i silnik JS w procesie z dostępem do bazy), QuickJS
   (5 MB, ale kompilacja > 10 min).
-- Trzeba pilnować aktualizacji `node:22-alpine` (Trivy skanuje obraz jak
-  pozostałe).
+- Poprawki bezpieczeństwa Node'a przychodzą z tagiem `node:22-alpine`
+  przy `docker compose pull` (jak Redis czy PostgreSQL), nie przez nasz
+  skan Trivy.
 - `dart-sass` w przeglądarce: 3,2 MB (700 KB gzip), ładowany tylko przez
   worker konfiguratora.
 - Tryb ciemny jest algorytmiczny — elementy ze stylami inline albo

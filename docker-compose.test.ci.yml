@@ -42,18 +42,15 @@ services:
       # uruchamiany przez bin/ci-motyw-kompilator.sh.
       DJANGO_BPP_MOTYW_KOMPILATOR_URL: http://motyw-kompilator:8095
 
-  # Kompilator motywów konfiguratora wyglądu dla testów: oficjalny Node
-  # + serwer.js z repo + zasoby wyciągnięte z obrazu test-runner
-  # (bin/ci-motyw-kompilator.sh). Na produkcji to obraz
-  # iplweb/bpp_motyw_kompilator (docker/motyw-kompilator/Dockerfile).
+  # Kompilator motywów konfiguratora wyglądu dla testów: gotowy node:22-alpine
+  # + pliki kompilatora wyciągnięte z obrazu test-runner
+  # (bin/ci-motyw-kompilator.sh). Jak w bpp-deploy, gdzie ten sam obraz czyta
+  # je z wolumenu plików statycznych.
   motyw-kompilator:
     image: node:22-alpine
-    command: ["node", "/app/serwer.js"]
+    command: ["node", "/static/bpp/js/motyw-kompilator-serwer.js"]
     environment:
-      BPP_MOTYW_JS: /app/js
-      BPP_MOTYW_DIST: /app/js/dist
       PORT: "8095"
     volumes:
-      - ./ci-motyw-kompilator:/app/js:ro
-      - ./docker/motyw-kompilator/serwer.js:/app/serwer.js:ro
+      - ./ci-motyw-kompilator:/static/bpp/js:ro
     read_only: true

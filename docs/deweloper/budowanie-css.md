@@ -92,10 +92,13 @@ Konfig trafia do CSS-a na dwa sposoby:
 1. **Konfigurator → „Zastosuj”** (droga zwykła). Podgląd kompiluje
    przeglądarka (web worker `motyw-kompilator-worker.js`, dart-sass w czystym
    JS). Przy „Zastosuj” CSS buduje osobny, odizolowany serwis
-   `motyw-kompilator` (`docker/motyw-kompilator/serwer.js`, Node, te same
-   pliki JS w kontekście `vm`), wołany przez `bpp/motyw_kompilator.py`
-   (`DJANGO_BPP_MOTYW_KOMPILATOR_URL`; w dev bez tej zmiennej — jednorazowe
-   `node serwer.js --jednorazowo`). Wynik trafia do modelu `MotywWlasny`
+   `motyw-kompilator` (gotowy obraz `node:22-alpine` uruchamiający
+   `bpp/js/motyw-kompilator-serwer.js` z wolumenu plików statycznych, tylko
+   do odczytu; te same pliki JS w kontekście `vm`), wołany przez
+   `bpp/motyw_kompilator.py` (`DJANGO_BPP_MOTYW_KOMPILATOR_URL`; w dev bez
+   tej zmiennej — jednorazowe `node motyw-kompilator-serwer.js
+   --jednorazowo`). Po aktualizacji BPP serwis sam wczytuje nowe pliki
+   (a przy zmianie samego serwera kończy się i Docker go wznawia). Wynik trafia do modelu `MotywWlasny`
    (jeden na uczelnię) i jest serwowany pod `/bpp/motyw-wlasny/<sha256>.css`
    z `Cache-Control: immutable`. Uczelnia dostaje `theme_name =
    "app-wlasny"`, a `bare.html` dołącza plik poza `{% compress %}`. Po
