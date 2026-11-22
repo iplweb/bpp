@@ -179,8 +179,22 @@
             opcje: [
                 ["biale", "Białe"],
                 ["szare", "Jasnoszare (białe karty na szarym tle)"],
+                ["wlasne", "Własny kolor (białe karty na kolorowym tle)"],
             ],
             domyslnie: "biale",
+        },
+        {
+            klucz: "kolor_tla_strony",
+            typ: "kolor",
+            grupa: "Kolory",
+            etykieta: "Kolor tła strony",
+            opis:
+                "Jasny odcień — tekst na stronie jest ciemny. Ciemną stronę " +
+                "daje „Tryb kolorów”: wersja ciemna powstaje z tego koloru sama.",
+            pokaz: function (k) {
+                return k.tlo_strony === "wlasne";
+            },
+            domyslnie: "#f5f1e8",
         },
         {
             klucz: "tlo_tresci",
@@ -765,7 +779,27 @@
     }
 
     function tloStrony(k) {
+        if (k.tlo_strony === "wlasne" && RE_KOLOR.test(k.kolor_tla_strony || "")) {
+            return k.kolor_tla_strony;
+        }
         return k.tlo_strony === "szare" ? "#f1f5f9" : BIALY;
+    }
+
+    // Tekst strony (#0a0a0a) i szare opisy (#6c757d) muszą być czytelne na tle.
+    var TEKST_STRONY = "#0a0a0a";
+    var TEKST_SZARY = "#6c757d";
+
+    function rozjasnijDoKontrastu(kolor) {
+        for (var krok = 0; krok <= 100; krok++) {
+            var kandydat = wymieszaj("#ffffff", kolor, krok / 100);
+            if (
+                kontrast(TEKST_STRONY, kandydat) >= PROG_KONTRASTU &&
+                kontrast(TEKST_SZARY, kandydat) >= PROG_KONTRASTU_GRAFIKI
+            ) {
+                return kandydat;
+            }
+        }
+        return BIALY;
     }
 
     function kolorUserway(k) {
@@ -864,6 +898,21 @@
                     "Wpisz nazwę czcionki z Google Fonts (litery, cyfry i spacje, " +
                     "np. „Red Hat Display”).",
             });
+        }
+
+        if (k.tlo_strony === "wlasne" && RE_KOLOR.test(k.kolor_tla_strony || "")) {
+            var kt = kontrast(TEKST_STRONY, k.kolor_tla_strony);
+            var ks = kontrast(TEKST_SZARY, k.kolor_tla_strony);
+            if (kt < PROG_KONTRASTU || ks < PROG_KONTRASTU_GRAFIKI) {
+                bledy.push({
+                    pole: "kolor_tla_strony",
+                    komunikat:
+                        "Tło strony jest za ciemne — tekst i szare opisy byłyby słabo " +
+                        "czytelne. Wybierz jaśniejszy odcień; ciemną stronę daje " +
+                        "„Tryb kolorów”.",
+                    poprawka: rozjasnijDoKontrastu(k.kolor_tla_strony),
+                });
+            }
         }
 
         // Kolor główny: biały tekst na przyciskach i kolor linków na tle
@@ -1175,7 +1224,7 @@
             "$cfg-promien-przyciskow: " + promienPrzyciskow + ";",
             '$cfg-przyciski-styl: "' + k.przyciski_styl + '";',
             "$cfg-teksty-przyciskow: " + mapaScss(w.tekstyPrzyciskow) + ";",
-            "$cfg-tlo-szare: " + (k.tlo_strony === "szare") + ";",
+            "$cfg-tlo-szare: " + (k.tlo_strony === "szare" || k.tlo_strony === "wlasne") + ";",
             "$cfg-userway-kolor: " + w.kolorUserway + ";",
             "$cfg-userway-cien: " + CIENIE[k.cien_userway] + ";",
             "$cfg-tlo-obraz: " + (k.tlo_obraz ? str(k.tlo_obraz) : "null") + ";",

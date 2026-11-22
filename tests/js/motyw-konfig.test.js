@@ -356,3 +356,20 @@ describe("kompilacja SCSS", () => {
         expect(kompiluj({ ...PEŁNY, przyciski_styl: styl })).toContain(".button");
     }, 30000);
 });
+
+describe("własny kolor tła strony", () => {
+    test("trafia do $body-background", () => {
+        const k = M.normalizuj({ tlo_strony: "wlasne", kolor_tla_strony: "#f5f1e8" });
+        expect(M.doScss(k, {})).toContain("$body-background: #f5f1e8;");
+    });
+
+    test("za ciemne tło to błąd z jaśniejszą poprawką", () => {
+        const k = M.normalizuj({ tlo_strony: "wlasne", kolor_tla_strony: "#333333" });
+        const blad = M.waliduj(k, { bezNazwy: true }).find((b) => b.pole === "kolor_tla_strony");
+        expect(blad).toBeTruthy();
+        const poprawione = M.normalizuj({ ...k, kolor_tla_strony: blad.poprawka });
+        expect(
+            M.waliduj(poprawione, { bezNazwy: true }).some((b) => b.pole === "kolor_tla_strony"),
+        ).toBe(false);
+    });
+});
