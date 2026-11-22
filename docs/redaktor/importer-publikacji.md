@@ -423,6 +423,28 @@ przyjmuje afiliacji (np. wydział).”* z listą osób. Wróć do autorów
 (**„Wstecz”**) i zmień tym osobom jednostkę na katedrę/zakład albo na
 obcą jednostkę.
 
+### Autor ma na ten rok inną dyscyplinę
+
+Przy **„Utwórz publikację”** może pojawić się żółta ramka *„Nie można
+utworzyć pracy — dyscypliny autorów”* z listą osób, które mają na rok
+publikacji przypisane dyscypliny, ale nie tę wybraną w imporcie (np.
+dyscyplina przyszła ze zgłoszenia publikacji albo przypisania autora
+zmieniono w międzyczasie). Przy każdej osobie widać wybraną dyscyplinę
+i dyscypliny przypisane na ten rok. Nic nie zostaje zapisane, dane
+importu są zachowane. Możesz:
+
+- w kroku **„Autorzy”** (odnośnik w ramce) wybrać autorowi jedną
+  z przypisanych mu dyscyplin, albo
+- kliknąć nazwisko — strona autora w module redagowania otworzy się
+  w nowej karcie — i poprawić jego przypisanie dyscyplin na ten rok,
+
+a potem kliknąć ponownie **„Utwórz publikację”**. Ta sama lista pojawia
+się w ramce **„Wystąpił błąd”**, jeśli przypisania zmieniły się już po
+kliknięciu — po poprawce kliknij **„Spróbuj ponownie”**.
+
+Autorowi, który na rok publikacji **nie ma żadnej** dyscypliny, importer
+sam przypisze dyscyplinę wybraną w kroku autorów (patrz wyżej).
+
 ### Błąd serwera lub połączenia
 
 - Czerwona ramka **„Wystąpił błąd”** po pobieraniu danych lub tworzeniu

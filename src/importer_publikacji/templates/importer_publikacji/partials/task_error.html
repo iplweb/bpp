@@ -4,6 +4,10 @@
 
     <p>{{ session.last_error_message }}</p>
 
+    {% if autorzy_niezgodna_dyscyplina %}
+        {% include "importer_publikacji/partials/_autorzy_niezgodna_dyscyplina.html" with retry_hint=True %}
+    {% endif %}
+
     {# Flex wyrownuje przycisk w formularzu z linkiem w jednej linii #}
     <div style="display:flex; flex-wrap:wrap; align-items:center; gap:0.5rem;">
         <form method="post"
