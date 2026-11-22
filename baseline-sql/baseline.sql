@@ -254,26 +254,6 @@ $$;
 
 
 --
--- Name: bpp_autor_kosz_autorzy_mat(); Type: FUNCTION; Schema: public; Owner: -
---
-
-CREATE FUNCTION public.bpp_autor_kosz_autorzy_mat() RETURNS trigger
-    LANGUAGE plpgsql
-    AS $$
-BEGIN
-    IF NEW.deleted_at IS NOT NULL THEN
-        DELETE FROM bpp_autorzy_mat WHERE autor_id = NEW.id;
-    ELSE
-        INSERT INTO bpp_autorzy_mat ("rekord_id", "id", "autor_id", "jednostka_id", "kolejnosc", "typ_odpowiedzialnosci_id", "zapisany_jako", "zatrudniony", "afiliuje", "dyscyplina_naukowa_id", "upowaznienie_pbn", "profil_orcid", "kierunek_studiow_id", "oswiadczenie_ken", "przypieta", "data_oswiadczenia")
-      SELECT "rekord_id", "id", "autor_id", "jednostka_id", "kolejnosc", "typ_odpowiedzialnosci_id", "zapisany_jako", "zatrudniony", "afiliuje", "dyscyplina_naukowa_id", "upowaznienie_pbn", "profil_orcid", "kierunek_studiow_id", "oswiadczenie_ken", "przypieta", "data_oswiadczenia" FROM bpp_autorzy
-      WHERE autor_id = NEW.id
-      ON CONFLICT (id) DO UPDATE SET "rekord_id" = EXCLUDED."rekord_id", "autor_id" = EXCLUDED."autor_id", "jednostka_id" = EXCLUDED."jednostka_id", "kolejnosc" = EXCLUDED."kolejnosc", "typ_odpowiedzialnosci_id" = EXCLUDED."typ_odpowiedzialnosci_id", "zapisany_jako" = EXCLUDED."zapisany_jako", "zatrudniony" = EXCLUDED."zatrudniony", "afiliuje" = EXCLUDED."afiliuje", "dyscyplina_naukowa_id" = EXCLUDED."dyscyplina_naukowa_id", "upowaznienie_pbn" = EXCLUDED."upowaznienie_pbn", "profil_orcid" = EXCLUDED."profil_orcid", "kierunek_studiow_id" = EXCLUDED."kierunek_studiow_id", "oswiadczenie_ken" = EXCLUDED."oswiadczenie_ken", "przypieta" = EXCLUDED."przypieta", "data_oswiadczenia" = EXCLUDED."data_oswiadczenia";
-    END IF;
-    RETURN NULL;
-END $$;
-
-
---
 -- Name: bpp_autor_ustaw_jednostka_aktualna(); Type: FUNCTION; Schema: public; Owner: -
 --
 
@@ -331,25 +311,6 @@ BEGIN
     RETURN NEW;
 END;
 $$;
-
-
---
--- Name: bpp_autorzy_mat_bez_autora_z_kosza(); Type: FUNCTION; Schema: public; Owner: -
---
-
-CREATE FUNCTION public.bpp_autorzy_mat_bez_autora_z_kosza() RETURNS trigger
-    LANGUAGE plpgsql
-    AS $$
-BEGIN
-    IF NEW.autor_id IS NOT NULL AND EXISTS (
-        SELECT 1 FROM bpp_autor
-        WHERE id = NEW.autor_id AND deleted_at IS NOT NULL
-    ) THEN
-        DELETE FROM bpp_autorzy_mat WHERE id = NEW.id;
-        RETURN NULL;
-    END IF;
-    RETURN NEW;
-END $$;
 
 
 --
@@ -17961,7 +17922,7 @@ COPY public.django_migrations (id, app, name, applied) FROM stdin;
 678	ewaluacja_liczba_n	0006_alter_iloscudzialowdlaautorazacalosc_unique_together_and_more	2000-01-01 00:00:00+00
 679	ewaluacja_liczba_n	0007_alter_iloscudzialowdlaautorazacalosc_komentarz	2000-01-01 00:00:00+00
 848	pbn_export_queue	0005_reclassify_old_validation_errors	2000-01-01 00:00:00+00
-1216	bpp	0525_autorzy_mat_bez_autora_z_kosza	2000-01-01 00:00:00+00
+1216	ewaluacja_metryki	0015_statusgenerowania_reset_sekwencji	2000-01-01 00:00:00+00
 \.
 
 
@@ -32901,13 +32862,6 @@ CREATE CONSTRAINT TRIGGER bpp_autor_jednostka_jedno_podstawowe_trig AFTER INSERT
 
 
 --
--- Name: bpp_autor bpp_autor_kosz_autorzy_mat; Type: TRIGGER; Schema: public; Owner: -
---
-
-CREATE TRIGGER bpp_autor_kosz_autorzy_mat AFTER UPDATE OF deleted_at ON public.bpp_autor FOR EACH ROW WHEN ((old.deleted_at IS DISTINCT FROM new.deleted_at)) EXECUTE FUNCTION public.bpp_autor_kosz_autorzy_mat();
-
-
---
 -- Name: bpp_autor bpp_autor_kosz_straznik; Type: TRIGGER; Schema: public; Owner: -
 --
 
@@ -32919,13 +32873,6 @@ CREATE TRIGGER bpp_autor_kosz_straznik BEFORE DELETE OR UPDATE ON public.bpp_aut
 --
 
 CREATE TRIGGER bpp_autor_ustaw_jednostka_aktualna_trigger AFTER INSERT OR DELETE OR UPDATE ON public.bpp_autor_jednostka FOR EACH ROW EXECUTE FUNCTION public.bpp_autor_ustaw_jednostka_aktualna();
-
-
---
--- Name: bpp_autorzy_mat bpp_autorzy_mat_bez_autora_z_kosza; Type: TRIGGER; Schema: public; Owner: -
---
-
-CREATE TRIGGER bpp_autorzy_mat_bez_autora_z_kosza BEFORE INSERT ON public.bpp_autorzy_mat FOR EACH ROW EXECUTE FUNCTION public.bpp_autorzy_mat_bez_autora_z_kosza();
 
 
 --

@@ -1,11 +1,11 @@
 {
-  "git_sha": "59f0777dcef261c376eadcaab3bbf48ba46157c6",
+  "git_sha": "fb9d81a8ccc3da44352660a5e9ddde52af9cd9d1",
   "last_migration": {
     "admin": "0003_logentry_add_action_flag_choices",
     "admin_dashboard": "0001_initial",
     "auth": "0012_alter_user_first_name_max_length",
     "axes": "0010_accessattemptexpiration",
-    "bpp": "0525_autorzy_mat_bez_autora_z_kosza",
+    "bpp": "0524_bppuser_jednostki_metryk",
     "cerif_export": "0001_odpieta_przynaleznosc",
     "channels_broadcast": "0001_initial",
     "constance": "0003_drop_pickle",
@@ -25,7 +25,7 @@
     "ewaluacja2021": "0020_delete_ewaluacja2021_models",
     "ewaluacja_common": "0007_wybrany_okres_ewaluacji",
     "ewaluacja_liczba_n": "0012_okres_ewaluacji_wymagany",
-    "ewaluacja_metryki": "0014_status_generowania_per_okres",
+    "ewaluacja_metryki": "0015_statusgenerowania_reset_sekwencji",
     "ewaluacja_optymalizacja": "0019_okres_ewaluacji_wymagany",
     "ewaluacja_optymalizuj_publikacje": "0001_initial",
     "favicon": "0005_leftover_changes",
