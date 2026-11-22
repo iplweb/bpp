@@ -29,6 +29,8 @@
   // "Zobacz sieć powiązań" obok siebie, wyśrodkowane, z odstępem.
   // Flex + gap daje odstęp w poziomie ORAZ pionie (gdy zawiną się na
   // wąskim ekranie) — czego samo margin-left nie zapewniało.
+  // Jeden rząd: „Pokaż wszystkie prace” (przycisk dzielony ze strzałką ▾
+  // rozwijającą zakresy lat) i „Zobacz sieć powiązań”.
   &__quick-actions {
     display: flex;
     flex-wrap: wrap;
@@ -53,33 +55,13 @@
     border-radius: 6px;
     box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
     transition: all 0.2s ease;
+    margin: 0;
 
     &:hover,
     &:focus {
       background-color: #229954;
       box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
     }
-  }
-
-  // Zakresy lat („2022–2025 (34)”) obok „Pokaż wszystkie prace”:
-  // na komputerze w tym samym rzędzie, na telefonie cały rząd pod głównym
-  // przyciskiem, zawijany.
-  &__okresy {
-    display: flex;
-    flex-wrap: wrap;
-    justify-content: center;
-    gap: 0.5rem;
-
-    @media screen and (max-width: 39.9375em) {
-      flex-basis: 100%;
-    }
-  }
-
-  &__okres-btn {
-    padding: 10px 16px;
-    font-size: 0.95rem;
-    border-radius: 6px;
-    white-space: nowrap;
   }
 
   // Grid with gap
@@ -1197,4 +1179,22 @@
 // na stronach źródła i wydawcy.
 .bpp-sekcje-top {
   margin-top: 1.5rem;
+}
+
+// Sekcja „Osiągnięcia naukowe” (RAD-on): wskaźnik pobierania danych.
+.radon-osiagniecia__ladowanie {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.5rem 0;
+  opacity: 0.75;
+
+  .spinner {
+    margin: 0;
+  }
+}
+
+// Podpis źródła ma sens dopiero, gdy dane już są.
+.radon-osiagniecia[data-radon-laduje] .radon-osiagniecia__zrodlo {
+  display: none;
 }

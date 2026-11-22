@@ -29,6 +29,7 @@ def test_drawer_shows_highlighted_query(page: Page, live_server):
     page.goto(live_server.url + reverse("multiseek:index"))
     page.evaluate("Cookielaw.accept()")
 
+    page.click("#multiseekFormularzMenu")  # przycisk jest w menu „Formularz"
     page.click("#toDjangoqlButton")
 
     # Czekamy aż formatter wyrenderuje podświetlone tokeny.

@@ -1,0 +1,93 @@
+{# Menu przycisku „Pokaż wszystkie prace/publikacje” (strzałka + lista). #}
+{# Wstawiać wewnątrz div.przycisk-prac, zaraz po formularzu głównego przycisku. #}
+{# Oczekuje: liczby (views.browse.liczby_prac), pola (lista par nazwa/wartość #}
+{# ukrytych pól zawężających do autora/jednostki), tytul (nazwa do tytułu #}
+{# wyników), klasa (klasy głównego przycisku — strzałka wygląda tak samo), #}
+{# kotwica (id wyszukiwarki z filtrami na tej stronie). #}
+<details class="przycisk-prac__menu">
+    <summary class="{{ klasa }} przycisk-prac__strzalka"
+             title="Wybierz, które prace pokazać"
+             aria-label="Wybierz, które prace pokazać"><svg viewBox="0 0 14 14" aria-hidden="true" focusable="false"><path d="M2 5l5 5 5-5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></summary>
+    <div class="przycisk-prac__lista">
+        {% if liczby.okresy %}
+            <div class="przycisk-prac__naglowek">Z lat</div>
+            {% for okres in liczby.okresy %}
+                <form method="post" action="{% url "bpp:browse_build_search" %}" class="przycisk-prac__form">
+                    {# Brak {% csrf_token %} celowo — BuildSearch jest @csrf_exempt. #}
+                    {% for nazwa, wartosc in pola %}<input type="hidden" name="{{ nazwa }}" value="{{ wartosc }}"/>{% endfor %}
+                    <input type="hidden" name="zakres_lat" value="[{{ okres.rok_od|stringformat:"d" }},{{ okres.rok_do|stringformat:"d" }}]"/>
+                    <input type="hidden" name="suggested-title" value="{{ tytul }} — prace {{ okres.rok_od|stringformat:"d" }}–{{ okres.rok_do|stringformat:"d" }}"/>
+                    <input type="hidden" name="cel" value="wyniki"/>
+                    <button type="submit"
+                            class="przycisk-prac__pozycja przycisk-prac__pozycja--okres"
+                            title="Prace z lat {{ okres.rok_od|stringformat:"d" }}–{{ okres.rok_do|stringformat:"d" }}"><span>Prace z lat {{ okres.rok_od|stringformat:"d" }}–{{ okres.rok_do|stringformat:"d" }}</span><span class="przycisk-prac__liczba">{{ okres.liczba }}</span></button>
+                </form>
+            {% endfor %}
+        {% endif %}
+        {% if liczby.typy %}
+            <div class="przycisk-prac__naglowek">Według typu</div>
+            {% for typ in liczby.typy %}
+                <form method="post" action="{% url "bpp:browse_build_search" %}" class="przycisk-prac__form">
+                    {% for nazwa, wartosc in pola %}<input type="hidden" name="{{ nazwa }}" value="{{ wartosc }}"/>{% endfor %}
+                    <input type="hidden" name="typ" value="{{ typ.nazwa }}"/>
+                    <input type="hidden" name="suggested-title" value="{{ tytul }} — {{ typ.nazwa }}"/>
+                    <input type="hidden" name="cel" value="wyniki"/>
+                    <button type="submit" class="przycisk-prac__pozycja"><span>{{ typ.nazwa|capfirst }}</span><span class="przycisk-prac__liczba">{{ typ.liczba }}</span></button>
+                </form>
+            {% endfor %}
+        {% endif %}
+        {% if liczby.charaktery %}
+            <div class="przycisk-prac__naglowek">Według charakteru</div>
+            {% for charakter in liczby.charaktery %}
+                <form method="post" action="{% url "bpp:browse_build_search" %}" class="przycisk-prac__form">
+                    {% for nazwa, wartosc in pola %}<input type="hidden" name="{{ nazwa }}" value="{{ wartosc }}"/>{% endfor %}
+                    <input type="hidden" name="charakter_formalny" value="{{ charakter.nazwa }}"/>
+                    <input type="hidden" name="suggested-title" value="{{ tytul }} — {{ charakter.nazwa }}"/>
+                    <input type="hidden" name="cel" value="wyniki"/>
+                    <button type="submit" class="przycisk-prac__pozycja"><span>{{ charakter.nazwa }}</span><span class="przycisk-prac__liczba">{{ charakter.liczba }}</span></button>
+                </form>
+            {% endfor %}
+        {% endif %}
+        {# Pokazywany przez skrypt tylko, gdy wyszukiwarka jest na stronie. #}
+        <a href="#{{ kotwica }}" data-kotwica="{{ kotwica }}"
+           class="przycisk-prac__pozycja przycisk-prac__filtry" hidden><span><i class="fi-magnifying-glass"></i> Wyszukiwarka z filtrami</span></a>
+    </div>
+</details>
+<script>
+    // Menu przycisku prac: zamknij kliknięciem obok albo Esc; „Wyszukiwarka
+    // z filtrami” przewija do formularza na tej stronie.
+    (function () {
+        var skrypt = document.currentScript;
+        var menu = skrypt && skrypt.previousElementSibling;
+        if (!menu || !menu.matches("details.przycisk-prac__menu")) { return; }
+        document.addEventListener("click", function (e) {
+            if (menu.open && !menu.contains(e.target)) { menu.open = false; }
+        });
+        document.addEventListener("keydown", function (e) {
+            if (e.key === "Escape" && menu.open) {
+                menu.open = false;
+                menu.querySelector("summary").focus();
+            }
+        });
+        function podepnijFiltry() {
+            var filtry = menu.querySelector(".przycisk-prac__filtry");
+            var cel = filtry && document.getElementById(filtry.dataset.kotwica);
+            if (!cel) { return; }
+            filtry.hidden = false;
+            filtry.addEventListener("click", function (e) {
+                e.preventDefault();
+                menu.open = false;
+                if (window.bpp && window.bpp.scrollToVisible) {
+                    window.bpp.scrollToVisible(cel);
+                } else {
+                    cel.scrollIntoView();
+                }
+            });
+        }
+        if (document.readyState === "loading") {
+            document.addEventListener("DOMContentLoaded", podepnijFiltry);
+        } else {
+            podepnijFiltry();
+        }
+    })();
+</script>

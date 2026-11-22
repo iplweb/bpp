@@ -1,203 +1,135 @@
 {% extends "admin/object_history.html" %}
-{% load i18n admin_urls %}
+{% load i18n admin_urls l10n %}
+{# FD#587: strona „Historia” — wersje (reversion) z wyborem pary do porównania i źródłem zmiany, pod Grappelli. #}
 
-{% block extrahead %}
+{% block extrastyle %}
     {{ block.super }}
-    <style>
-        /* Grappelli-compatible styling for reversion history */
-        .bpp-historia-tabela {
-            width: 100%;
-            border-collapse: collapse;
-            border-spacing: 0;
-            margin: 0;
-            background: var(--bpp-tlo-pow, #fff);
-        }
+    {% include "reversion/_style_historii.html" %}
+{% endblock %}
 
-        .bpp-historia-tabela thead th {
-            padding: 10px 20px;
-            text-align: left;
-            font-weight: bold;
-            background: var(--bpp-tlo-pow-2, #e4e4e4);
-            background-image: linear-gradient(var(--bpp-tlo-pow-2, #f7f7f7), var(--bpp-tlo-pow-2, #e4e4e4));
-            border-bottom: 1px solid var(--bpp-ramka, #d4d4d4);
-            border-right: 1px solid var(--bpp-ramka, #d4d4d4);
-            color: var(--bpp-tekst-przygaszony, #666);
-            text-shadow: 0 1px 0 rgba(255,255,255,0.5);
-            font-size: 11px;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-        }
-
-        .bpp-historia-tabela tbody tr {
-            border-bottom: 1px solid var(--bpp-ramka, #e4e4e4);
-        }
-
-        .bpp-historia-tabela tbody tr:nth-child(even) {
-            background: var(--bpp-tlo-pow-2, #f9f9f9);
-        }
-
-        .bpp-historia-tabela tbody tr:hover {
-            background: var(--bpp-tlo-hover, #f0f0f0);
-        }
-
-        .bpp-historia-tabela tbody th,
-        .bpp-historia-tabela tbody td {
-            padding: 10px 20px;
-            vertical-align: top;
-            font-size: 12px;
-            line-height: 15px;
-        }
-
-        .bpp-historia-tabela tbody th {
-            font-weight: normal;
-        }
-
-        .bpp-historia-tabela tbody th a {
-            color: var(--bpp-akcent, #309bbf);
-            font-weight: bold;
-            text-decoration: none;
-        }
-
-        .bpp-historia-tabela tbody th a:hover {
-            color: var(--bpp-tekst, #444);
-            text-decoration: underline;
-        }
-
-        .grp-module {
-            margin: 0 0 20px;
-            border: 1px solid var(--bpp-ramka, #d4d4d4);
-            border-radius: 3px;
-            background: var(--bpp-tlo-pow, #fff);
-        }
-
-        .grp-module h2 {
-            padding: 10px 20px;
-            margin: 0;
-            font-size: 12px;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-            font-weight: bold;
-            color: var(--bpp-tekst-przygaszony, #666);
-            background: var(--bpp-tlo-pow-2, #e4e4e4);
-            background-image: linear-gradient(var(--bpp-tlo-pow-2, #f7f7f7), var(--bpp-tlo-pow-2, #e4e4e4));
-            border-bottom: 1px solid var(--bpp-ramka, #d4d4d4);
-            border-radius: 2px 2px 0 0;
-        }
-
-        .grp-module .grp-row {
-            padding: 10px 20px;
-            border-bottom: 1px solid var(--bpp-ramka, #e4e4e4);
-        }
-
-        .grp-module .grp-row:last-child {
-            border-bottom: none;
-        }
-
-        .grp-description {
-            padding: 10px 20px;
-            background: var(--bpp-tlo-pow-2, #f9f9f9);
-            border-bottom: 1px solid var(--bpp-ramka, #e4e4e4);
-            color: var(--bpp-tekst-przygaszony, #666);
-            font-size: 12px;
-            line-height: 18px;
-        }
-    </style>
+{% block object-tools %}
+    <ul class="grp-object-tools">
+        <li><a href="{% url opts|admin_urlname:'change' object.pk|admin_urlquote %}">Edytuj aktualny rekord</a></li>
+    </ul>
 {% endblock %}
 
 {% block content %}
-    <div class="g-d-c">
-        <div class="g-d-12 g-m-12">
-            <div class="grp-module">
-                <h2>{% trans 'History' %}</h2>
-                {% if action_list %}
-                    <div class="grp-description">
-                        <p>{% blocktrans %}Choose a date from the list below to revert to a previous version of this object.{% endblocktrans %}</p>
-                    </div>
-                    <table id="grp-change-history" class="grp-table bpp-historia-tabela">
-                        <thead>
-                            <tr>
-                                <th scope="col">{% trans 'Date/time' %}</th>
-                                <th scope="col">{% trans 'User' %}</th>
-                                <th scope="col">{% trans 'Action' %}</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {% for action in action_list %}
-                                <tr class="{% cycle 'grp-row-even' 'grp-row-odd' %}">
-                                    <th scope="row">
-                                        {% if action.url %}
-                                            <a href="{{ action.url }}">{{ action.revision.date_created|date:"j E Y, H:i" }}</a>
-                                        {% else %}
-                                            {{ action.revision.date_created|date:"j E Y, H:i" }}
-                                        {% endif %}
-                                    </th>
-                                    <td>
-                                        {% if action.revision.user %}
-                                            {{ action.revision.user.get_username }}
-                                            {% if action.revision.user.get_full_name %}
-                                                <br/><span style="color: #999; font-size: 11px;">({{ action.revision.user.get_full_name }})</span>
-                                            {% endif %}
-                                        {% else %}
-                                            <span style="color: #999;">&mdash;</span>
-                                        {% endif %}
-                                    </td>
-                                    <td>
-                                        {% if action.revision.comment %}
-                                            {{ action.revision.comment|linebreaksbr }}
-                                        {% else %}
-                                            <span style="color: #999; font-style: italic;">{% trans 'No comment' %}</span>
-                                        {% endif %}
-                                    </td>
-                                </tr>
-                            {% endfor %}
-                        </tbody>
-                    </table>
-                {% elif historia_sprzed_wersjonowania %}
-                    {# Stara historia (LogEntry) jest niżej — komunikat „brak historii” by jej przeczył. #}
-                    <div class="grp-row">
-                        <p style="color: #999;">Brak zapisanych wersji do przywrócenia — pierwsza powstanie przy najbliższej zmianie rekordu. Wcześniejsze zmiany widać poniżej.</p>
-                    </div>
+    <div class="g-d-c bpp-historia">
+        {% if rekord_w_koszu %}
+            <div class="bpp-kosz-ramka">
+                <div>
+                    <strong>🗑️ Rekord jest w koszu</strong> (od {{ w_koszu_od|date:"j E Y (l), H:i"|lower }}).
+                    Wcześniejsze wersje można przeglądać i porównywać, ale przywrócić dopiero po wyjęciu rekordu z kosza.
+                </div>
+                {% if kosz_przywroc_url %}
+                    <form method="post" action="{{ kosz_przywroc_url }}">{% csrf_token %}<button type="submit" class="grp-button grp-default">♻️ Przywróć z kosza</button></form>
                 {% else %}
-                    <div class="grp-row">
-                        <p style="color: #999;">{% trans "This object doesn't have a change history. It probably wasn't added via this admin site." %}</p>
-                    </div>
+                    <span class="bpp-przygaszony">Nie masz uprawnień do przywracania z kosza.</span>
                 {% endif %}
             </div>
-            {% if historia_sprzed_wersjonowania %}
-                <div class="grp-module">
-                    <h2>Wcześniejsza historia (bez możliwości przywrócenia)</h2>
-                    <div class="grp-description">
-                        <p>Zmiany sprzed włączenia wersjonowania tego rekordu — widać, kto i kiedy zmieniał, ale tych stanów nie da się przywrócić.</p>
-                    </div>
-                    <table id="grp-change-history-logentry" class="grp-table bpp-historia-tabela">
-                        <thead>
-                            <tr>
-                                <th scope="col">{% trans 'Date/time' %}</th>
-                                <th scope="col">{% trans 'User' %}</th>
-                                <th scope="col">{% trans 'Action' %}</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {% for wpis in historia_sprzed_wersjonowania %}
-                                <tr class="{% cycle 'grp-row-even' 'grp-row-odd' %}">
-                                    <th scope="row">{{ wpis.action_time|date:"j E Y, H:i" }}</th>
-                                    <td>
-                                        {% if wpis.user %}
-                                            {{ wpis.user.get_username }}
-                                            {% if wpis.user.get_full_name %}
-                                                <br/><span style="color: #999; font-size: 11px;">({{ wpis.user.get_full_name }})</span>
-                                            {% endif %}
-                                        {% else %}
-                                            <span style="color: #999;">&mdash;</span>
-                                        {% endif %}
-                                    </td>
-                                    <td>{{ wpis.get_change_message|default:wpis.get_action_flag_display }}</td>
-                                </tr>
-                            {% endfor %}
-                        </tbody>
-                    </table>
-                </div>
-            {% endif %}
-        </div>
+        {% endif %}
+        {% if action_list %}
+            {% if compare_view %}<form method="get" action="compare/">{% endif %}
+            <div class="bpp-historia-pasek">
+                {% if compare_view and comparable %}
+                    <button type="submit" class="grp-button grp-default">Porównaj zaznaczone wersje</button>
+                    <span class="bpp-historia-pomoc">Zaznacz wersję starszą (lewe kółko) i nowszą (prawe kółko), aby zobaczyć, co się zmieniło.{% if not rekord_w_koszu %} Kliknij datę, aby obejrzeć wersję i ją przywrócić.{% endif %}</span>
+                {% else %}
+                    <span class="bpp-historia-pomoc">{% if not rekord_w_koszu %}Kliknij datę, aby obejrzeć wersję i ją przywrócić. {% endif %}Porównanie będzie dostępne, gdy rekord będzie miał co najmniej dwie wersje.</span>
+                {% endif %}
+            </div>
+            <table id="grp-change-history" class="grp-table bpp-historia-tabela">
+                <thead>
+                    <tr>
+                        {% if compare_view and comparable %}
+                            <th scope="col" class="bpp-kol-ab" title="Lewe kółko — wersja starsza, prawe — wersja nowsza"><span class="bpp-ab">starsza</span> <span class="bpp-ab">nowsza</span></th>
+                        {% endif %}
+                        <th scope="col" class="bpp-kol-data">Data i godzina</th>
+                        <th scope="col" class="bpp-kol-user">Użytkownik</th>
+                        <th scope="col" class="bpp-kol-zrodlo">Źródło</th>
+                        <th scope="col">Zmiana</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for action in action_list %}
+                        <tr>
+                            {% if compare_view and comparable %}
+                                <td class="bpp-kol-ab">
+                                    <label class="bpp-ab" title="Wersja starsza"><input type="radio" name="version_id1" value="{{ action.version.pk|unlocalize }}" aria-label="Wersja starsza" {% if forloop.first %}style="visibility:hidden"{% endif %} {% if action.second %}checked{% endif %}></label>
+                                    <label class="bpp-ab" title="Wersja nowsza"><input type="radio" name="version_id2" value="{{ action.version.pk|unlocalize }}" aria-label="Wersja nowsza" {% if forloop.last %}style="visibility:hidden"{% endif %} {% if action.first %}checked{% endif %}></label>
+                                </td>
+                            {% endif %}
+                            <td class="bpp-kol-data">
+                                {% if action.url and not rekord_w_koszu %}
+                                    <a href="{{ action.url }}" title="Obejrzyj tę wersję i przywróć ją">{{ action.revision.date_created|date:"l, j E Y, H:i"|lower }}</a>
+                                {% else %}
+                                    {{ action.revision.date_created|date:"l, j E Y, H:i"|lower }}
+                                {% endif %}
+                                {% if action.version.pk == aktualna_wersja_pk %}<br><span class="bpp-aktualna" title="Najnowsza zapisana wersja — obecny stan rekordu">wersja aktualna</span>{% elif action.version.pk == najstarsza_wersja_pk %}<br><span class="bpp-najstarsza" title="Pierwsza zapisana wersja rekordu">wersja najstarsza</span>{% endif %}
+                            </td>
+                            <td class="bpp-kol-user">
+                                {% if action.revision.user %}
+                                    {{ action.revision.user.get_full_name|default:action.revision.user.get_username }}
+                                    {% if action.revision.user.get_full_name %}<br><span class="bpp-przygaszony">{{ action.revision.user.get_username }}</span>{% endif %}
+                                {% else %}
+                                    <span class="bpp-przygaszony">&mdash;</span>
+                                {% endif %}
+                            </td>
+                            <td class="bpp-kol-zrodlo">
+                                {% with zrodlo=action.revision.zrodlo_zmiany %}
+                                    {% if zrodlo %}
+                                        <span class="bpp-zrodlo bpp-zrodlo-{{ zrodlo.zrodlo }}">{{ zrodlo.get_zrodlo_display }}</span>
+                                        {% if zrodlo.aplikacja_nazwa %}<br><span class="bpp-przygaszony">{{ zrodlo.aplikacja_nazwa }}</span>{% endif %}
+                                    {% else %}
+                                        <span class="bpp-przygaszony">&mdash;</span>
+                                    {% endif %}
+                                {% endwith %}
+                            </td>
+                            <td class="bpp-kol-zmiana">
+                                {% if action.revision.comment %}
+                                    {{ action.revision.comment|linebreaksbr }}
+                                {% else %}
+                                    <span class="bpp-przygaszony">(bez opisu zmiany)</span>
+                                {% endif %}
+                            </td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+            {% if compare_view %}</form>{% endif %}
+        {% elif historia_sprzed_wersjonowania %}
+            {# Stara historia (LogEntry) jest niżej — komunikat „brak historii” by jej przeczył. #}
+            <p class="bpp-historia-pomoc">Brak zapisanych wersji do przywrócenia — pierwsza powstanie przy najbliższej zmianie rekordu. Wcześniejsze zmiany widać poniżej.</p>
+        {% else %}
+            <p class="bpp-historia-pomoc">{% trans "This object doesn't have a change history. It probably wasn't added via this admin site." %}</p>
+        {% endif %}
+        {% if historia_sprzed_wersjonowania %}
+            <h2 style="margin-top: 20px;">Wcześniejsza historia (bez możliwości przywrócenia)</h2>
+            <p class="bpp-historia-pomoc">Zmiany sprzed włączenia wersjonowania tego rekordu — widać, kto i kiedy zmieniał, ale tych stanów nie da się przywrócić.</p>
+            <table id="grp-change-history-logentry" class="grp-table bpp-historia-tabela">
+                <thead>
+                    <tr>
+                        <th scope="col" class="bpp-kol-data">Data i godzina</th>
+                        <th scope="col" class="bpp-kol-user">Użytkownik</th>
+                        <th scope="col">Zmiana</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for wpis in historia_sprzed_wersjonowania %}
+                        <tr>
+                            <td class="bpp-kol-data">{{ wpis.action_time|date:"l, j E Y, H:i"|lower }}</td>
+                            <td class="bpp-kol-user">
+                                {% if wpis.user %}
+                                    {{ wpis.user.get_full_name|default:wpis.user.get_username }}
+                                {% else %}
+                                    <span class="bpp-przygaszony">&mdash;</span>
+                                {% endif %}
+                            </td>
+                            <td class="bpp-kol-zmiana">{{ wpis.get_change_message|default:wpis.get_action_flag_display }}</td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        {% endif %}
     </div>
 {% endblock %}

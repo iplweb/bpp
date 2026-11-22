@@ -7,7 +7,7 @@ Run on the Witcher demo DB (docs/deweloper/zrzuty-ekranu.md):
 - creates the editor account ``vesemir`` (is_staff + "wprowadzanie danych"
   + "zgłoszenia publikacji") and the superuser ``regis`` (the university
   settings and the Administracja menu are superuser screens),
-- assigns ``vesemir`` to one faculty in "Obsługa zgłoszeń prac - wydziały",
+- assigns ``vesemir`` to one faculty (pierwszy alfabetycznie) in "Obsługa zgłoszeń prac - wydziały",
   so that list is not empty,
 - sets the submission form options to the values the page describes
   (button shown to everyone, no login required, fee questions for articles
@@ -18,7 +18,8 @@ from django.contrib.auth.models import Group
 from password_policies.models import PasswordHistory
 
 from bpp.const import GR_WPROWADZANIE_DANYCH, GR_ZGLOSZENIA_PUBLIKACJI
-from bpp.models import BppUser, Jednostka, Uczelnia
+from bpp.demo_data.zrzuty import wydzial_zgloszen
+from bpp.models import BppUser, Uczelnia
 from zglos_publikacje.models import Obslugujacy_Zgloszenia_Wydzialow
 
 
@@ -53,7 +54,11 @@ konto(
     is_superuser=True,
 )
 
-wydzial = Jednostka.objects.get(nazwa="Wydział Bestiariuszu", parent__isnull=True)
+# Wydział z bazy, a nie po nazwie (nazwy losuje generator danych demo):
+# pierwszy alfabetycznie wydział (bez „Jednostki Domyślnej” i „Obcej
+# jednostki”, które też nie mają nadrzędnej) — wspólne ze scenariuszem
+# ``admin-zglaszanie-publikacji``.
+wydzial = wydzial_zgloszen()
 Obslugujacy_Zgloszenia_Wydzialow.objects.get_or_create(user=vesemir, wydzial=wydzial)
 
 Uczelnia.objects.update(

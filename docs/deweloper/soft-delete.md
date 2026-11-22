@@ -192,7 +192,7 @@ a w adminie nie dało się skasowanych zgłoszeń ani zobaczyć, ani przywróci�
 
 | Model | Zasady |
 |---|---|
-| `Zgloszenie_Publikacji` | Nic nie blokuje kosza (autorzy, załączniki i sesje importu są pominięte w guardzie). Admin jak wszędzie: filtr „♻️ Kosz" (ostatni; „🗑️ Tylko skasowane" wyłącza domyślne zawężenie „stan obsługi → Do obsługi", więc pokazuje też spam i odrzucone), „Usuń do kosza" z powodem, „♻️ Przywróć" (akcja i przycisk). Formularz zgłoszenia w adminie nigdy nie jest edytowalny, więc przywracanie sprawdza uprawnienie `change` użytkownika wprost (`moze_przywracac`). Zgłoszenie z kosza nie ma przycisków „Użyj importera", „Zwróć do autora", „Dodaj wyd. …"; `zwroc/` daje 404. Strona publiczna: link „edycja zgłoszenia" (kod z e-maila) daje 404; `numer_zgloszenia` w formularzu publikacji go nie widzi; importer nie domyka zgłoszenia z kosza i nie bierze z niego dyscyplin ani opłat. Ślad: `SoftDeleteLog` + `LogEntry` (model spoza reversion). `/api/v1/` zgłoszeń nie wystawia — nie ma ich w `/api/v1/usuniete/`. |
+| `Zgloszenie_Publikacji` | Nic nie blokuje kosza (autorzy, załączniki i sesje importu są pominięte w guardzie). Admin jak wszędzie: filtr „♻️ Kosz" (ostatni; „🗑️ Tylko skasowane" wyłącza domyślne zawężenie „stan obsługi → Do obsługi", więc pokazuje też spam i odrzucone), „Usuń do kosza" z powodem, „♻️ Przywróć" (akcja i przycisk). Formularz zgłoszenia w adminie nigdy nie jest edytowalny, więc przywracanie sprawdza uprawnienie `change` użytkownika wprost (`moze_przywracac`). Zgłoszenie z kosza nie ma przycisków „Użyj importera", „Zwróć do autora", „Dodaj wyd. …"; `zwroc/` daje 404. Strona publiczna: link „edycja zgłoszenia" (kod z e-maila) daje 404; `numer_zgloszenia` w formularzu publikacji go nie widzi; importer nie domyka zgłoszenia z kosza i nie bierze z niego dyscyplin ani opłat. Ślad: `SoftDeleteLog` + rewizja reversion (od FD#587). `/api/v1/` zgłoszeń nie wystawia — nie ma ich w `/api/v1/usuniete/`. |
 | `Zgloszenie_Publikacji_Autor`, `Zgloszenie_Publikacji_Zalacznik` | **NIE** — jak `*_Autor` publikacji: domyślny `objects` ukrywa wiersze zgłoszeń z kosza, `all_objects` widzi wszystko; wracają przy przywróceniu. |
 
 Zgłoszenia skasowane starym mechanizmem mają te same kolumny
@@ -335,17 +335,16 @@ Kosz i przywrócenie **zawsze** zostawiają ślad w historii rekordu
 
 - `reversion.is_registered(model)` → **rewizja** reversion z `set_user`
   i `set_comment` („Przeniesiono do kosza (powód: …)" / „Przywrócono
-  z kosza"). Dziś: `Autor` i `Uczelnia` (jawnie, `bpp/wersjonowanie.py`,
-  BEZ pól kosza `deleted_at`/`restored_at`/`transaction_id` — przywrócenie
-  wersji nie może ominąć `delete()`/`restore()`);
+  z kosza"). Od FD#587: `Autor`, `Uczelnia`, publikacje, zgłoszenia,
+  słowniki (`bpp/wersjonowanie.py`, BEZ pól kosza
+  `deleted_at`/`restored_at`/`transaction_id` — przywrócenie wersji nie
+  może ominąć `delete()`/`restore()`);
 - w przeciwnym razie → wpis admina `LogEntry` (CHANGE) z tym samym
-  komunikatem (publikacje, słowniki). Bez usera (operacja
-  systemowa) `LogEntry` nie powstaje — śladem zostaje `SoftDeleteLog`.
+  komunikatem. Bez usera (operacja systemowa) `LogEntry` nie powstaje —
+  śladem zostaje `SoftDeleteLog`.
 
-Rejestracja modelu w reversion w przyszłości **automatycznie** przełącza go
-na rewizje — kod kosza się nie zmienia. To planowany następny krok
-(osobny PR): rejestracja praktycznie każdego modelu edytowanego w adminie
-(publikacje, struktura, słowniki) — patrz
+Rejestracja modelu w reversion **automatycznie** przełącza go na rewizje —
+kod kosza się nie zmienia. Patrz
 [Historia zmian (reversion)](historia-zmian-reversion.md).
 
 Admin nie zapisuje przy koszu wpisu `DELETION` (rekord nie został usunięty).
@@ -508,9 +507,6 @@ nie cały graf — „`migrate pbn_api 0077`" pociągnęłoby za sobą ten łań
 - **Trwałe usuwanie z kosza w adminie** (opróżnianie kosza) — wymaga
   decyzji co do niezakończonych wycofań z PBN.
 
-- **Rejestracja modeli w reversion** (publikacje, struktura, słowniki) —
-  kosz automatycznie przejdzie z `LogEntry` na rewizje.
-- **reversion dla relacji:** autorstwa (`*_Autor`) jako obiekty powiązane
-  rewizji publikacji (`follow`) — razem z rejestracją publikacji; pozwoli
-  też odtworzyć atrybucję po odpięciu autora.
+- ~~Rejestracja modeli w reversion~~ i ~~autorstwa (`*_Autor`) jako
+  `follow` publikacji~~ — zrobione w FD#587.
 - **Kolejka usuwania z PBN** (FD#539) — patrz ramka wyżej.

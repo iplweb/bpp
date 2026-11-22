@@ -1,0 +1,104 @@
+{% extends "admin/change_form.html" %}
+{% load i18n admin_urls %}
+{# FD#587: formularz przywracania wersji — po polsku, z ostrzeżeniem, co stanie się z listami powiązanymi (autorzy, granty, pliki…). #}
+
+{% block extrastyle %}
+    {{ block.super }}
+    {% include "reversion/_style_historii.html" %}
+    <style>
+        .bpp-przywracanie {
+            margin: 0 0 20px;
+            padding: 12px 20px;
+            border: 1px solid var(--bpp-ramka, #d4d4d4);
+            border-left: 4px solid #e0a800;
+            border-radius: 3px;
+            background: var(--bpp-tlo-pow, #fffbea);
+            font-size: 12px;
+            line-height: 18px;
+        }
+        .bpp-przywracanie h3 { margin: 0 0 6px; font-size: 13px; }
+        .bpp-przywracanie h4 { margin: 10px 0 2px; font-size: 12px; }
+        .bpp-przywracanie ul { margin: 2px 0 0 18px; padding: 0; list-style: disc; }
+        .bpp-przywracanie .bpp-usuniete { color: #b3261e; }
+        .bpp-przywracanie .bpp-przywrocone { color: #1e7e34; }
+        .bpp-aktualna {
+            display: inline-block;
+            padding: 1px 8px;
+            border-radius: 9px;
+            font-size: 11px;
+            font-weight: bold;
+            color: #fff;
+            background: #2e8b57;
+            vertical-align: middle;
+        }
+    </style>
+{% endblock %}
+
+{% block breadcrumbs %}
+    <ul class="grp-horizontal-list">
+        <li><a href="{% url 'admin:index' %}">{% trans "Home" %}</a></li>
+        <li><a href="{% url 'admin:app_list' opts.app_label %}">{{ opts.app_config.verbose_name }}</a></li>
+        <li><a href="{% url opts|admin_urlname:'changelist' %}">{{ opts.verbose_name_plural|capfirst }}</a></li>
+        <li><a href="{% url opts|admin_urlname:'change' object_id %}">{{ original|truncatewords:"18" }}</a></li>
+        <li><a href="{% url opts|admin_urlname:'history' object_id %}">Historia</a></li>
+        <li>Wersja z {{ wersja_podgladu.revision.date_created|date:"j E Y (l), H:i"|lower }}</li>
+    </ul>
+{% endblock %}
+
+{% block content_title %}<h1>Wersja z {{ wersja_podgladu.revision.date_created|date:"j E Y (l), H:i"|lower }}: {{ original|truncatewords:"24" }}</h1>{% endblock %}
+
+{% block object-tools %}
+    <ul class="grp-object-tools">
+        <li><a href="{% url opts|admin_urlname:'change' object_id %}">Edytuj aktualny rekord</a></li>
+        <li><a href="{% url opts|admin_urlname:'history' object_id %}">Historia</a></li>
+    </ul>
+{% endblock %}
+
+{% block form_top %}
+    <div class="bpp-przywracanie">
+        {% if wersja_aktualna %}
+            <h3>To jest wersja aktualna <span class="bpp-aktualna">wersja aktualna</span></h3>
+            <p>Wersja z {{ wersja_podgladu.revision.date_created|date:"j E Y (l), H:i"|lower }} to najnowsza zapisana wersja, czyli obecny stan rekordu — nie ma czego przywracać. Aby wrócić do wcześniejszego stanu, wybierz starszą wersję na stronie <a href="{% url opts|admin_urlname:'history' object_id %}">Historia</a>; rekord edytujesz w <a href="{% url opts|admin_urlname:'change' object_id %}">zwykłym formularzu</a>.</p>
+        {% elif wersja_jak_aktualna %}
+            <h3>Wersja z {{ wersja_podgladu.revision.date_created|date:"j E Y (l), H:i"|lower }} — taka sama jak aktualna <span class="bpp-aktualna">bez różnic</span></h3>
+            <p>Treść tej wersji niczym się nie różni od obecnego stanu rekordu (np. rekord został do niej właśnie przywrócony) — nie ma czego przywracać. Aby wrócić do innego stanu, wybierz inną wersję na stronie <a href="{% url opts|admin_urlname:'history' object_id %}">Historia</a>.</p>
+        {% else %}
+            <h3>Podgląd wcześniejszej wersji z {{ wersja_podgladu.revision.date_created|date:"j E Y (l), H:i"|lower }}</h3>
+            <p>Poniżej rekord w stanie z tej wersji (nie obecny stan) — tylko do podglądu, bez edycji. {% if pokaz_przywroc %}Przycisk „♻️ Przywróć tę wersję” na dole strony przywraca rekord do tego stanu; samo przywrócenie też trafi do historii, więc da się je cofnąć.{% else %}Nie masz uprawnień do przywracania wersji tego rekordu.{% endif %}</p>
+        {% endif %}
+        {% if konflikty_przywrocenia %}
+            <h3 class="bpp-usuniete" style="margin-top: 10px;">Tej wersji nie można przywrócić</h3>
+            <p class="bpp-usuniete">Te pozycje należą teraz do innego rekordu — przywrócenie zabrałoby je tamtemu rekordowi:</p>
+            <ul class="bpp-usuniete">{% for poz in konflikty_przywrocenia %}<li>{{ poz }}</li>{% endfor %}</ul>
+            <p>Popraw rekord ręcznie albo najpierw przenieś te pozycje z powrotem.</p>
+        {% endif %}
+        {% if zmiany_powiazanych %}
+            <h3 style="margin-top: 10px;">Uwaga: przywrócenie zmieni też listy powiązane z rekordem</h3>
+            {% for zmiana in zmiany_powiazanych %}
+                <h4>{{ zmiana.nazwa|capfirst }}</h4>
+                {% if zmiana.usuniete %}
+                    <div class="bpp-usuniete">Zostaną usunięte (dodane po tej wersji):</div>
+                    <ul class="bpp-usuniete">{% for poz in zmiana.usuniete %}<li>{{ poz }}</li>{% endfor %}</ul>
+                {% endif %}
+                {% if zmiana.przywrocone %}
+                    <div class="bpp-przywrocone">Zostaną przywrócone (usunięte po tej wersji):</div>
+                    <ul class="bpp-przywrocone">{% for poz in zmiana.przywrocone %}<li>{{ poz }}</li>{% endfor %}</ul>
+                {% endif %}
+            {% endfor %}
+        {% endif %}
+    </div>
+{% endblock %}
+
+{# Podgląd wersji jest tylko do odczytu: bez „Zapisz” i „Usuń”, jedyna akcja to przywrócenie (POST na ten sam adres). #}
+{% block submit_buttons_top %}{% endblock %}
+{% block submit_buttons_bottom %}
+    <footer class="grp-module grp-submit-row grp-fixed-footer">
+        <div>
+            <div class="grp-float-left"><a href="{% url opts|admin_urlname:'history' object_id %}" class="grp-button">📜 Historia</a></div>
+            <div class="grp-float-left"><a href="{% url opts|admin_urlname:'change' object_id %}" class="grp-button">✏️ Edytuj aktualny rekord</a></div>
+            {% if pokaz_przywroc %}
+                <div><input type="submit" value="♻️ Przywróć tę wersję" class="grp-button grp-default" name="_przywroc_wersje"></div>
+            {% endif %}
+        </div>
+    </footer>
+{% endblock %}

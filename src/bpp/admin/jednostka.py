@@ -7,6 +7,7 @@ from django.utils.html import format_html
 from import_export.admin import ImportMixin
 from mptt.admin import DraggableMPTTAdmin
 from mptt.forms import MPTTAdminForm
+from reversion_compare.admin import CompareVersionAdmin
 
 from bpp.admin.helpers.djangoql import BppDjangoQLSearchMixin
 from bpp.admin.helpers.ror_field import czysc_ror
@@ -19,6 +20,7 @@ from .helpers import LimitingFormset
 from .helpers.fieldsets import ADNOTACJE_FIELDSET
 from .helpers.mixins import ZapiszZAdnotacjaMixin
 from .helpers.site_filtered import SiteFilteredAdminMixin
+from .helpers.wersje import HistoriaWersjiMixin
 from .jednostka_import import JednostkaImportResource
 from .xlsx_export import resources
 from .xlsx_export.mixins import EksportDanychMixin
@@ -113,6 +115,9 @@ class JednostkaAdmin(
     EksportDanychMixin,
     BaseBppAdminMixin,
     DraggableMPTTAdmin,
+    # Historia zmian (FD#587): tuż przed terminalną klasą admina.
+    HistoriaWersjiMixin,
+    CompareVersionAdmin,
 ):
     form = JednostkaAdminForm
     uczelnia_field_path = "uczelnia"
@@ -122,6 +127,12 @@ class JednostkaAdmin(
     # import (ImportMixin) dostaje dedykowany resource przez override nizej —
     # oba mixiny domyslnie czytaja TEN SAM atrybut resource_classes.
     resource_classes = [resources.JednostkaResource]
+
+    def po_przywroceniu_wersji(self, request, obj):
+        # Wersja niesie rodzica i pola drzewa MPTT z chwili zapisu; po
+        # przywróceniu (zapis surowy, z pominięciem MPTT) lft/rght mogą nie
+        # pasować do dzisiejszego drzewa — przeliczamy je z rodziców.
+        Jednostka._tree_manager.rebuild()
 
     def get_import_resource_classes(self, request):
         resource_classes = [JednostkaImportResource]

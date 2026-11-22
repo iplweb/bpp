@@ -1,0 +1,155 @@
+// =============================================================================
+// PRZYCISK PRAC (przycisk dzielony „Pokaż wszystkie prace/publikacje” + menu)
+// Wspólny dla strony autora, jednostki i wydziału
+// (szablon: browse/_menu_prac.html).
+// =============================================================================
+
+// Część główna + strzałka stanowią JEDEN przycisk (wspólny cień,
+// zaokrąglenie i efekt najechania, cienka kreska między częściami), a menu
+// wysuwa się spod niego na pełną jego szerokość.
+// Kolorów tu NIE ustawiamy — obie części biorą kolor przycisku z motywu,
+// więc zawsze są takie same.
+.przycisk-prac {
+  display: inline-flex;
+  align-items: stretch;
+  position: relative;
+  // Menu ma leżeć NAD kaflami podsumowania i resztą treści pod spodem.
+  z-index: 50;
+  margin-bottom: 1rem;
+  border-radius: 6px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
+
+  // Efekt najechania (uniesienie + cień) dotyczy CAŁEGO przycisku naraz.
+  &:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 3px 8px rgba(0, 0, 0, 0.12), 0 2px 4px rgba(0, 0, 0, 0.08);
+  }
+
+  // Części nie mają własnego marginesu, cienia ani uniesienia — ma je
+  // całość (!important: globalne reguły hover przycisków też go używają).
+  .button,
+  .button:hover,
+  .button:active {
+    margin: 0;
+    box-shadow: none !important;
+    transform: none !important;
+  }
+
+  // Formularze nie tworzą własnego pudełka — przycisk jest bezpośrednim
+  // elementem flexa.
+  &__form,
+  > form {
+    display: contents;
+  }
+
+  // !important: motywy nadpisują zaokrąglenie i display przycisków regułami
+  // o wyższej specyficzności — bez tego części miały osobne zaokrąglenia.
+  &__glowny {
+    border-top-right-radius: 0 !important;
+    border-bottom-right-radius: 0 !important;
+  }
+
+  &__strzalka {
+    display: flex !important;
+    align-items: center;
+    box-sizing: border-box;
+    padding-left: 14px;
+    padding-right: 14px;
+    border-top-left-radius: 0 !important;
+    border-bottom-left-radius: 0 !important;
+    border-left: 1px solid rgba(255, 255, 255, 0.35);
+    list-style: none;
+    cursor: pointer;
+    user-select: none;
+
+    &::-webkit-details-marker {
+      display: none;
+    }
+
+    svg {
+      width: 14px;
+      height: 14px;
+      transition: transform 0.15s ease;
+    }
+  }
+
+  // <details> tylko trzyma strzałkę; lista jest pozycjonowana względem
+  // całego przycisku dzielonego.
+  &__menu {
+    display: flex;
+    align-items: stretch;
+
+    &[open] .przycisk-prac__strzalka {
+      filter: brightness(0.88);
+
+      svg {
+        transform: rotate(180deg);
+      }
+    }
+  }
+
+  // Rozwinięte menu — co najmniej na szerokość całego przycisku.
+  &__lista {
+    position: absolute;
+    top: calc(100% + 3px);
+    left: 0;
+    min-width: 100%;
+    box-sizing: border-box;
+    z-index: 20;
+    padding: 4px 0;
+    background: #fff;
+    border: 1px solid rgba(0, 0, 0, 0.15);
+    border-radius: 6px;
+    box-shadow: 0 6px 18px rgba(0, 0, 0, 0.15);
+    text-align: left;
+    font-weight: normal;
+  }
+
+  // Nagłówki grup („Z lat”, „Według typu”, „Według charakteru”).
+  &__naglowek {
+    padding: 8px 16px 2px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    opacity: 0.55;
+  }
+
+  &__pozycja {
+    display: flex;
+    justify-content: space-between;
+    gap: 1rem;
+    box-sizing: border-box;
+    width: 100%;
+    margin: 0;
+    padding: 10px 16px;
+    font-size: 1rem;
+    line-height: 1.2;
+    text-align: left;
+    color: inherit;
+    background: none;
+    border: 0;
+    cursor: pointer;
+
+    &:hover,
+    &:focus {
+      background: rgba(0, 0, 0, 0.06);
+    }
+  }
+
+  &__liczba {
+    opacity: 0.65;
+  }
+
+  // „Wyszukiwarka z filtrami” — oddzielona kreską od gotowych wyborów.
+  &__filtry {
+    margin-top: 4px;
+    border-top: 1px solid rgba(0, 0, 0, 0.1);
+    text-decoration: none;
+
+    &[hidden] {
+      display: none;
+    }
+  }
+}

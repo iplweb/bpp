@@ -4,6 +4,7 @@ from django.contrib import admin
 from django.forms.utils import flatatt
 from django.utils.safestring import mark_safe
 from mptt.forms import TreeNodeChoiceField
+from reversion_compare.admin import CompareVersionAdmin
 from taggit.forms import TextareaTagWidget
 
 from bpp.admin.filters import (
@@ -96,6 +97,7 @@ from .helpers.mixins import (
     OptionalPBNSaveMixin,
     RestrictDeletionWhenPBNUIDSetMixin,
 )
+from .helpers.wersje import HistoriaWersjiMixin
 from .xlsx_export import resources
 from .xlsx_export.mixins import EksportDanychZFormatowanieMixin, ExportActionsMixin
 from .zglos_publikacje_helpers import UzupelniajWstepneDanePoNumerzeZgloszeniaMixin
@@ -300,7 +302,9 @@ class Wydawnictwo_CiagleAdmin(
     RestrictDeletionWhenPBNUIDSetMixin,
     # OSTATNI przed ModelAdmin — patrz docstring BppSoftDeleteAdminMixin.
     BppSoftDeleteAdminMixin,
-    admin.ModelAdmin,
+    # Historia zmian (FD#587): tuż przed terminalną klasą admina.
+    HistoriaWersjiMixin,
+    CompareVersionAdmin,
 ):
     change_list_template = "admin/bpp/wydawnictwo_ciagle/change_list.html"
     import_export_change_list_template = "admin/bpp/wydawnictwo_ciagle/change_list.html"

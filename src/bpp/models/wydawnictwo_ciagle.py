@@ -1,5 +1,6 @@
 from denorm import denormalized, depend_on_fields, depend_on_related
 from dirtyfields.dirtyfields import DirtyFieldsMixin
+from django.contrib.contenttypes.fields import GenericRelation
 from django.contrib.postgres.fields import ArrayField
 from django.db import models
 from django.db.models import CASCADE, PROTECT, SET_NULL, JSONField, Q
@@ -165,6 +166,11 @@ class Wydawnictwo_Ciagle(
 
     autor_rekordu_klass = Wydawnictwo_Ciagle_Autor
     autorzy = models.ManyToManyField("Autor", through=autor_rekordu_klass)
+
+    # Odwrotna strona ``Nagroda`` (GenericForeignKey) — jak w zwartych.
+    # Potrzebna do śledzenia nagród w historii wersji (FD#587); nie tworzy
+    # kolumny, więc bez migracji.
+    nagrody = GenericRelation("bpp.Nagroda")
 
     zrodlo = models.ForeignKey(
         "Zrodlo", null=True, verbose_name="Źródło", on_delete=models.SET_NULL

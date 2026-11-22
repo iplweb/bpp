@@ -481,20 +481,41 @@ class UzytkownikHistoriiMiddleware:
     """Zalogowany użytkownik jest autorem wpisów historii (``LogEntry``,
     reversion) dla rekordów, które widoki tworzą poza formularzami admina
     (importy, „Toż", tworzenie autorów z PBN itd.) — patrz
-    ``bpp.wersjonowanie.jako_uzytkownik``. Bez zalogowanego użytkownika nic
-    nie ustawia (historia trafi wtedy do konta systemowego)."""
+    ``bpp.wersjonowanie.jako_uzytkownik``. Bez zalogowanego użytkownika
+    historia trafi do konta systemowego.
+
+    Ustawia też źródło zmiany rewizji (``zrodlo_zmian``, FD#587): moduł
+    redagowania, API albo strona."""
 
     def __init__(self, get_response):
         self.get_response = get_response
 
     def __call__(self, request):
         from bpp.wersjonowanie import jako_uzytkownik
+        from bpp.zrodlo_zmian import zrodlo_zmian
 
         user = getattr(request, "user", None)
         if user is None or not user.is_authenticated:
+            user = None
+        # FD#587: źródło zmiany dla rewizji zapisanych w tym żądaniu.
+        with zrodlo_zmian(self._zrodlo(request)), jako_uzytkownik(user):
             return self.get_response(request)
-        with jako_uzytkownik(user):
-            return self.get_response(request)
+
+    @staticmethod
+    def _zrodlo(request):
+        from django.urls import NoReverseMatch, reverse
+
+        from bpp.zrodlo_zmian import ZRODLO_ADMIN, ZRODLO_API, ZRODLO_STRONA
+
+        try:
+            admin_prefix = reverse("admin:index")
+        except NoReverseMatch:
+            admin_prefix = None  # urlconf bez admina (np. strony błędów w testach)
+        if admin_prefix and request.path.startswith(admin_prefix):
+            return ZRODLO_ADMIN
+        if request.path.startswith("/api/"):
+            return ZRODLO_API
+        return ZRODLO_STRONA
 
 
 class PodgladJakoGoscMiddleware:

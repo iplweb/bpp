@@ -12,7 +12,8 @@ something on the demo data:
 - creates the demo editor ``vesemir`` (password == login, ``is_staff``,
   group "wprowadzanie danych"),
 - adds a student research club unit "SKN Alchemików" (unit kind
-  "Koło naukowe") with three authors whose public profile is hidden, and
+  "Koło naukowe", pod pierwszym alfabetycznie wydziałem) with three
+  authors whose public profile is hidden, and
   files a few of their works under it,
 - hides the public profile of two more (staff) authors,
 - links six 2021 articles to (local, made-up) PBN publication records and
@@ -25,6 +26,7 @@ from django.contrib.auth.models import Group
 from django.db import transaction
 from password_policies.models import PasswordHistory
 
+from bpp.demo_data.zrzuty import autorzy_pomocniczy, wydzial_zgloszen
 from bpp.models import (
     Autor,
     Autor_Jednostka,
@@ -61,7 +63,10 @@ with transaction.atomic():
     rodzaj, _ = RodzajJednostki.objects.get_or_create(
         nazwa="Koło naukowe", defaults=dict(skrot="SKN", kolejnosc=90)
     )
-    wydzial = Jednostka.objects.get(nazwa="Wydział Magii i Eliksirów")
+    # Wydział z bazy, a nie po nazwie (nazwy losuje generator danych demo):
+    # pierwszy alfabetycznie wydział (bez „Jednostki Domyślnej” i „Obcej
+    # jednostki”, które też nie mają nadrzędnej).
+    wydzial = wydzial_zgloszen()
     skn = Jednostka.objects.filter(nazwa="SKN Alchemików").first()
     if skn is None:
         skn = Jednostka.objects.create(
@@ -71,10 +76,16 @@ with transaction.atomic():
             wydzial=wydzial.wydzial,
             uczelnia=wydzial.uczelnia,
             rodzaj=rodzaj,
+            # koło naukowe nie pochodzi z kadr: bez tego import pracowników
+            # (bin/docs-demo-admin-import-pracownikow.py) proponowałby odpięcie
+            # jego członków
+            zarzadzaj_automatycznie=False,
         )
+    # Autorzy „pomocniczy” (bpp.demo_data.zrzuty.autorzy_pomocniczy) — nie
+    # ci, których pokazują inne zrzuty (np. Yennefer, duplikaty Geralta).
     studenci = list(
-        Autor.objects.filter(wydawnictwo_ciagle_autor__isnull=False)
-        .distinct()
+        autorzy_pomocniczy()
+        .filter(wydawnictwo_ciagle_autor__isnull=False)
         .order_by("-pk")[:3]
     )
     for a in studenci:
@@ -86,7 +97,8 @@ with transaction.atomic():
 
     # --- hidden staff authors ---------------------------------------------
     for a in (
-        Autor.objects.exclude(aktualna_jednostka=None)
+        autorzy_pomocniczy()
+        .exclude(aktualna_jednostka=None)
         .exclude(aktualna_jednostka=skn)
         .order_by("pk")[:2]
     ):

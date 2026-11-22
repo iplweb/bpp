@@ -1,5 +1,6 @@
 """FD#604: akcje masowe admina zmieniające dane hurtem zostawiają ślad
-w „Historii” rekordu (``LogEntry``; dla autorów także wersje reversion)."""
+w „Historii” rekordu (``LogEntry`` + wersje reversion — dla autorów, a od
+FD#587 także publikacji)."""
 
 from datetime import timedelta
 from unittest import mock
@@ -19,7 +20,13 @@ from reversion.models import Version
 
 from bpp.admin import actions
 from bpp.admin.autor import AutorAdmin
-from bpp.models import Autor, Praca_Doktorska, Wydawnictwo_Ciagle, Wydawnictwo_Zwarte
+from bpp.models import (
+    Autor,
+    Praca_Doktorska,
+    Wydawnictwo_Ciagle,
+    Wydawnictwo_Zwarte,
+)
+from bpp.models.oplaty_log import OplatyPublikacjiLog
 
 URL_AUTORA = "/admin/bpp/autor/"
 
@@ -227,7 +234,7 @@ def test_akcje_widocznosci_wymagaja_uprawnienia_change(django_user_model):
     assert "ustaw_pokazuj_false" not in dostepne
 
 
-# --- Publikacje: „Ustaw status korekty: …” (bez reversion — tylko LogEntry) ---
+# --- Publikacje: „Ustaw status korekty: …” (LogEntry + wersje, FD#587) ---
 
 
 @pytest.mark.django_db
@@ -262,8 +269,20 @@ def test_status_korekty_logentry(
     assert not LogEntry.objects.filter(
         object_id=str(bez_zmian.pk), content_type__model=model._meta.model_name
     ).exists()
-    # Publikacje nie są wersjonowane — żadnych wersji.
-    assert not Version.objects.exists()
+    # FD#587: publikacje są wersjonowane — stan „przed” i „po”, każdy rekord
+    # we WŁASNEJ rewizji (cofnięcie jednego nie cofa pozostałych).
+    for rekord in rekordy:
+        wersje = Version.objects.get_for_object(rekord)
+        assert wersje.count() == 2
+        assert wersje.first().revision.comment == komentarz
+        for wersja in wersje:
+            assert (
+                Version.objects.filter(
+                    revision=wersja.revision, content_type=wersja.content_type
+                ).count()
+                == 1
+            )
+    assert not Version.objects.get_for_object(bez_zmian).exists()
 
 
 @pytest.mark.django_db
@@ -311,7 +330,7 @@ def test_status_korekty_stala_liczba_zapytan(
 def test_status_korekty_odmawia_powyzej_limitu(admin_client, przed_korekta):
     rekordy = baker.make(Wydawnictwo_Ciagle, status_korekty=przed_korekta, _quantity=3)
 
-    with mock.patch.object(actions, "MAKS_REKORDOW_AKCJI_MASOWEJ_BEZ_WERSJI", 2):
+    with mock.patch.object(actions, "MAKS_REKORDOW_AKCJI_MASOWEJ_PUBLIKACJI", 2):
         res = _post_akcji(
             admin_client,
             "/admin/bpp/wydawnictwo_ciagle/",
@@ -328,19 +347,20 @@ def test_status_korekty_odmawia_powyzej_limitu(admin_client, przed_korekta):
 
 
 def test_limity_akcji_masowej():
-    # Autor (wersje reversion) — niski limit; publikacje (tylko LogEntry)
-    # — dużo wyższy, żeby nie blokować redaktorów zmieniających status
-    # korekty całego rocznika.
+    # Autor — niski limit; publikacje (od FD#587 też z wersjami) — wyższy,
+    # żeby nie blokować redaktorów zmieniających status korekty dużej
+    # części rocznika; modele bez wersji — najwyższy.
     assert actions.limit_akcji_masowej(Autor) == 2000
     for model, _url in PUBLIKACJE:
-        assert actions.limit_akcji_masowej(model) == 20000
+        assert actions.limit_akcji_masowej(model) == 5000
+    assert actions.limit_akcji_masowej(OplatyPublikacjiLog) == 20000
 
 
 @pytest.mark.django_db
 def test_status_korekty_powyzej_limitu_autorow_przechodzi_w_partiach(
     admin_client, przed_korekta, po_korekcie
 ):
-    """Limit dla wersjonowanych modeli nie dotyczy publikacji; wpisy
+    """Limit dla autorów nie dotyczy publikacji (mają własny); wpisy
     ``LogEntry`` powstają w partiach (tu: po 2), wszystkie trafiają do bazy."""
     rekordy = baker.make(Wydawnictwo_Ciagle, status_korekty=przed_korekta, _quantity=5)
 

@@ -16,8 +16,9 @@ What it does, so that every example query on the pages returns something:
   leaves IF at zero everywhere),
 - removes the DOI from every tenth journal article (the generator gives
   every record a DOI),
-- creates two saved search forms owned by ``vesemir``: a public one and a
-  private one.
+- creates two saved search forms owned by ``vesemir``: a public one (prace
+  obecnej jednostki autorki konta „yennefer” — wybranej z bazy, bo nazwy
+  jednostek losuje generator danych demo) and a private one.
 
 Re-running this script is safe.
 """
@@ -31,7 +32,8 @@ from multiseek.models import SearchForm
 from multiseek.util import make_field
 from password_policies.models import PasswordHistory
 
-from bpp.models import Autor, BppUser, Jednostka, Wydawnictwo_Ciagle
+from bpp.demo_data import zrzuty
+from bpp.models import BppUser, Wydawnictwo_Ciagle
 from bpp.multiseek_registry.fields import (
     JednostkaQueryObject,
     NazwiskoIImieQueryObject,
@@ -82,10 +84,14 @@ with transaction.atomic():
             wc.save()
 
     # --- saved search forms ---------------------------------------------------
-    yennefer = Autor.objects.get(pk=210)
-    klinika = Jednostka.objects.get(nazwa="Klinika Eliksirologii")
+    # Autorka konta „yennefer” i jej obecna jednostka — z bazy, nie po pk ani
+    # nazwie (nazwy jednostek losuje generator danych demo).
+    # Wspólne ze scenariuszami wyszukiwania (bpp.demo_data.zrzuty).
+    yennefer = zrzuty.yennefer()
+    klinika = zrzuty.aktualna_jednostka(yennefer)
+    print("jednostka w formularzu:", klinika.nazwa)
     formularze = {
-        "Klinika Eliksirologii — prace od 100 pkt": (
+        f"{klinika.nazwa} — prace od 100 pkt": (
             True,
             zrob_formularz(
                 [make_field(JednostkaQueryObject, EQUAL_FEMALE, klinika.pk)],

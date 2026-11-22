@@ -134,10 +134,11 @@
             grupa: "Kolory",
             etykieta: "Tryb kolorów",
             opis:
-                "Automatyczny: strona ma wersję jasną i ciemną, a przeglądarka " +
-                "wybiera tę, którą odwiedzający ustawił w systemie. Wersja " +
-                "ciemna powstaje sama z wybranych kolorów. Wysoki kontrast " +
-                "zapewnia przycisk dostępności UserWay.",
+                "Co widać, zanim odwiedzający sam wybierze: Automatyczny — " +
+                "wersja zgodna z ustawieniami jego systemu. Drugą wersję " +
+                "odwiedzający zawsze włączy przełącznikiem ☀ | ☾ na pasku " +
+                "menu. Wersja ciemna powstaje sama z wybranych kolorów. " +
+                "Wysoki kontrast zapewnia przycisk dostępności UserWay.",
             opcje: [
                 ["jasny", "Jasny"],
                 ["ciemny", "Ciemny"],
@@ -2138,32 +2139,48 @@
     }
 
     // Skompilowany CSS motywu → CSS z trybem kolorów i tłem treści z konfiga.
-    // `opcje.trybPodgladu` wymusza jasny/ciemny (podgląd trybu automatycznego).
+    //
+    // Każdy motyw ma obie wersje — drugą odwiedzający włącza pigułką ☀ | ☾
+    // na pasku menu (data-tryb-kolorow na <html>):
+    //   - „jasny”: jasny; ciemne reguły tylko pod wyborem „Ciemny”,
+    //   - „automatyczny”: ciemny wg systemu, chyba że wybrano „Jasny”;
+    //     wymuszony „Ciemny” także przy jasnym systemie,
+    //   - „ciemny”: ciemny, chyba że wybrano „Jasny”.
+    // Wydruk zawsze jasny (ciemne reguły w @media screen).
+    //
+    // `opcje.trybPodgladu` („jasny”/„ciemny”) — podgląd konfiguratora: jedna
+    // wersja, bez reguł dla pigułki (w podglądzie jej nie ma).
     function przetworzCss(css, konfig, opcje) {
         opcje = opcje || {};
         var k = normalizuj(konfig);
-        var tryb = opcje.trybPodgladu || k.tryb_kolorow;
         css = css.replace(/^\uFEFF/, "");
-        if (tryb === "jasny" && k.tlo_tresci === "pelne") return css;
+        if (opcje.trybPodgladu) {
+            var tryb = opcje.trybPodgladu;
+            if (tryb === "jasny" && k.tlo_tresci === "pelne") return css;
+            var wezly1 = parsujCss(css);
+            var wynik = przetworzWezly(wezly1, tryb === "ciemny", k.tlo_tresci, false);
+            return tryb === "ciemny" ? wynik + zmienneCiemne(k) : wynik;
+        }
         var wezly = parsujCss(css);
-        if (tryb === "automatyczny") {
-            var jasnyCss = przetworzWezly(wezly, false, k.tlo_tresci, false);
-            // Ciemny wg systemu, chyba że odwiedzający wybrał „Jasny”;
-            // wymuszony „Ciemny” także przy jasnym systemie. Wydruk jasny.
-            var wgSystemu =
-                przetworzWezly(wezly, true, k.tlo_tresci, true, KORZEN_AUTO) +
-                zmienneCiemne(k, KORZEN_AUTO);
-            var wymuszony =
-                przetworzWezly(wezly, true, k.tlo_tresci, true, KORZEN_CIEMNY) +
-                zmienneCiemne(k, KORZEN_CIEMNY);
+        var jasnyCss = przetworzWezly(wezly, false, k.tlo_tresci, false);
+        function ciemne(korzen) {
             return (
-                jasnyCss +
-                "@media screen and (prefers-color-scheme: dark){" + wgSystemu + "}" +
-                "@media screen{" + wymuszony + "}"
+                przetworzWezly(wezly, true, k.tlo_tresci, true, korzen) +
+                zmienneCiemne(k, korzen)
             );
         }
-        var wynik = przetworzWezly(wezly, tryb === "ciemny", k.tlo_tresci, false);
-        return tryb === "ciemny" ? wynik + zmienneCiemne(k) : wynik;
+        if (k.tryb_kolorow === "automatyczny") {
+            return (
+                jasnyCss +
+                "@media screen and (prefers-color-scheme: dark){" + ciemne(KORZEN_AUTO) + "}" +
+                "@media screen{" + ciemne(KORZEN_CIEMNY) + "}"
+            );
+        }
+        if (k.tryb_kolorow === "ciemny") {
+            // Ten sam warunek co KORZEN_AUTO, ale bez media query systemu.
+            return jasnyCss + "@media screen{" + ciemne(KORZEN_AUTO) + "}";
+        }
+        return jasnyCss + "@media screen{" + ciemne(KORZEN_CIEMNY) + "}";
     }
 
     return {

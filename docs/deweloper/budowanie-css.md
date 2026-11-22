@@ -135,18 +135,32 @@ Testy: `tests/js/motyw-konfig.test.js` (vitest, z prawdziwą kompilacją),
 `src/bpp/tests/test_konfigurator_wygladu.py`,
 `src/django_bpp/tests/test_motywy_z_konfiguracji.py`.
 
-## Tryb ciemny (warianty `-auto` i `-ciemny`)
+## Tryb ciemny (każdy motyw; warianty `-auto` i `-ciemny`)
 
-Ciemny wariant motywu to **osobny plik CSS** — istniejące motywy (`app-blue`
-itd.) kompilują się dokładnie tak jak wcześniej, więc uczelnie, które nic nie
-zmienią, nie zobaczą żadnej różnicy. Uczelnia włącza tryb ciemny, wybierając
-w polu „Motyw kolorystyczny” (`Uczelnia.theme_name`) jeden z wariantów:
+Każdy motyw ma wersję jasną i ciemną. Odwiedzający zawsze może przełączyć
+się na tę drugą pigułką ☀ | ☾ na pasku menu (patrz niżej); wariant motywu
+wybrany w polu „Motyw kolorystyczny” (`Uczelnia.theme_name`) decyduje tylko
+o tym, co widać **bez** wyboru odwiedzającego (tryb domyślny):
 
-| Motyw | Zachowanie |
-|---|---|
-| `app-blue` | zawsze jasny (bez zmian) |
-| `app-blue-auto` | jasny, a ciemny, gdy odwiedzający ma w systemie/przeglądarce tryb ciemny (`prefers-color-scheme: dark`) |
-| `app-blue-ciemny` | zawsze ciemny |
+| Motyw | Bez wyboru | Ciemne reguły pod |
+|---|---|---|
+| `app-X` | jasny — także przy ciemnym systemie (jak przed wprowadzeniem trybu ciemnego) | `@media screen` + `html:where([data-tryb-kolorow="ciemny"])` |
+| `app-X-auto` | wg systemu/przeglądarki (`prefers-color-scheme`) | `@media screen and (prefers-color-scheme: dark)` + `html:where(:not([data-tryb-kolorow="jasny"]))` oraz `@media screen` + `html:where([data-tryb-kolorow="ciemny"])` |
+| `app-X-ciemny` | ciemny (niezależnie od systemu) | `@media screen` + `html:where(:not([data-tryb-kolorow="jasny"]))` |
+
+Na `-ciemny` pigułka pozwala więc wybrać wersję jasną — tak samo jak na
+`app-X` ciemną: w każdym motywie pigułka przełącza między trybem domyślnym
+a drugą wersją.
+
+Warianty mają wszystkie motywy ręczne: `blue`, `green`, `orange`, `vizja`,
+`mwsl`, `uafm` (np. `app-green-auto`, `app-green-ciemny`). Każdy motyw ma
+treść w `_app-X-baza.scss`, a `app-X.scss`, `-auto` i `-ciemny` różnią się
+tylko końcówką. Mixin dostaje `$primary-color` i `$drugi: $secondary-color`
+(drugi akcent, np. ikony w kolorze dodatkowym).
+
+Rozmiary (gzip): `app-X` ok. 62–63 KB (było 50–51 KB, przed dodaniem
+ciemnych reguł pod pigułkę), `-ciemny` ok. 63 KB, `-auto` ok. 74–75 KB
+(ciemne reguły dwa razy — wg systemu i z pigułki).
 
 Wydruk jest zawsze jasny (ciemne reguły siedzą w `@media screen`).
 
@@ -270,27 +284,50 @@ Zawartości `<canvas>` nie ocenia.
 
 ### Przełącznik jasny/ciemny na pasku menu
 
-Przy motywach z obiema wersjami (`*-auto` z `BPP_THEMES` i motyw
-z konfiguratora w trybie „automatyczny”) `top_bar.html` pokazuje
-przełącznik **kolory** (Automatyczny / Jasny / Ciemny). Flagę
-`TRYB_KOLOROW_PRZELACZNIK` liczy `przelacznik_trybu_kolorow()`
-w `bpp/context_processors/config.py` (w podglądzie konfiguratora i przy
-przymiarce — ukryty).
+Przy każdym motywie `top_bar.html` pokazuje
+„pigułkę” ☀ | ☾ (`tryb_kolorow_pigulka.html`, dołączana dwa razy: pasek
+tytułowy na telefonie, prawa strona paska menu na komputerze — z odstępem na
+przycisk UserWay). Semantyka: `role="radiogroup"` z dwoma `role="radio"`
+(zaznaczone = widoczny tryb; roving tabindex, strzałki przenoszą wybór,
+Spacja/Enter na zaznaczonym przy wyborze ręcznym wraca do domyślnego).
+Klik w drugą połówkę wymusza tryb; klik w połówkę trybu domyślnego albo
+w wybraną ręcznie — wraca do domyślnego (bez wpisu w `localStorage`).
+
+Tryb domyślny motywu (`jasny`/`ciemny`/`auto`) liczy
+`tryb_kolorow_domyslny()` w `bpp/context_processors/config.py` (zwykły
+motyw — jasny, `-auto`, `-ciemny`, motyw z konfiguratora wg „Trybu
+kolorów”, motyw z `scss/motywy/*.json` wg pola `tryb_kolorow`) i wypisuje
+w `<html data-tryb-domyslny>` (`bare.html`). Podświetlenie (suwak)
+i obwódkę wyboru ręcznego liczy **sam CSS**
+(`_tryb-kolorow-przelacznik.scss`: `data-tryb-domyslny`,
+`data-tryb-kolorow`, `prefers-color-scheme`) — poprawne od pierwszej
+klatki; JS ustawia tylko `aria-checked`, `tabindex`, `aria-label`, `title`.
+Połówki i suwak to `ul.dropdown.menu > li > a` (bez `data-dropdown-menu`),
+więc kolor napisów paska dają im reguły każdego motywu, a przezroczystości
+są w `opacity` pseudoelementów (przetworzCss nie musi ich znać). Flagę
+`TRYB_KOLOROW_PRZELACZNIK` liczy `przelacznik_trybu_kolorow()` — zawsze,
+poza podglądem konfiguratora i przymiarką.
 
 - Wybór trzyma `localStorage` (`bpp-tryb-kolorow`); krótki skrypt w `<head>`
   `bare.html` (przed CSS — bez mignięcia) ustawia
   `<html data-tryb-kolorow="jasny|ciemny">`; brak atrybutu = jak system.
   Kliknięcia obsługuje `bpp/js/tryb-kolorow.js`.
-- CSS: ciemne reguły pod dwoma korzeniami —
-  `@media screen and (prefers-color-scheme: dark)` +
-  `html:where(:not([data-tryb-kolorow="jasny"]))` oraz `@media screen` +
-  `html:where([data-tryb-kolorow="ciemny"])`. W SCSS to parametr
-  `$korzen` mixinu `bpp-tryb-ciemny` (patrz `app-blue-auto.scss`),
-  w konfiguratorze — `KORZEN_AUTO`/`KORZEN_CIEMNY` w `przetworzCss`.
-  `:where()` nie dodaje specyficzności, więc reguły zachowują się jak pod
-  zwykłym `html`. Wydruk zawsze jasny.
+- CSS: korzenie ciemnych reguł — tabela w sekcji „Tryb ciemny” wyżej.
+  W SCSS to parametr `$korzen` mixinu `bpp-tryb-ciemny` (patrz
+  `app-blue.scss`, `app-blue-auto.scss`, `app-blue-ciemny.scss`),
+  w konfiguratorze — `KORZEN_AUTO`/`KORZEN_CIEMNY` w `przetworzCss`
+  (tryb „jasny”: jasny CSS + ciemne reguły pod `KORZEN_CIEMNY`;
+  „automatyczny”: pod oboma; „ciemny”: pod `KORZEN_AUTO` bez media query).
+  Podgląd konfiguratora (`trybPodgladu`) dostaje jedną wersję, bez reguł
+  pigułki. `:where()` nie dodaje specyficzności, więc reguły zachowują się
+  jak pod zwykłym `html`. Wydruk zawsze jasny.
 - Koszt: ciemne reguły są w CSS dwa razy. `app-blue-auto.css`: 382 KB →
   577 KB (gzip 61 KB → 76 KB); motyw z konfiguratora w trybie
   automatycznym ok. 412 KB → 605 KB (gzip 67 KB → 85 KB).
+- Motyw z konfiguratora w trybie „jasny” i „ciemny” też ma teraz ciemne
+  reguły obok jasnych (ok. +50% CSS, jak „automatyczny” bez drugiej kopii).
+  Zastosowane motywy klientów przebuduje `odswiez_motywy` przy starcie
+  kontenera po aktualizacji.
 - Audyt z wymuszonym wyborem: `bin/tryb-ciemny-audyt.py --jasny
-  --przelacznik ciemny` (system jasny, wybrany „Ciemny”).
+  --przelacznik ciemny` (system jasny, wybrany „Ciemny”) — dla zwykłego
+  motywu powinien dać to samo co `-ciemny`.

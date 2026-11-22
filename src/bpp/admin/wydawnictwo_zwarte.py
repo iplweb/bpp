@@ -4,6 +4,7 @@ from django.contrib import admin, messages
 from django.core.exceptions import ValidationError
 from django.utils.html import format_html
 from mptt.forms import TreeNodeChoiceField
+from reversion_compare.admin import CompareVersionAdmin
 from taggit.forms import TextareaTagWidget
 
 from bpp.admin import helpers
@@ -68,6 +69,7 @@ from .helpers.mixins import (
     OptionalPBNSaveMixin,
     RestrictDeletionWhenPBNUIDSetMixin,
 )
+from .helpers.wersje import HistoriaWersjiMixin
 from .nagroda import NagrodaInline
 
 # Proste tabele
@@ -95,7 +97,9 @@ class Wydawnictwo_ZwarteAdmin_Baza(
     OdroczPunktyDyscyplinMixin,
     BlokujRekordPrzedZapisemMixin,
     BaseBppAdminMixin,
-    admin.ModelAdmin,
+    # Historia zmian (FD#587): tuż przed terminalną klasą admina.
+    HistoriaWersjiMixin,
+    CompareVersionAdmin,
 ):
     formfield_overrides = {
         **helpers.widgets.NIZSZE_TEXTFIELD_Z_MAPA_ZNAKOW,

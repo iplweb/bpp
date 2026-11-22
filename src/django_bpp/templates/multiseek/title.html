@@ -1,21 +1,29 @@
     {% if request.session.MULTISEEK_TITLE %}
+        {# Tytuł raportu edytowalny w miejscu (jinplace): klik w tytuł albo #}
+        {# w ołówek otwiera pole na całą szerokość z Zapisz/Anuluj; Esc anuluje. #}
         <div class="multiseek-report-title">
             <h1 class="editable bpp-multiseek-title"
-                data-activator="#edit-activator"
-                data-input-class="short"
+                title="Kliknij, aby zmienić tytuł"
+                data-input-class="multiseek-tytul-pole"
                 data-text-only="false"
                 data-type="textarea"
+                data-ok-button="Zapisz"
+                data-cancel-button="Anuluj"
                 data-url="{% url 'bpp:update_multiseek_title' %}">{{ request.session.MULTISEEK_TITLE|safe }}</h1>
-            <button
-                    title="Kliknij, aby zmienić tytuł wyszukiwania"
+            <button type="button"
+                    title="Zmień tytuł wyszukiwania"
+                    aria-label="Zmień tytuł wyszukiwania"
                     id="edit-activator"
                     class="title-edit-btn hide-for-print">
-                ✏️ Edytuj tytuł
+                <span class="fi-pencil" aria-hidden="true"></span>
             </button>
         </div>
 
         <script type="text/javascript">
         $(document).ready(function(){
+            $('#edit-activator').on('click', function () {
+                $('.bpp-multiseek-title').trigger('click');
+            });
             $('.editable').jinplace({
                 submitFunction: function(opts, value) {
                     return $.ajax(opts.url, {

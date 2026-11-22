@@ -1,11 +1,16 @@
-// Motyw niebieski, zawsze ciemny (niezależnie od ustawień systemu).
+// Motyw niebieski, domyślnie ciemny (niezależnie od ustawień systemu);
+// jasną wersję odwiedzający może wybrać pigułką ☀ | ☾ na pasku menu
+// (`<html data-tryb-kolorow="jasny">`).
 // Mechanizm: _tryb-ciemny.scss.
 @import "app-blue-baza";
 @import "tryb-ciemny";
 
 // `screen` — wydruk zawsze jasny.
 @media screen {
-  @include bpp-tryb-ciemny($primary-color);
+  @include bpp-tryb-ciemny(
+    $primary-color,
+    $korzen: 'html:where(:not([data-tryb-kolorow="jasny"]))'
+  );
 }
 
 // Print styles — MUSZA byc ostatnie: Foundation (foundation-print-styles

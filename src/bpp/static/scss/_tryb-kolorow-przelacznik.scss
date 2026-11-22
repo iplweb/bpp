@@ -1,30 +1,253 @@
 // =============================================================================
-// Przełącznik trybu kolorów na pasku menu (top_bar.html, bpp/js/tryb-kolorow.js)
+// Pigułka trybu kolorów ☀ | ☾ (tryb_kolorow_pigulka.html, bpp/js/tryb-kolorow.js)
 // =============================================================================
 //
-// Ikony jak pozostałe pozycje paska (top_bar.scss trzyma listę ikon — tu
-// osobno, bo przełącznik pojawia się tylko przy motywach z dwiema wersjami).
+// Dwie połówki (role="radio") i suwak podświetlenia pod nimi. Stan liczymy
+// wyłącznie z CSS — atrybutu <html data-tryb-kolorow> (ustawia go skrypt
+// w <head> przed CSS) i media query systemu — więc pigułka jest poprawna od
+// pierwszej klatki, także przy odświeżeniu i przejściach między stronami.
+//
+// Kolory: wszystko w `currentColor`. Połówki i suwak to `ul.dropdown.menu >
+// li > a`, więc kolor napisów paska dają im reguły motywu (app-*, ciemny
+// _tryb-ciemny.scss, konfigurator _app-konfig.scss) — bez osobnych reguł per
+// motyw. Przezroczystość przez `opacity` pseudoelementów (a nie color-mix):
+// przetworzCss konfiguratora nie musi nic o tych kolorach wiedzieć.
 
-.top-bar .dropdown.menu {
-    .bpp-tryb-kolorow__ikona {
-        font-size: 1.6rem;
-        margin-right: 0.4rem;
-        vertical-align: middle;
+$pigulka-polowka: 34px;
+$pigulka-wysokosc: 30px;
+$pigulka-ramka: 1.5px;
+// Miejsce po prawej na okrągły przycisk UserWay (44 px przy prawej krawędzi,
+// top_bar.scss) — pigułka nie może na niego wejść.
+$pigulka-miejsce-userway: 4.25rem;
+
+// Warunki „widać tryb ciemny” — te same co w CSS motywów. Domyślny tryb
+// motywu (bez wyboru odwiedzającego) podaje serwer w <html
+// data-tryb-domyslny="jasny|ciemny|auto"> (bare.html, context processor):
+// zwykłe motywy — jasny, `*-ciemny` — ciemny, `*-auto` — wg systemu;
+// motyw z konfiguratora — wg jego „Trybu kolorów”.
+@mixin pigulka-widac-ciemny {
+    html[data-tryb-kolorow="ciemny"] &,
+    html[data-tryb-domyslny="ciemny"]:not([data-tryb-kolorow="jasny"]) & {
+        @content;
     }
 
-    .bpp-tryb-kolorow .menu.vertical {
-        .fi-monitor,
-        .fi-lightbulb,
-        .fi-contrast {
-            font-size: 1.6rem;
-            margin-right: 0.8rem;
-            vertical-align: middle;
+    @media (prefers-color-scheme: dark) {
+        html[data-tryb-domyslny="auto"]:not([data-tryb-kolorow="jasny"]) & {
+            @content;
+        }
+    }
+}
+
+// --- Miejsce na pasku --------------------------------------------------------
+
+// Telefon: na pasku tytułowym zaraz za ikoną menu i napisem „Menu” (auto
+// margines zjada wolne miejsce przed justify-content: space-between paska).
+.title-bar .bpp-pigulka-miejsce {
+    margin: -3px auto -3px 0.75rem;  // pasek tytułowy nie rośnie przez pigułkę
+
+    // Kolor napisów paska tytułowego (Foundation `a` ma kolor linków).
+    .bpp-pigulka > li > a {
+        color: inherit;
+    }
+}
+
+// Komputer: po prawej stronie paska menu, z odstępem na przycisk UserWay.
+.top-bar .bpp-pigulka-miejsce {
+    flex: 0 0 auto;
+    // W osi PIERWSZEGO wiersza menu (tam stoi też UserWay), nie środka
+    // całego paska — przy węższym oknie menu zawija się na dwa wiersze.
+    // 0.5rem = (wysokość pozycji menu 45,6 px − 30 px pigułki) / 2.
+    align-self: flex-start;
+    margin-top: 0.5rem;
+    margin-left: auto;
+    margin-right: $pigulka-miejsce-userway;
+    padding-left: 0.5rem;
+}
+
+// Foundation `stacked-for-medium` (tablet) daje lewej części 100% szerokości,
+// przez co pigułka spadałaby do osobnego wiersza — niech dzieli z nią wiersz.
+@include breakpoint(medium only) {
+    .top-bar.stacked-for-medium:has(> .bpp-pigulka-miejsce) > .top-bar-left {
+        flex: 1 1 0;
+        min-width: 0;
+        max-width: none;
+    }
+}
+
+// --- Sama pigułka ------------------------------------------------------------
+
+.top-bar .dropdown.menu.bpp-pigulka,
+.title-bar .dropdown.menu.bpp-pigulka {
+    position: relative;
+    isolation: isolate;
+    display: inline-flex;
+    flex-wrap: nowrap;
+    align-items: stretch;
+    margin: 0;
+    padding: 0;
+    // Foundation maluje `.top-bar ul` tłem paska z ustawień — tu przezroczyste.
+    background: transparent;
+    vertical-align: middle;
+
+    > li {
+        position: relative;
+        display: block;
+    }
+
+    > li > a.bpp-pigulka__polowka {
+        position: relative;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: $pigulka-polowka;
+        height: $pigulka-wysokosc;
+        padding: 0;
+        line-height: 1;
+        background-color: transparent;
+        cursor: pointer;
+        transition: none;
+
+        // Tło i obrys pigułki: każda połówka rysuje swoją część (bez kreski
+        // pośrodku), lekko przezroczyste.
+        &::before,
+        &::after {
+            content: "";
+            position: absolute;
+            inset: 0;
+            border-radius: inherit;
+            pointer-events: none;
         }
 
-        // Wybrana pozycja: pogrubiona i z paskiem z lewej — nie tylko kolorem.
-        [aria-checked="true"] {
-            font-weight: 700;
-            box-shadow: inset 3px 0 0 currentColor;
+        &::before {
+            background: currentColor;
+            opacity: 0.08;
         }
+
+        &::after {
+            border: $pigulka-ramka solid currentColor;
+            opacity: 0.35;
+        }
+
+        &:hover::before {
+            opacity: 0.16;
+        }
+
+        &:focus-visible {
+            outline: 2px solid currentColor;
+            outline-offset: 2px;
+            z-index: 2;
+        }
+    }
+
+    > li > a.bpp-pigulka__jasny {
+        border-radius: $pigulka-wysokosc 0 0 $pigulka-wysokosc;
+
+        &::after {
+            border-right: 0;
+        }
+    }
+
+    > li > a.bpp-pigulka__ciemny {
+        border-radius: 0 $pigulka-wysokosc $pigulka-wysokosc 0;
+
+        &::after {
+            border-left: 0;
+        }
+    }
+
+    .bpp-pigulka__ikona {
+        position: relative;
+        z-index: 1;
+        display: block;
+        width: 16px;
+        height: 16px;
+    }
+
+    // Suwak podświetlenia pod widocznym trybem.
+    > li.bpp-pigulka__tor {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: $pigulka-polowka;
+        height: $pigulka-wysokosc;
+        pointer-events: none;
+    }
+
+    > li.bpp-pigulka__tor > a.bpp-pigulka__suwak {
+        position: absolute;
+        inset: 0;
+        display: block;
+        padding: 0;
+        background: transparent;
+
+        // Wypełnienie.
+        &::before {
+            content: "";
+            position: absolute;
+            inset: 3px;
+            border-radius: $pigulka-wysokosc;
+            background: currentColor;
+            opacity: 0.28;
+        }
+
+        // Znacznik wyboru ręcznego: obwódka suwaka (patrz niżej).
+        &::after {
+            content: "";
+            position: absolute;
+            inset: 3px;
+            border-radius: $pigulka-wysokosc;
+            border: $pigulka-ramka solid currentColor;
+        }
+    }
+}
+
+// --- Stan (niska specyficzność — warunki niżej muszą wygrywać) --------------
+
+// Krótka animacja przesunięcia suwaka (wyłączona przy prefers-reduced-motion).
+.bpp-pigulka > li.bpp-pigulka__tor {
+    transition: transform 0.2s ease;
+}
+
+.bpp-pigulka .bpp-pigulka__ikona {
+    transition: opacity 0.2s ease;
+}
+
+// Domyślnie widać tryb jasny: przygaszony księżyc, bez obwódki suwaka.
+.bpp-pigulka .bpp-pigulka__ciemny .bpp-pigulka__ikona {
+    opacity: 0.6;
+}
+
+.bpp-pigulka .bpp-pigulka__suwak::after {
+    opacity: 0;
+}
+
+// Widać tryb ciemny → suwak pod księżycem, przygaszone słońce.
+.bpp-pigulka > li.bpp-pigulka__tor {
+    @include pigulka-widac-ciemny {
+        transform: translateX(100%);
+    }
+}
+
+.bpp-pigulka .bpp-pigulka__jasny .bpp-pigulka__ikona {
+    @include pigulka-widac-ciemny {
+        opacity: 0.6;
+    }
+}
+
+.bpp-pigulka .bpp-pigulka__ciemny .bpp-pigulka__ikona {
+    @include pigulka-widac-ciemny {
+        opacity: 1;
+    }
+}
+
+// Tryb wybrany ręcznie (jest atrybut) → obwódka na suwaku.
+html[data-tryb-kolorow] .bpp-pigulka .bpp-pigulka__suwak::after {
+    opacity: 0.95;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .bpp-pigulka > li.bpp-pigulka__tor,
+    .bpp-pigulka .bpp-pigulka__ikona {
+        transition: none;
     }
 }

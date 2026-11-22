@@ -26,37 +26,49 @@ musi je przenosić przez ukryte pola i wskazać własny prefiks eksportu.
         <input type="hidden" name="pivot_sort" value="{{ pivot_widok.sort }}">
         <input type="hidden" name="pivot_dir"
                value="{{ pivot_widok.kierunek_efektywny }}">
-        <label>Wiersze
-            <select name="pivot_row" onchange="this.form.submit()">
-                {% for key, dim in pivot_dimensions.items %}
-                    <option value="{{ key }}"{% if key == pivot_row_dim.key %} selected{% endif %}>{{ dim.label }}</option>
-                {% endfor %}
-            </select>
-        </label>
-        <label>Kolumny
-            <select name="pivot_col" onchange="this.form.submit()">
-                <option value="">(brak)</option>
-                {% for key, dim in pivot_dimensions.items %}
-                    {% if dim.allow_column %}
-                        <option value="{{ key }}"{% if pivot_col_dim and key == pivot_col_dim.key %} selected{% endif %}>{{ dim.label }}</option>
-                    {% endif %}
-                {% endfor %}
-            </select>
-        </label>
-        <label>W komórce
-            <select name="pivot_val" onchange="this.form.submit()">
-                {% for key, m in pivot_metrics.items %}
-                    <option value="{{ key }}"{% if key == pivot_metric.key %} selected{% endif %}>{{ m.label }}</option>
-                {% endfor %}
-            </select>
-        </label>
-        <label>Wierszy na stronie
-            <select name="pivot_per_page" onchange="this.form.submit()">
-                {% for ile in pivot_na_stronie_opcje %}
-                    <option value="{{ ile }}"{% if ile == pivot_widok.na_stronie %} selected{% endif %}>{{ ile }}</option>
-                {% endfor %}
-            </select>
-        </label>
+        {# Formularz ułożony jak schemat tabeli: wymiar wierszy z lewej, #}
+        {# wymiar kolumn nad, a to, co trafia do komórek (i ile wierszy #}
+        {# na stronie), w środku. #}
+        <div class="multiseek-pivot-schemat">
+            <div class="multiseek-pivot-schemat__naroznik" aria-hidden="true">
+                <span class="fi-layout"></span>
+            </div>
+            <label class="multiseek-pivot-schemat__kolumny">
+                <span>Kolumny <span aria-hidden="true">→</span></span>
+                <select name="pivot_col" onchange="this.form.submit()">
+                    <option value="">(brak)</option>
+                    {% for key, dim in pivot_dimensions.items %}
+                        {% if dim.allow_column %}
+                            <option value="{{ key }}"{% if pivot_col_dim and key == pivot_col_dim.key %} selected{% endif %}>{{ dim.label }}</option>
+                        {% endif %}
+                    {% endfor %}
+                </select>
+            </label>
+            <label class="multiseek-pivot-schemat__wiersze">
+                <span>Wiersze <span aria-hidden="true">↓</span></span>
+                <select name="pivot_row" onchange="this.form.submit()">
+                    {% for key, dim in pivot_dimensions.items %}
+                        <option value="{{ key }}"{% if key == pivot_row_dim.key %} selected{% endif %}>{{ dim.label }}</option>
+                    {% endfor %}
+                </select>
+            </label>
+            <div class="multiseek-pivot-schemat__komorka">
+                <label>W komórce
+                    <select name="pivot_val" onchange="this.form.submit()">
+                        {% for key, m in pivot_metrics.items %}
+                            <option value="{{ key }}"{% if key == pivot_metric.key %} selected{% endif %}>{{ m.label }}</option>
+                        {% endfor %}
+                    </select>
+                </label>
+                <label>Wierszy na stronie
+                    <select name="pivot_per_page" onchange="this.form.submit()">
+                        {% for ile in pivot_na_stronie_opcje %}
+                            <option value="{{ ile }}"{% if ile == pivot_widok.na_stronie %} selected{% endif %}>{{ ile }}</option>
+                        {% endfor %}
+                    </select>
+                </label>
+            </div>
+        </div>
         <noscript><button type="submit" class="button">Odśwież</button></noscript>
         {% if pivot and request.user.is_authenticated %}
         {# Prefiks eksportu jest parametrem konsumenta: "../export/" dziala #}
@@ -104,7 +116,8 @@ musi je przenosić przez ukryte pola i wskazać własny prefiks eksportu.
                 {% for row in t.rows %}
                 <tr>
                     <th>{{ row.label }}</th>
-                    {% for c in row.cells %}<td>{{ c|default_if_none:"" }}</td>{% endfor %}
+                    {# Bez wymiaru kolumn jedyna komórka to RAZEM wiersza — nie dublujemy. #}
+                    {% if t.has_cols %}{% for c in row.cells %}<td>{{ c|default_if_none:"" }}</td>{% endfor %}{% endif %}
                     <td class="pivot-total">{{ row.total|default_if_none:"" }}</td>
                 </tr>
                 {% endfor %}

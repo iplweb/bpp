@@ -1,7 +1,8 @@
 name: Tests
 
-# Zmiany czysto dokumentacyjne (docs/, mkdocs.yml, .readthedocs.yaml)
-# NIE uruchamiaja calej suity testow — buduje je wtedy tylko workflow
+# Zmiany czysto dokumentacyjne (docs/, mkdocs.yml, .readthedocs.yaml,
+# skrypty zrzutow ekranu bin/docs-*.py, newsfragmenty) NIE uruchamiaja
+# calej suity testow — buduje je wtedy tylko workflow
 # `Docs` (ma komplementarny `paths:`). Dzieki temu commit z sama
 # dokumentacja deployuje MkDocs na Pages, ale nie odpala ~10-min testow.
 # UWAGA: `[skip ci]` w komunikacie commita ubilby ROWNIEZ `Docs` —
@@ -17,6 +18,10 @@ on:
       - docs/**
       - mkdocs.yml
       - .readthedocs.yaml
+      # Skrypty zrzutow do dokumentacji (zadne testy ich nie importuja)
+      # i newsfragmenty — same w sobie nie zmieniaja dzialania BPP.
+      - bin/docs-*.py
+      - src/bpp/newsfragments/**
   pull_request:
     branches:
       - dev
@@ -24,6 +29,10 @@ on:
       - docs/**
       - mkdocs.yml
       - .readthedocs.yaml
+      # Skrypty zrzutow do dokumentacji (zadne testy ich nie importuja)
+      # i newsfragmenty — same w sobie nie zmieniaja dzialania BPP.
+      - bin/docs-*.py
+      - src/bpp/newsfragments/**
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}

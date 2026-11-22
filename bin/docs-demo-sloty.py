@@ -14,6 +14,7 @@ authors (the screenshots pick her by name) and rebuilds the slot cache.
 
 from django.db import transaction
 
+from bpp.demo_data.zrzuty import yennefer
 from bpp.models import (
     Autor,
     Autor_Dyscyplina,
@@ -23,7 +24,9 @@ from bpp.models import (
 )
 from ewaluacja_common.models import Rodzaj_Autora
 
-YENNEFER = 210  # the demo author linked to the "yennefer" account
+# Autorka powiązana z kontem „yennefer” (krok 2 w docs/deweloper/zrzuty-ekranu.md).
+# Nie po pk: klucze główne zależą od tego, czy baza była już wcześniej zapełniana.
+YENNEFER = yennefer().pk
 PROGI = [200, 140, 100, 70, 40, 20]
 NAZWY = ["filozofia", "nauki teologiczne", "biotechnologia", "archeologia"]
 

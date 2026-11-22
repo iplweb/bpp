@@ -18,18 +18,28 @@ What it does:
     "(nr …)" suffix in the title,
   - a book entered twice with an identical title and only one author.
 - removes earlier scan results, so the scenario starts from an empty page.
+
+Rekordy to pierwsze alfabetycznie (po tytule) prace z 2024 r. spełniające
+warunek — nie po pk, bo pk zależą od danych demo. Skrypt wypisuje wybór.
 """
 
 from django.contrib.auth.models import Group
 from django.db import transaction
 from password_policies.models import PasswordHistory
 
+from bpp.demo_data.zrzuty import duplikaty_publikacji
 from bpp.models import BppUser, Wydawnictwo_Ciagle, Wydawnictwo_Zwarte
 from deduplikator_publikacji.models import PublicationDuplicateScanRun
 
-ARTYKUL_DOI = 628  # "Wpływ mutacji na tolerancję eliksirów (nr 28)", 2024
-ARTYKUL_ROZDZIAL = 610  # "Perspektywy rozwoju bestii w lochach Novigradu (nr 10)"
-KSIAZKA = 359  # a 2024 book (wydawnictwo zwarte)
+# Rekordy wybiera bpp.demo_data.zrzuty.duplikaty_publikacji (pierwsze
+# alfabetycznie z 2024 r. spełniające warunek, a nie po pk) — tę samą regułę
+# stosuje scenariusz ``duplikaty-publikacji``.
+WYBOR = duplikaty_publikacji()
+for co, rekord in WYBOR.items():
+    print(f"{co}: {rekord.tytul_oryginalny} (pk {rekord.pk})")
+ARTYKUL_DOI = WYBOR["artykul_doi"].pk
+ARTYKUL_ROZDZIAL = WYBOR["artykul_rozdzial"].pk
+KSIAZKA = WYBOR["ksiazka"].pk
 
 
 def kopiuj_autorow(z, do, ile):

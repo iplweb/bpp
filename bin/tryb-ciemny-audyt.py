@@ -135,6 +135,8 @@ def strony_modulow(page, baza):
         h = re.sub(r"^https?://[^/]+", "", h or "").split("#")[0].split("?")[0]
         if not h.startswith("/") or h.startswith("/admin") or "logout" in h:
             continue
+        if h.startswith("/bpp/konfigurator-wygladu"):
+            continue  # samodzielna strona bez motywu (własny, jasny interfejs)
         if h not in sciezki:
             sciezki.append(h)
     return [("m:" + (h.strip("/").replace("/", "_") or "glowna"), h) for h in sciezki]

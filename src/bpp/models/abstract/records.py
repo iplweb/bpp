@@ -29,6 +29,20 @@ class RekordBPPBaza(
     # jako sieroty wskazujące na nieistniejący ``object_id``.
     granty_rekordu = GenericRelation("bpp.Grant_Rekordu")
 
+    # Pliki w repozytorium (``Element_Repozytorium``, GenericForeignKey) —
+    # odwrotna strona do śledzenia w historii wersji (FD#587). Jak wyżej:
+    # bez kolumny i migracji; kasowanie rekordu kasuje jego elementy.
+    elementy_repozytorium = GenericRelation("bpp.Element_Repozytorium")
+
+    # Wiersze powiązań słów kluczowych (``taggit.TaggedItem``) — do
+    # śledzenia słów kluczowych w historii wersji (FD#587). ``slowa_kluczowe``
+    # zwraca same tagi (wspólne dla wszystkich rekordów), a wersja musi
+    # zawierać powiązania TEGO rekordu. Bez kolumny i migracji. Celowo tu,
+    # a nie w ``ModelZeSlowamiKluczowymi``: ten abstrakt dziedziczy też
+    # widok ``Rekord`` (klucz złożony), dla którego kaskada kasowania przez
+    # ``GenericRelation`` nie działa.
+    slowa_kluczowe_powiazania = GenericRelation("taggit.TaggedItem")
+
     class Meta:
         abstract = True
 

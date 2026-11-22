@@ -13,9 +13,17 @@ What it does:
 - turns one demo author into "Geralt z Rivii" (ORCID, title, unit) and adds
   two duplicates of him, as an import would: "G. z Rivii" (2 works, filed
   under a wrong unit) and "Geralt z Rivii" (3 works, no ORCID/title),
-- puts "Acta Oxenfurcka" on the ministerial list (a local PBN journal record
+- puts one journal on the ministerial list (a local PBN journal record
   with an MNiSW ID; nothing is sent to PBN) and splits off 4 of its
-  publications into a duplicate source "ACTA OXENFURCKA" with the same ISSN.
+  publications into a duplicate source with the same name in capitals
+  ("ACTA …") and the same ISSN.
+
+Autora i źródło wybieramy z bazy, a nie po pk/nazwie (nazwy losuje generator
+danych demo, a pk zależą od tego, czy baza była już zapełniana): autor to
+pierwsza alfabetycznie osoba z aktualną jednostką i co najmniej 3 pracami
+w czasopismach, źródło — to z największą liczbą prac (poza czasopismami
+z wykazu ministerialnego). Reguły w bpp.demo_data.zrzuty, wspólne ze
+scenariuszem ``duplikaty``. Skrypt wypisuje wybór.
 
 The scenario changes the data (merges, remaps), so take screenshots on a
 fresh copy of the DB each time.
@@ -25,10 +33,15 @@ from django.contrib.auth.models import Group
 from django.db import transaction
 from password_policies.models import PasswordHistory
 
+from bpp.demo_data.zrzuty import (
+    MONGO_ID_ZDUBLOWANEGO_ZRODLA,
+    autor_do_zdublowania,
+    bledna_jednostka_geralta,
+    zrodlo_do_zdublowania,
+)
 from bpp.models import (
     Autor,
     BppUser,
-    Jednostka,
     Tytul,
     Wydawnictwo_Ciagle,
     Wydawnictwo_Ciagle_Autor,
@@ -36,8 +49,6 @@ from bpp.models import (
     Zrodlo,
 )
 from pbn_api.models import Journal
-
-GERALT = 166  # demo author "Geralt Bonhart" -> "Geralt z Rivii"
 
 with transaction.atomic():
     u, _ = BppUser.objects.get_or_create(
@@ -54,7 +65,9 @@ with transaction.atomic():
     u.groups.add(Group.objects.get(name="wprowadzanie danych"))
     PasswordHistory.objects.create(user=u, password=u.password)
 
-    g = Autor.objects.get(pk=GERALT)
+    # demo author -> "Geralt z Rivii"
+    g = autor_do_zdublowania()
+    print(f"Geralt z Rivii: dawniej {g} (pk {g.pk})")
     g.nazwisko, g.imiona = "z Rivii", "Geralt"
     g.orcid = "0000-0002-1825-0097"  # ORCID's own fictional example record
     g.tytul = Tytul.objects.filter(skrot="dr").first()
@@ -62,8 +75,8 @@ with transaction.atomic():
     for klass in (Wydawnictwo_Ciagle_Autor, Wydawnictwo_Zwarte_Autor):
         klass.objects.filter(autor=g).update(zapisany_jako="Geralt z Rivii")
     jedn = g.aktualna_jednostka
-    inna = Jednostka.objects.exclude(pk=jedn.pk).filter(nazwa__startswith="Pracownia")
-    inna = inna.first()
+    # a wrong unit: first other unit without subunits, alphabetically
+    inna = bledna_jednostka_geralta(g)
 
     jego = Wydawnictwo_Ciagle.objects.filter(autorzy_set__autor=g)
     wolne = list(
@@ -78,9 +91,10 @@ with transaction.atomic():
         for p in prace:
             p.dodaj_autora(d, jednostka)
 
-    main = Zrodlo.objects.get(nazwa="Acta Oxenfurcka", issn="2337-4989")
+    main = zrodlo_do_zdublowania()
+    print(f"źródło: {main.nazwa} (ISSN {main.issn}), duplikat: {main.nazwa.upper()}")
     main.pbn_uid = Journal.objects.create(
-        mongoId="5e709189878c28a04737dc6f",
+        mongoId=MONGO_ID_ZDUBLOWANEGO_ZRODLA,
         status="ACTIVE",
         versions=[
             {
@@ -91,9 +105,9 @@ with transaction.atomic():
     )
     main.save()
     dup = Zrodlo.objects.create(
-        nazwa="ACTA OXENFURCKA",
-        skrot="Acta Oxenf.",
-        issn="2337-4989",
+        nazwa=main.nazwa.upper(),
+        skrot=f"{main.skrot} (dup.)",
+        issn=main.issn,
         rodzaj=main.rodzaj,
     )
     for p in Wydawnictwo_Ciagle.objects.filter(zrodlo=main).order_by("-pk")[:4]:

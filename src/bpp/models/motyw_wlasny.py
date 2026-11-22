@@ -91,8 +91,8 @@ class MotywWlasny(models.Model):
     @classmethod
     def tryb_kolorow_dla(cls, uczelnia_id):
         """`tryb_kolorow` zastosowanego motywu („automatyczny”, „jasny”,
-        „ciemny”) albo None — z cache. Przełącznik trybu kolorów na pasku
-        menu ma sens tylko przy „automatycznym” (CSS z obiema wersjami)."""
+        „ciemny”) albo None — z cache. To tryb domyślny motywu; drugą wersję
+        odwiedzający włącza pigułką ☀ | ☾ na pasku menu."""
         klucz = _klucz_cache_trybu(uczelnia_id)
         tryb = cache.get(klucz)
         if tryb is None:

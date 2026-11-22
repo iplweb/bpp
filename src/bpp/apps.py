@@ -14,6 +14,14 @@ class BppConfig(AppConfig):
         from .auth.microsoft_conf import ostrzez_superusera_o_tenancie_microsoft
         from .konta_bez_uczelni import ostrzez_superusera_po_zalogowaniu
 
+        # Rejestracja modeli w reversion (historia zmian) — także w procesach
+        # bez admina (Celery, polecenia): importery i receiver kosza
+        # sprawdzają ``reversion.is_registered`` i dla wersjonowanych modeli
+        # zapisują rewizje zamiast samego ``LogEntry``. auth_server nie ma
+        # reversion w INSTALLED_APPS.
+        if apps.is_installed("reversion"):
+            from . import wersjonowanie  # noqa: F401
+
         user_logged_in.connect(
             ostrzez_superusera_po_zalogowaniu,
             dispatch_uid="bpp.ostrzez_superusera_po_zalogowaniu",
