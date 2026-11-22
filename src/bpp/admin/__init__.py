@@ -57,6 +57,7 @@ from .rodzaj_jednostki import RodzajJednostkiAdmin  # noqa
 from .seria_wydawnicza import Seria_WydawniczaAdmin  # noqa
 from .szablondlaopisubibliograficznego import SzablonDlaOpisuBibliograficznego  # noqa
 from .uczelnia import UczelniaAdmin  # NOQA
+from .wersja_przeliczenia import Wersja_PrzeliczeniaAdmin  # noqa
 from .wydawca import WydawcaAdmin  # noqa
 from .wydawnictwo_ciagle import Wydawnictwo_CiagleAdmin  # noqa
 from .wydawnictwo_ciagle_autor import Wydawnictwo_Ciagle_Autor_Admin  # noqa

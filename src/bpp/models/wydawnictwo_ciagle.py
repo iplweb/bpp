@@ -38,6 +38,7 @@ from bpp.models.abstract import (
     ModelZMiejscemPrzechowywania,
     ModelZNumeremZeszytu,
     ModelZOpenAccess,
+    ModelZOpenAccessMiesiacIRokUdostepnienia,
     ModelZPBN_UID,
     ModelZPolamiEwaluacjiPBN,
     ModelZPrzeliczaniemDyscyplin,
@@ -85,7 +86,9 @@ class Wydawnictwo_Ciagle_Autor(
         ]
 
 
-class ModelZOpenAccessWydawnictwoCiagle(ModelZOpenAccess):
+class ModelZOpenAccessWydawnictwoCiagle(
+    ModelZOpenAccess, ModelZOpenAccessMiesiacIRokUdostepnienia
+):
     openaccess_tryb_dostepu = models.ForeignKey(
         "Tryb_OpenAccess_Wydawnictwo_Ciagle",
         SET_NULL,
@@ -323,6 +326,7 @@ class Wydawnictwo_Ciagle(
         DwaTytuly.clean(self)
         ModelZeSzczegolami.clean(self)
         ModelZOplataZaPublikacje.clean(self)
+        ModelZOpenAccessMiesiacIRokUdostepnienia.clean(self)
 
 
 class Wydawnictwo_Ciagle_Zewnetrzna_Baza_Danych(

@@ -105,6 +105,16 @@ def unlock_all(**kwargs):
 
 
 @worker_ready.connect
+def zlec_przeliczenia_po_aktualizacji(**kwargs):
+    """Po starcie workera (czyli także po wdrożeniu nowej wersji) zleć
+    przeliczenia, których algorytm się zmienił — patrz ``bpp.przeliczenia``.
+    Tylko ``delay()``: start workera nie czeka na przeliczenie."""
+    from bpp.tasks import zlec_zalegle_przeliczenia
+
+    zlec_zalegle_przeliczenia.delay()
+
+
+@worker_ready.connect
 def initialize_rollbar(**kwargs):
     """Initialize Rollbar after Django settings are configured."""
     from bpp.rollbar_config import configure_rollbar

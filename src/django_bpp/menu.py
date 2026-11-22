@@ -182,6 +182,7 @@ ADMIN_MENU = [
         "Kolumny w module redagowania",
         "/admin/dynamic_admin_columns/modeladmin/",
     ),
+    ("Wersje przeliczeń", "/admin/bpp/wersja_przeliczenia/"),
 ]
 
 DOCKER_SERVICES_MENU = [
