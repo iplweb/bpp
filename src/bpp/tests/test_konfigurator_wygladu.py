@@ -7,6 +7,19 @@ from django.urls import reverse
 from model_bakery import baker
 
 from bpp.models import MOTYW_WLASNY, MotywWlasny
+
+
+@pytest.fixture
+def staff_client(client, staff_user):
+    """Obsługa w grupie „web” — ma dostęp do konfiguratora wyglądu
+    (bpp.konfigurator_dostep). Nadpisuje ogólny ``staff_client``."""
+    from django.contrib.auth.models import Group
+
+    from conftest import STAFF_PASSWORD, STAFF_USERNAME
+
+    staff_user.groups.add(Group.objects.get_or_create(name="web")[0])
+    assert client.login(username=STAFF_USERNAME, password=STAFF_PASSWORD)
+    return client
 from django_bpp.version import VERSION
 
 # Link do CSS-a motywu z plików statycznych (w testach z haszem w nazwie).
@@ -887,3 +900,30 @@ def test_link_do_konfiguratora_w_menu_www_admina():
     assert ("Konfigurator wyglądu", reverse("bpp:konfigurator_wygladu")) in [
         (str(nazwa), adres) for nazwa, adres in WEB_MENU
     ]
+
+
+
+@pytest.mark.django_db
+def test_obsluga_bez_grupy_nie_ma_konfiguratora(staff_user, uczelnia):
+    from conftest import STAFF_PASSWORD, STAFF_USERNAME
+
+    c = Client()
+    assert c.login(username=STAFF_USERNAME, password=STAFF_PASSWORD)
+    assert c.get(reverse("bpp:konfigurator_wygladu")).status_code == 403
+    # Bez linku w menu „redagowanie” i bez trybu podglądu.
+    tresc = c.get("/?podglad_motywu=1").content.decode()
+    assert reverse("bpp:konfigurator_wygladu") not in tresc
+    assert 'id="bpp-motyw-podglad"' not in tresc
+
+
+@pytest.mark.django_db
+def test_grupa_administracja_ma_konfigurator(staff_user, uczelnia):
+    from django.contrib.auth.models import Group
+
+    from conftest import STAFF_PASSWORD, STAFF_USERNAME
+
+    staff_user.groups.add(Group.objects.get_or_create(name="administracja")[0])
+    c = Client()
+    assert c.login(username=STAFF_USERNAME, password=STAFF_PASSWORD)
+    assert c.get(reverse("bpp:konfigurator_wygladu")).status_code == 200
+    assert reverse("bpp:konfigurator_wygladu") in c.get("/").content.decode()

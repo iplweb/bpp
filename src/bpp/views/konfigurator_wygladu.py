@@ -20,7 +20,6 @@ import re
 
 from django.conf import settings
 from django.contrib import messages
-from django.contrib.admin.views.decorators import staff_member_required
 from django.core.exceptions import PermissionDenied, ValidationError
 from django.core.files.base import ContentFile
 from django.core.management import call_command
@@ -32,6 +31,7 @@ from django.utils.timezone import localtime, now
 from django.views.decorators.http import require_POST
 
 from bpp import przymiarka_motywu as przymiarka
+from bpp.konfigurator_dostep import konfigurator_wymagany
 from bpp.models import (
     MOTYW_WLASNY,
     MotywWersja,
@@ -226,7 +226,7 @@ def _uczelnia(request):
     return uczelnia
 
 
-@staff_member_required
+@konfigurator_wymagany
 def konfigurator_wygladu(request):
     uczelnia = _uczelnia(request)
     zapisany = (
@@ -282,7 +282,7 @@ def konfigurator_wygladu(request):
     )
 
 
-@staff_member_required
+@konfigurator_wymagany
 def konfigurator_wygladu_demo(request):
     """Strona demo do podglądu: wszystkie komunikaty, przyciski i pola."""
     for poziom, tekst in (
@@ -315,7 +315,7 @@ def konfigurator_wygladu_demo(request):
 
 
 @require_POST
-@staff_member_required
+@konfigurator_wymagany
 def konfigurator_wygladu_zastosuj(request):
     """Kompiluje motyw z przesłanych ustawień, zapisuje go i włącza dla uczelni.
 
@@ -386,7 +386,7 @@ def _przebuduj_strony_bledu(uczelnia):
 
 
 @require_POST
-@staff_member_required
+@konfigurator_wymagany
 def konfigurator_wygladu_zapisz(request):
     """Zapisuje ustawienia BEZ stosowania (motyw roboczy).
 
@@ -419,7 +419,7 @@ MAKS_DLUGOSC_NAZWY_MOTYWU = 100
 
 
 @require_POST
-@staff_member_required
+@konfigurator_wymagany
 def konfigurator_wygladu_motyw_zapisz(request):
     """„Zapisz jako…” — motyw pod nazwą, do wczytania później. Ta sama nazwa
     nadpisuje wcześniejszy zapis. Strona się nie zmienia."""
@@ -448,21 +448,21 @@ def konfigurator_wygladu_motyw_zapisz(request):
     )
 
 
-@staff_member_required
+@konfigurator_wymagany
 def konfigurator_wygladu_motyw(request, pk):
     motyw = get_object_or_404(MotywZapisany, pk=pk, uczelnia=_uczelnia(request))
     return JsonResponse({"nazwa": motyw.nazwa, "konfig": motyw.konfig})
 
 
 @require_POST
-@staff_member_required
+@konfigurator_wymagany
 def konfigurator_wygladu_motyw_usun(request, pk):
     uczelnia = _uczelnia(request)
     get_object_or_404(MotywZapisany, pk=pk, uczelnia=uczelnia).delete()
     return JsonResponse({"ok": True, "motywy": _motywy_zapisane(uczelnia)})
 
 
-@staff_member_required
+@konfigurator_wymagany
 def konfigurator_wygladu_wersja(request, pk):
     """Ustawienia jednej wersji z historii — do wczytania w konfiguratorze."""
     wersja = get_object_or_404(MotywWersja, pk=pk, uczelnia=_uczelnia(request))
@@ -470,7 +470,7 @@ def konfigurator_wygladu_wersja(request, pk):
 
 
 @require_POST
-@staff_member_required
+@konfigurator_wymagany
 def konfigurator_wygladu_przywroc(request):
     """Wraca do jednego z motywów BPP_THEMES (np. sprzed konfiguratora).
 
@@ -492,7 +492,7 @@ def konfigurator_wygladu_przywroc(request):
 
 
 @require_POST
-@staff_member_required
+@konfigurator_wymagany
 def konfigurator_wygladu_przymierz(request):
     """Przymiarka: motyw widoczny na całej stronie tylko w tej sesji."""
     try:
@@ -508,7 +508,7 @@ def konfigurator_wygladu_przymierz(request):
 
 
 @require_POST
-@staff_member_required
+@konfigurator_wymagany
 def konfigurator_wygladu_przymiarka_koniec(request):
     przymiarka.zakoncz(request)
     nastepny = request.POST.get("next", "")
@@ -519,7 +519,7 @@ def konfigurator_wygladu_przymiarka_koniec(request):
     return HttpResponseRedirect("/")
 
 
-@staff_member_required
+@konfigurator_wymagany
 def motyw_przymiarka_css(request, skrot):
     tresc = przymiarka.css(skrot)
     if tresc is None:

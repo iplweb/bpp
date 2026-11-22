@@ -259,11 +259,13 @@
                                     <i class="fi-upload"></i> Zgłoszenia publikacji
                                 </a>
                             </li>
-                            <li>
-                                <a href="{% url "bpp:konfigurator_wygladu" %}">
-                                    <i class="fi-paint-bucket"></i> Konfigurator wyglądu
-                                </a>
-                            </li>
+                            {% if MOZE_KONFIGUROWAC_WYGLAD %}
+                                <li>
+                                    <a href="{% url "bpp:konfigurator_wygladu" %}">
+                                        <i class="fi-paint-bucket"></i> Konfigurator wyglądu
+                                    </a>
+                                </li>
+                            {% endif %}
                             {% if request.user.is_superuser %}
                                 <hr/>
                                 <li>

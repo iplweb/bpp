@@ -1,1 +1,1 @@
-Konfigurator wyglądu ma linki: w menu „redagowanie” na stronie (dla obsługi) i w zakładce „WWW” panelu administracyjnego.
+Konfigurator wyglądu ma linki: w menu „redagowanie” na stronie i w zakładce „WWW” panelu administracyjnego. Dostęp do konfiguratora mają superużytkownicy oraz grupy „web” i „administracja” (pozostała obsługa nie widzi linków i nie może go otworzyć).
