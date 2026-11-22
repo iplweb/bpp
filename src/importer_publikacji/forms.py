@@ -1,5 +1,6 @@
 from dal import autocomplete
 from django import forms
+from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.db.models import Q
 
@@ -18,7 +19,7 @@ from bpp.models import (
 )
 from pbn_api.models import Publication as PBNPublication
 
-from .models import ImportSession
+from .models import DEFAULT_STALL_TIMEOUT, ImportSession
 from .providers import (
     get_available_providers,
     get_providers_metadata,
@@ -336,8 +337,59 @@ class AuthorMatchForm(forms.Form):
     )
 
 
+# Pseudo-status filtra listy sesji (FD#615): sesja w stanie „w locie”
+# (pobieranie / tworzenie rekordu), w której od dłuższego czasu nic się nie
+# zmieniło — ten sam warunek, co watchdog ``ImportSession.is_stalled()``.
+STATUS_UTKNIETE = "utkniete"
+
+ETAP_BLEDU_CHOICES = [
+    ("", "---------"),
+    ("fetch", "Pobieranie danych"),
+    ("create", "Tworzenie rekordu"),
+]
+
+REKORD_WYNIKOWY_CHOICES = [
+    ("", "---------"),
+    ("jest", "Z rekordem"),
+    ("brak", "Bez rekordu"),
+]
+
+
+def _status_choices():
+    timeout = getattr(settings, "IMPORTER_STALL_TIMEOUT", DEFAULT_STALL_TIMEOUT)
+    minuty = max(1, round(timeout / 60))
+    return list(ImportSession.Status.choices) + [
+        (
+            STATUS_UTKNIETE,
+            f"Utknięte (pobieranie lub tworzenie bez postępu > {minuty} min)",
+        )
+    ]
+
+
 class SessionFilterForm(forms.Form):
     """Formularz filtrowania listy sesji importu."""
+
+    status = forms.MultipleChoiceField(
+        label="Status",
+        required=False,
+        choices=[],
+        widget=forms.SelectMultiple(
+            attrs={
+                "class": "importer-multi-select2",
+                "data-placeholder": "wszystkie (bez anulowanych)",
+            }
+        ),
+    )
+    etap_bledu = forms.ChoiceField(
+        label="Etap błędu",
+        required=False,
+        choices=ETAP_BLEDU_CHOICES,
+    )
+    rekord = forms.ChoiceField(
+        label="Rekord wynikowy",
+        required=False,
+        choices=REKORD_WYNIKOWY_CHOICES,
+    )
 
     date_from = forms.DateField(
         label="Data od",
@@ -385,6 +437,7 @@ class SessionFilterForm(forms.Form):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
+        self.fields["status"].choices = _status_choices()
         users_qs = _importer_users_queryset()
         self.fields["created_by"].queryset = users_qs
         self.fields["modified_by"].queryset = users_qs

@@ -8,14 +8,17 @@ Zawiera:
 - pomocnicze nakładki HTMX (HX-Push-Url, OOB breadcrumbs).
 """
 
+from datetime import date
 from urllib.parse import urlencode
 
+from django import forms
+from django.db.models import Q
 from django.shortcuts import render
 from django.template.loader import render_to_string
 
 from bpp.models import Crossref_Mapper
 
-from ..forms import FetchForm, SessionFilterForm
+from ..forms import STATUS_UTKNIETE, FetchForm, SessionFilterForm
 from ..models import ImportSession, MultipleWorksImport
 from ..permissions import scope_import_do_uczelni
 from ..providers import get_providers_metadata
@@ -37,16 +40,40 @@ SESSIONS_PARTIAL = "importer_publikacji/partials/session_list.html"
 BATCH_DETAIL = "importer_publikacji/partials/batch_detail.html"
 BREADCRUMBS_OOB = "importer_publikacji/partials/_breadcrumbs_oob.html"
 
-SESSIONS_ALLOWED_SORTS = {
-    "created",
-    "-created",
-    "modified",
-    "-modified",
-    "created_by__username",
-    "-created_by__username",
-    "status",
-    "-status",
+# Sortowanie listy sesji: pole ORM → etykieta kolumny (w komunikacie
+# o zapamiętanym widoku, FD#615). Kolumny tabeli niosą ``data-sort-key``
+# z tymi samymi kluczami — klik w nagłówek odsyła je w parametrze ``sort``.
+SESSIONS_SORT_LABELS = {
+    "created": "Data",
+    "modified": "Data modyfikacji",
+    "normalized_data__title": "Tytuł",
+    "normalized_data__doi": "DOI / Identyfikator",
+    "provider_name": "Źródło",
+    "status": "Status",
+    "created_by__username": "Utworzył",
+    "modified_by__username": "Zmodyfikował",
 }
+SESSIONS_ALLOWED_SORTS = {
+    klucz for pole in SESSIONS_SORT_LABELS for klucz in (pole, f"-{pole}")
+}
+SESSIONS_DEFAULT_SORT = "-created"
+
+# Parametry GET filtrów listy sesji — tylko te trafiają do adresu URL
+# i do zapamiętanego widoku w sesji użytkownika (FD#615).
+SESSIONS_FILTER_KEYS = (
+    "date_from",
+    "date_to",
+    "title",
+    "doi",
+    "provider_name",
+    "status",
+    "etap_bledu",
+    "rekord",
+    "created_by",
+    "modified_by",
+)
+# Klucz w ``request.session`` z ostatnim zestawem filtrów i sortowania.
+SESSIONS_SAVED_VIEW_KEY = "importer_publikacji_lista_sesji"
 
 
 def _detect_language(title, abstract=None):
@@ -192,58 +219,132 @@ def _fetch_context(form=None, request=None, provider_name=None):
     }
 
 
-def _sessions_queryset(request):
-    """Zbuduj queryset sesji z filtrami z GET params."""
-    qs = ImportSession.objects.select_related("created_by", "modified_by").exclude(
-        status=ImportSession.Status.CANCELLED
-    )
+# Proste filtry listy sesji: pole formularza → lookup ORM.
+_SESSIONS_SIMPLE_FILTERS = {
+    "date_from": "created__date__gte",
+    "date_to": "created__date__lte",
+    "title": "normalized_data__title__icontains",
+    "doi": "normalized_data__doi__icontains",
+    "provider_name": "provider_name",
+    "created_by": "created_by",
+    "modified_by": "modified_by",
+    "etap_bledu": "last_failed_stage",
+}
+# Filtr „Rekord wynikowy”: wartość → ``created_record_id__isnull``.
+_SESSIONS_REKORD_ISNULL = {"jest": False, "brak": True}
+
+
+def _apply_session_filters(qs, cleaned_data):
+    """Nałóż na queryset filtry z poprawnie zwalidowanego formularza
+    (poza statusem — patrz :func:`_apply_status_filter`)."""
+    for pole, lookup in _SESSIONS_SIMPLE_FILTERS.items():
+        wartosc = cleaned_data.get(pole)
+        if wartosc:
+            qs = qs.filter(**{lookup: wartosc})
+    rekord = cleaned_data.get("rekord")
+    if rekord in _SESSIONS_REKORD_ISNULL:
+        qs = qs.filter(created_record_id__isnull=_SESSIONS_REKORD_ISNULL[rekord])
+    return qs
+
+
+def _apply_status_filter(qs, statusy):
+    """Wybrane statusy łączymy przez „lub”; pseudo-status „utknięte” to
+    warunek watchdoga. Bez wyboru — wszystko poza anulowanymi (anulowane
+    pokazujemy tylko, gdy ktoś je jawnie wybrał)."""
+    if not statusy:
+        return qs.exclude(status=ImportSession.Status.CANCELLED)
+    warunek = Q(status__in=[s for s in statusy if s != STATUS_UTKNIETE])
+    if STATUS_UTKNIETE in statusy:
+        warunek |= ImportSession.stalled_q()
+    return qs.filter(warunek)
+
+
+def _sessions_queryset(request, params=None):
+    """Zbuduj queryset sesji z filtrami z parametrów GET.
+
+    ``params`` — domyślnie ``request.GET``; widok listy podaje tu zapamiętany
+    zestaw filtrów, gdy przywraca widok (FD#615).
+    """
+    if params is None:
+        params = request.GET
+    qs = ImportSession.objects.select_related(
+        "created_by", "modified_by", "created_record_content_type"
+    ).prefetch_related("created_record")
     # Izolacja multi-host: redaktor widzi tylko sesje swojej uczelni (uwaga #3).
     qs = scope_import_do_uczelni(qs, request)
 
-    form = SessionFilterForm(request.GET)
+    form = SessionFilterForm(params)
+    statusy = []
     if form.is_valid():
-        date_from = form.cleaned_data.get("date_from")
-        if date_from:
-            qs = qs.filter(created__date__gte=date_from)
+        statusy = form.cleaned_data.get("status") or []
+        qs = _apply_session_filters(qs, form.cleaned_data)
+    qs = _apply_status_filter(qs, statusy)
 
-        date_to = form.cleaned_data.get("date_to")
-        if date_to:
-            qs = qs.filter(created__date__lte=date_to)
-
-        title = form.cleaned_data.get("title")
-        if title:
-            qs = qs.filter(normalized_data__title__icontains=title)
-
-        doi = form.cleaned_data.get("doi")
-        if doi:
-            qs = qs.filter(normalized_data__doi__icontains=doi)
-
-        provider = form.cleaned_data.get("provider_name")
-        if provider:
-            qs = qs.filter(provider_name=provider)
-
-        created_by = form.cleaned_data.get("created_by")
-        if created_by:
-            qs = qs.filter(created_by=created_by)
-
-        modified_by = form.cleaned_data.get("modified_by")
-        if modified_by:
-            qs = qs.filter(modified_by=modified_by)
-
-    sort = request.GET.get("sort", "-created")
+    sort = params.get("sort", SESSIONS_DEFAULT_SORT)
     if sort not in SESSIONS_ALLOWED_SORTS:
-        sort = "-created"
-    qs = qs.order_by(sort)
+        sort = SESSIONS_DEFAULT_SORT
+    qs = qs.order_by(sort, "-pk")
 
     return qs, form, sort
 
 
-def _sessions_list_context(request):
+def _sessions_querystring(params, sort):
+    """Znormalizowany querystring widoku listy: tylko znane filtry
+    z niepustą wartością + sortowanie, jeśli inne niż domyślne."""
+    pary = [
+        (klucz, wartosc)
+        for klucz in SESSIONS_FILTER_KEYS
+        for wartosc in params.getlist(klucz)
+        if wartosc.strip()
+    ]
+    if sort != SESSIONS_DEFAULT_SORT:
+        pary.append(("sort", sort))
+    return urlencode(pary)
+
+
+def _sessions_filters_description(form, sort):
+    """Czytelny opis aktywnych filtrów i sortowania (komunikat o
+    przywróconym widoku, FD#615), np. ``["Status: Błąd importu"]``."""
+    opis = []
+    if form.is_valid():
+        for nazwa, pole in form.fields.items():
+            wartosc = form.cleaned_data.get(nazwa)
+            if wartosc in (None, "", []):
+                continue
+            if isinstance(pole, forms.ModelChoiceField):
+                tekst = wartosc.get_username()
+            elif isinstance(pole, forms.ChoiceField):
+                etykiety = dict(pole.choices)
+                if isinstance(wartosc, list):
+                    tekst = ", ".join(str(etykiety.get(w, w)) for w in wartosc)
+                else:
+                    tekst = str(etykiety.get(wartosc, wartosc))
+            elif isinstance(wartosc, date):
+                tekst = wartosc.isoformat()
+            else:
+                tekst = str(wartosc)
+            opis.append(f"{pole.label}: {tekst}")
+    if sort != SESSIONS_DEFAULT_SORT:
+        kierunek = "malejąco" if sort.startswith("-") else "rosnąco"
+        opis.append(f"Sortowanie: {SESSIONS_SORT_LABELS[sort.lstrip('-')]}, {kierunek}")
+    return opis
+
+
+def _sessions_list_context(request, params=None):
     """Kontekst listy sesji z filtrami."""
-    qs, form, _sort = _sessions_queryset(request)
+    if params is None:
+        params = request.GET
+    qs, form, sort = _sessions_queryset(request, params)
+    statusy = form.cleaned_data.get("status", []) if form.is_valid() else []
     return {
         "sessions": qs,
         "filter_form": form,
+        "sort": sort,
+        "sort_key": sort.lstrip("-"),
+        "sort_desc": sort.startswith("-"),
+        "sessions_querystring": _sessions_querystring(params, sort),
+        "tylko_bledy": statusy == [ImportSession.Status.IMPORT_FAILED],
+        "status_import_failed": ImportSession.Status.IMPORT_FAILED,
     }
 
 
