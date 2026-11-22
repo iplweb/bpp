@@ -44,6 +44,7 @@ from bpp.util.isbn import (
     kanoniczny_isbn,
     warianty_isbn,
     warunek_po_isbn,
+    wyglada_jak_isbn,
 )
 from bpp.views.api.const import API_BRAK_PARAMETRU
 from bpp.zglaszanie_bledow import capture_exception
@@ -175,13 +176,14 @@ class GetPBNPublicationsByBase(LoginRequiredMixin, View):
                 zapisz_mongodb(client.get_publication_by_id(uid), Publication)
 
     def odpowiedz(self, uidy, value, rok):
-        publikacje = {
-            pub.pk: pub
-            for pub in Publication.objects.filter(pk__in=uidy[:MAX_KANDYDATOW])
-        }
+        uidy = uidy[:MAX_KANDYDATOW]
+        publikacje = {pub.pk: pub for pub in Publication.objects.filter(pk__in=uidy)}
         # Rekordy z rokiem z formularza na początek; poza tym kolejność
         # wyszukiwania (``sorted`` jest stabilne).
-        uidy = sorted(publikacje, key=lambda uid: publikacje[uid].year != rok)
+        uidy = sorted(
+            (uid for uid in uidy if uid in publikacje),
+            key=lambda uid: publikacje[uid].year != rok,
+        )
         kandydaci = [
             {
                 "id": uid,
@@ -265,6 +267,11 @@ class GetPBNPublicationsByISBN(GetPBNPublicationsByBase):
         # czasem dopiski („9788374307338 (druk)") — stąd ``icontains``
         # (indeks trigramowy na tej kolumnie), a nie równość. Element neutralny
         # ``Q(pk__in=[])`` chroni przed pustą listą wariantów.
+        if not wyglada_jak_isbn(value):
+            # Coś, co nie wygląda jak ISBN („brak", „83", fragment numeru) —
+            # wyłącznie równość, inaczej ``icontains`` trafiłby w tysiące
+            # rekordów.
+            return Q(isbn=kanoniczny_isbn(value))
         return functools.reduce(
             operator.or_,
             (Q(isbn__icontains=wariant) for wariant in warianty_isbn(value)),

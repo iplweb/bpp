@@ -302,3 +302,20 @@ def test_fd622_wyszukiwarka_pola_znajduje_isbn_z_myslnikami(admin_client):
     wyniki = res.json()["results"]
     assert [w["id"] for w in wyniki] == [UID_KSIAZKI]
     assert "[książka]" in wyniki[0]["text"]
+
+
+@pytest.mark.django_db
+def test_fd622_smieci_zamiast_isbn_nie_lapia_przypadkowych_rekordow(
+    rf, mocker, pbn_uczelnia, pbn_client, admin_user
+):
+    """Wpis niebędący ISBN-em („83") nie może trafić lokalnie w każdy
+    rekord, którego ISBN zawiera ten ciąg."""
+    from pbn_integrator.utils import zapisz_mongodb
+
+    zapisz_mongodb(_ksiazka_json(isbn="978-83-01-00000-0"), Publication)
+    fake = FakePBNSearch(_ksiazka_json(), "isbn", "nigdy")
+    _podepnij_pbn(mocker, pbn_client, fake)
+
+    res = _post(rf, GetPBNPublicationsByISBN, admin_user, pbn_uczelnia, "83")
+
+    assert "error" in res, res
