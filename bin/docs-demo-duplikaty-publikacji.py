@@ -25,51 +25,21 @@ warunek — nie po pk, bo pk zależą od danych demo. Skrypt wypisuje wybór.
 
 from django.contrib.auth.models import Group
 from django.db import transaction
-from django.db.models import Count
 from password_policies.models import PasswordHistory
 
+from bpp.demo_data.zrzuty import duplikaty_publikacji
 from bpp.models import BppUser, Wydawnictwo_Ciagle, Wydawnictwo_Zwarte
 from deduplikator_publikacji.models import PublicationDuplicateScanRun
 
-ROK = 2024
-
-
-# Rekordy wybieramy z bazy (pierwsze alfabetycznie z roku ROK spełniające
-# warunek), a nie po pk: pk i tytuły zależą od danych demo.
-def wybierz(qs, co):
-    rekord = qs.filter(rok=ROK).order_by("tytul_oryginalny", "pk").first()
-    if rekord is None:
-        raise SystemExit(
-            f"Brak w bazie demo: {co} z {ROK} r. — wygeneruj dane wg "
-            "docs/deweloper/zrzuty-ekranu.md."
-        )
+# Rekordy wybiera bpp.demo_data.zrzuty.duplikaty_publikacji (pierwsze
+# alfabetycznie z 2024 r. spełniające warunek, a nie po pk) — tę samą regułę
+# stosuje scenariusz ``duplikaty-publikacji``.
+WYBOR = duplikaty_publikacji()
+for co, rekord in WYBOR.items():
     print(f"{co}: {rekord.tytul_oryginalny} (pk {rekord.pk})")
-    return rekord
-
-
-def z_autorami(qs, ile):
-    return qs.annotate(ile_autorow=Count("autorzy_set")).filter(ile_autorow__gte=ile)
-
-
-ARTYKUL_DOI = wybierz(
-    z_autorami(Wydawnictwo_Ciagle.objects.exclude(doi=None).exclude(doi=""), 3),
-    "artykuł z DOI",
-).pk
-ARTYKUL_ROZDZIAL = wybierz(
-    z_autorami(
-        Wydawnictwo_Ciagle.objects.filter(tytul_oryginalny__contains=" (nr").exclude(
-            pk=ARTYKUL_DOI
-        ),
-        3,
-    ),
-    "artykuł z „(nr …)” w tytule",
-).pk
-KSIAZKA = wybierz(
-    Wydawnictwo_Zwarte.objects.filter(
-        charakter_formalny__nazwa="Książka", autorzy_set__isnull=False
-    ).distinct(),
-    "książka",
-).pk
+ARTYKUL_DOI = WYBOR["artykul_doi"].pk
+ARTYKUL_ROZDZIAL = WYBOR["artykul_rozdzial"].pk
+KSIAZKA = WYBOR["ksiazka"].pk
 
 
 def kopiuj_autorow(z, do, ile):

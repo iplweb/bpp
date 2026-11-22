@@ -29,6 +29,7 @@ from django.utils import timezone
 from password_policies.models import PasswordHistory
 
 from bpp import const
+from bpp.demo_data.zrzuty import PBN_PRACA_Z_BLEDEM, prace_pbn
 from bpp.models import (
     BppUser,
     Charakter_Formalny,
@@ -80,17 +81,18 @@ Charakter_Formalny.objects.filter(skrot="AC").update(
 # --- reset ------------------------------------------------------------------
 PBN_Export_Queue.objects.all().delete()
 SentData.objects.all().delete()
-Wydawnictwo_Ciagle.objects.exclude(pbn_uid=None).update(pbn_uid=None)
-Wydawnictwo_Zwarte.objects.exclude(pbn_uid=None).update(pbn_uid=None)
-Publication.objects.all().delete()
+# Tylko własne rekordy PBN (mongoId 64f0c0de + 16 cyfr szesnastkowych) — nie
+# te z bin/docs-demo-oswiadczenia.py (64f0c0de0sw…) ani z innych skryptów,
+# które mogły już działać na tej bazie.
+WLASNE = Publication.objects.filter(mongoId__regex=r"^64f0c0de[0-9a-f]{16}$")
+Wydawnictwo_Ciagle.objects.filter(pbn_uid__in=WLASNE).update(pbn_uid=None)
+Wydawnictwo_Zwarte.objects.filter(pbn_uid__in=WLASNE).update(pbn_uid=None)
+WLASNE.delete()
 
 now = timezone.now()
-ciagle = list(
-    Wydawnictwo_Ciagle.objects.filter(rok__in=[2023, 2024]).order_by("pk")[:16]
-)
-zwarte = list(
-    Wydawnictwo_Zwarte.objects.filter(rok__in=[2023, 2024]).order_by("pk")[:3]
-)
+# Prace kolejki: bpp.demo_data.zrzuty.prace_pbn — ta sama reguła, z której
+# scenariusz bierze pracę z błędem wysyłki (PBN_PRACA_Z_BLEDEM).
+ciagle, zwarte = prace_pbn()
 
 
 def pbn_publication(n, rec=None, title=None, year=2024, status="ACTIVE"):
@@ -177,7 +179,7 @@ rec.pbn_uid = pbn_publication(103, rec, status="DELETED")
 rec.save(update_fields=["pbn_uid"])
 
 # 4: PBN validation (400, details) -> merytoryczny
-rec = ciagle[3]
+rec = ciagle[PBN_PRACA_Z_BLEDEM]
 q = wpis(rec, 95)
 body = (
     '{"code":400,"message":"Bad Request","description":"Validation failed.",'

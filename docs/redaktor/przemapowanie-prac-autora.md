@@ -51,10 +51,10 @@ sposoby:
     jednostka”** (skrót jednostki). Przy osobie, o którą chodzi, kliknij
     **„Wybierz”**.
 
-    ![Wyszukiwarka autorów: dwie osoby „z Cintry Eskel” z różnymi jednostkami i przycisk „Wybierz”](../images/redaktor/przemapowanie-prac-autora/02-wybierz-autora.png)
+    ![Wyszukiwarka autorów: dwie osoby „Daven Yarpen” z różnymi jednostkami i przycisk „Wybierz”](../images/redaktor/przemapowanie-prac-autora/02-wybierz-autora.png)
 
     !!! tip "Dwie osoby o tym samym nazwisku"
-        Na zrzucie są dwa rekordy „z Cintry Eskel” — z różnymi
+        Na zrzucie są dwa rekordy „Daven Yarpen” — z różnymi
         jednostkami. To mogą być dwie różne osoby albo duplikat. Zanim
         klikniesz „Wybierz”, upewnij się na stronie autora (ORCID,
         jednostka, prace), że to ten właściwy. Przemapowanie dotyczy
@@ -186,11 +186,11 @@ można je cofnąć przyciskiem „Cofnij”.
 ## Przykłady {#przyklady}
 
 **Prace po imporcie trafiły do „Jednostki Domyślnej”.** Import dopisał
-autorowi Eskelowi z Cintry 8 nowych prac, ale nie umiał ustalić
-jednostki, więc odłożył je do „Jednostki Domyślnej AKM”. Eskel pracuje
-w Katedrze i Zakładzie Mutacji. Na stronie autora kliknij „Przemapuj
-prace” — formularz podpowie „Jednostka Domyślna AKM” → „Katedra i Zakład
-Mutacji”. Kliknij „Podgląd zmian”, sprawdź liczbę 8 i potwierdź.
+autorowi Yarpenowi Davenowi 8 nowych prac, ale nie umiał ustalić
+jednostki, więc odłożył je do „Jednostki Domyślnej AKM”. Yarpen pracuje
+w Zakładzie Demonologii. Na stronie autora kliknij „Przemapuj
+prace” — formularz podpowie „Jednostka Domyślna AKM” → „Zakład
+Demonologii”. Kliknij „Podgląd zmian”, sprawdź liczbę 8 i potwierdź.
 
 **Autor zmienił jednostkę i chce mieć cały dorobek w nowej.** Najpierw
 dopisz autorowi nową jednostkę w module redagowania (zakładka jednostek
@@ -202,7 +202,7 @@ powstały), nie używaj przemapowania — zmień jednostkę ręcznie tylko
 w nowych pracach.
 
 **Pomyłka — przeniesiono do złej jednostki.** Wybrałeś jako docelową
-„Klinikę Mutacji” zamiast „Katedry i Zakładu Mutacji”. Na tej samej
+„Zakład Odwarów i Dekoktów” zamiast „Zakładu Demonologii”. Na tej samej
 stronie, w „Historii przemapowań”, kliknij „Cofnij” przy tym wpisie —
 prace wrócą tam, skąd przyszły — i przemapuj je jeszcze raz, tym razem
 do właściwej jednostki.

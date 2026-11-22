@@ -29,6 +29,68 @@ from playwright.sync_api import TimeoutError as PlaywrightTimeoutError
 REPO = Path(__file__).resolve().parent.parent
 IMAGES = REPO / "docs" / "images"
 
+# Obiekty danych demo (autorzy, jednostki, prace, czasopisma), które pokazują
+# scenariusze. Nie wpisujemy ich na sztywno: pk i nazwy zależą od wygenerowanych
+# danych. Bierzemy je z `manage.py obiekty_demo_zrzutow` — tych samych reguł
+# (bpp.demo_data.zrzuty) używają skrypty bin/docs-demo-*.py, więc scenariusz
+# trafia w obiekty, które skrypt przygotował. Scenariusze działają w Playwright
+# (pętla zdarzeń), a nie w ORM — stąd osobny proces, uruchamiany raz.
+_OBIEKTY_DEMO: dict | None = None
+
+
+def _env_bazy_demo() -> dict:
+    """Środowisko dla manage.py: baza ze stosu run-site (pliki .dev_helpers_*),
+    chyba że zmienne DJANGO_BPP_DB_* ustawiono już ręcznie."""
+    env = dict(os.environ)
+    port = REPO / ".dev_helpers_pg_port"
+    if "DJANGO_BPP_DB_PORT" not in env and port.exists():
+        host = REPO / ".dev_helpers_pg_host"
+        env.update(
+            DJANGO_BPP_SKIP_DOTENV="1",
+            DJANGO_BPP_DB_HOST=(
+                host.read_text().strip() if host.exists() else "localhost"
+            ),
+            DJANGO_BPP_DB_PORT=port.read_text().strip(),
+            DJANGO_BPP_DB_NAME="bpp",
+            DJANGO_BPP_DB_USER="bpp",
+            DJANGO_BPP_DB_PASSWORD="password",
+        )
+        redis = REPO / ".dev_helpers_redis_port"
+        if redis.exists():
+            env["DJANGO_BPP_REDIS_PORT"] = redis.read_text().strip()
+    return env
+
+
+def demo(*klucze: str | int):
+    """Obiekt danych demo, np. ``demo("yennefer", "url")``.
+
+    Gdy danych dla scenariusza nie przygotowano (brak skryptu docs-demo-*),
+    kończy się komunikatem, który skrypt uruchomić."""
+    import json
+    import subprocess
+
+    global _OBIEKTY_DEMO
+    if _OBIEKTY_DEMO is None:
+        wynik = subprocess.run(
+            [sys.executable, str(REPO / "src" / "manage.py"), "obiekty_demo_zrzutow"],
+            env=_env_bazy_demo(),
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+        if wynik.returncode:
+            sys.exit(f"manage.py obiekty_demo_zrzutow:\n{wynik.stderr}{wynik.stdout}")
+        _OBIEKTY_DEMO = json.loads(wynik.stdout)
+    v = _OBIEKTY_DEMO
+    for k in klucze:
+        if isinstance(v, dict) and "brak" in v:
+            sys.exit(v["brak"])
+        v = v[k]
+    if isinstance(v, dict) and "brak" in v:
+        sys.exit(v["brak"])
+    return v
+
+
 # Demo account created per docs/deweloper/zrzuty-ekranu.md — an ordinary
 # author (no staff/superuser), so screenshots show what a typical user sees.
 DEMO_USER = "yennefer"
@@ -82,12 +144,14 @@ WEZEL_JS = r"""
 """
 # A made-up staff file in the layout of the template
 # (src/import_pracownikow/static/import_pracownikow/import_pracownikow_przyklad.xlsx)
-# for docs/administrator/import-pracownikow.md. bin/docs-demo-admin-import-pracownikow.py
-# leaves "Zarządzaj automatycznie" on "Klinika Mutacji" only, so the two people
-# of that unit missing here (Eskel z Cintry, Cahir z Vengerbergu) are the whole
-# "odpięcia" proposal. Ciri has a namesake, so she is matched by "BPP ID"; Leo
-# Merigold has a namesake too and no ID ("wielu kandydatów"); Vilgefortz is not
-# in BPP and his unit does not exist yet.
+# for docs/administrator/import-pracownikow.md. Osoby i jednostkę wybiera
+# bpp.demo_data.zrzuty.import_pracownikow (demo("import_pracownikow")):
+# bin/docs-demo-admin-import-pracownikow.py zostawia „Zarządzaj automatycznie”
+# tylko na jednostce Margarity Merigold, więc dwie osoby tej jednostki
+# pominięte w pliku ("spoza_pliku") to cała propozycja odpięć. Osoba "po_id"
+# ma imiennika, więc dopasowujemy ją po „BPP ID”; "wielu" też ma imiennika
+# i nie ma ID („wielu kandydatów”); "nowy" nie istnieje w BPP, a jego
+# jednostka ("nowa_jednostka") jeszcze nie istnieje.
 IMPORT_PRAC_NAGLOWEK = [
     "Numer",
     "Nazwisko",
@@ -105,44 +169,41 @@ IMPORT_PRAC_NAGLOWEK = [
     "BPP ID",
     "Wymiar etatu",
 ]
-IMPORT_PRAC_WIERSZE = [
-    # numer, nazwisko, imię, tytuł, jednostka, wydział, od, BPP ID
-    (1001, "Merigold", "Margarita", "dr hab.", "Klinika Mutacji", "2019-10-01", None),
-    (1002, "van der Eretein", "Ciri", "dr", "Klinika Mutacji", "2021-03-01", 209),
-    (1003, "z Rivii", "Renfri", "mgr", "Klinika Mutacji", "2023-10-01", None),
-    (
-        1004,
-        "z Roggeveen",
-        "Eredin",
-        "dr n. med.",
-        "Klinika Mutacji",
-        "2018-02-01",
-        None,
-    ),
-    (1005, "ze Stygga", "Renfri", "dr", "Klinika Mutacji", "2020-10-01", None),
-    (1006, "Merigold", "Leo", "dr", "Klinika Eliksirologii", "2017-10-01", None),
-    (
-        1007,
-        "z Roggeveen",
-        "Vilgefortz",
-        "dr",
-        "Pracownia Eliksirów Bojowych",
-        "2026-10-01",
-        None,
-    ),
+# (tytuł, data zatrudnienia) kolejnych wierszy pliku
+IMPORT_PRAC_TYTULY_DATY = [
+    ("dr hab.", "2019-10-01"),
+    ("dr", "2021-03-01"),
+    ("mgr", "2023-10-01"),
+    ("dr n. med.", "2018-02-01"),
+    ("dr", "2020-10-01"),
+    ("dr", "2017-10-01"),
+    ("dr", "2026-10-01"),
 ]
-IMPORT_PRAC_WYDZIAL = "Wydział Magii i Eliksirów"
-# Demo author with three workplaces (bin/docs-demo-panel-uczelnia.py).
-AUTOR_MIEJSCA_PRACY = 187  # Margarita Merigold
-# Demo article with three authors, for reordering them.
-REKORD_TRZECH_AUTOROW = 1130
+
+
+def import_prac_wiersze() -> list[tuple]:
+    """Wiersze pliku: (numer, nazwisko, imię, tytuł, jednostka, od, BPP ID)."""
+    d = demo("import_pracownikow")
+    osoby = [
+        (d["margarita"], d["jednostka"], None),
+        (d["po_id"], d["jednostka"], d["po_id"]["pk"]),
+        *[(a, d["jednostka"], None) for a in d["w_pliku"]],
+        (d["wielu"], d["wielu"]["jednostka"], None),
+        (d["nowy"], d["nowa_jednostka"], None),
+    ]
+    wynik = []
+    for n, (a, jedn, bpp_id) in enumerate(osoby):
+        tytul, od = IMPORT_PRAC_TYTULY_DATY[n % len(IMPORT_PRAC_TYTULY_DATY)]
+        wynik.append((1001 + n, a["nazwisko"], a["imiona"], tytul, jedn, od, bpp_id))
+    return wynik
+
+
+# Demo author with three workplaces (bin/docs-demo-panel-uczelnia.py):
+# demo("margarita"). Demo article with three authors, for reordering them:
+# demo("oswiadczenia", "rekord") (praca Regisa z Cintry z 2023 r.).
 UCZELNIA_ZMIANA = "/admin/bpp/uczelnia/"
-# Demo work by an author with two disciplines in 2023 (bin/docs-demo-oswiadczenia.py).
-OSW_REKORD = 1130
-OSW_REKORD_SLUG = (
-    "Modelowanie-eliksirow-wiedzminskich-z-wykorzystaniem-tolerancje-eliksirow"
-    "-nr-530-Folia-Kaedwenica-z-Roggeveen-T-z-Cintry-R-var-Emreis-C-6-1130"
-)
+# Demo work by an author with two disciplines in 2023 (bin/docs-demo-oswiadczenia.py):
+# demo("oswiadczenia") — praca i indeks Regisa z Cintry wśród jej autorów.
 LISTA_ROZBIEZNOSCI = "/admin/rozbieznosci_dyscyplin/rozbieznosciview/"
 # A made-up ministerial journal list ("wykaz czasopism") in the layout the
 # import reads: two header rows (discipline NAMES in the first, codes in the
@@ -193,11 +254,9 @@ DEMO_USER_ADMIN = "regis"  # demo superuser for administrator pages
 # "Plik POL-on do importu"); generate it with
 # `manage.py generuj_plik_polon_demo --out <dir>` and point this at it.
 PLIK_POLON = os.environ.get("BPP_DOCS_PLIK_POLON", "")
-# Demo submissions created for this page (docs/redaktor/obsluga-zgloszen.md):
-# an article with a DOI, a book with a PDF and no link, one closed by the importer.
-ZGL_ARTYKUL = "Wpływ fazy księżyca na skuteczność eliksiru Jaskółka"
-ZGL_KSIAZKA = "Bestiariusz porównawczy potworów Velen i Temerii"
-ZGL_ZAIMPORTOWANE = "Perspektywy rozwoju bestii w lochach Novigradu (nr 10)"
+# Demo submissions for docs/redaktor/obsluga-zgloszen.md: an article with
+# a DOI, a book with a PDF and no link (bin/docs-demo-obsluga-zgloszen.py adds
+# the PDF), one closed by the importer — titles from demo("zgloszenia", ...).
 AUTORZY_ZGL = "#zgloszenie_publikacji_autor_set-group"  # authors inline
 # A made-up journal list in the layout of a JCR export (header row with
 # "Journal name", "<year> JIF", "JIF Quartile"), for the demo journals. One
@@ -216,16 +275,17 @@ JCR_DEMO_WIERSZE = [
 # Demo data for the "nowy rok" page (docs/redaktor/nowy-rok.md): an author
 # with disciplines for 2020-2026, a source with points/disciplines up to 2026
 # and a 2027 article - i.e. "January, the new year has no data yet".
-AUTOR_NOWY_ROK = 210  # Yennefer Merigold
-ZRODLO_NOWY_ROK = 40  # Folia Temerska
-REKORD_2027 = 1201
-# Demo article whose type is sent to PBN (bin/docs-demo-pbn.py maps it).
-PBN_REKORD = 1097
+# Autorka: demo("yennefer"), czasopismo: demo("wykaz", "folia"), praca z 2027:
+# demo("praca_2027") — przygotowuje je bin/docs-demo-nowy-rok.py.
+# Demo article whose type is sent to PBN (bin/docs-demo-pbn.py maps it):
+# demo("rekord_pbn").
 # A made-up Witcher article for the importer walkthrough: one author matched
 # exactly, one with two namesakes (pick by unit), one not in BPP at all.
+# Autorzy: Yennefer (dopasowana dokładnie), osoba z imiennikiem
+# (demo("importer", "imiennik")) i osoba spoza BPP (demo("importer", "nieobecny")).
 IMPORTER_BIBTEX = """@article{vesemir2025jaskolka,
   title    = {Stabilność eliksiru Jaskółka w warunkach górskich},
-  author   = {Merigold, Yennefer and Merigold, Leo and Chivay, Zoltan},
+  author   = {Merigold, Yennefer and {imiennik} and {nieobecny}},
   journal  = {Acta Wiedźmińska},
   year     = {2025},
   volume   = {12},
@@ -234,6 +294,16 @@ IMPORTER_BIBTEX = """@article{vesemir2025jaskolka,
   doi      = {10.99999/aw.2025.0312},
   language = {pl}
 }"""
+
+
+def importer_bibtex() -> str:
+    d = demo("importer")
+    return IMPORTER_BIBTEX.replace(
+        "{imiennik}", f"{d['imiennik']['nazwisko']}, {d['imiennik']['imiona']}"
+    ).replace(
+        "{nieobecny}", f"{d['nieobecny']['nazwisko']}, {d['nieobecny']['imiona']}"
+    )
+
 
 VIEWPORT = {"width": 1280, "height": 800}
 
@@ -245,6 +315,41 @@ HIDE_HELP_LAUNCHER = (
     " { display: none !important }';"
     " document.head.appendChild(s); });"
 )
+
+# bin/docs-demo-pbn.py leaves records in the PBN export queue of the demo
+# editor, so every page shows him "W kolejce na wysłanie do PBN czeka …".
+# Only the PBN scenario is about it; everywhere else it is noise, removed here.
+HIDE_PBN_QUEUE_MESSAGE = r"""
+(() => {
+  const TEKST = 'W kolejce na wysłanie do PBN czeka';
+  const usun = () => {
+    // admin: server-rendered list items; site: messages added by JS
+    for (const el of document.querySelectorAll(
+        'ul.grp-messagelist > li, .callout, .alert-box, [data-closable]')) {
+      if (el.textContent.includes(TEKST) && !el.querySelector('.callout, li')) {
+        const lista = el.parentElement;
+        el.remove();
+        if (lista && lista.matches('ul.grp-messagelist') && !lista.children.length)
+          lista.remove();
+      }
+    }
+  };
+  document.addEventListener('DOMContentLoaded', () => {
+    usun();
+    new MutationObserver(usun).observe(document.body, {childList: true, subtree: true});
+  });
+})();
+"""
+# Scenarios that keep that message (main() switches it per scenario).
+SCENARIOS_WITH_PBN_QUEUE_MESSAGE = {"pbn-wysylka-i-synchronizacja"}
+_hide_pbn_queue_message = True
+
+
+def add_init_scripts(ctx) -> None:
+    ctx.add_init_script(HIDE_HELP_LAUNCHER)
+    if _hide_pbn_queue_message:
+        ctx.add_init_script(HIDE_PBN_QUEUE_MESSAGE)
+
 
 # One shared look for every screenshot: red (#e8173c) 4px highlight box,
 # 5px curved arrow, bold label in a white rounded pill, drop shadow on both
@@ -478,8 +583,7 @@ def page_box(page: Page, sel: str, text: str | None = None) -> dict:
 
 
 # A demo record by Yennefer with points and slots (after the slot fix-up of
-# the demo DB, docs/deweloper/zrzuty-ekranu.md).
-REKORD_ZE_SLOTAMI = "szlaku-wiedzminskiego-studium-przypadku-sile-znakow-nr-271-Acta-Oxenfurcka-Merigold-Y-6-871"
+# the demo DB, docs/deweloper/zrzuty-ekranu.md): demo("rekord_ze_slotami").
 
 
 # "Torn paper" gap between two parts of one long page, so a single image can
@@ -708,8 +812,9 @@ def wyszukiwanie(page: Page, base: str, out: Path) -> None:
     page.keyboard.press("/")
     page.wait_for_selector("#globalSearchInput", state="visible")
     page.click("#globalSearchInput")
-    page.keyboard.type("eliksir", delay=60)
-    page.get_by_text("Wydział Magii i").first.wait_for()
+    # a word found in a unit name and in titles (bpp.demo_data.zrzuty)
+    page.keyboard.type(demo("slowo_wyszukiwania"), delay=60)
+    page.locator(".search-result-group-title", has_text="ednostk").first.wait_for()
     page.wait_for_timeout(800)
     mark(
         page,
@@ -749,18 +854,21 @@ def wyszukiwanie(page: Page, base: str, out: Path) -> None:
 
     # 4. author page at a glance: top, search form, export (stitched)
     page.mouse.move(640, 700)
-    page.goto(f"{base}/bpp/autor/Yennefer-Merigold/")
+    page.goto(base + demo("yennefer", "url"))
     page.wait_for_load_state("networkidle")
     sekcja = ".autor-page__pas-cela"
     mark(
         page,
         [
             {
-                "sel": "a.autor-page__show-all-btn",
-                "arrow": "right",
+                # right of it stand the period and "sieć powiązań" buttons:
+                # the label goes above, next to the author's name
+                "sel": ".autor-page__show-all-btn",
+                "text": "Pokaż wszystkie prace",
+                "arrow": "above",
                 "label": "wszystkie prace autora",
-                "dx": 60,
-                "dy": -20,
+                "dx": 260,
+                "dy": 10,
             },
             {"sel": sekcja, "text": "Podsumowanie dorobku"},
         ],
@@ -830,7 +938,7 @@ def wyszukiwanie(page: Page, base: str, out: Path) -> None:
 
 def pobieranie_listy(page: Page, base: str, out: Path) -> None:
     """docs/uzytkownik/pobieranie-listy-publikacji.md: export one's own publication list."""
-    page.goto(f"{base}/bpp/autor/Yennefer-Merigold/")
+    page.goto(base + demo("yennefer", "url"))
     page.wait_for_load_state("networkidle")
     sekcja = ".autor-page__pas-cela"
     w = "Wyszukaj publikacje autora"
@@ -851,11 +959,13 @@ def pobieranie_listy(page: Page, base: str, out: Path) -> None:
                 "dy": 30,
             },
             {
+                # left of it: the empty end of "Tytuł wyników" (above it
+                # are the author's units, as many as the demo data has)
                 "sel": "button.autor-page__search-btn",
-                "arrow": "above",
+                "arrow": "left",
                 "label": "2. Szukaj publikacji",
-                "dx": -300,
-                "dy": 30,
+                "dx": -60,
+                "dy": -40,
             },
         ],
     )
@@ -905,7 +1015,7 @@ def pobieranie_listy(page: Page, base: str, out: Path) -> None:
     shot(page, out / "02-wyniki-eksport.png", 0, menu["y"] + menu["height"] + 80)
 
     # 3. the ready-made export buttons on the author page
-    page.goto(f"{base}/bpp/autor/Yennefer-Merigold/")
+    page.goto(base + demo("yennefer", "url"))
     page.wait_for_load_state("networkidle")
     mark(
         page,
@@ -928,7 +1038,7 @@ def new_session(page: Page, base: str, user: str | None = None) -> Page:
     ctx = page.context.browser.new_context(
         viewport=VIEWPORT, device_scale_factor=2, locale="pl-PL"
     )
-    ctx.add_init_script(HIDE_HELP_LAUNCHER)
+    add_init_scripts(ctx)
     other = ctx.new_page()
     if user:
         login(other, base, user)
@@ -937,6 +1047,19 @@ def new_session(page: Page, base: str, user: str | None = None) -> Page:
         other.wait_for_load_state("networkidle")
         close_cookie_banner(other)
     return other
+
+
+def wiersz_punktacji(page: Page, rok: int) -> str:
+    """Id prefix ("#id_punktacja_zrodla_set-N-") of the source's points row
+    for *rok*: the rows are sorted by year, so its position depends on how
+    many years the demo data has."""
+    n = page.evaluate(
+        """(rok) => [...document.querySelectorAll(
+            "input[name^='punktacja_zrodla_set-'][name$='-rok']")]
+            .find(e => e.value === rok).name.split('-')[1]""",
+        str(rok),
+    )
+    return f"#id_punktacja_zrodla_set-{n}-"
 
 
 def bottom_of(page: Page, sel: str, margin: float = 20) -> float:
@@ -959,7 +1082,7 @@ def punkty_i_sloty(page: Page, base: str, out: Path) -> None:
     rap = new_session(page, base, DEMO_USER_RAPORTY)
 
     # 1. author page: the points chart is a few screens down
-    rap.goto(f"{base}/bpp/autor/Yennefer-Merigold/")
+    rap.goto(base + demo("yennefer", "url"))
     rap.wait_for_load_state("networkidle")
     rap.wait_for_timeout(1500)  # charts animate in
     top = shot(rap, None, 0, 420)
@@ -974,7 +1097,7 @@ def punkty_i_sloty(page: Page, base: str, out: Path) -> None:
     )
 
     # 2. record page: who got how many points and slots, per discipline
-    rap.goto(f"{base}/bpp/rekord/{REKORD_ZE_SLOTAMI}/")
+    rap.goto(base + demo("rekord_ze_slotami", "url"))
     rap.wait_for_load_state("networkidle")
     mark(rap, [{"sel": "h3", "text": "Punkty i sloty autorów"}])
     h = page_box(rap, "h3", "Punkty i sloty autorów")
@@ -1103,7 +1226,7 @@ def raporty(page: Page, base: str, out: Path) -> None:
     # 2. Raport jednostek: unit + years
     rap.goto(f"{base}/nowe_raporty/raport-jednostek/")
     rap.wait_for_load_state("networkidle")
-    select2(rap, "select[name=obiekt]", "Klinika Szermierki")
+    select2(rap, "select[name=obiekt]", demo("yennefer_jednostka", "nazwa"))
     lata()
     rap.mouse.move(5, 5)
     mark(
@@ -1580,7 +1703,7 @@ def obsluga_zgloszen(page: Page, base: str, out: Path) -> None:
         [
             {
                 "sel": "#result_list a",
-                "text": ZGL_ARTYKUL,
+                "text": demo("zgloszenia", "artykul"),
                 "arrow": "below",
                 "label": "kliknij tytuł",
                 "dx": 40,
@@ -1601,7 +1724,11 @@ def obsluga_zgloszen(page: Page, base: str, out: Path) -> None:
             },
         ],
     )
-    shot(red, out / "02-lista.png", 0, 500)
+    # down to the marked submission, wherever the list's sorting puts it (the
+    # fixed actions bar at the bottom of the viewport would cover it)
+    red.add_style_tag(content=".grp-fixed-footer{display:none!important}")
+    tytul = page_box(red, "#result_list a", demo("zgloszenia", "artykul"))
+    shot(red, out / "02-lista.png", 0, max(500, tytul["y"] + tytul["height"] + 170))
 
     # 3. filter panel, "stan obsługi" expanded
     red.click("#filter-panel-toggle")
@@ -1629,7 +1756,7 @@ def obsluga_zgloszen(page: Page, base: str, out: Path) -> None:
     red.set_viewport_size({"width": w, "height": 1600})
 
     # 4. an article with a DOI: the buttons above the form
-    otworz(ZGL_ARTYKUL)
+    otworz(demo("zgloszenia", "artykul"))
     tools = "ul.grp-object-tools a"
     mark(
         red,
@@ -1661,7 +1788,9 @@ def obsluga_zgloszen(page: Page, base: str, out: Path) -> None:
 
     # 5. a book without a link: the PDF attachment, no importer button.
     # The attachment is far below the buttons - top + torn edge + that part.
-    otworz(ZGL_KSIAZKA)
+    otworz(demo("zgloszenia", "ksiazka"))
+    # with several authors the form outgrows even the tall viewport
+    red.add_style_tag(content=".grp-fixed-footer{display:none!important}")
     mark(
         red,
         [
@@ -1680,7 +1809,7 @@ def obsluga_zgloszen(page: Page, base: str, out: Path) -> None:
                 "dx": -160,
                 "dy": -20,
             },
-            {"sel": "div.strona_www .grp-readonly"},
+            {"sel": "div.strona_www_link .grp-readonly"},
             {
                 "sel": "div.pliki_do_pobrania a",
                 "arrow": "right",
@@ -1698,7 +1827,7 @@ def obsluga_zgloszen(page: Page, base: str, out: Path) -> None:
         ],
     )
     top = shot(red, None, 0, bottom_of(red, "div.forma_dostepu", 10))
-    box = page_box(red, "div.strona_www")
+    box = page_box(red, "div.strona_www_link")
     dol = shot(
         red,
         None,
@@ -1716,7 +1845,7 @@ def obsluga_zgloszen(page: Page, base: str, out: Path) -> None:
 
     # 6. return to the author: the reason form (not submitted - keeps the demo DB reusable)
     red.set_viewport_size(VIEWPORT)
-    otworz(ZGL_ARTYKUL)
+    otworz(demo("zgloszenia", "artykul"))
     red.locator(tools, has_text="Zwróć do autora").click()
     red.wait_for_load_state("networkidle")
     red.fill(
@@ -1745,7 +1874,7 @@ def obsluga_zgloszen(page: Page, base: str, out: Path) -> None:
     red.screenshot(path=out / "06-zwrot.png")
 
     # 7. importer, first step, opened from the submission
-    otworz(ZGL_ARTYKUL)
+    otworz(demo("zgloszenia", "artykul"))
     red.locator(tools, has_text="Użyj importera").click()
     red.wait_for_load_state("networkidle")
     close_cookie_banner(red)
@@ -1773,7 +1902,7 @@ def obsluga_zgloszen(page: Page, base: str, out: Path) -> None:
     )
 
     # 8. a submission closed by the importer
-    otworz(ZGL_ZAIMPORTOWANE)
+    otworz(demo("zgloszenia", "zaimportowane"))
     mark(
         red,
         [
@@ -1978,16 +2107,16 @@ def impact_factor_i_punktacja(page: Page, base: str, out: Path) -> None:
     shot(red, out / "06-import-zapisany.png", 0, box["y"] + box["height"] + 140)
 
     # 7. where the values live: the source's "punktacja źródła" rows
-    red.goto(f"{base}/admin/bpp/zrodlo/37/change/")
+    red.goto(f"{base}/admin/bpp/zrodlo/{demo('wykaz', 'acta', 'pk')}/change/")
     red.wait_for_load_state("networkidle")
     top = shot(red, None, 0, 300)
     sekcja = "#punktacja_zrodla_set-group"
     mark(
         red,
         [
-            {"sel": "#id_punktacja_zrodla_set-0-rok"},
-            {"sel": "#id_punktacja_zrodla_set-0-impact_factor"},
-            {"sel": "#id_punktacja_zrodla_set-0-kwartyl_w_wos"},
+            {"sel": f"{wiersz_punktacji(red, rok)}rok"},
+            {"sel": f"{wiersz_punktacji(red, rok)}impact_factor"},
+            {"sel": f"{wiersz_punktacji(red, rok)}kwartyl_w_wos"},
         ],
     )
     box = page_box(red, sekcja)
@@ -2000,7 +2129,10 @@ def impact_factor_i_punktacja(page: Page, base: str, out: Path) -> None:
     )
 
     # 8. one record: "Uzupełnij punktację" on the publication form
-    red.goto(f"{base}/admin/bpp/wydawnictwo_ciagle/731/change/")
+    red.goto(
+        f"{base}/admin/bpp/wydawnictwo_ciagle/"
+        f"{demo('wykaz', 'acta_rekord_2024', 'pk')}/change/"
+    )
     red.wait_for_load_state("networkidle")
     mark(
         red,
@@ -2097,7 +2229,7 @@ def impact_factor_i_punktacja(page: Page, base: str, out: Path) -> None:
 def nowy_rok(page: Page, base: str, out: Path) -> None:
     """docs/redaktor/nowy-rok.md: per-year data (author/source disciplines, source points) for a new year."""
     red = new_session(page, base, DEMO_USER_REDAKTOR)
-    rekord = f"{base}/admin/bpp/wydawnictwo_ciagle/{REKORD_2027}/change/"
+    rekord = f"{base}/admin/bpp/wydawnictwo_ciagle/{demo('praca_2027', 'pk')}/change/"
 
     # 1. a 2027 record saved: the "rok poza zakresem" warning
     red.goto(rekord)
@@ -2143,7 +2275,7 @@ def nowy_rok(page: Page, base: str, out: Path) -> None:
     red.keyboard.press("Escape")
 
     # 3. author: disciplines per year, new row for 2027
-    red.goto(f"{base}/admin/bpp/autor/{AUTOR_NOWY_ROK}/change/")
+    red.goto(f"{base}/admin/bpp/autor/{demo('yennefer', 'pk')}/change/")
     red.wait_for_load_state("networkidle")
     grp = "#autor_dyscyplina_set-group"
     n = int(red.input_value("#id_autor_dyscyplina_set-TOTAL_FORMS")) - 1
@@ -2231,7 +2363,7 @@ def nowy_rok(page: Page, base: str, out: Path) -> None:
     shot(red, out / "06-import-dyscyplin.png", 0, bottom_of(red, "[name=rok]", 190))
 
     # 7. source: points per year, a new row for 2027
-    red.goto(f"{base}/admin/bpp/zrodlo/{ZRODLO_NOWY_ROK}/change/")
+    red.goto(f"{base}/admin/bpp/zrodlo/{demo('wykaz', 'folia', 'pk')}/change/")
     red.wait_for_load_state("networkidle")
     red.add_style_tag(content=".grp-fixed-footer{display:none!important}")
     grp = "#punktacja_zrodla_set-group"
@@ -2370,7 +2502,7 @@ def pbn_wysylka_i_synchronizacja(page: Page, base: str, out: Path) -> None:
     shot(red, out / "02-autoryzacja.png", 0, bottom_of(red, btn, 170))
 
     # 3. record form: the two PBN buttons in the bottom bar
-    rekord = f"{base}/admin/bpp/wydawnictwo_ciagle/{PBN_REKORD}/change/"
+    rekord = f"{base}/admin/bpp/wydawnictwo_ciagle/{demo('rekord_pbn', 'pk')}/change/"
     red.goto(rekord)
     red.wait_for_load_state("networkidle")
     teraz = "input[name=_continue_and_pbn]"
@@ -2403,9 +2535,17 @@ def pbn_wysylka_i_synchronizacja(page: Page, base: str, out: Path) -> None:
     )
     shot(red, out / "04-komunikaty-wysylki.png", 0, bottom_of(red, msgs, 20))
 
-    # 5. "... w tle": only a queue entry is created
-    red.click(w_tle)
-    red.wait_for_load_state("networkidle")
+    # 5. "... w tle": only a queue entry is created. The send from step 4
+    # may still sit in the queue ("jest już w kolejce") until the worker
+    # gives up on the fake PBN host - retry for a while.
+    for _ in range(20):
+        red.click(w_tle)
+        red.wait_for_load_state("networkidle")
+        if red.locator(f"{li_msg} a", has_text="śledzić stan").count():
+            break
+        red.wait_for_timeout(3000)
+        red.goto(rekord)
+        red.wait_for_load_state("networkidle")
     mark(red, [{"sel": f"{li_msg} a", "text": "śledzić stan"}])
     shot(red, out / "05-wyslij-w-tle.png", 0, bottom_of(red, msgs, 20))
 
@@ -2458,15 +2598,17 @@ def pbn_wysylka_i_synchronizacja(page: Page, base: str, out: Path) -> None:
     # 8. error rows under the list entries
     red.goto(f"{base}/pbn_export_queue/?zakonczono_pomyslnie=false")
     red.wait_for_load_state("networkidle")
-    mark(red, [{"sel": "#export-queue-table tbody tr", "text": "Wpływ szlaku"}])
+    # the send that failed PBN validation (bin/docs-demo-pbn.py)
+    # the table shows the description cut to 50 characters (markup included):
+    # match the start of the title
+    z_bledem = demo("pbn_praca_z_bledem", "tytul")[:22]
+    mark(red, [{"sel": "#export-queue-table tbody tr", "text": z_bledem}])
     tab = page_box(red, "#export-queue-table")
     shot(red, out / "08-kolejka-bledy.png", tab["y"] - 10, tab["height"] + 20)
 
     # 9. details of one failed send
     # (queue ids change with every seed run - open it from the list)
-    red.locator("#export-queue-table tr", has_text="Wpływ szlaku").locator(
-        "a.button"
-    ).click()
+    red.locator("#export-queue-table tr", has_text=z_bledem).locator("a.button").click()
     red.wait_for_load_state("networkidle")
     mark(
         red,
@@ -2541,10 +2683,11 @@ def pbn_wysylka_i_synchronizacja(page: Page, base: str, out: Path) -> None:
 def importer_publikacji(page: Page, base: str, out: Path) -> None:
     """docs/redaktor/importer-publikacji.md: importer walkthrough with a pasted BibTeX entry.
 
-    Needs a FRESH demo DB (re-run = restore the dump) plus, in that DB: account
-    vesemir (is_staff + "wprowadzanie danych"), Uczelnia.obca_jednostka set,
-    Punktacja_Zrodla for "Acta Wiedźmińska" 2025 and the CrossRef mapper
-    journal-article -> "Artykuł w czasopismie". No external service is called.
+    Needs a FRESH demo DB (re-run = restore the dump) prepared with
+    bin/docs-demo-import-list-ministerialnych.py (Punktacja_Zrodla for "Acta
+    Wiedźmińska" 2025) and bin/docs-demo-importer-publikacji.py (vesemir,
+    Uczelnia.obca_jednostka, the CrossRef mapper journal-article -> "Artykuł
+    w czasopismie"). No external service is called.
     """
     red = new_session(page, base, DEMO_USER_REDAKTOR)
     red.on("dialog", lambda d: d.accept())  # hx-confirm prompts
@@ -2675,7 +2818,7 @@ def importer_publikacji(page: Page, base: str, out: Path) -> None:
     # 6. BibTeX: paste and "Importuj"
     red.goto(f"{base}/importer_publikacji/?provider=BibTeX")
     czekaj(500)
-    red.fill("textarea", IMPORTER_BIBTEX)
+    red.fill("textarea", importer_bibtex())
     mark(
         red,
         [
@@ -2768,9 +2911,8 @@ def importer_publikacji(page: Page, base: str, out: Path) -> None:
     red.locator("#authors-table tbody tr:nth-child(2) .btn-edit-author").click()
     red.wait_for_selector("#author-edit-modal .modal-candidate-button")
     red.wait_for_timeout(1500)
-    red.locator(
-        "#author-edit-modal .modal-candidate-button", has_text="Klinika Eliksirologii"
-    ).click()
+    wlasciwa = demo("importer", "imiennik_wlasciwy", "jednostka")
+    red.locator("#author-edit-modal .modal-candidate-button", has_text=wlasciwa).click()
     red.wait_for_timeout(1500)
     red.evaluate("window.scrollTo(0, 0)")
     mark(
@@ -2778,7 +2920,7 @@ def importer_publikacji(page: Page, base: str, out: Path) -> None:
         [
             {
                 "sel": "#author-edit-modal .modal-candidate-button",
-                "text": "Klinika Eliksirologii",
+                "text": wlasciwa,
                 "arrow": "left",
                 "label": "kliknij właściwą osobę",
                 "dy": 60,
@@ -2921,7 +3063,7 @@ def importer_publikacji(page: Page, base: str, out: Path) -> None:
     # 16. what can go wrong: the same entry again -> duplicate warning
     red.goto(f"{base}/importer_publikacji/?provider=BibTeX")
     czekaj(500)
-    red.fill("textarea", IMPORTER_BIBTEX)
+    red.fill("textarea", importer_bibtex())
     red.click("#input-text button[type=submit]")
     red.wait_for_url("**/verify/", timeout=60000)
     czekaj()
@@ -2939,6 +3081,47 @@ def importer_publikacji(page: Page, base: str, out: Path) -> None:
     mark(red, [{"sel": "#input-identifier .help-text[style]"}])
     shot(red, out / "18-zly-identyfikator.png", 0, bottom_of(red, wizard, 0))
     red.context.close()
+
+
+def duplikaty_szukaj_nazwiska(d: Page, out: Path) -> None:
+    """Duplicate authors, step 3: search by surname, "Następny" to the next
+    main author (when the surname matches more than one)."""
+    d.fill("#search_lastname", "Rivii")
+    d.locator(".deduplikator-autorow__top-search button[type=submit]").click()
+    d.wait_for_load_state("networkidle")
+    d.mouse.move(5, 5)
+    # "Następny" only when the surname matches more than one main record
+    # (how many depends on the demo data)
+    nastepny = d.locator("a.button", has_text="Następny")
+    marks = [
+        {
+            "sel": ".deduplikator-autorow__top-search-group",
+            "arrow": "above",
+            "label": "1. nazwisko",
+            "dx": -60,
+            "dy": 45,
+        }
+    ]
+    if nastepny.count():
+        marks.append(
+            {
+                "sel": ".deduplikator-autorow__header .button-group",
+                "arrow": "left",
+                "label": "2. kolejny autor",
+                "dx": 0,
+                "dy": -60,
+            }
+        )
+    mark(d, marks)
+    shot(
+        d,
+        out / "03-wyszukiwanie.png",
+        0,
+        bottom_of(d, ".deduplikator-autorow__header", 30),
+    )
+    if nastepny.count():
+        nastepny.click()
+        d.wait_for_load_state("networkidle")
 
 
 def duplikaty(page: Page, base: str, out: Path) -> None:
@@ -2961,20 +3144,22 @@ def duplikaty(page: Page, base: str, out: Path) -> None:
         d,
         [
             {
+                # the menu reaches the right edge: labels left of it, on the
+                # page under the dropped-down menu
                 "sel": links,
                 "text": "deduplikator autorów",
-                "arrow": "right",
+                "arrow": "left",
                 "label": "autorzy",
-                "dx": 60,
-                "dy": -40,
+                "dx": -330,
+                "dy": -20,
             },
             {
                 "sel": links,
                 "text": "deduplikator źródeł",
-                "arrow": "right",
+                "arrow": "left",
                 "label": "źródła",
-                "dx": 60,
-                "dy": 0,
+                "dx": -330,
+                "dy": 20,
             },
         ],
     )
@@ -3016,37 +3201,7 @@ def duplikaty(page: Page, base: str, out: Path) -> None:
                 break
 
     # 3. Search by surname, "Następny" to the next main author
-    d.fill("#search_lastname", "Rivii")
-    d.locator(".deduplikator-autorow__top-search button[type=submit]").click()
-    d.wait_for_load_state("networkidle")
-    d.mouse.move(5, 5)
-    mark(
-        d,
-        [
-            {
-                "sel": ".deduplikator-autorow__top-search-group",
-                "arrow": "above",
-                "label": "1. nazwisko",
-                "dx": -60,
-                "dy": 45,
-            },
-            {
-                "sel": ".deduplikator-autorow__header .button-group",
-                "arrow": "left",
-                "label": "2. kolejny autor",
-                "dx": 0,
-                "dy": -60,
-            },
-        ],
-    )
-    shot(
-        d,
-        out / "03-wyszukiwanie.png",
-        0,
-        bottom_of(d, ".deduplikator-autorow__header", 30),
-    )
-    d.locator("a.button", has_text="Następny").click()
-    d.wait_for_load_state("networkidle")
+    duplikaty_szukaj_nazwiska(d, out)
 
     # 4. Main record (kept) — top of the blue card
     main = page_box(d, ".callout.primary", "Główny rekord autora")
@@ -3205,7 +3360,8 @@ def duplikaty(page: Page, base: str, out: Path) -> None:
     shot(d, out / "09-nie-duplikaty.png", 0, bottom_of(d, nd, 30))
 
     # 10. Author page: "Przemapuj prace" (works between units)
-    d.goto(f"{base}/bpp/autor/166/")
+    geralt = demo("duplikaty", "geralt", "pk")
+    d.goto(f"{base}/bpp/autor/{geralt}/")
     d.wait_for_load_state("networkidle")
     d.mouse.move(5, 5)
     mark(
@@ -3223,23 +3379,27 @@ def duplikaty(page: Page, base: str, out: Path) -> None:
     shot(d, out / "10-strona-autora.png", 0, bottom_of(d, ".author-header", 90))
 
     # 11. Remap form: works sit in two units after the merge
-    d.goto(f"{base}/przemapuj_prace_autora/autor/166/")
+    d.goto(f"{base}/przemapuj_prace_autora/autor/{geralt}/")
     d.wait_for_load_state("networkidle")
+    # wrong unit (works of the merged "G. z Rivii") -> his own unit
+    bledna = demo("duplikaty", "bledna_jednostka")
     zly = d.evaluate(
-        """[...document.querySelectorAll('select[name=jednostka_z] option')]
-        .find(o => o.textContent.includes('Pracownia')).value"""
+        """(n) => [...document.querySelectorAll('select[name=jednostka_z] option')]
+        .find(o => o.textContent.includes(n)).value""",
+        bledna,
     )
     d.select_option("select[name=jednostka_z]", zly)
     dobra = d.evaluate(
-        """[...document.querySelectorAll('select[name=jednostka_do] option')]
-        .find(o => o.textContent.startsWith('Zakład Bestiariuszu')).value"""
+        """(n) => [...document.querySelectorAll('select[name=jednostka_do] option')]
+        .find(o => o.textContent.startsWith(n)).value""",
+        demo("duplikaty", "geralt", "jednostka"),
     )
     d.select_option("select[name=jednostka_do]", dobra)
     d.mouse.move(5, 5)
     mark(
         d,
         [
-            {"sel": "table tbody tr", "text": "Pracownia"},
+            {"sel": "table tbody tr", "text": bledna},
             {
                 "sel": "select[name=jednostka_z]",
                 "arrow": "below",
@@ -3323,11 +3483,12 @@ def duplikaty(page: Page, base: str, out: Path) -> None:
             lista.click()
         d.wait_for_load_state("networkidle")
     para = "table tbody tr"
-    przemapuj = "a.button[href*='/przemapuj-zrodlo/ACTA-OXENFURCKA/']"
+    dup = demo("duplikaty", "zrodlo_duplikat")
+    przemapuj = f"a.button[href*='/przemapuj-zrodlo/{dup['slug']}/']"
     mark(
         d,
         [
-            {"sel": para, "text": "ACTA OXENFURCKA"},
+            {"sel": para, "text": dup["nazwa"]},
             {
                 "sel": przemapuj,
                 "arrow": "below",
@@ -3336,15 +3497,16 @@ def duplikaty(page: Page, base: str, out: Path) -> None:
                 "dy": -20,
             },
             {
+                # right of the "Deduplikator źródeł" heading, not over it
                 "sel": "form[action*=skanuj] button",
                 "arrow": "above",
                 "label": "nowy skan",
-                "dx": 300,
+                "dx": 480,
                 "dy": 20,
             },
         ],
     )
-    row = page_box(d, para, "ACTA OXENFURCKA")
+    row = page_box(d, para, dup["nazwa"])
     shot(d, out / "14-deduplikator-zrodel.png", 0, row["y"] + row["height"] + 140)
 
     # 15. "Przemapuj źródło" form, target prefilled from the pair
@@ -3720,7 +3882,7 @@ def liczba_n_faq(page: Page, base: str, out: Path) -> None:
     shot(red, out / "02-udzialy-za-rok.png", 0, tab["y"] + tab["height"] + 10)
 
     # 3. the author's disciplines: type, contract, percent
-    red.goto(f"{base}/admin/bpp/autor/160/change/")
+    red.goto(f"{base}/admin/bpp/autor/{demo('liczba_n', 'procent_75', 'pk')}/change/")
     red.wait_for_load_state("networkidle")
     grp = "#autor_dyscyplina_set-group"
     mark(
@@ -3762,7 +3924,10 @@ def liczba_n_faq(page: Page, base: str, out: Path) -> None:
     # 4. a person with data only for 2024-2025
     # the search box takes one word (surname OR first name); the discipline
     # filter narrows it down to the one person
-    red.goto(f"{base}/ewaluacja_liczba_n/autorzy/?search=Regis")
+    red.goto(
+        f"{base}/ewaluacja_liczba_n/autorzy/?"
+        + urlencode({"search": demo("liczba_n", "od_2024_szukaj")})
+    )
     red.wait_for_load_state("networkidle")
     opt = red.locator("select[name=dyscyplina] option", has_text="biotechnologia")
     red.select_option("select[name=dyscyplina]", opt.first.get_attribute("value"))
@@ -3987,14 +4152,14 @@ def import_list_ministerialnych(page: Page, base: str, out: Path) -> None:
     shot(red, out / "06-zapisano.png", 0, bottom_of(red, "table", 30))
 
     # 7. where the values live: the source's points and disciplines
-    red.goto(f"{base}/admin/bpp/zrodlo/37/change/")  # Acta Wiedźmińska
+    red.goto(f"{base}/admin/bpp/zrodlo/{demo('wykaz', 'acta', 'pk')}/change/")
     red.wait_for_load_state("networkidle")
     top = shot(red, None, 0, 300)
     mark(
         red,
         [
-            {"sel": "#id_punktacja_zrodla_set-0-rok"},
-            {"sel": "#id_punktacja_zrodla_set-0-punkty_kbn"},
+            {"sel": f"{wiersz_punktacji(red, rok)}rok"},
+            {"sel": f"{wiersz_punktacji(red, rok)}punkty_kbn"},
         ],
     )
     box = page_box(red, "#punktacja_zrodla_set-group")
@@ -4275,9 +4440,12 @@ def oswiadczenia(page: Page, base: str, out: Path) -> None:
     w = VIEWPORT["width"]
 
     # 1. the record form: discipline, "przypięta", statement date
-    red.goto(f"{base}/admin/bpp/wydawnictwo_ciagle/{OSW_REKORD}/change/")
+    red.goto(
+        f"{base}/admin/bpp/wydawnictwo_ciagle/{demo('oswiadczenia', 'rekord', 'pk')}"
+        "/change/"
+    )
     red.wait_for_load_state("networkidle")
-    f = "#id_autorzy_set-1-"
+    f = f"#id_autorzy_set-{demo('oswiadczenia', 'indeks_regisa')}-"
     mark(
         red,
         [
@@ -4292,7 +4460,7 @@ def oswiadczenia(page: Page, base: str, out: Path) -> None:
                 "sel": f"label[for={f[1:]}przypieta]",
                 "arrow": "right",
                 "label": "2. przypięta",
-                "dx": 560,
+                "dx": 700,  # past the help text under the checkbox
                 "dy": -40,
             },
             {
@@ -4313,11 +4481,12 @@ def oswiadczenia(page: Page, base: str, out: Path) -> None:
     )
 
     # 2. the record page: print icons next to "Punkty i sloty autorów"
-    red.goto(f"{base}/bpp/rekord/{OSW_REKORD_SLUG}/")
+    red.goto(base + demo("oswiadczenia", "rekord", "url"))
     red.wait_for_load_state("networkidle")
     wiele = "a[href*='/oswiadczenia/wiele/']"
     alt = "a[href*='/oswiadczenia/pojedyncze-alternatywna/']"
-    jedno = "a[href*='/oswiadczenia/pojedyncze/'][href*='/149/']"
+    praca, regis = demo("oswiadczenia", "rekord", "pk"), demo("regis", "pk")
+    jedno = f"a[href*='/oswiadczenia/pojedyncze/'][href*='/{praca}/{regis}/']"
     mark(
         red,
         [
@@ -4395,7 +4564,10 @@ def oswiadczenia(page: Page, base: str, out: Path) -> None:
         "document.querySelectorAll('table tbody tr:nth-child(n+4)')"
         ".forEach(r => r.remove())"
     )
-    druk_alt = "tr:nth-child(3) a.button.warning[href*='pojedyncze-alternatywna']"
+    # the last of (up to) three rows: how many the filter finds depends on data
+    druk_alt = (
+        "table tbody tr:last-child a.button.warning[href*='pojedyncze-alternatywna']"
+    )
     mark(
         red,
         [
@@ -4798,7 +4970,7 @@ def optymalizacja_ewaluacji(page: Page, base: str, out: Path) -> None:
     shot(red, out / "07-eksporty.png", 0, bottom_of(red, "#bulk-optimization-form", 30))
 
     # 8. one record: pin / unpin a discipline by hand
-    red.goto(f"{base}/bpp/rekord/{REKORD_ZE_SLOTAMI}/")
+    red.goto(base + demo("rekord_ze_slotami", "url"))
     red.wait_for_load_state("networkidle")
     mark(
         red,
@@ -4961,7 +5133,7 @@ def admin_zglaszanie_publikacji(page: Page, base: str, out: Path) -> None:
     adm.wait_for_load_state("networkidle")
     opcja = adm.locator("#id_user option", has_text=f"({DEMO_USER_REDAKTOR})")
     adm.select_option("#id_user", value=opcja.get_attribute("value"))
-    adm.select_option("#id_wydzial", label="Wydział Magii i Eliksirów")
+    adm.select_option("#id_wydzial", label=demo("wydzial_zgloszen"))
     mark(
         adm,
         [
@@ -4999,7 +5171,7 @@ def api_session(page: Page, base: str, user: str | None = None) -> Page:
         locale="pl-PL",
         extra_http_headers=headers,
     )
-    ctx.add_init_script(HIDE_HELP_LAUNCHER)
+    add_init_scripts(ctx)
     other = ctx.new_page()
     proxy_public_bpp(other, base)
     # The dev server's live-reload stream never ends; proxying it would leave
@@ -5251,7 +5423,9 @@ def redaktor_wyszukiwanie_redagowanie(page: Page, base: str, out: Path) -> None:
     red.goto(f"{base}/admin/")
     red.wait_for_load_state("networkidle")
     red.click("#search-container .select2-selection")
-    red.locator(".select2-container--open .select2-search__field").fill("Brokilon")
+    red.locator(".select2-container--open .select2-search__field").fill(
+        demo("slowo_tytulow")
+    )
     red.wait_for_selector(".select2-results__group")
     red.wait_for_timeout(1200)
     mark(
@@ -5268,7 +5442,7 @@ def redaktor_wyszukiwanie_redagowanie(page: Page, base: str, out: Path) -> None:
     )
 
     # 3. the text filter of one table
-    red.goto(f"{lista}?q=Brokilon")
+    red.goto(f"{lista}?" + urlencode({"q": demo("slowo_tytulow")}))
     red.wait_for_load_state("networkidle")
     mark(
         red,
@@ -5709,7 +5883,7 @@ def panel_uczelnia_ogolna(page: Page, base: str, out: Path) -> None:
     adm = new_session(page, base, DEMO_USER_ADMIN)
 
     # 1. author form: "Pokazuj na stronie jednostki" in "Widoczność"
-    red.goto(f"{base}/admin/bpp/autor/{AUTOR_MIEJSCA_PRACY}/change/")
+    red.goto(f"{base}/admin/bpp/autor/{demo('margarita', 'pk')}/change/")
     red.wait_for_load_state("networkidle")
     sekcja = open_fieldset(red, "Widoczność")
     mark(
@@ -6029,7 +6203,7 @@ def panel_uczelnia_autorzy(page: Page, base: str, out: Path) -> None:
     """docs/redaktor/autorzy.md: "Aktualna jednostka" and the author's workplaces.
     Needs bin/docs-demo-panel-uczelnia.py."""
     red = new_session(page, base, DEMO_USER_REDAKTOR)
-    red.goto(f"{base}/admin/bpp/autor/{AUTOR_MIEJSCA_PRACY}/change/")
+    red.goto(f"{base}/admin/bpp/autor/{demo('margarita', 'pk')}/change/")
     red.wait_for_load_state("networkidle")
     red.add_style_tag(content=".grp-fixed-footer{display:none!important}")
 
@@ -6086,7 +6260,10 @@ def panel_uczelnia_autorzy(page: Page, base: str, out: Path) -> None:
 def panel_uczelnia_wydawnictwa(page: Page, base: str, out: Path) -> None:
     """docs/redaktor/wydawnictwa.md: adding authors and changing their order."""
     red = new_session(page, base, DEMO_USER_REDAKTOR)
-    red.goto(f"{base}/admin/bpp/wydawnictwo_ciagle/{REKORD_TRZECH_AUTOROW}/change/")
+    red.goto(
+        f"{base}/admin/bpp/wydawnictwo_ciagle/{demo('oswiadczenia', 'rekord', 'pk')}"
+        "/change/"
+    )
     red.wait_for_load_state("networkidle")
     grupa = "#autorzy_set-group"
     # collapsed authors are easier to reorder
@@ -6123,10 +6300,11 @@ def plik_pracownikow_demo(path: Path) -> Path:
     ws = wb.active
     ws.title = "Pracownicy"
     ws.append(IMPORT_PRAC_NAGLOWEK)
-    for numer, nazwisko, imie, tytul, jedn, od, bpp_id in IMPORT_PRAC_WIERSZE:
+    wydzial = demo("import_pracownikow", "wydzial")
+    for numer, nazwisko, imie, tytul, jedn, od, bpp_id in import_prac_wiersze():
         ws.append(
             [numer, nazwisko, imie, None, tytul, None, None, jedn]
-            + [IMPORT_PRAC_WYDZIAL, od, None, "TAK", None, bpp_id, "Pełny etat"]
+            + [wydzial, od, None, "TAK", None, bpp_id, "Pełny etat"]
         )
     wb.save(path)
     return path
@@ -6137,9 +6315,7 @@ def import_pracownikow(page: Page, base: str, out: Path) -> None:
     import tempfile
 
     red = new_session(page, base, DEMO_USER_REDAKTOR)
-    plik = plik_pracownikow_demo(
-        Path(tempfile.mkdtemp()) / "pracownicy-wydzial-magii.xlsx"
-    )
+    plik = plik_pracownikow_demo(Path(tempfile.mkdtemp()) / "pracownicy.xlsx")
 
     def przeglad(url: str) -> None:
         """Wait out the background run; liveops.js usually redirects by itself."""
@@ -6262,7 +6438,9 @@ def import_pracownikow(page: Page, base: str, out: Path) -> None:
     # 5. unit verification: create it under the right faculty
     red.goto(url + "jednostki/")
     red.wait_for_load_state("networkidle")
-    red.locator("select.js-wydzial").first.select_option(label=IMPORT_PRAC_WYDZIAL)
+    red.locator("select.js-wydzial").first.select_option(
+        label=demo("import_pracownikow", "wydzial")
+    )
     red.wait_for_timeout(300)
     mark(
         red,
@@ -6326,8 +6504,14 @@ def import_pracownikow(page: Page, base: str, out: Path) -> None:
     # 7. rows of the file: confirm a namesake, create a new author
     red.goto(url + "rezultaty/")
     red.wait_for_load_state("networkidle")
-    leo = red.locator("tbody[data-rekord]", has_text="Leo")
-    vilgefortz = red.locator("tbody[data-rekord]", has_text="Vilgefortz")
+    osoby = demo("import_pracownikow")
+    wiersz = "tbody[data-rekord]"
+    leo = red.locator(wiersz, has_text=osoby["wielu"]["imiona"]).filter(
+        has_text=osoby["wielu"]["nazwisko"]
+    )
+    vilgefortz = red.locator(wiersz, has_text=osoby["nowy"]["imiona"]).filter(
+        has_text=osoby["nowy"]["nazwisko"]
+    )
     leo_id = leo.get_attribute("id")
     vil_id = vilgefortz.get_attribute("id")
     mark(
@@ -6369,18 +6553,27 @@ def import_pracownikow(page: Page, base: str, out: Path) -> None:
     # 8. people missing from the file: proposed unlinking
     red.goto(url + "odpiecia/")
     red.wait_for_load_state("networkidle")
-    cahir = red.locator("#tabela-odpiec tbody tr", has_text="Cahir")
+    odpiety = osoby["spoza_pliku"][0]
+    cahir = red.locator("#tabela-odpiec tbody tr", has_text=odpiety["imiona"]).filter(
+        has_text=odpiety["nazwisko"]
+    )
     cahir.locator("input[type=checkbox]").check()
+    cahir.evaluate("e => e.id = 'kb-odpiety'")
     red.wait_for_timeout(1000)
     mark(
         red,
         [
             {
-                "sel": "#tabela-odpiec tbody tr:nth-child(2) td:last-child",
+                # below the table: above and beside it stand other labels
+                # and texts (as many rows as the demo data has)
+                "sel": "#kb-odpiety td:last-child",
                 "arrow": "below",
                 "label": "zaznacz, kogo odpiąć",
-                "dx": -500,
-                "dy": -50,
+                "dx": -250,
+                "dy": page_box(red, "#tabela-odpiec")["y"]
+                + page_box(red, "#tabela-odpiec")["height"]
+                - page_box(red, "#kb-odpiety")["y"]
+                - 140,
             },
             {
                 "sel": "#btn-zaznacz-filtr",
@@ -6401,11 +6594,12 @@ def import_pracownikow(page: Page, base: str, out: Path) -> None:
         red,
         [
             {
+                # the checkbox sits at the left edge: label past its caption
                 "sel": "input[name=potwierdzenie_zapisu]",
-                "arrow": "left",
+                "arrow": "right",
                 "label": "1. potwierdź",
-                "dx": -20,
-                "dy": -40,
+                "dx": 420,
+                "dy": -25,
             },
             {
                 "sel": "button.alert[type=submit]",
@@ -6479,7 +6673,7 @@ def tabela_krzyzowa(page: Page, base: str, out: Path) -> None:
     sekcja = ".autor-page__pas-cela"
 
     # 1. author page: years 2002-2025, then "Szukaj publikacji"
-    page.goto(f"{base}/bpp/autor/Yennefer-Merigold/")
+    page.goto(base + demo("yennefer", "url"))
     page.wait_for_load_state("networkidle")
     zaznacz_lata(page, "2002", "2025")
     mark(
@@ -6490,15 +6684,18 @@ def tabela_krzyzowa(page: Page, base: str, out: Path) -> None:
                 "sel": "label.autor-page__chip:has(input[value='2002'])",
                 "arrow": "below",
                 "label": "1. kliknij pierwszy i ostatni rok",
-                "dx": -550,
-                "dy": -45,
+                # under the right column of units: the left one has more rows
+                "dx": -140,
+                "dy": 0,
             },
             {
+                # left of it: the empty end of "Tytuł wyników" (above it
+                # are the author's units, as many as the demo data has)
                 "sel": "button.autor-page__search-btn",
-                "arrow": "above",
+                "arrow": "left",
                 "label": "2. Szukaj publikacji",
-                "dx": -300,
-                "dy": 30,
+                "dx": -60,
+                "dy": -40,
             },
         ],
     )
@@ -6518,14 +6715,14 @@ def tabela_krzyzowa(page: Page, base: str, out: Path) -> None:
                 # label right of "Dodaj ramkę", so the arrow passes below it
                 "sel": "#id_report_type",
                 "arrow": "above",
-                "label": "3. Rodzaj raportu: tabela krzyżowa",
+                "label": "3. Raport: tabela krzyżowa",
                 "dx": 350,
                 "dy": 55,
             },
             {
                 "sel": "#multiseek-szukaj",
                 "arrow": "below",
-                "label": "4. Wyświetl wyniki wyszukiwania",
+                "label": "4. Wyświetl wyniki",
                 "dx": 175,
                 "dy": -60,
             },
@@ -6596,12 +6793,14 @@ def tabela_krzyzowa(page: Page, base: str, out: Path) -> None:
                 "sel": "table.multiseek-pivot thead th.pivot-total",
                 "arrow": "right",
                 "label": "suma wiersza",
+                "dx": -70,  # unit names (and the table) can be long
                 "dy": -30,
             },
             {
                 "sel": "table.multiseek-pivot tfoot tr",
                 "arrow": "right",
                 "label": "suma kolumny",
+                "dx": -70,
                 "dy": -40,
             },
         ],
@@ -6614,11 +6813,12 @@ def tabela_krzyzowa(page: Page, base: str, out: Path) -> None:
         page,
         [
             {
+                # right of it: below would cover the RAZEM column
                 "sel": ".multiseek-pivot-export",
-                "arrow": "below",
-                "label": "pobierz: Excel (XLSX) lub CSV",
-                "dx": -130,
-                "dy": -20,
+                "arrow": "right",
+                "label": "Excel lub CSV",
+                "dx": -70,
+                "dy": 0,
             }
         ],
     )
@@ -6642,7 +6842,7 @@ def tabela_krzyzowa(page: Page, base: str, out: Path) -> None:
     stitch(page, [gora, dol], out / "06-rok-charakter.png", "kolejne lata, aż do 2002")
 
     # 7. example: a unit's works - authors x years, sorted by RAZEM
-    page.goto(f"{base}/bpp/jednostka/Klinika-Szermierki/")
+    page.goto(base + demo("yennefer_jednostka", "url"))
     page.wait_for_load_state("networkidle")
     zaznacz_lata(page, "2020", "2025")
     page.click("button.autor-page__search-btn")
@@ -7232,7 +7432,7 @@ def powiazania_autorow(page: Page, base: str, out: Path) -> None:
     The 3D view needs WebGL: headless Chromium has it (SwiftShader) only when
     no X display is configured, so run this scenario as `env -u DISPLAY …`.
     """
-    autor = f"{base}/bpp/autor/{AUTOR_NOWY_ROK}/"  # Yennefer Merigold
+    autor = f"{base}/bpp/autor/{demo('yennefer', 'pk')}/"
     page.goto(autor)
     page.wait_for_load_state("networkidle")
 
@@ -7296,7 +7496,7 @@ def powiazania_autorow(page: Page, base: str, out: Path) -> None:
     page.goto(f"{autor}powiazania/")
     page.wait_for_load_state("networkidle")
     czekaj_na_graf(page)
-    centrum = AUTOR_NOWY_ROK
+    centrum = demo("yennefer", "pk")
     silny = page.evaluate(NAJSILNIEJSZY_JS, centrum)
     # pad -8: the box hugs the inside of the node, so the name under it stays readable
     page.evaluate(PIN_CY_JS, ["kb-centrum", "node", centrum, 0, -8])
@@ -7307,8 +7507,7 @@ def powiazania_autorow(page: Page, base: str, out: Path) -> None:
         page,
         [
             {
-                # short label in the gap left of the centre, right of the
-                # "Gaunter ze Stygga" node; nearly level arrow
+                # short label in the gap left of the centre; nearly level arrow
                 "sel": "#kb-centrum",
                 "arrow": "left",
                 "label": "1. ten autor",
@@ -7316,13 +7515,13 @@ def powiazania_autorow(page: Page, base: str, out: Path) -> None:
                 "dy": -30,
             },
             {
-                # label in the empty band right of the graph, arrow passes
-                # between the node labels
+                # label in the bottom-right corner of the graph (the band
+                # right of the edge holds node labels, wherever it lands)
                 "sel": "#kb-krawedz",
                 "arrow": "right",
                 "label": "2. więcej wspólnych prac",
                 "dx": graf["x"] + graf["width"] - 300 - (k["x"] + k["width"] + 6 + 110),
-                "dy": -48,
+                "dy": graf["y"] + graf["height"] - 90 - k["y"],
             },
             {
                 "sel": "#graf-legenda",
@@ -7475,7 +7674,7 @@ def powiazania_autorow(page: Page, base: str, out: Path) -> None:
     page.wait_for_load_state("networkidle")
     czekaj_na_graf(page)
     page.click("#graf-zaawansowane-toggle")
-    page.fill("#graf-szukaj", "Cahir z Vengerbergu")
+    page.fill("#graf-szukaj", demo("imiennicy_w_sieci"))
     page.wait_for_timeout(1000)
     ids = page.evaluate(
         "() => document.getElementById('cytoscape-container')._cyreg.cy"
@@ -7495,10 +7694,11 @@ def powiazania_autorow(page: Page, base: str, out: Path) -> None:
     piny = [f"#kb-szukany-{i}" for i in range(min(2, len(ids)))]
     marks += [{"sel": p} for p in piny]
     if len(piny) == 2:
-        # label under the upper of the two hits, in the faded part of the graph
-        gorny = min(piny, key=lambda p: page_box(page, p)["y"])
-        next(m for m in marks if m["sel"] == gorny).update(
-            arrow="below", label="ten sam autor dwa razy?", dx=-100, dy=20
+        # label left of the left one of the two hits: the band between the
+        # graph's edge and the outermost nodes is empty in the radial layout
+        lewy = min(piny, key=lambda p: page_box(page, p)["x"])
+        next(m for m in marks if m["sel"] == lewy).update(
+            arrow="left", label="ten sam autor dwa razy?", dx=140, dy=0
         )
     mark(page, marks)
     zaaw = page_box(page, "#graf-zaawansowane")
@@ -7908,10 +8108,17 @@ def dwudyscyplinowcy(page: Page, base: str, out: Path) -> None:
 MS_AUTOR = "Merigold Yennefer"  # the demo author linked to the "yennefer" account
 
 
-MS_WSPOLAUTOR = "van der Eretein Regis"  # her most frequent co-author
+def ms_wspolautor() -> tuple[str, str]:
+    """Her most frequent co-author: (name in the list, text to type)."""
+    w = demo("yennefer_wspolautor")
+    return w["nazwa"], f"{w['nazwisko'].split()[-1]} {w['imiona']}"
 
 
-MS_JEDNOSTKA = "Klinika Eliksirologii"
+def ms_jednostka() -> tuple[str, str]:
+    """Her current unit (the saved forms of bin/docs-demo-wyszukiwanie-precyzyjne.py
+    use it too): (name, text to type)."""
+    nazwa = demo("yennefer_jednostka", "nazwa")
+    return nazwa, nazwa.split()[-1]
 
 
 def ms_reset(page: Page, base: str) -> None:
@@ -8104,7 +8311,7 @@ def wyszukiwanie_precyzyjne(page: Page, base: str, out: Path) -> None:
             {
                 "sel": "#id_report_type",
                 "arrow": "above",
-                "label": "rodzaj raportu",
+                "label": "raport",
                 "dx": -30,
                 "dy": -30,
             },
@@ -8116,24 +8323,26 @@ def wyszukiwanie_precyzyjne(page: Page, base: str, out: Path) -> None:
                 "dy": -30,
             },
             {
+                # right of it: the empty middle of the buttons row
                 "sel": "#resetFormButton",
-                "arrow": "above",
+                "arrow": "right",
                 "label": "wyczyść formularz",
-                "dx": 400,
-                "dy": -100,
+                "dx": 40,
+                "dy": 0,
             },
             {
+                # right of the "Rezultat wyszukiwania" heading, not over it
                 "sel": "#multiseek-szukaj",
                 "arrow": "below",
                 "label": "pełna strona wyników",
-                "dx": -60,
+                "dx": 330,
                 "dy": -30,
             },
             {
                 "sel": "#sendQueryButton",
                 "arrow": "below",
                 "label": "podgląd poniżej",
-                "dx": 220,
+                "dx": 560,
                 "dy": -30,
             },
             {"sel": "#if"},
@@ -8145,7 +8354,7 @@ def wyszukiwanie_precyzyjne(page: Page, base: str, out: Path) -> None:
     anon.context.close()
 
     # 4. the form opened from the author page "Szukaj publikacji" button
-    page.goto(f"{base}/bpp/autor/Yennefer-Merigold/")
+    page.goto(base + demo("yennefer", "url"))
     page.wait_for_load_state("networkidle")
     for rok in ("2023", "2024"):
         page.locator(f"label.autor-page__chip:has(input[value='{rok}'])").click()
@@ -8179,8 +8388,7 @@ def wyszukiwanie_precyzyjne_przyklady(page: Page, base: str, out: Path) -> None:
         1,
         "Nazwisko i imię",
         "równe+wspólne",
-        MS_WSPOLAUTOR,
-        szukaj="Eretein Regis",
+        *ms_wspolautor(),
     )
     ms_podglad(page)
     print("  współautorzy:", ms_razem(page))
@@ -8201,7 +8409,7 @@ def wyszukiwanie_precyzyjne_przyklady(page: Page, base: str, out: Path) -> None:
 
     # 2. a unit without conference abstracts: "i nie"
     ms_reset(page, base)
-    ms_warunek(page, 0, "Jednostka", "równa", MS_JEDNOSTKA, szukaj="Eliksirologii")
+    ms_warunek(page, 0, "Jednostka", "równa", *ms_jednostka())
     ms_dodaj(page)
     ms_warunek(page, 1, "Typ rekordu", "równy", "streszczenia", spojnik="i nie")
     ms_podglad(page)
@@ -8371,19 +8579,25 @@ def wyszukiwanie_precyzyjne_zapisane(page: Page, base: str, out: Path) -> None:
 
     # 1. "Zapisz formularz" (staff only)
     ms_reset(red, base)
-    ms_warunek(red, 0, "Jednostka", "równa", MS_JEDNOSTKA, szukaj="Eliksirologii")
+    ms_warunek(red, 0, "Jednostka", "równa", *ms_jednostka())
     ms_dodaj(red)
     ms_warunek(red, 1, "Charakter formalny ogólny", "równy", "artykuł")
+    # "Zapisz formularz…" sits in the "Formularz" drop-down
+    red.click("#multiseekFormularzMenu")
+    red.locator("#saveFormButton").wait_for(state="visible")
+    red.wait_for_timeout(400)
     mark(
         red,
         [
+            {"sel": "#multiseekFormularzMenu"},
             {
+                # the menu opens at the right edge: label left of it
                 "sel": "#saveFormButton",
-                "arrow": "below",
-                "label": "Zapisz formularz",
-                "dx": 40,
-                "dy": -30,
-            }
+                "arrow": "left",
+                "label": "Zapisz formularz…",
+                "dx": -40,
+                "dy": 0,
+            },
         ],
     )
     top = page_box(red, "#frame-0")["y"] - 20
@@ -8400,7 +8614,7 @@ def wyszukiwanie_precyzyjne_zapisane(page: Page, base: str, out: Path) -> None:
     def odpowiedz(dialog):
         pytania.append(f"{dialog.type}: {dialog.message}")
         if dialog.type == "prompt":
-            dialog.accept("Klinika Eliksirologii — artykuły")
+            dialog.accept(f"{ms_jednostka()[0]} — artykuły")
         elif "dostępny dla wszystkich" in dialog.message:
             dialog.dismiss()
         else:
@@ -8408,6 +8622,10 @@ def wyszukiwanie_precyzyjne_zapisane(page: Page, base: str, out: Path) -> None:
 
     red.on("dialog", odpowiedz)
     red.evaluate("mark => document.getElementById('kb-overlay')?.remove()", None)
+    if not red.locator("#saveFormButton").is_visible():
+        # "Zapisz formularz…" sits in the "Formularz" drop-down
+        red.click("#multiseekFormularzMenu")
+        red.locator("#saveFormButton").wait_for(state="visible")
     red.click("#saveFormButton")
     red.wait_for_timeout(3500)
     for p in pytania:
@@ -8427,18 +8645,19 @@ def wyszukiwanie_precyzyjne_zapisane(page: Page, base: str, out: Path) -> None:
         red,
         [
             {
+                # "Formularz" sits at the right edge: labels go left of it
                 "sel": "button[data-toggle='multiseek-form-menu']",
-                "arrow": "above",
-                "label": "1. Wczytaj formularz",
-                "dx": -260,
-                "dy": 40,
+                "arrow": "left",
+                "label": "1. Formularz",
+                "dx": -60,
+                "dy": -35,
             },
             {
-                "sel": "#multiseek-form-menu ul",
-                "arrow": "right",
-                "label": "2. wybierz",
-                "dx": -60,
-                "dy": 10,
+                "sel": "#multiseek-form-menu li a[data-load-form-id]",
+                "arrow": "left",
+                "label": "2. wybierz zapisany",
+                "dx": -40,
+                "dy": 0,
             },
         ],
     )
@@ -8480,7 +8699,10 @@ def przemapowanie_prac_autora(page: Page, base: str, out: Path) -> None:
     real; run it on a fresh copy of the demo DB (the history table grows)."""
     d = new_session(page, base, DEMO_USER_REDAKTOR)
     d.on("dialog", lambda dialog: dialog.accept())  # "Cofnąć to przemapowanie…?"
-    eskel = 136
+    # the author with a namesake whose works bin/docs-demo-przemapowanie-prac-autora.py
+    # filed under "Jednostka Domyślna" (bpp.demo_data.zrzuty.autor_z_imiennikiem)
+    eskel = demo("przemapowanie", "autor", "pk")
+    imiennik = demo("przemapowanie", "imiennik", "pk")
 
     # 1. Author page: the "Przemapuj prace" button
     d.goto(f"{base}/bpp/autor/{eskel}/")
@@ -8501,7 +8723,8 @@ def przemapowanie_prac_autora(page: Page, base: str, out: Path) -> None:
     shot(d, out / "01-strona-autora.png", 0, bottom_of(d, ".author-header", 15))
 
     # 2. Author search: two different people with the same name
-    d.goto(f"{base}/przemapuj_prace_autora/?q=Eskel")
+    szukaj = demo("przemapowanie", "autor", "nazwisko").split()[-1]
+    d.goto(f"{base}/przemapuj_prace_autora/?" + urlencode({"q": szukaj}))
     wiersz = "table tbody tr:has(a[href$='/autor/{}/'])"
     d.wait_for_load_state("networkidle")
     d.mouse.move(5, 5)
@@ -8516,7 +8739,7 @@ def przemapowanie_prac_autora(page: Page, base: str, out: Path) -> None:
                 "dx": 100,
                 "dy": -80,
             },
-            {"sel": wiersz.format(240)},
+            {"sel": wiersz.format(imiennik)},
             {"sel": wiersz.format(eskel)},
             {
                 "sel": f"{rows} a.button[href$='/autor/{eskel}/']",
@@ -8758,11 +8981,17 @@ def duplikaty_publikacji(page: Page, base: str, out: Path) -> None:
             {"sel": "tbody tr:first-child .deduplikator-publikacji__actions"},
         ],
     )
-    ostatni = page_box(red, "tbody tr", "Novigradu (nr 10)")
+    pary = demo("duplikaty_publikacji")
+
+    def poczatek(klucz: str) -> str:
+        # long titles are cut ("…") in the list: match their first words
+        return " ".join(pary[klucz]["tytul"].split()[:5])
+
+    ostatni = page_box(red, "tbody tr", poczatek("artykul_rozdzial"))
     shot(red, out / "04-lista-wynikow.png", 0, ostatni["y"] + ostatni["height"] + 4)
 
     # 5. one pair compared: both records of the DOI pair, one above the other
-    wiersz = red.locator("tbody tr", has_text="Wpływ mutacji").first
+    wiersz = red.locator("tbody tr", has_text=poczatek("artykul_doi")).first
     linki = wiersz.locator(".deduplikator-publikacji__pub-info a")
     adresy = [linki.nth(i).get_attribute("href") for i in range(2)]
     czesci = []
@@ -9424,16 +9653,18 @@ def konfigurator_wygladu(page: Page, base: str, out: Path) -> None:
     strona = new_session(page, base, None)
     pigulka = ".top-bar .bpp-pigulka"
     strona.wait_for_selector(pigulka, state="visible")
-    strona.wait_for_timeout(800)
+    strona.wait_for_timeout(2000)  # the search box under the bar fades in
     mark(
         strona,
         [
             {
+                # the pill sits at the right edge of the bar: label left of it,
+                # in the empty middle of the bar (below: tips bar and heading)
                 "sel": pigulka,
-                "arrow": "right",
+                "arrow": "left",
                 "label": "wybór odwiedzającego",
-                "dx": 60,
-                "dy": 40,
+                "dx": -30,
+                "dy": -45,
             }
         ],
     )
@@ -9589,6 +9820,7 @@ def main() -> int:
         ap.error(f"unknown scenario(s): {', '.join(sorted(unknown))}")
 
     base = args.base.rstrip("/")
+    demo()  # demo objects up front: before any scenario changes the data
     with sync_playwright() as pw:
         # channel="chromium" = full Chromium (not the headless shell), which
         # honours --lang, so native widgets read "Wybierz plik", not "Choose File".
@@ -9599,10 +9831,12 @@ def main() -> int:
         ctx = browser.new_context(
             viewport=VIEWPORT, device_scale_factor=2, locale="pl-PL"
         )
-        ctx.add_init_script(HIDE_HELP_LAUNCHER)
+        add_init_scripts(ctx)
         page = ctx.new_page()
         login(page, base)
         for name in args.scenario or list(SCENARIOS):
+            global _hide_pbn_queue_message
+            _hide_pbn_queue_message = name not in SCENARIOS_WITH_PBN_QUEUE_MESSAGE
             subdir, fn = SCENARIOS[name]
             out = IMAGES / subdir
             out.mkdir(parents=True, exist_ok=True)

@@ -28,39 +28,32 @@ for the export screenshot. Re-running the script gives the same result.
 import datetime
 
 from django.db import transaction
-from django.db.models import F
 from password_policies.models import PasswordHistory
 
+from bpp.demo_data.zrzuty import (
+    TYTUL_PRACY_2027,
+    aktualna_jednostka,
+    inne_jednostki,
+    yennefer,
+)
 from bpp.models import (
-    Autor,
     Autor_Dyscyplina,
     Autor_Jednostka,
     BppUser,
     Charakter_Formalny,
-    Jednostka,
     Wydawnictwo_Ciagle_Autor,
     Wydawnictwo_Zwarte_Autor,
 )
 
-YENNEFER = Autor.objects.get(imiona="Yennefer", nazwisko="Merigold")
+YENNEFER = yennefer()
 
 # Jednostki z bazy, a nie po nazwie: nazwy losuje generator danych demo z puli
 # motywu, a po rozszerzeniu puli (commit 4be76d7aa) ten sam --seed daje inne
 # jednostki. Ostatnia = obecna jednostka autorki; dwie wcześniejsze = pierwsze
-# alfabetycznie jednostki bez podjednostek (bez wydziałów).
-OBECNA = YENNEFER.aktualna_jednostka
-if OBECNA is None:
-    raise SystemExit("Yennefer Merigold nie ma aktualnej jednostki w bazie demo.")
-WCZESNIEJSZE = list(
-    Jednostka.objects.filter(rght=F("lft") + 1)
-    .exclude(pk=OBECNA.pk)
-    .order_by("nazwa")[:2]
-)
-if len(WCZESNIEJSZE) < 2:
-    raise SystemExit(
-        "Za mało jednostek w bazie demo — wygeneruj dane wg "
-        "docs/deweloper/zrzuty-ekranu.md."
-    )
+# alfabetycznie zwykłe jednostki bez podjednostek (bez wydziałów i jednostek
+# technicznych) — bpp.demo_data.zrzuty.inne_jednostki.
+OBECNA = aktualna_jednostka(YENNEFER)
+WCZESNIEJSZE = inne_jednostki(OBECNA, 2)
 
 JEDNOSTKI = [
     # (last year, unit)
@@ -107,6 +100,8 @@ with transaction.atomic():
     powiazania = [
         ("ciagle", wa)
         for wa in Wydawnictwo_Ciagle_Autor.objects.filter(autor=YENNEFER)
+        # bez pracy z 2027 r. z bin/docs-demo-nowy-rok.py (ma zostać w 2027)
+        .exclude(rekord__tytul_oryginalny=TYTUL_PRACY_2027)
         .select_related("rekord")
         .order_by("rekord_id")
     ] + [

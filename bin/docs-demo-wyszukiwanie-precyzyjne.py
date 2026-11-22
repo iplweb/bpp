@@ -32,7 +32,8 @@ from multiseek.models import SearchForm
 from multiseek.util import make_field
 from password_policies.models import PasswordHistory
 
-from bpp.models import Autor, BppUser, Wydawnictwo_Ciagle
+from bpp.demo_data import zrzuty
+from bpp.models import BppUser, Wydawnictwo_Ciagle
 from bpp.multiseek_registry.fields import (
     JednostkaQueryObject,
     NazwiskoIImieQueryObject,
@@ -85,13 +86,9 @@ with transaction.atomic():
     # --- saved search forms ---------------------------------------------------
     # Autorka konta „yennefer” i jej obecna jednostka — z bazy, nie po pk ani
     # nazwie (nazwy jednostek losuje generator danych demo).
-    yennefer = Autor.objects.filter(user__username="yennefer").first()
-    if yennefer is None or yennefer.aktualna_jednostka is None:
-        raise SystemExit(
-            "Brak konta „yennefer” powiązanego z autorem z aktualną jednostką — "
-            "załóż je wg kroku 2 w docs/deweloper/zrzuty-ekranu.md."
-        )
-    klinika = yennefer.aktualna_jednostka
+    # Wspólne ze scenariuszami wyszukiwania (bpp.demo_data.zrzuty).
+    yennefer = zrzuty.yennefer()
+    klinika = zrzuty.aktualna_jednostka(yennefer)
     print("jednostka w formularzu:", klinika.nazwa)
     formularze = {
         f"{klinika.nazwa} — prace od 100 pkt": (
