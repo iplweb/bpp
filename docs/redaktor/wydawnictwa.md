@@ -102,8 +102,13 @@ Uwagi:
 - Przywrócenie wersji z plikiem w repozytorium przywraca wpis o pliku,
   ale nie treść pliku usuniętego z serwera.
 - Historia jest przechowywana bez limitu czasu.
-- Rekordu z kosza nie da się przywrócić do wcześniejszej wersji — najpierw
-  użyj **„♻️ Przywróć”** (z kosza), potem przywracaj wersje.
+- Historię i porównanie wersji rekordu z kosza można oglądać, ale
+  przywrócić wersję da się dopiero po wyjęciu rekordu z kosza — strona
+  „Historia” pokazuje wtedy ramkę z przyciskiem **„♻️ Przywróć z kosza”**.
+- Najnowsza wersja (obecny stan rekordu) ma w historii zieloną plakietkę
+  **„wersja aktualna”**. Podgląd wersji o tej samej treści co aktualna
+  (np. tej, do której rekord właśnie przywrócono) mówi wprost, że zapis
+  niczego nie zmieni.
 - Po przywróceniu wersji opis bibliograficzny i punktacja są przeliczane
   tak jak po zwykłym zapisie formularza.
 - Przywrócenie wersji jednego rekordu nigdy nie zmienia innych rekordów —

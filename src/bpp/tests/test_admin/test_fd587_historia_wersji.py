@@ -383,3 +383,112 @@ def test_lista_historii_zmian_bez_historii_wpisu(admin_client):
         ).status_code
         == 404
     )
+
+
+def _wersje_wydawnictwa(wydawnictwo):
+    """Dwie wersje: stan początkowy i po zmianie tytułu."""
+    with reversion.create_revision():
+        wydawnictwo.save()
+    wydawnictwo.tytul_oryginalny = "Tytuł po zmianie FD587"
+    with reversion.create_revision():
+        wydawnictwo.save()
+    nowsza, starsza = Version.objects.get_for_object(wydawnictwo)[:2]
+    return starsza, nowsza
+
+
+def test_rekord_z_kosza_historia_i_porownanie_tylko_do_odczytu(
+    admin_client, wydawnictwo_ciagle
+):
+    """Rekord w koszu: historię i porównanie wersji da się oglądać (wcześniej
+    porównanie dawało 404), ale przywracanie wersji jest zablokowane do
+    czasu wyjęcia rekordu z kosza."""
+    starsza, nowsza = _wersje_wydawnictwa(wydawnictwo_ciagle)
+    wydawnictwo_ciagle.delete()
+    pk = wydawnictwo_ciagle.pk
+
+    historia = admin_client.get(
+        reverse("admin:bpp_wydawnictwo_ciagle_history", args=(pk,))
+    ).content.decode()
+    assert "Rekord jest w koszu" in historia
+    assert "♻️ Przywróć z kosza" in historia
+    assert (
+        reverse("admin:bpp_wydawnictwo_ciagle_revision", args=(pk, starsza.pk))
+        not in historia
+    )
+
+    porownanie = admin_client.get(
+        reverse("admin:bpp_wydawnictwo_ciagle_compare", args=(pk,)),
+        {"version_id1": starsza.pk, "version_id2": nowsza.pk},
+    )
+    assert porownanie.status_code == 200
+    tresc = porownanie.content.decode()
+    assert "FD587</ins>" in tresc
+    assert "bpp-nieaktywny" in tresc
+    assert "Najpierw przywróć rekord z kosza" in tresc
+
+    res = admin_client.get(
+        reverse("admin:bpp_wydawnictwo_ciagle_revision", args=(pk, starsza.pk))
+    )
+    assert res.status_code == 302
+    assert Wydawnictwo_Ciagle.deleted_objects.filter(pk=pk).exists()
+
+
+def test_wersja_aktualna_oznaczona(admin_client, wydawnictwo_ciagle):
+    """Najnowsza wersja = stan obecny: plakietka w historii i w porównaniu,
+    a jej formularz nie udaje „wcześniejszej wersji”."""
+    starsza, nowsza = _wersje_wydawnictwa(wydawnictwo_ciagle)
+    pk = wydawnictwo_ciagle.pk
+
+    historia = admin_client.get(
+        reverse("admin:bpp_wydawnictwo_ciagle_history", args=(pk,))
+    ).content.decode()
+    assert historia.count('class="bpp-aktualna"') == 1
+
+    aktualna = admin_client.get(
+        reverse("admin:bpp_wydawnictwo_ciagle_revision", args=(pk, nowsza.pk))
+    ).content.decode()
+    assert "To jest wersja aktualna" in aktualna
+    assert "Podgląd wcześniejszej wersji" not in aktualna
+
+    wczesniejsza = admin_client.get(
+        reverse("admin:bpp_wydawnictwo_ciagle_revision", args=(pk, starsza.pk))
+    ).content.decode()
+    assert "Podgląd wcześniejszej wersji z" in wczesniejsza
+    assert "To jest wersja aktualna" not in wczesniejsza
+
+    porownanie = admin_client.get(
+        reverse("admin:bpp_wydawnictwo_ciagle_compare", args=(pk,)),
+        {"version_id1": starsza.pk, "version_id2": nowsza.pk},
+    ).content.decode()
+    assert porownanie.count('class="bpp-aktualna"') == 1
+
+
+def test_komunikat_po_przywroceniu_linkuje_do_rekordu(admin_app, wydawnictwo_ciagle):
+    """Po zapisaniu przywróconej wersji link w komunikacie „…pomyślnie
+    zmieniony” prowadzi do aktualnego rekordu, a nie do podglądu wersji
+    (Django składa go z ``request.path``)."""
+    starsza, _ = _wersje_wydawnictwa(wydawnictwo_ciagle)
+    pk = wydawnictwo_ciagle.pk
+    strona = admin_app.get(
+        reverse("admin:bpp_wydawnictwo_ciagle_revision", args=(pk, starsza.pk))
+    )
+    res = strona.forms["wydawnictwo_ciagle_form"].submit().follow()
+    komunikat = str(res.html.select_one(".grp-messagelist, .messagelist"))
+    assert reverse("admin:bpp_wydawnictwo_ciagle_change", args=(pk,)) in komunikat
+    assert "/history/" not in komunikat
+
+
+def test_wersja_o_tresci_jak_aktualna_nie_udaje_wczesniejszej(
+    admin_app, wydawnictwo_ciagle
+):
+    """Przywrócenie tworzy NOWĄ wersję o tej samej treści co przywrócona.
+    Podgląd przywróconej (starszej numerem) wersji nie może wtedy mówić
+    „wcześniejsza wersja” — to jest dokładnie stan obecny."""
+    starsza, _ = _wersje_wydawnictwa(wydawnictwo_ciagle)
+    pk = wydawnictwo_ciagle.pk
+    url = reverse("admin:bpp_wydawnictwo_ciagle_revision", args=(pk, starsza.pk))
+    admin_app.get(url).forms["wydawnictwo_ciagle_form"].submit()
+
+    tresc = admin_app.get(url).text
+    assert "taka sama jak aktualna" in tresc
+    assert "Podgląd wcześniejszej wersji" not in tresc

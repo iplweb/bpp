@@ -24,10 +24,23 @@
 
 {% block content %}
     <div class="g-d-c bpp-historia">
+        {% if rekord_w_koszu %}
+            <div class="bpp-kosz-ramka">
+                <div>
+                    <strong>🗑️ Rekord jest w koszu</strong> (od {{ w_koszu_od|date:"j E Y, H:i" }}).
+                    Wcześniejsze wersje można przeglądać i porównywać, ale przywrócić dopiero po wyjęciu rekordu z kosza.
+                </div>
+                {% if kosz_przywroc_url %}
+                    <form method="post" action="{{ kosz_przywroc_url }}">{% csrf_token %}<button type="submit" class="grp-button grp-default">♻️ Przywróć z kosza</button></form>
+                {% else %}
+                    <span class="bpp-przygaszony">Nie masz uprawnień do przywracania z kosza.</span>
+                {% endif %}
+            </div>
+        {% endif %}
         <div class="bpp-wersje">
             {% for wersja, litera, opis, klasa in wersje_porownania %}
                 <div class="bpp-wersja {{ klasa }}">
-                    <h3>Wersja {{ litera }} — {{ opis }}</h3>
+                    <h3>Wersja {{ litera }} — {{ opis }}{% if wersja.pk == aktualna_wersja_pk %} <span class="bpp-aktualna">wersja aktualna</span>{% endif %}</h3>
                     <div><strong>{{ wersja.revision.date_created|date:"j E Y, H:i" }}</strong>,
                         {% if wersja.revision.user %}{{ wersja.revision.user.get_full_name|default:wersja.revision.user.get_username }}{% else %}<span class="bpp-przygaszony">bez użytkownika</span>{% endif %}
                         {% with zrodlo=wersja.revision.zrodlo_zmiany %}{% if zrodlo %}&nbsp;<span class="bpp-zrodlo bpp-zrodlo-{{ zrodlo.zrodlo }}">{{ zrodlo.get_zrodlo_display }}{% if zrodlo.aplikacja_nazwa %}: {{ zrodlo.aplikacja_nazwa }}{% endif %}</span>{% endif %}{% endwith %}
@@ -64,7 +77,12 @@
             {% if prev_url %}<a class="grp-button" href="{{ prev_url }}">&lsaquo; Wcześniejsza zmiana</a>{% endif %}
             {% if next_url %}<a class="grp-button" href="{{ next_url }}">Następna zmiana &rsaquo;</a>{% endif %}
             <a class="grp-button" href="{{ history_url }}">Wróć do historii</a>
-            <a class="grp-button grp-default" href="{{ save_url }}" title="Otwiera formularz w stanie z wersji A — zapisanie go przywraca tę wersję">Przywróć wersję A ({{ version1.revision.date_created|date:"j E Y, H:i" }})…</a>
+            {% if rekord_w_koszu %}
+                <span class="grp-button bpp-nieaktywny" title="Rekord jest w koszu — najpierw przywróć go z kosza, potem przywracaj wcześniejsze wersje" aria-disabled="true">Przywróć wersję A ({{ version1.revision.date_created|date:"j E Y, H:i" }})…</span>
+                <span class="bpp-historia-pomoc">Najpierw przywróć rekord z kosza.</span>
+            {% else %}
+                <a class="grp-button grp-default" href="{{ save_url }}" title="Otwiera formularz w stanie z wersji A — zapisanie go przywraca tę wersję">Przywróć wersję A ({{ version1.revision.date_created|date:"j E Y, H:i" }})…</a>
+            {% endif %}
         </div>
     </div>
 {% endblock %}

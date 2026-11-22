@@ -25,7 +25,11 @@ przywracania. Nowa lista „Historia zmian (rewizje)” w administracji
 pozwala przejrzeć wszystkie zmiany z filtrem po źródle. Przeniesienie do
 kosza, przywrócenie z kosza i akcje masowe (np. „Ustaw status korekty”)
 też trafiają do historii, każdy rekord osobno — przywrócenie wersji
-jednego rekordu nie zmienia innych. Rekord z kosza trzeba najpierw
-przywrócić z kosza. Jedną akcją masową na publikacjach można teraz
+jednego rekordu nie zmienia innych. Historię i porównanie wersji
+rekordu z kosza można oglądać, ale wersję da się przywrócić dopiero po
+wyjęciu rekordu z kosza (strona „Historia” pokazuje wtedy ramkę
+z przyciskiem „♻️ Przywróć z kosza”). Najnowsza wersja ma w historii
+plakietkę „wersja aktualna”, a podgląd wersji o tej samej treści co
+aktualna mówi wprost, że zapis niczego nie zmieni. Jedną akcją masową na publikacjach można teraz
 zmienić najwyżej 5000 rekordów (wcześniej 20000); przy większej liczbie
 wystarczy zawęzić listę filtrami.
