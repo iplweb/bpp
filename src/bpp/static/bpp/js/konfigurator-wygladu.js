@@ -175,7 +175,7 @@
         function pokaz() {
             miniatura.hidden = !stan[p.klucz];
             usun.hidden = !stan[p.klucz];
-            if (stan[p.klucz]) miniatura.src = stan[p.klucz];
+            if (stan[p.klucz]) miniatura.src = bezpiecznyObraz(stan[p.klucz]);
         }
         plik.addEventListener("change", function () {
             var f = plik.files[0];
@@ -221,6 +221,18 @@
             };
             img.src = url;
         });
+    }
+
+    // Do <img src> tylko obrazki jako data URL albo adresy z tej domeny
+    // (np. /media/… faviconu) — nic, co przeglądarka mogłaby zinterpretować
+    // inaczej niż obrazek.
+    var RE_OBRAZ_DATA = /^data:image\/(png|jpeg|webp|gif|svg\+xml|x-icon);base64,[A-Za-z0-9+/=]+$/;
+
+    function bezpiecznyObraz(adres) {
+        if (typeof adres !== "string") return "";
+        if (RE_OBRAZ_DATA.test(adres)) return adres;
+        var u = new URL(adres, window.location.href);
+        return u.origin === window.location.origin ? u.href : "";
     }
 
     function czytajJakoDataUrl(f) {
@@ -993,7 +1005,7 @@
     var elFaviconCofnij = document.getElementById("favicon-cofnij");
 
     function pokazFavicon() {
-        var url = nowyFavicon || serwer.favicon_url || "/favicon.ico";
+        var url = bezpiecznyObraz(nowyFavicon || serwer.favicon_url || "/favicon.ico");
         ["favicon-podglad", "favicon-32", "favicon-64"].forEach(function (id) {
             document.getElementById(id).src = url;
         });

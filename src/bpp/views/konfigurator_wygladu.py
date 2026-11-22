@@ -34,11 +34,10 @@ from django.views.decorators.http import require_POST
 from bpp import przymiarka_motywu as przymiarka
 from bpp.models import MOTYW_WLASNY, MotywWersja, MotywWlasny, Rekord
 from bpp.motyw_kompilator import (
-    BladKompilacjiMotywu,
-    KompilatorNiedostepny,
-    KompilatorZajety,
+    BRAK_KOMPILATORA,
+    KOLEJKA,
     kompilator_dostepny,
-    kompiluj,
+    skompiluj,
     wstepna_walidacja,
 )
 from bpp.util.pliki_uczelni import MAKS_ROZMIAR_FAVICON, waliduj_favicon
@@ -105,21 +104,27 @@ RE_FAVICON = re.compile(
 
 
 def _favicon_z_data_url(data_url):
-    """Data URL z konfiguratora → ContentFile sprawdzony przez waliduj_favicon."""
-    m = RE_FAVICON.match(data_url or "")
+    """Data URL z konfiguratora → (ContentFile, None) albo (None, komunikat).
+
+    Plik sprawdza waliduj_favicon (jak w adminie uczelni).
+    """
+    m = RE_FAVICON.match(data_url if isinstance(data_url, str) else "")
     if not m:
-        raise ValidationError("Ikona strony musi być plikiem PNG albo ICO.")
+        return None, "Ikona strony musi być plikiem PNG albo ICO."
     # Szybkie odsianie przed dekodowaniem (base64 ≈ 4/3 rozmiaru).
     if len(m.group(2)) > MAKS_ROZMIAR_FAVICON * 4 // 3 + 4:
-        raise ValidationError("Ikona strony jest za duża (maksymalnie 1 MB).")
+        return None, "Ikona strony jest za duża (maksymalnie 1 MB)."
     try:
         dane = base64.b64decode(m.group(2), validate=True)
-    except binascii.Error as e:
-        raise ValidationError("Ikona strony jest uszkodzona.") from e
+    except binascii.Error:
+        return None, "Ikona strony jest uszkodzona."
     rozszerzenie = ".png" if m.group(1) == "png" else ".ico"
     plik = ContentFile(dane, name="favicon" + rozszerzenie)
-    waliduj_favicon(plik)
-    return plik
+    try:
+        waliduj_favicon(plik)
+    except ValidationError:
+        return None, "Ikona strony musi być poprawnym obrazkiem PNG albo ICO."
+    return plik, None
 
 
 def _zapisz_favicon(request, uczelnia, plik):
@@ -170,6 +175,20 @@ def _motyw_sprzed_konfiguratora(uczelnia):
     if przed not in etykiety:
         return None
     return {"wartosc": przed, "etykieta": etykiety[przed]}
+
+
+def _odpowiedz_bledem_kompilacji(wynik):
+    """Nieudana kompilacja → JSON. Komunikaty z WynikKompilacji są składane
+    jawnie (walidacja ustawień albo ogólne teksty); szczegóły tylko w logu."""
+    if wynik.rodzaj == KOLEJKA:
+        odpowiedz = JsonResponse({"blad": wynik.blad}, status=429)
+        odpowiedz["Retry-After"] = "5"
+        return odpowiedz
+    dane = {"blad": wynik.blad, "bledy": wynik.bledy}
+    if wynik.rodzaj == BRAK_KOMPILATORA:
+        # Konfigurator zaproponuje wtedy „Zapisz” zamiast „Zastosuj”.
+        dane["niedostepny"] = True
+    return JsonResponse(dane, status=400)
 
 
 def _uczelnia(request):
@@ -280,21 +299,13 @@ def konfigurator_wygladu_zastosuj(request):
     konfig = dane.get("konfig") if isinstance(dane, dict) else None
     favicon = None
     if isinstance(dane, dict) and dane.get("favicon"):
-        try:
-            favicon = _favicon_z_data_url(dane["favicon"])
-        except ValidationError as e:
-            return JsonResponse({"blad": " ".join(e.messages)}, status=400)
-    try:
-        css = kompiluj(konfig)
-    except KompilatorNiedostepny as e:
-        # Konfigurator zaproponuje wtedy „Zapisz” zamiast „Zastosuj”.
-        return JsonResponse({"blad": str(e), "niedostepny": True}, status=400)
-    except KompilatorZajety as e:
-        odpowiedz = JsonResponse({"blad": str(e)}, status=429)
-        odpowiedz["Retry-After"] = "5"
-        return odpowiedz
-    except BladKompilacjiMotywu as e:
-        return JsonResponse({"blad": str(e), "bledy": e.bledy}, status=400)
+        favicon, blad = _favicon_z_data_url(dane["favicon"])
+        if blad:
+            return JsonResponse({"blad": blad}, status=400)
+    wynik = skompiluj(konfig)
+    if not wynik.ok:
+        return _odpowiedz_bledem_kompilacji(wynik)
+    css = wynik.css
 
     uczelnia = _uczelnia(request)
     motyw_przed = uczelnia.theme_name
@@ -353,10 +364,9 @@ def konfigurator_wygladu_zapisz(request):
     except json.JSONDecodeError:
         return JsonResponse({"blad": "Niepoprawne dane (JSON)."}, status=400)
     konfig = dane.get("konfig") if isinstance(dane, dict) else None
-    try:
-        wstepna_walidacja(konfig)
-    except BladKompilacjiMotywu as e:
-        return JsonResponse({"blad": str(e)}, status=400)
+    blad = wstepna_walidacja(konfig)
+    if blad:
+        return JsonResponse({"blad": blad}, status=400)
 
     MotywWlasny.objects.update_or_create(
         uczelnia=_uczelnia(request),
@@ -407,15 +417,10 @@ def konfigurator_wygladu_przymierz(request):
     except json.JSONDecodeError:
         return JsonResponse({"blad": "Niepoprawne dane (JSON)."}, status=400)
     konfig = dane.get("konfig") if isinstance(dane, dict) else None
-    try:
-        css = kompiluj(konfig)
-    except KompilatorZajety as e:
-        odpowiedz = JsonResponse({"blad": str(e)}, status=429)
-        odpowiedz["Retry-After"] = "5"
-        return odpowiedz
-    except BladKompilacjiMotywu as e:
-        return JsonResponse({"blad": str(e)}, status=400)
-    przymiarka.rozpocznij(request, css)
+    wynik = skompiluj(konfig)
+    if not wynik.ok:
+        return _odpowiedz_bledem_kompilacji(wynik)
+    przymiarka.rozpocznij(request, wynik.css)
     return JsonResponse({"ok": True, "adres": "/"})
 
 
@@ -423,12 +428,12 @@ def konfigurator_wygladu_przymierz(request):
 @staff_member_required
 def konfigurator_wygladu_przymiarka_koniec(request):
     przymiarka.zakoncz(request)
-    nastepny = request.POST.get("next") or "/"
-    if not url_has_allowed_host_and_scheme(
-        nastepny, allowed_hosts={request.get_host()}
+    nastepny = request.POST.get("next", "")
+    if url_has_allowed_host_and_scheme(
+        nastepny, allowed_hosts={request.get_host()}, require_https=request.is_secure()
     ):
-        nastepny = "/"
-    return HttpResponseRedirect(nastepny)
+        return HttpResponseRedirect(nastepny)
+    return HttpResponseRedirect("/")
 
 
 @staff_member_required

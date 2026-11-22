@@ -263,17 +263,37 @@ def test_kompilator_serwis_zwraca_bledy_ustawien(settings, monkeypatch):
     from bpp import motyw_kompilator
 
     settings.BPP_MOTYW_KOMPILATOR_URL = "http://motyw-kompilator:8095"
+    bledy = [{"pole": "kolor_glowny", "komunikat": "Za jasny."}]
     monkeypatch.setattr(
         motyw_kompilator.requests,
         "post",
         lambda url, json, timeout: _Odpowiedz(
-            400, dane={"blad": "Za jasny.", "bledy": [{"pole": "kolor_glowny"}]}
+            400, tekst=__import__("json").dumps({"blad": "Za jasny.", "bledy": bledy})
         ),
     )
     with pytest.raises(motyw_kompilator.BladKompilacjiMotywu) as e:
         motyw_kompilator.kompiluj(KONFIG)
     assert str(e.value) == "Za jasny."
-    assert e.value.bledy == [{"pole": "kolor_glowny"}]
+    assert e.value.bledy == bledy
+
+
+def test_kompilator_blad_wewnetrzny_bez_szczegolow(settings, monkeypatch):
+    """Nieoczekiwany błąd kompilatora: użytkownik dostaje ogólny komunikat,
+    szczegóły (np. ścieżki, stos) tylko w logu."""
+    from bpp import motyw_kompilator
+
+    settings.BPP_MOTYW_KOMPILATOR_URL = "http://motyw-kompilator:8095"
+    monkeypatch.setattr(
+        motyw_kompilator.requests,
+        "post",
+        lambda url, json, timeout: _Odpowiedz(
+            500, tekst='{"blad": "/app/x.js:1 boom"}'
+        ),
+    )
+    wynik = motyw_kompilator.skompiluj(KONFIG)
+    assert not wynik.ok
+    assert "/app/" not in wynik.blad
+    assert "log" in wynik.blad
 
 
 def test_kompilator_serwis_niedostepny(settings, monkeypatch):

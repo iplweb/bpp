@@ -245,3 +245,4 @@ demo_data_manifest_*.json
 
 # Added by ggshield
 .cache_ggshield
+ci-motyw-kompilator/

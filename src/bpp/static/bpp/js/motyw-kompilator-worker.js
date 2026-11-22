@@ -17,13 +17,27 @@
 "use strict";
 
 var parametry = new URL(self.location.href).searchParams;
-importScripts(parametry.get("sass"), parametry.get("konfig"), parametry.get("kompilator"));
+
+// Skrypty wyłącznie z tej samej domeny i ścieżki plików statycznych co sam
+// worker — parametry podaje strona konfiguratora, ale nie ufamy im w ciemno.
+var KATALOG_WORKERA = self.location.pathname.replace(/[^/]*$/, "");
+var KATALOG_STATYCZNY = KATALOG_WORKERA.replace(/bpp\/js\/$/, "");
+
+function zaufanyAdres(nazwa) {
+    var adres = new URL(parametry.get(nazwa) || "", self.location.href);
+    if (adres.origin !== self.location.origin || adres.pathname.indexOf(KATALOG_STATYCZNY) !== 0) {
+        throw new Error("Niedozwolony adres zasobu kompilatora: " + nazwa);
+    }
+    return adres.origin + adres.pathname;
+}
+
+importScripts(zaufanyAdres("sass"), zaufanyAdres("konfig"), zaufanyAdres("kompilator"));
 
 var zrodla = null;
 
 function pobierzZrodla() {
     if (!zrodla) {
-        zrodla = fetch(parametry.get("zrodla")).then(function (r) {
+        zrodla = fetch(zaufanyAdres("zrodla")).then(function (r) {
             if (!r.ok) throw new Error("Nie udało się pobrać źródeł SCSS: " + r.status);
             return r.json();
         });
