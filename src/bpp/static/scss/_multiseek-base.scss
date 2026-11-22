@@ -36,6 +36,16 @@
   min-height: 100vh;
 }
 
+// Treść raportu (parametry zapytania + lista/tabela) w common-results.html.
+.multiseek-results-body {
+  padding: 10px;
+
+  // Telefon: bez dodatkowego wcięcia — kontener ma już własny padding.
+  @media screen and (max-width: 39.9375em) {
+    padding: 10px 0;
+  }
+}
+
 // Multiseek frame button group
 .multiseekFrame .button-group {
   margin-top: 8px !important;

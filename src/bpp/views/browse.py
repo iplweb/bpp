@@ -301,6 +301,53 @@ class JednostkaView(DetailView):
         }
 
 
+def liczby_prac_autora(autor, uczelnia=None, zalogowany=False):
+    """Liczby prac autora do przycisków „Pokaż wszystkie prace (N)” i zakresów
+    lat („2022–2025 (34)”) na stronie autora.
+
+    Ten sam zbiór co wyniki multiseek po kliknięciu: „autor = X” (podzapytanie
+    po ``Autorzy`` — bez duplikatów z joinu), a dla anonima bez statusów
+    ukrytych w multiwyszukiwarce (por. ``MyMultiseekResults.get_queryset``).
+
+    Zakresy lat (i ich kolejność) bierzemy z ``OkresEwaluacji`` — to TYLKO
+    źródło zakresów: przyciski dostaje każdy autor z pracami w danych latach,
+    bez żadnych warunków ewaluacyjnych (N, dyscypliny itp.), a UI nie używa
+    słownictwa ewaluacyjnego. Zakresy — jedno małe zapytanie;
+    wszystkie liczby — JEDNO zapytanie agregujące (``COUNT(rok) FILTER``).
+    Zwraca ``{"wszystkie": N, "okresy": [{"rok_od", "rok_do", "liczba"}]}``,
+    tylko okresy z co najmniej jedną pracą. ``uczelnia`` — już pobrana przez
+    widok (bez dodatkowego zapytania); ``zalogowany`` — jak w multiseeku,
+    ukryte statusy odcinamy tylko anonimowi.
+    """
+    from bpp.models.cache import Autorzy
+    from ewaluacja_common.models import OkresEwaluacji
+
+    okresy = list(OkresEwaluacji.objects.values_list("rok_od", "rok_do"))
+
+    qs = Rekord.objects.filter(
+        pk__in=Autorzy.objects.filter(autor=autor).values("rekord_id")
+    )
+    if not zalogowany and uczelnia is not None:
+        qs = qs.exclude(
+            status_korekty_id__in=uczelnia.ukryte_statusy("multiwyszukiwarka")
+        )
+
+    agregaty = {"wszystkie": Count("*")}
+    for nr, (rok_od, rok_do) in enumerate(okresy):
+        w_okresie = Q(rok__range=(rok_od, rok_do))
+        agregaty[f"okres_{nr}"] = Count("rok", filter=w_okresie)
+    liczby = qs.aggregate(**agregaty)
+
+    return {
+        "wszystkie": liczby["wszystkie"],
+        "okresy": [
+            {"rok_od": rok_od, "rok_do": rok_do, "liczba": liczby[f"okres_{nr}"]}
+            for nr, (rok_od, rok_do) in enumerate(okresy)
+            if liczby[f"okres_{nr}"]
+        ],
+    }
+
+
 @method_decorator(cache_publiczny(), name="dispatch")
 class AutorView(RekordUsunietyDetailMixin, DetailView):
     template_name = "browse/autor.html"
@@ -349,6 +396,11 @@ class AutorView(RekordUsunietyDetailMixin, DetailView):
             historia_zatrudnienia=self.object.historia_zatrudnienia(uczelnia),
             raport_links=self._raport_links(request),
             pokazuj_metryki=self._pokazuj_metryki(request),
+            liczby_prac=liczby_prac_autora(
+                self.object,
+                uczelnia,
+                zalogowany=request is not None and request.user.is_authenticated,
+            ),
             **kwargs,
         )
         # NIE nadpisuj None-em sentinela ``NiezdefiniowanaUczelnia`` wstrzykiwanego
@@ -1377,6 +1429,10 @@ def ustawienia_najnowszych_prac(request):
     }
 
 
+# Wartość pola ``cel`` w POST do ``BuildSearch``: przekieruj na listę wyników.
+CEL_WYNIKI = "wyniki"
+
+
 @method_decorator(csrf_exempt, name="dispatch")
 class BuildSearch(RedirectView):
     """Widok przyjmuje zmienne w request.POST i buduje w sesji formularz
@@ -1389,7 +1445,8 @@ class BuildSearch(RedirectView):
     wyszukiwawczego do WŁASNEJ sesji requestującego
     (``request.session[MULTISEEK_SESSION_KEY]`` + tytuł + wyczyszczenie
     listy ręcznie wyrzuconych rekordów) i przekierowanie na
-    ``multiseek:index``. Nie ma tu żadnej uprzywilejowanej akcji, mutacji
+    ``multiseek:index`` (albo ``multiseek:results`` przy ``cel=wyniki``).
+    Nie ma tu żadnej uprzywilejowanej akcji, mutacji
     danych współdzielonych, ujawnienia sekretu ani zmiany stanu poza sesją
     ofiary. Najgorsze, co atak CSRF może osiągnąć, to podsunięcie ofierze
     wyszukiwania, którego sama nie wpisała — zero szkody. Ta sama
@@ -1407,7 +1464,16 @@ class BuildSearch(RedirectView):
     """
 
     def get_redirect_url(self, **kwargs):
-        url = self.request.build_absolute_uri(reverse("multiseek:index"))
+        # ``cel=wyniki`` (przyciski „Pokaż wszystkie prace/publikacje”): od razu
+        # pełnostronicowa lista wyników zamiast formularza wyszukiwarki — na
+        # telefonie formularz zasłaniał cały ekran, a wyniki były dopiero po
+        # kliknięciu „Wyszukaj”. Bez ``cel`` (formularze z filtrami) jak dotąd
+        # formularz multiseek z podglądem wyników.
+        if self.request.POST.get("cel") == CEL_WYNIKI:
+            nazwa = "multiseek:results"
+        else:
+            nazwa = "multiseek:index"
+        url = self.request.build_absolute_uri(reverse(nazwa))
         scheme = self.request.META.get("HTTP_X_SCHEME", "").lower()
         if scheme == "https":
             url = url.replace("http://", "https://").replace("HTTP://", "HTTPS://")

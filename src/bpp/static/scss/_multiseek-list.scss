@@ -16,7 +16,10 @@
 
   li {
     counter-increment: list-counter;
-    margin-bottom: 15px;
+    // margin-left: 0 nadpisuje ogólne `body ol li { margin-left: 2em }`
+    // (_base-elements.scss) — numer jest już w paddingu karty, więc 2em
+    // dawało pusty pas z lewej (na telefonie ~30 px z 390).
+    margin: 0 0 15px;
     padding: 15px;
     padding-left: 50px;
     background: #ffffff;
@@ -85,6 +88,19 @@
 
     &:hover .multiseek-remove-from-results {
       opacity: 1;
+    }
+  }
+}
+
+// Telefon: ciaśniejsza karta i węższy pas na numer — tekst opisu zaczyna
+// się bliżej lewej krawędzi ekranu.
+@media screen and (max-width: 39.9375em) {
+  .multiseek-list-report li {
+    padding: 12px 10px 12px 40px;
+
+    &::before {
+      left: 8px;
+      font-size: 1rem;
     }
   }
 }

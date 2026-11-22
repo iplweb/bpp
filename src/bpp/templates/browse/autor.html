@@ -53,16 +53,41 @@
     </div>
 {% endif %}
 
-{# Quick Actions (full-width): skok do wyszukiwarki prac + sieć powiązań. #}
-{# „Pokaż wszystkie prace” przewija do sekcji „Wyszukaj publikacje autora” #}
-{# (sekcja obowiązkowa profilu) — tam „Szukaj” bez filtrów = wszystkie prace. #}
-{# Przewijanie z poprawką na sticky header: autor-strona.js. #}
+{# Quick Actions (full-width): wszystkie prace autora, prace z zakresów lat #}
+{# (lata z tabeli okresów — tylko źródło zakresów, nic ewaluacyjnego w UI) #}
+{# i sieć powiązań. Przyciski prac budują zapytanie „autor = X” #}
+{# (+ zakres lat okresu) i przez cel=wyniki lądują od razu na liście wyników #}
+{# (bez formularza wyszukiwarki). Liczby: views.browse.liczby_prac_autora. #}
 <div class="autor-page__quick-actions">
-    <a href="#wyszukaj-publikacje-autora"
-       data-przewin-do="wyszukaj-publikacje-autora"
-       class="button primary large autor-page__show-all-btn">
-        <i class="fi-list-bullet autor-page__icon--mr-lg"></i>Pokaż wszystkie prace
-    </a>
+    <form method="post"
+          action="{% url "bpp:browse_build_search" %}"
+          class="autor-page__quick-actions-form">
+        {# Brak {% csrf_token %} celowo — BuildSearch jest @csrf_exempt. #}
+        <input type="hidden" name="autor" value="{{ autor.pk }}"/>
+        <input type="hidden" name="suggested-title" value="{{ autor }}"/>
+        <input type="hidden" name="cel" value="wyniki"/>
+        <button type="submit"
+                class="button primary large autor-page__show-all-btn">
+            <i class="fi-list-bullet autor-page__icon--mr-lg"></i>Pokaż wszystkie prace ({{ liczby_prac.wszystkie }})
+        </button>
+    </form>
+    {% if liczby_prac.okresy %}
+        <div class="autor-page__okresy" role="group" aria-label="Prace z zakresów lat">
+            {% for okres in liczby_prac.okresy %}
+                <form method="post"
+                      action="{% url "bpp:browse_build_search" %}"
+                      class="autor-page__quick-actions-form">
+                    <input type="hidden" name="autor" value="{{ autor.pk }}"/>
+                    <input type="hidden" name="zakres_lat" value="[{{ okres.rok_od|stringformat:"d" }},{{ okres.rok_do|stringformat:"d" }}]"/>
+                    <input type="hidden" name="suggested-title" value="{{ autor }} — prace {{ okres.rok_od|stringformat:"d" }}–{{ okres.rok_do|stringformat:"d" }}"/>
+                    <input type="hidden" name="cel" value="wyniki"/>
+                    <button type="submit"
+                            class="button hollow autor-page__okres-btn"
+                            title="Prace z lat {{ okres.rok_od|stringformat:"d" }}–{{ okres.rok_do|stringformat:"d" }}">{{ okres.rok_od|stringformat:"d" }}–{{ okres.rok_do|stringformat:"d" }} ({{ okres.liczba }})</button>
+                </form>
+            {% endfor %}
+        </div>
+    {% endif %}
     {% if ma_powiazania %}
         <a href="{% url 'bpp:browse_autor_powiazania' autor.pk %}"
            class="button primary large autor-page__show-all-btn autor-page__network-btn">

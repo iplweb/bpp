@@ -38,6 +38,12 @@
     margin-bottom: 30px;
   }
 
+  // Formularze przycisków prac (wszystkie / okresy) nie tworzą własnego
+  // pudełka — przycisk jest bezpośrednim elementem flexa rodzica.
+  &__quick-actions-form {
+    display: contents;
+  }
+
   // Show all works button
   &__show-all-btn {
     background: #27ae60;
@@ -53,6 +59,27 @@
       background-color: #229954;
       box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
     }
+  }
+
+  // Zakresy lat („2022–2025 (34)”) obok „Pokaż wszystkie prace”:
+  // na komputerze w tym samym rzędzie, na telefonie cały rząd pod głównym
+  // przyciskiem, zawijany.
+  &__okresy {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 0.5rem;
+
+    @media screen and (max-width: 39.9375em) {
+      flex-basis: 100%;
+    }
+  }
+
+  &__okres-btn {
+    padding: 10px 16px;
+    font-size: 0.95rem;
+    border-radius: 6px;
+    white-space: nowrap;
   }
 
   // Grid with gap

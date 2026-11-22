@@ -135,12 +135,19 @@ def test_komorka_pary_oznaczona_jako_polowka(client):
 
 
 @pytest.mark.django_db
-def test_pokaz_wszystkie_prace_przewija_do_wyszukiwarki(client):
-    """„Pokaż wszystkie prace” to kotwica do sekcji wyszukiwarki na tej samej
-    stronie (nie osobny formularz POST) — a sekcja ma docelowe id."""
+def test_pokaz_wszystkie_prace_to_formularz_do_listy_wynikow(client):
+    """„Pokaż wszystkie prace” POST-uje „autor = X” z ``cel=wyniki`` do
+    BuildSearch — od razu lista wyników, bez przewijania do wyszukiwarki
+    i bez lądowania na formularzu multiseek (na telefonie zasłaniał ekran)."""
     autor = baker.make(Autor)
     tresc = client.get(autor.get_absolute_url()).content.decode()
-    przycisk = re.search(r'<a [^>]*href="#wyszukaj-publikacje-autora"[^>]*>', tresc)
-    assert przycisk is not None
-    assert 'data-przewin-do="wyszukaj-publikacje-autora"' in przycisk.group(0)
-    assert 'id="wyszukaj-publikacje-autora"' in tresc
+    formularz = re.search(
+        r'<form[^>]*autor-page__quick-actions-form[^>]*>.*?</form>', tresc, re.S
+    )
+    assert formularz is not None
+    html = formularz.group(0)
+    assert f'action="{reverse("bpp:browse_build_search")}"' in html
+    assert f'name="autor" value="{autor.pk}"' in html
+    assert 'name="cel" value="wyniki"' in html
+    assert "Pokaż wszystkie prace" in html
+    assert "data-przewin-do" not in tresc

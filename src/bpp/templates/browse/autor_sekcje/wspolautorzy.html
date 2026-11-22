@@ -1,5 +1,5 @@
 {# Najczęstsi współautorzy + CTA do wizualnej sieci powiązań (gdy dostępna). #}
-{# Klik w nazwisko → multiseek ze WSPÓLNYMI pracami (autor AND współautor); #}
+{# Klik w nazwisko → lista WSPÓLNYCH prac (autor AND współautor); #}
 {# ludzik obok → strona współautora (tylko gdy ma publiczną stronę). #}
 {# Nazwisko klikalne tylko dla autorów z pokazuj_w_wyszukiwaniu. #}
 <div class="author-info-section autor-page__sekcja">
@@ -19,6 +19,8 @@
                     <input type="hidden"
                            name="suggested-title"
                            value="{{ autor }} i {{ w.autor }} — wspólne prace"/>
+                    {# Od razu lista prac (cel=wyniki), bez formularza multiseek. #}
+                    <input type="hidden" name="cel" value="wyniki"/>
                     <button type="submit"
                             class="autor-page__staty-link"
                             title="Pokaż wspólne prace: {{ autor }} i {{ w.autor }}">{% include "browse/autor_sekcje/_wspolautor_nazwa.html" with a=w.autor %}</button>
