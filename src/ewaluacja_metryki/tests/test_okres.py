@@ -258,7 +258,7 @@ def test_generowanie_dla_wybranego_okresu(admin_user, client, okres_2022, okres_
     wybierz_okres(client, okres_2022)
 
     with patch(
-        "ewaluacja_metryki.views.generation.generuj_metryki_task_parallel"
+        "ewaluacja_metryki.brak_metryk.generuj_metryki_task_parallel"
     ) as mock_task:
         mock_task.delay.return_value = MagicMock(id="test-task-id")
         response = client.post(
