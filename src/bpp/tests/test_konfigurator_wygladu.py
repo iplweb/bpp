@@ -7,6 +7,10 @@ from django.urls import reverse
 from model_bakery import baker
 
 from bpp.models import MOTYW_WLASNY, MotywWlasny
+from django_bpp.version import VERSION
+
+# Link do CSS-a motywu z plików statycznych (w testach z haszem w nazwie).
+RE_MOTYW_STATYCZNY = re.compile(r'href="[^"]*/scss/app-[^"]*\.css"')
 
 
 @pytest.fixture
@@ -15,15 +19,10 @@ def staff_client(client, staff_user):
     (bpp.konfigurator_dostep). Nadpisuje ogólny ``staff_client``."""
     from django.contrib.auth.models import Group
 
-    from conftest import STAFF_PASSWORD, STAFF_USERNAME
-
     staff_user.groups.add(Group.objects.get_or_create(name="web")[0])
-    assert client.login(username=STAFF_USERNAME, password=STAFF_PASSWORD)
+    client.force_login(staff_user)
     return client
-from django_bpp.version import VERSION
 
-# Link do CSS-a motywu z plików statycznych (w testach z haszem w nazwie).
-RE_MOTYW_STATYCZNY = re.compile(r'href="[^"]*/scss/app-[^"]*\.css"')
 
 KONFIG = {"wersja": 1, "kolor_glowny": "#284fab", "tryb_kolorow": "ciemny"}
 CSS = "body{color:#123456}"
@@ -902,13 +901,10 @@ def test_link_do_konfiguratora_w_menu_www_admina():
     ]
 
 
-
 @pytest.mark.django_db
 def test_obsluga_bez_grupy_nie_ma_konfiguratora(staff_user, uczelnia):
-    from conftest import STAFF_PASSWORD, STAFF_USERNAME
-
     c = Client()
-    assert c.login(username=STAFF_USERNAME, password=STAFF_PASSWORD)
+    c.force_login(staff_user)
     assert c.get(reverse("bpp:konfigurator_wygladu")).status_code == 403
     # Bez linku w menu „redagowanie” i bez trybu podglądu.
     tresc = c.get("/?podglad_motywu=1").content.decode()
@@ -920,11 +916,9 @@ def test_obsluga_bez_grupy_nie_ma_konfiguratora(staff_user, uczelnia):
 def test_grupa_administracja_ma_konfigurator(staff_user, uczelnia):
     from django.contrib.auth.models import Group
 
-    from conftest import STAFF_PASSWORD, STAFF_USERNAME
-
     staff_user.groups.add(Group.objects.get_or_create(name="administracja")[0])
     c = Client()
-    assert c.login(username=STAFF_USERNAME, password=STAFF_PASSWORD)
+    c.force_login(staff_user)
     assert c.get(reverse("bpp:konfigurator_wygladu")).status_code == 200
     assert reverse("bpp:konfigurator_wygladu") in c.get("/").content.decode()
 

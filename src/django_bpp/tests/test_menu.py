@@ -269,9 +269,7 @@ def test_grupa_administracja_widzi_w_www_tylko_konfigurator():
     u.groups.add(Group.objects.get_or_create(name="administracja")[0])
     m = _menu_for(u)
     assert "WWW" in _labels(m)
-    assert [c.url for c in _child(m, "WWW").children] == [
-        "/bpp/konfigurator-wygladu/"
-    ]
+    assert [c.url for c in _child(m, "WWW").children] == ["/bpp/konfigurator-wygladu/"]
 
 
 @pytest.mark.django_db
