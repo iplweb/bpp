@@ -1,11 +1,11 @@
 {
-  "git_sha": "fb9d81a8ccc3da44352660a5e9ddde52af9cd9d1",
+  "git_sha": "341a95890ef8eb079fa400f85e5407ff001ead6d",
   "last_migration": {
     "admin": "0003_logentry_add_action_flag_choices",
     "admin_dashboard": "0001_initial",
     "auth": "0012_alter_user_first_name_max_length",
     "axes": "0010_accessattemptexpiration",
-    "bpp": "0524_bppuser_jednostki_metryk",
+    "bpp": "0525_autorzy_mat_bez_autora_z_kosza",
     "cerif_export": "0001_odpieta_przynaleznosc",
     "channels_broadcast": "0001_initial",
     "constance": "0003_drop_pickle",
