@@ -64,11 +64,19 @@ To pole nie daje innych uprawnień. Szczegóły:
 - **Historia zmian.**
     - Szablony z bazy (dbtemplates) mają historię wersji z porównaniem
       zmian (django-reversion) — przycisk „Historia” na stronie szablonu.
-    - Rekord uczelni, autorzy, publikacje (z autorami), zgłoszenia
-      publikacji, źródła, wydawcy, konferencje, serie wydawnicze
-      i jednostki mają historię wersji (django-reversion) z porównaniem
-      dwóch wersji i przywracaniem — patrz
+    - Każdy rekord edytowany w module redagowania (publikacje z autorami,
+      autorzy, struktura, słowniki, użytkownicy, grupy, ustawienia) ma
+      historię wersji z porównaniem dwóch wersji i przywracaniem — patrz
       [Historia zmian publikacji](../redaktor/wydawnictwa.md#historia-zmian).
+      Bez historii są tylko logi, wyniki zadań, sesje importów i kopie
+      danych z PBN.
+    - Przy każdej wersji zapisuje się **źródło zmiany**: moduł redagowania,
+      strona, import lub narzędzie, API / MCP (z aplikacją OAuth) albo
+      system. Pełna lista zmian z filtrami po źródle i aplikacji:
+      **Administracja → Historia zmian (rewizje)**. Historia jest trzymana
+      bez limitu czasu.
+    - Hasła, tokeny PBN i sekrety aplikacji OAuth **nie są** zapisywane
+      w wersjach; przywrócenie wersji użytkownika nie zmienia jego hasła.
     - W instalacji produkcyjnej dziennik django-easy-audit rejestruje
       zmiany rekordów uczelni i jednostek.
     - Dla pozostałych obiektów (artykuły, ustawienia formularzy, raporty,

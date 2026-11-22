@@ -29,13 +29,16 @@ Dokłada do widoków reversion:
 """
 
 from contextlib import nullcontext
+from contextvars import ContextVar
 
 from django.contrib.admin.models import LogEntry
 from django.contrib.admin.utils import unquote
 from django.contrib.contenttypes.models import ContentType
 from django.core.exceptions import PermissionDenied
+from django.db.models.signals import pre_save
 from django.http import Http404
 from reversion.models import Version
+from reversion_compare.admin import CompareVersionAdmin
 
 from bpp.wersjonowanie import (
     FOLLOW_REVERSION,
@@ -43,6 +46,78 @@ from bpp.wersjonowanie import (
     POLA_POZA_WERSJA,
     zapewnij_wersje_poczatkowa,
 )
+
+from .wersje_modele import POLA_WRAZLIWE
+
+#: Ustawiane na czas przywracania wersji w adminie — receiver
+#: ``zachowaj_pola_wrazliwe`` przepisuje wtedy pola spoza wersji (hasła,
+#: sekrety) z bazy, zamiast zostawić wartości domyślne.
+_przywracanie_wersji = ContextVar("przywracanie_wersji", default=False)
+
+
+def zachowaj_pola_wrazliwe(sender, instance, raw=False, **kwargs):
+    """Przy przywracaniu wersji (zapis surowy) pola z ``POLA_WRAZLIWE``
+    dostają bieżące wartości z bazy: inaczej przywrócenie danych
+    użytkownika wyzerowałoby mu hasło."""
+    if not raw or not _przywracanie_wersji.get() or instance.pk is None:
+        return
+    pola = POLA_WRAZLIWE.get(sender._meta.label_lower)
+    if not pola:
+        return
+    biezace = sender._base_manager.filter(pk=instance.pk).values(*pola).first()
+    for nazwa, wartosc in (biezace or {}).items():
+        setattr(instance, nazwa, wartosc)
+
+
+pre_save.connect(zachowaj_pola_wrazliwe, dispatch_uid="bpp.zachowaj_pola_wrazliwe")
+
+
+def _nalezy_do(wersja, obj, menedzer):
+    """Czy obiekt z ``wersja`` (śledzona relacja) należy do ``obj`` — stare
+    rewizje akcji masowych obejmują wiersze wielu rekordów naraz."""
+    stan = wersja.field_dict
+    pole_fk = getattr(menedzer, "field", None)  # relacja odwrotna FK
+    if pole_fk is not None:
+        return str(stan.get(pole_fk.attname, stan.get(pole_fk.name))) == str(obj.pk)
+    # GenericRelation: menedżer zna nazwy pól object_id / content_type.
+    return str(stan.get(menedzer.object_id_field_name)) == str(obj.pk) and str(
+        stan.get(menedzer.content_type_field_name + "_id", "")
+        or stan.get(menedzer.content_type_field_name)
+    ) == str(menedzer.content_type.pk)
+
+
+def podepnij_historie_wersji(site):
+    """Modelom z ``MODELE_Z_HISTORIA`` zarejestrowanym w ``site`` bez historii
+    wersji podmień klasę admina na ``z_historia_wersji(klasa)``.
+
+    Wołane raz, po autodiscover (``BppAdminConfig.ready``) — dzięki temu
+    słowniki i konfiguracja (także z pakietów zewnętrznych) nie wymagają
+    zmian w swoich klasach admina."""
+    from .wersje_modele import MODELE_Z_HISTORIA
+
+    for model, model_admin in list(site._registry.items()):
+        etykieta = getattr(getattr(model, "_meta", None), "label_lower", None)
+        if etykieta not in MODELE_Z_HISTORIA:
+            continue
+        if isinstance(model_admin, HistoriaWersjiMixin):
+            continue
+        if etykieta == "dbtemplates.template":
+            continue  # własny VersionAdmin dbtemplates z porównaniem
+        klasa = z_historia_wersji(type(model_admin))
+        site._registry[model] = klasa(model, site)
+
+
+def z_historia_wersji(klasa_admina):
+    """Klasa admina z historią wersji: ``klasa_admina`` + ``HistoriaWersjiMixin``
+    + ``CompareVersionAdmin`` (gdy już ją ma — bez zmian)."""
+    if issubclass(klasa_admina, HistoriaWersjiMixin):
+        return klasa_admina
+    return type(
+        klasa_admina.__name__,
+        (klasa_admina, HistoriaWersjiMixin, CompareVersionAdmin),
+        {"__module__": klasa_admina.__module__},
+    )
+
 
 #: Pola pomijane w porównaniu wersji w każdym modelu — zmieniają się przy
 #: każdym zapisie albo są techniczne, więc tylko zaśmiecałyby diff.
@@ -95,7 +170,42 @@ class HistoriaWersjiMixin:
             raise Http404("Brak takiego rekordu w zakresie Twojej uczelni.")
         if not self.has_view_or_change_permission(request, obj):
             raise PermissionDenied
-        return super().compare_view(request, object_id, extra_context)
+        return super().compare_view(
+            request,
+            object_id,
+            {**self._kontekst_porownania(request), **(extra_context or {})},
+        )
+
+    @staticmethod
+    def _kontekst_porownania(request):
+        """Opis obu wersji do nagłówka porównania (A — starsza, B — nowsza;
+        reversion-compare zawsze układa je według numeru wersji)."""
+        try:
+            pks = sorted(int(request.GET[k]) for k in ("version_id1", "version_id2"))
+        except (KeyError, ValueError):
+            return {}  # reversion-compare sam odrzuci zły formularz (404)
+        wersje = {
+            v.pk: v
+            for v in Version.objects.filter(pk__in=pks).select_related("revision__user")
+        }
+        if len(wersje) != 2:
+            return {}
+        return {
+            "wersje_porownania": [
+                (wersje[pks[0]], "A", "starsza", "bpp-wersja-a"),
+                (wersje[pks[1]], "B", "nowsza", "bpp-wersja-b"),
+            ]
+        }
+
+    def compare(self, obj, version1, version2):
+        """Czytelne porównanie (``porownanie_wersji``) zamiast diffu
+        reversion-compare. Zwraca (wiersze, „czy są pola nieśledzone”)."""
+        from .porownanie_wersji import porownaj_wersje
+
+        return (
+            porownaj_wersje(self.model, obj, version1, version2, self.compare_exclude),
+            False,
+        )
 
     def po_przywroceniu_wersji(self, request, obj):
         """Hook po udanym przywróceniu wersji ``obj`` (już zapisanej
@@ -129,7 +239,18 @@ class HistoriaWersjiMixin:
             .exists()
         ):
             raise Http404("Brak takiej wersji tego rekordu.")
-        response = super().revision_view(request, object_id, version_id, extra_context)
+        if request.method == "GET":
+            extra_context = {
+                "zmiany_powiazanych": self._zmiany_powiazanych(obj, version_id),
+                **(extra_context or {}),
+            }
+        token = _przywracanie_wersji.set(True)
+        try:
+            response = super().revision_view(
+                request, object_id, version_id, extra_context
+            )
+        finally:
+            _przywracanie_wersji.reset(token)
         # Jak reversion: POST zakończony przekierowaniem = wersja przywrócona.
         # Błąd przywracania też kończy się przekierowaniem (na listę), więc
         # hook musi być bezpieczny do wywołania bez zmiany.
@@ -138,6 +259,40 @@ class HistoriaWersjiMixin:
                 request, self.model._default_manager.get(pk=obj.pk)
             )
         return response
+
+    def _zmiany_powiazanych(self, obj, version_id):
+        """Co przywrócenie wersji zrobi ze śledzonymi listami rekordu
+        (autorzy, granty, pliki…): które pozycje zostaną usunięte (dopisane
+        po tej wersji), a które przywrócone (usunięte po niej). Pokazywane
+        w formularzu przywracania, ZANIM użytkownik zapisze."""
+        wersja = Version.objects.select_related("revision").get(pk=version_id)
+        w_rewizji = list(
+            wersja.revision.version_set.exclude(pk=wersja.pk).select_related(
+                "content_type"
+            )
+        )
+        wynik = []
+        for akcesor in FOLLOW_REVERSION.get(self.model, ()):
+            menedzer = getattr(obj, akcesor)
+            model = menedzer.model
+            biezace = {str(o.pk): str(o) for o in menedzer.all()}
+            w_wersji = {
+                v.object_id: v.object_repr
+                for v in w_rewizji
+                if v.content_type.model_class() is model
+                and _nalezy_do(v, obj, menedzer)
+            }
+            usuniete = [biezace[k] for k in biezace.keys() - w_wersji.keys()]
+            przywrocone = [w_wersji[k] for k in w_wersji.keys() - biezace.keys()]
+            if usuniete or przywrocone:
+                wynik.append(
+                    {
+                        "nazwa": model._meta.verbose_name_plural,
+                        "usuniete": sorted(usuniete),
+                        "przywrocone": sorted(przywrocone),
+                    }
+                )
+        return wynik
 
     def recoverlist_view(self, request, extra_context=None):
         if not request.user.is_superuser:
@@ -181,6 +336,9 @@ class HistoriaWersjiMixin:
         if hasattr(model, "deleted_objects"):
             # Pola kosza nie wchodzą do wersji (patrz ``POLA_KOSZA``).
             kwargs["exclude"] = (*kwargs.get("exclude", ()), *POLA_KOSZA)
+        wrazliwe = POLA_WRAZLIWE.get(model._meta.label_lower, ())
+        if wrazliwe:
+            kwargs["exclude"] = (*kwargs.get("exclude", ()), *wrazliwe)
         POLA_POZA_WERSJA.setdefault(model, tuple(kwargs.get("exclude", ())))
         super().reversion_register(model, **kwargs)
 

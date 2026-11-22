@@ -154,7 +154,7 @@ def test_admin_edycja_historia_porownanie_przywrocenie(
     assert wersje.count() == 2  # stan początkowy + stan po zmianie
 
     historia = admin_app.get(reverse(f"admin:bpp_{nazwa}_history", args=(obj.pk,)))
-    assert "Porównaj wersje" in historia.text
+    assert "Porównaj zaznaczone wersje" in historia.text
 
     porownanie = admin_app.get(
         reverse(f"admin:bpp_{nazwa}_compare", args=(obj.pk,)),
@@ -163,8 +163,8 @@ def test_admin_edycja_historia_porownanie_przywrocenie(
             "version_id2": wersje.first().pk,
         },
     )
-    # Diff znakowy (reversion-compare) — fragmenty obu tytułów.
-    assert "po zmianie FD58" in porownanie.text
+    # Tabela porównania: zmienione słowa podświetlone, oba tytuły widoczne.
+    assert "FD587</ins>" in porownanie.text
     assert "oryginalny Wydawnictwo_Ciagle" in porownanie.text
     # Niezmienione słowniki (FK) nie zaśmiecają porównania.
     assert "Charakter formalny" not in porownanie.text
@@ -250,3 +250,105 @@ def test_akcja_masowa_nie_laczy_rekordow_w_jedna_rewizje(
             ).count()
             == 1
         )
+
+
+def test_formularz_przywracania_pokazuje_usuwanych_autorow(
+    admin_client, wydawnictwo_ciagle, autor_jan_nowak, autor_jan_kowalski, jednostka
+):
+    """Przywrócenie wersji usuwa autorów dopisanych później — formularz
+    przywracania musi to pokazać PRZED zapisem."""
+    wydawnictwo_ciagle.dodaj_autora(autor_jan_nowak, jednostka)
+    with reversion.create_revision():
+        wydawnictwo_ciagle.save()
+    stara = Version.objects.get_for_object(wydawnictwo_ciagle).get()
+
+    wydawnictwo_ciagle.dodaj_autora(autor_jan_kowalski, jednostka)
+
+    res = admin_client.get(
+        reverse(
+            "admin:bpp_wydawnictwo_ciagle_revision",
+            args=(wydawnictwo_ciagle.pk, stara.pk),
+        )
+    )
+    tresc = res.content.decode()
+    assert res.status_code == 200
+    assert "Zostaną usunięte" in tresc
+    assert "Kowalski" in tresc.split("Zostaną usunięte", 1)[1].split("</ul>")[0]
+    # Podgląd niczego nie zmienia.
+    assert wydawnictwo_ciagle.autorzy_set.count() == 2
+
+
+def test_wersja_publikacji_obejmuje_granty_i_slowa_kluczowe(wydawnictwo_ciagle):
+    from bpp.models import Grant, Grant_Rekordu
+
+    grant = baker.make(Grant)
+    Grant_Rekordu.objects.create(rekord=wydawnictwo_ciagle, grant=grant)
+    wydawnictwo_ciagle.slowa_kluczowe.add("wiedźmini")
+    with reversion.create_revision():
+        wydawnictwo_ciagle.save()
+    rewizja = Version.objects.get_for_object(wydawnictwo_ciagle).get().revision
+    modele = {v.content_type.model for v in rewizja.version_set.all()}
+    assert {"grant_rekordu", "taggeditem"} <= modele
+
+    Grant_Rekordu.objects.all().delete()
+    wydawnictwo_ciagle.slowa_kluczowe.clear()
+    rewizja.revert(delete=True)
+    assert Grant_Rekordu.objects.filter(object_id=wydawnictwo_ciagle.pk).exists()
+    assert list(wydawnictwo_ciagle.slowa_kluczowe.names()) == ["wiedźmini"]
+
+
+def test_zrodlo_zmiany_z_admina(admin_client, admin_user):
+    seria = baker.make(Seria_Wydawnicza, nazwa="Stara")
+    res = admin_client.post(
+        reverse("admin:bpp_seria_wydawnicza_change", args=(seria.pk,)),
+        {"nazwa": "Nowa"},
+    )
+    assert res.status_code == 302
+    wersja = Version.objects.get_for_object(seria).first()
+    assert wersja.revision.user == admin_user
+    assert wersja.revision.zrodlo_zmiany.zrodlo == "admin"
+
+
+def test_zrodlo_zmiany_api_z_aplikacja():
+    from types import SimpleNamespace
+
+    from bpp.zrodlo_zmian import ZRODLO_API, zrodlo_zmian
+
+    seria = baker.make(Seria_Wydawnicza)
+    agent = SimpleNamespace(client_id="abc123", name="Agent MCP")
+    with zrodlo_zmian(ZRODLO_API, aplikacja=agent), reversion.create_revision():
+        seria.save()
+    zrodlo = Version.objects.get_for_object(seria).get().revision.zrodlo_zmiany
+    assert (zrodlo.zrodlo, zrodlo.aplikacja_client_id, zrodlo.aplikacja_nazwa) == (
+        "api",
+        "abc123",
+        "Agent MCP",
+    )
+
+
+def test_zrodlo_zmiany_poza_kontekstem_to_system():
+    seria = baker.make(Seria_Wydawnicza)
+    with reversion.create_revision():
+        seria.save()
+    zrodlo = Version.objects.get_for_object(seria).get().revision.zrodlo_zmiany
+    assert zrodlo.zrodlo == "system"
+
+
+def test_zrodlo_zmiany_przy_zapisie_hurtowym(admin_client):
+    """Akcja masowa (zapis hurtowy rewizji) też zapisuje źródło."""
+    from bpp.models import Status_Korekty
+
+    przed = Status_Korekty.objects.get_or_create(nazwa="przed korektą")[0]
+    Status_Korekty.objects.get_or_create(nazwa="po korekcie")
+    rekordy = baker.make(Wydawnictwo_Ciagle, status_korekty=przed, _quantity=2)
+    admin_client.post(
+        reverse("admin:bpp_wydawnictwo_ciagle_changelist"),
+        {
+            "action": "ustaw_po_korekcie",
+            "_selected_action": [r.pk for r in rekordy],
+            "index": 0,
+        },
+    )
+    for rekord in rekordy:
+        for wersja in Version.objects.get_for_object(rekord):
+            assert wersja.revision.zrodlo_zmiany.zrodlo == "admin"

@@ -63,24 +63,34 @@ do PBN (raport kompletności danych POL-on pokaże taki brak).
 
 Każda zmiana rekordu publikacji (wydawnictwa ciągłego, zwartego, patentu,
 pracy doktorskiej i habilitacyjnej) jest zapisywana jako **wersja**. Tak
-samo zgłoszenia publikacji, źródła, wydawcy, konferencje, serie wydawnicze
-i jednostki. Wersja publikacji obejmuje także **listę autorów** (z
-jednostką, dyscypliną, afiliacją i kolejnością), streszczenia, dodatkowe
-tytuły i zewnętrzne bazy danych.
+samo każdy inny rekord edytowany w module redagowania: zgłoszenia
+publikacji, źródła, wydawcy, konferencje, serie wydawnicze, jednostki,
+wszystkie słowniki (charaktery formalne, języki, typy, dyscypliny…),
+użytkownicy, grupy i ustawienia. Wersja publikacji obejmuje także **listę
+autorów** (z jednostką, dyscypliną, afiliacją i kolejnością), streszczenia,
+dodatkowe tytuły, zewnętrzne bazy danych, granty, nagrody, pliki
+w repozytorium i słowa kluczowe.
 
 Historię otwiera przycisk **„Historia”** w prawym górnym rogu formularza.
-Przy każdej wersji widać **kto i kiedy** wprowadził zmianę i co zmieniono
-(np. „Zmodyfikowano Tytuł oryginalny”, „Przeniesiono do kosza (powód: …)”,
+Przy każdej wersji widać **kto i kiedy** wprowadził zmianę, **skąd**
+przyszła (moduł redagowania, strona — np. edycja profilu, import lub
+narzędzie, API / MCP z nazwą aplikacji, system) i co zmieniono (np.
+„Zmodyfikowano Tytuł oryginalny”, „Przeniesiono do kosza (powód: …)”,
 „Ustawiono status korekty: po korekcie (akcja masowa)”).
 
-- **Porównanie wersji** — zaznacz dwie wersje (starszą w lewej kolumnie,
-  nowszą w prawej) i kliknij **„Porównaj wersje”**. Zobaczysz tylko pola,
-  które się zmieniły, oraz dopisanych, usuniętych i zmienionych autorów.
+- **Porównanie wersji** — zaznacz wersję starszą w kolumnie **A** i nowszą
+  w kolumnie **B**, a potem kliknij **„Porównaj zaznaczone wersje”**.
+  Tabela pokazuje tylko pola, które się zmieniły: usunięte słowa są
+  przekreślone na czerwono, dodane — podświetlone na zielono. Dla list
+  (autorzy, granty, pliki…) widać pozycje dodane, usunięte i zmienione,
+  np. „Afiliuje: tak → nie”. Przyciski „Wcześniejsza zmiana” / „Następna
+  zmiana” przechodzą po kolejnych parach wersji.
 - **Przywrócenie wersji** — kliknięcie daty otwiera formularz w stanie
   z tej wersji; **zapisanie go przywraca tę wersję** (samo przywrócenie też
   trafia do historii, więc da się je cofnąć). Przywrócenie wersji
-  publikacji przywraca też listę autorów — autorzy dopisani później zostaną
-  z rekordu usunięci.
+  publikacji przywraca też listy powiązane — nad formularzem wypisane są
+  pozycje, które **zostaną usunięte** (np. autorzy dopisani po tej wersji)
+  i które **zostaną przywrócone**.
 
 Uwagi:
 
@@ -89,8 +99,9 @@ Uwagi:
   przed pierwszą zmianą (komentarz „Stan sprzed pierwszej zarejestrowanej
   zmiany”) — dzięki temu i tę zmianę można cofnąć. Starsze zmiany widać
   w tabeli **„Wcześniejsza historia”** (kto i kiedy, bez przywracania).
-- Wersja **nie obejmuje** grantów, nagród, plików w repozytorium ani słów
-  kluczowych — przywrócenie wersji ich nie zmienia.
+- Przywrócenie wersji z plikiem w repozytorium przywraca wpis o pliku,
+  ale nie treść pliku usuniętego z serwera.
+- Historia jest przechowywana bez limitu czasu.
 - Rekordu z kosza nie da się przywrócić do wcześniejszej wersji — najpierw
   użyj **„♻️ Przywróć”** (z kosza), potem przywracaj wersje.
 - Po przywróceniu wersji opis bibliograficzny i punktacja są przeliczane

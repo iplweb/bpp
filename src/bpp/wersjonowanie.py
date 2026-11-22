@@ -37,12 +37,21 @@ from types import SimpleNamespace
 import reversion
 from django.contrib.admin.models import ADDITION, CHANGE, DELETION, LogEntry
 from django.contrib.auth import get_user_model
+from django.contrib.contenttypes.fields import GenericRelation
 from django.contrib.contenttypes.models import ContentType
 from django.db import IntegrityError, transaction
 from django.db.models import F
 from reversion.models import Version
 
 from bpp.models import Autor, Autor_Jednostka, WybranaPublikacjaAutora
+from bpp.zrodlo_zmian import (
+    ZRODLO_API,
+    ZRODLO_NARZEDZIE,
+    ZRODLO_STRONA,
+    biezace_zrodlo_zmian,
+    wersje_zapisane_hurtowo,
+    zrodlo_zmian,
+)
 
 KOMENTARZ_WERSJI_POCZATKOWEJ = (
     "Stan sprzed pierwszej zarejestrowanej zmiany (zapisany automatycznie)."
@@ -114,10 +123,14 @@ POLA_POZA_WERSJA = {
 
 
 def _relacja_odwrotna(model, akcesor):
-    """Model po drugiej stronie relacji odwrotnej ``model.<akcesor>``."""
+    """Model po drugiej stronie relacji odwrotnej ``model.<akcesor>``
+    (klucz obcy albo ``GenericRelation``)."""
     for relacja in model._meta.related_objects:
         if relacja.get_accessor_name() == akcesor:
             return relacja.related_model
+    for pole in model._meta.private_fields:
+        if isinstance(pole, GenericRelation) and pole.name == akcesor:
+            return pole.related_model
     raise LookupError(f"{model.__name__} nie ma relacji odwrotnej {akcesor!r}")
 
 
@@ -149,10 +162,11 @@ def zarejestruj_wersjonowanie(model, *, exclude=(), follow=()):
 # --- Modele edytowane w adminie (FD#587) -----------------------------------
 #
 # Publikacje: razem z rekordem wersjonowani są autorzy (z dyscypliną,
-# afiliacją, kolejnością), streszczenia, dodatkowe tytuły i zewnętrzne bazy
-# danych — przywrócenie wersji przywraca też listę autorów (autorzy dopisani
-# później są usuwani). Granty, nagrody i pliki repozytorium (relacje
-# generyczne) oraz słowa kluczowe NIE są śledzone.
+# afiliacją, kolejnością), streszczenia, dodatkowe tytuły, zewnętrzne bazy
+# danych, granty, nagrody, pliki repozytorium (wiersze, nie treść plików)
+# i powiązania ze słowami kluczowymi — przywrócenie wersji przywraca też te
+# listy (pozycje dopisane później są usuwane; formularz przywracania
+# pokazuje je wcześniej).
 #
 # Z wersji wyłączone są pola wyliczane: indeks wyszukiwania i klucz
 # sortowania (trigger ``BEFORE``) oraz cache opisu i punktów (denorm,
@@ -170,6 +184,20 @@ POLA_WYLICZANE_PUBLIKACJI = (
 def _pola_istniejace(model, pola):
     nazwy = {f.name for f in model._meta.concrete_fields}
     return tuple(p for p in pola if p in nazwy)
+
+
+#: Relacje generyczne śledzone przy każdej publikacji, która je ma.
+RELACJE_GENERYCZNE_PUBLIKACJI = (
+    "granty_rekordu",
+    "nagrody",
+    "elementy_repozytorium",
+    "slowa_kluczowe_powiazania",
+)
+
+
+def _relacje_istniejace(model, akcesory):
+    nazwy = {f.name for f in model._meta.private_fields}
+    return tuple(a for a in akcesory if a in nazwy)
 
 
 def _zarejestruj_modele_bpp():
@@ -212,7 +240,10 @@ def _zarejestruj_modele_bpp():
         zarejestruj_wersjonowanie(
             model,
             exclude=_pola_istniejace(model, POLA_WYLICZANE_PUBLIKACJI),
-            follow=follow,
+            follow=(
+                *follow,
+                *_relacje_istniejace(model, RELACJE_GENERYCZNE_PUBLIKACJI),
+            ),
         )
 
     # Słowniki. ``search`` liczy trigger; poziomy i liczbę aliasów wydawcy —
@@ -238,6 +269,18 @@ def _zarejestruj_modele_bpp():
 
 
 _zarejestruj_modele_bpp()
+
+
+@contextmanager
+def _zrodlo_narzedzia():
+    """Pomocniki historii zmian poza formularzami (importy, scalanie,
+    przemapowania) oznaczają rewizje jako „import lub narzędzie” — chyba
+    że wołający jest klientem API/MCP (wtedy zostaje jego źródło)."""
+    if biezace_zrodlo_zmian()["zrodlo"] == ZRODLO_API:
+        yield
+        return
+    with zrodlo_zmian(ZRODLO_NARZEDZIE):
+        yield
 
 
 class WersjaPoczatkowaWAktywnejRewizji(RuntimeError):
@@ -393,6 +436,7 @@ def zapisz_wersje_osobno(obiekty, *, user=None, komentarz=""):
                 if reversion.is_registered(type(powiazany))
             ]
         )
+        wersje_zapisane_hurtowo.send(sender=zapisz_wersje_osobno, rewizje=rewizje)
 
 
 # Użytkownik, któremu przypisuje się historię rekordów tworzonych poza
@@ -519,7 +563,8 @@ def zarejestruj_utworzenie(user, obj, komentarz):
     zagnieżdżony blok scaliłby się z zewnętrznym (jedna rewizja z
     użytkownikiem i komentarzem ostatniego wywołania)."""
     user = user or uzytkownik_historii()
-    _zapisz_wersje(user, obj, komentarz)
+    with _zrodlo_narzedzia():
+        _zapisz_wersje(user, obj, komentarz)
     LogEntry.objects.log_actions(
         user.pk,
         [obj],
@@ -555,7 +600,8 @@ def zmiana_rekordu(user, obj, komentarz):
     if zmiana.pomin:
         return
     user = user or uzytkownik_historii()
-    _zapisz_wersje(user, obj, zmiana.komentarz)
+    with _zrodlo_narzedzia():
+        _zapisz_wersje(user, obj, zmiana.komentarz)
     LogEntry.objects.log_actions(
         user.pk,
         [obj],
@@ -589,13 +635,14 @@ def zmiany_rekordow(user, model, pks, komentarz, select_related=()):
         return
     user = user or uzytkownik_historii()
     if wersjonowany:
-        zapisz_wersje_utworzenia(
-            model,
-            pks,
-            user=user,
-            komentarz=zmiana.komentarz,
-            select_related=select_related,
-        )
+        with _zrodlo_narzedzia():
+            zapisz_wersje_utworzenia(
+                model,
+                pks,
+                user=user,
+                komentarz=zmiana.komentarz,
+                select_related=select_related,
+            )
     obiekty = list(
         model._default_manager.filter(pk__in=pks).select_related(*select_related)
     )
@@ -630,7 +677,11 @@ def zmiana_ze_strony(user, obj, komentarz):
     (łącznie ze śledzonymi relacjami, np. wyróżnionymi pracami).
     """
     zapewnij_wersje_poczatkowa(obj)
-    with transaction.atomic(), reversion.create_revision():
+    with (
+        zrodlo_zmian(ZRODLO_STRONA),
+        transaction.atomic(),
+        reversion.create_revision(),
+    ):
         yield
         reversion.add_to_revision(obj)
         reversion.set_user(user)

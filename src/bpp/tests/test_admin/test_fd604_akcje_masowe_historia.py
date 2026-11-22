@@ -23,10 +23,10 @@ from bpp.admin.autor import AutorAdmin
 from bpp.models import (
     Autor,
     Praca_Doktorska,
-    Status_Korekty,
     Wydawnictwo_Ciagle,
     Wydawnictwo_Zwarte,
 )
+from bpp.models.oplaty_log import OplatyPublikacjiLog
 
 URL_AUTORA = "/admin/bpp/autor/"
 
@@ -353,7 +353,7 @@ def test_limity_akcji_masowej():
     assert actions.limit_akcji_masowej(Autor) == 2000
     for model, _url in PUBLIKACJE:
         assert actions.limit_akcji_masowej(model) == 5000
-    assert actions.limit_akcji_masowej(Status_Korekty) == 20000
+    assert actions.limit_akcji_masowej(OplatyPublikacjiLog) == 20000
 
 
 @pytest.mark.django_db

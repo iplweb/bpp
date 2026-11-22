@@ -62,18 +62,37 @@ i poleceniach):
 
 | Model | `follow` | `exclude` (poza `POLA_KOSZA`) |
 |---|---|---|
-| `Wydawnictwo_Ciagle`, `Wydawnictwo_Zwarte` | `autorzy_set`, `streszczenia`, `dodatkowe_tytuly`, `zewnetrzna_baza_danych` | `search_index`, `tytul_oryginalny_sort`, cache opisu i `cached_punkty_dyscyplin` |
+| `Wydawnictwo_Ciagle`, `Wydawnictwo_Zwarte` | `autorzy_set`, `streszczenia`, `dodatkowe_tytuly`, `zewnetrzna_baza_danych` + relacje generyczne (niżej) | `search_index`, `tytul_oryginalny_sort`, cache opisu i `cached_punkty_dyscyplin` |
 | `Patent` | `autorzy_set` | jw. |
 | `Praca_Doktorska` | — | jw. |
 | `Praca_Habilitacyjna` | `publikacja_habilitacyjna_set` | jw. |
-| `Zgloszenie_Publikacji` | `zgloszenie_publikacji_autor_set` | — |
+| `Zgloszenie_Publikacji` | `zgloszenie_publikacji_autor_set`, `zalaczniki` | — |
 | `Zrodlo` | punktacja, redakcja, dyscypliny źródła | `search` |
 | `Wydawca` | `poziom_wydawcy_set` | `lista_poziomow`, `ile_aliasow` |
 | `Konferencja`, `Seria_Wydawnicza` | — | — |
 | `Jednostka` | — (zatrudnienie nieśledzone, jak u `Autor`) | `search` |
 
-Nieśledzone: granty, nagrody, `Element_Repozytorium` (relacje generyczne),
-słowa kluczowe (taggit), załączniki zgłoszeń.
+Relacje generyczne każdej publikacji, która je ma (`GenericRelation`,
+bez kolumn i migracji): `granty_rekordu`, `nagrody` (dodane też do
+`Wydawnictwo_Ciagle`), `elementy_repozytorium`, `slowa_kluczowe_powiazania`
+(wiersze `taggit.TaggedItem` — sam `slowa_kluczowe` zwraca wspólne tagi).
+Treść plików repozytorium nie jest wersjonowana.
+
+**Pozostałe modele admina** (słowniki, konfiguracja, użytkownicy, grupy,
+modele z pakietów zewnętrznych): lista `MODELE_Z_HISTORIA`
+w `src/bpp/admin/helpers/wersje_modele.py`. `BppAdminConfig.ready()` po
+autodiscover woła `podepnij_historie_wersji`, które podmienia klasę admina
+na `klasa + HistoriaWersjiMixin + CompareVersionAdmin`; `VersionAdmin`
+rejestruje model z inline'ami (`follow`). `MODELE_BEZ_HISTORII` — świadome
+wyjątki z powodem (logi, wyniki zadań, sesje importów, kopie danych z PBN,
+tokeny). Test-strażnik `test_fd587_wszystkie_modele_admina.py` wymaga, by
+każdy model w adminie był na jednej z list.
+
+**Pola wrażliwe** (`POLA_WRAZLIWE`: hasło, `last_login`, token PBN
+użytkownika, `client_secret` aplikacji OAuth) są poza wersjami, a przy
+przywracaniu wersji receiver `zachowaj_pola_wrazliwe` (`pre_save`
+z `raw=True`, tylko w `revision_view`) wpisuje ich bieżące wartości —
+inaczej przywrócenie danych użytkownika wyzerowałoby mu hasło.
 
 **`exclude` — pułapka.** Przywrócenie wersji zapisuje obiekt surowo
 (`save_base(raw=True)`), a pole spoza wersji dostaje WARTOŚĆ DOMYŚLNĄ
@@ -96,8 +115,30 @@ zostaje przed nimi). Mixin dodatkowo:
   bo domyślnie biblioteka pokazuje KAŻDE pole FK jako zmienione,
 - `po_przywroceniu_wersji` — hook; `JednostkaAdmin` przebudowuje drzewo
   MPTT (zapis surowy omija MPTT),
-- szablon historii BPP z selektorem pary wersji („Porównaj wersje”);
-  bez przycisku „Odzyskaj usunięte” na liście (decyzja 4 niżej).
+- `compare` — własne porównanie (`porownanie_wersji.py`) zamiast diffu
+  reversion-compare: tabela „pole | wersja A | wersja B”, wartości po
+  ludzku (nazwy ze słowników, tak/nie, daty), diff słów w tekstach, listy
+  śledzone jako dodane/usunięte/zmienione z polami,
+- `revision_view` (GET) — `zmiany_powiazanych`: formularz przywracania
+  wypisuje pozycje list, które zostaną usunięte/przywrócone,
+- szablony pod Grappelli: `reversion/object_history.html` (kolumny A/B,
+  źródło zmiany), `reversion-compare/compare.html`,
+  `reversion/revision_form.html`, wspólne style
+  `reversion/_style_historii.html`; bez przycisku „Odzyskaj usunięte” na
+  liście (decyzja 4 niżej).
+
+**Źródło zmiany.** Aplikacja `historia_zmian` (osobna, bo `auth_server`
+ładuje `bpp` bez reversion): model `ZrodloZmiany` (1:1 z `Revision`:
+`zrodlo`, `aplikacja_client_id`, `aplikacja_nazwa` — bez FK do
+`oauth2_provider`), receiver `post_revision_commit` + sygnał
+`wersje_zapisane_hurtowo` dla zapisu hurtowego. Wartość z kontekstu
+`bpp.zrodlo_zmian.zrodlo_zmian(...)`: middleware
+`UzytkownikHistoriiMiddleware` ustawia „moduł redagowania” / „API” /
+„strona” po ścieżce żądania; pomocniki importów (`zmiana_rekordu`,
+`zarejestruj_utworzenie`, `zmiany_rekordow`) — „import lub narzędzie”;
+poza żądaniem — „system”. Serwer MCP ma owijać zmiany w
+`zrodlo_zmian(ZRODLO_API, aplikacja=<Application>)`. Lista wszystkich
+rewizji z filtrami: admin „Historia zmian (rewizje)”.
 
 **Jedna rewizja = jeden rekord.** `revision.revert()` odwraca CAŁĄ
 rewizję. Dlatego:
@@ -179,12 +220,16 @@ receivery `SoftDeleteLog` i historii (reversion/`LogEntry`).
 1. Backfill `createinitialrevisions` — **nie**: historia „od teraz”;
    wersję początkową zapisuje `zapewnij_wersje_poczatkowa` przy pierwszej
    zmianie rekordu.
-2. Retencja rewizji (`deleterevisions`) — **otwarte**; do decyzji po
-   obserwacji przyrostu tabeli `reversion_version` na produkcji.
+2. Retencja rewizji — **bez limitu** (decyzja właściciela, 22.11.2026):
+   `deleterevisions` nie jest uruchamiane.
 3. Pozycja w drzewie `Jednostka` — rodzic i pola MPTT są w wersji (NOT
    NULL), po przywróceniu drzewo jest przebudowywane; w porównaniu wersji
    pola MPTT są ukryte.
 4. Recover reversion — przycisk ukryty na listach; widok zostaje tylko dla
    superużytkownika (dotyczy wyłącznie rekordów skasowanych twardo).
-5. Źródło zmiany (admin / import / MCP, `oauth_application`) na rewizji —
-   **nie w tym PR**; dojdzie z edycją przez MCP (seria „MCP-edycja”).
+5. Źródło zmiany na każdej rewizji — **tak** (`historia_zmian`, wyżej).
+6. Zakres — **wszystkie** modele edytowane w adminie, łącznie z grantami,
+   nagrodami, plikami repozytorium, słowami kluczowymi i załącznikami
+   zgłoszeń.
+7. Przywrócenie wersji publikacji usuwa pozycje list dopisane później —
+   **tak**, ale formularz przywracania wypisuje je przed zapisem.

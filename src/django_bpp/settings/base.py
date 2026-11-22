@@ -480,6 +480,7 @@ INSTALLED_APPS = [
     "denorm.apps.DenormAppConfig",
     "reversion",
     "reversion_compare",
+    "historia_zmian",  # źródło zmiany rewizji (FD#587)
     "djangoql",
     "cacheops",
     "constance",

@@ -1,0 +1,63 @@
+{% extends "admin/change_form.html" %}
+{% load i18n admin_urls %}
+{# FD#587: formularz przywracania wersji — po polsku, z ostrzeżeniem, co stanie się z listami powiązanymi (autorzy, granty, pliki…). #}
+
+{% block extrastyle %}
+    {{ block.super }}
+    <style>
+        .bpp-przywracanie {
+            margin: 0 0 20px;
+            padding: 12px 20px;
+            border: 1px solid var(--bpp-ramka, #d4d4d4);
+            border-left: 4px solid #e0a800;
+            border-radius: 3px;
+            background: var(--bpp-tlo-pow, #fffbea);
+            font-size: 12px;
+            line-height: 18px;
+        }
+        .bpp-przywracanie h3 { margin: 0 0 6px; font-size: 13px; }
+        .bpp-przywracanie h4 { margin: 10px 0 2px; font-size: 12px; }
+        .bpp-przywracanie ul { margin: 2px 0 0 18px; padding: 0; list-style: disc; }
+        .bpp-przywracanie .bpp-usuniete { color: #b3261e; }
+        .bpp-przywracanie .bpp-przywrocone { color: #1e7e34; }
+    </style>
+{% endblock %}
+
+{% block breadcrumbs %}
+    <ul class="grp-horizontal-list">
+        <li><a href="{% url 'admin:index' %}">{% trans "Home" %}</a></li>
+        <li><a href="{% url 'admin:app_list' opts.app_label %}">{{ opts.app_config.verbose_name }}</a></li>
+        <li><a href="{% url opts|admin_urlname:'changelist' %}">{{ opts.verbose_name_plural|capfirst }}</a></li>
+        <li><a href="{% url opts|admin_urlname:'change' object_id %}">{{ original|truncatewords:"18" }}</a></li>
+        <li><a href="{% url opts|admin_urlname:'history' object_id %}">Historia</a></li>
+        <li>Przywróć wersję</li>
+    </ul>
+{% endblock %}
+
+{% block content_title %}<h1>Przywróć wersję: {{ original|truncatewords:"24" }}</h1>{% endblock %}
+
+{% block object-tools %}{% endblock %}
+
+{% block form_top %}
+    <div class="bpp-przywracanie">
+        <h3>Podgląd wcześniejszej wersji</h3>
+        <p>Formularz pokazuje rekord w stanie z wybranej wersji. Kliknij „Zapisz”, aby przywrócić tę wersję — samo przywrócenie też trafi do historii, więc da się je cofnąć.</p>
+        {% if zmiany_powiazanych %}
+            <h3 style="margin-top: 10px;">Uwaga: przywrócenie zmieni też listy powiązane z rekordem</h3>
+            {% for zmiana in zmiany_powiazanych %}
+                <h4>{{ zmiana.nazwa|capfirst }}</h4>
+                {% if zmiana.usuniete %}
+                    <div class="bpp-usuniete">Zostaną usunięte (dodane po tej wersji):</div>
+                    <ul class="bpp-usuniete">{% for poz in zmiana.usuniete %}<li>{{ poz }}</li>{% endfor %}</ul>
+                {% endif %}
+                {% if zmiana.przywrocone %}
+                    <div class="bpp-przywrocone">Zostaną przywrócone (usunięte po tej wersji):</div>
+                    <ul class="bpp-przywrocone">{% for poz in zmiana.przywrocone %}<li>{{ poz }}</li>{% endfor %}</ul>
+                {% endif %}
+            {% endfor %}
+        {% endif %}
+    </div>
+{% endblock %}
+
+{% block submit_buttons_top %}{% with is_popup=1 %}{{ block.super }}{% endwith %}{% endblock %}
+{% block submit_buttons_bottom %}{% with is_popup=1 %}{{ block.super }}{% endwith %}{% endblock %}
