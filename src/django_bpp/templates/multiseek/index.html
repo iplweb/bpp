@@ -49,135 +49,165 @@
                 }
             });
         </script>
-        <div class="grid-x grid-margin-x">
-            <div class="large-3 medium-3 cell">
-
-                <label for="id_report_type">Rodzaj raportu:</label>
-
-                <select name="{{ MULTISEEK_REPORT_TYPE }}" id="id_report_type">
+        {# Pasek opcji: rodzaj raportu + sortowanie w jednym wierszu. #}
+        {# Kierunek sortowania to nadal checkbox ``order_N_dir`` (czyta go #}
+        {# formOrdering() z multiseek.js), tylko schowany wizualnie — #}
+        {# klikalna jest jego etykieta, stylowana jak przełącznik ↑/↓. #}
+        <div class="multiseek-opcje">
+            <div class="multiseek-opcje__grupa">
+                <label for="id_report_type" class="multiseek-opcje__etykieta">Raport</label>
+                <select name="{{ MULTISEEK_REPORT_TYPE }}" id="id_report_type"
+                        class="multiseek-opcje__raport">
                     {% for t in report_types %}
                         <option value="{{ forloop.counter0 }}">{{ t.label }}</option>
                     {% endfor %}
                 </select>
-                <script type="text/javascript">
-                    /* Update results window with change of report type */
-                    $("select[name={{ MULTISEEK_REPORT_TYPE }}]").change(function () {
-                        $("#sendQueryButton").click();
-                    });
-                </script>
-
             </div>
 
-            {% for element in order_boxes %}
-                <div class="large-3 medium-6 cell">
-                    <label for="id_ordering_{{ forloop.counter0 }}">
-                        {{ element }}
-                    </label>
-
-                    <div class="grid-x align-center-middle">
-                        <div class="large-8 small-8 cell">
-                            <select name="{{ MULTISEEK_ORDERING_PREFIX }}{{ forloop.counter0 }}"
-                                    class="multiseek-ordering"
-                                    id="id_ordering_{{ forloop.counter0 }}">
-                                {% for o in ordering %}
-                                    <option value="{{ forloop.counter0 }}">{{ o.label }}</option>
-                                {% endfor %}
-                            </select>
-
-                        </div>
-
-                        <div class="large-4 small-4 cell">
-                            <input type="checkbox"
-                                   id="{{ MULTISEEK_ORDERING_PREFIX }}{{ forloop.counter0 }}_dir"
-                                   name="{{ MULTISEEK_ORDERING_PREFIX }}{{ forloop.counter0 }}_dir"
-                                   value="1"><label for="{{ MULTISEEK_ORDERING_PREFIX }}{{ forloop.counter0 }}_dir">malejąco
+            <div class="multiseek-opcje__grupa multiseek-sortowanie">
+                <label for="id_ordering_0" class="multiseek-opcje__etykieta">Sortuj</label>
+                {% for element in order_boxes %}
+                    <div class="multiseek-sort" data-sort-index="{{ forloop.counter0 }}"
+                         {% if not forloop.first %}hidden{% endif %}>
+                        {% if not forloop.first %}
+                            <label for="id_ordering_{{ forloop.counter0 }}"
+                                   class="multiseek-sort__potem">potem</label>
+                        {% endif %}
+                        <select name="{{ MULTISEEK_ORDERING_PREFIX }}{{ forloop.counter0 }}"
+                                class="multiseek-ordering"
+                                id="id_ordering_{{ forloop.counter0 }}">
+                            {% for o in ordering %}
+                                <option value="{{ forloop.counter0 }}">{{ o.label }}</option>
+                            {% endfor %}
+                        </select>
+                        <input type="checkbox" class="show-for-sr multiseek-sort__kierunek-pole"
+                               id="{{ MULTISEEK_ORDERING_PREFIX }}{{ forloop.counter0 }}_dir"
+                               name="{{ MULTISEEK_ORDERING_PREFIX }}{{ forloop.counter0 }}_dir"
+                               value="1">
+                        <label for="{{ MULTISEEK_ORDERING_PREFIX }}{{ forloop.counter0 }}_dir"
+                               class="multiseek-sort__kierunek"
+                               title="Zmień kierunek sortowania">
+                            <span class="multiseek-sort__rosnaco"><i class="fi-arrow-up" aria-hidden="true"></i> rosnąco</span>
+                            <span class="multiseek-sort__malejaco"><i class="fi-arrow-down" aria-hidden="true"></i> malejąco</span>
                         </label>
-                        </div>
-
-
+                        {% if not forloop.first %}
+                            <button type="button" class="multiseek-sort__usun"
+                                    data-action="usun-sortowanie"
+                                    title="Usuń to kryterium sortowania"
+                                    aria-label="Usuń to kryterium sortowania">&times;</button>
+                        {% endif %}
                     </div>
-
-                    <script type="text/javascript">
-                        /* Update results window when updating sort type */
-                        $("select[name={{ MULTISEEK_ORDERING_PREFIX }}{{ forloop.counter0 }}]").change(function () {
-                            $("#sendQueryButton").click();
-                        });
-                    </script>
-
-
-                    <script type="text/javascript">
-                        /* Update results window when updating sort type */
-                        $("input[name={{ MULTISEEK_ORDERING_PREFIX }}{{ forloop.counter0 }}_dir]").change(function () {
-                            $("#sendQueryButton").click();
-                        });
-                    </script>
-
-                </div>
-            {% endfor %}
-
+                {% endfor %}
+                <button type="button" class="multiseek-sort__dodaj"
+                        id="multiseekDodajSortowanie">+ dodaj sortowanie</button>
+            </div>
         </div>
 
-        <div class="grid-x align-center-middle">
-            <div class="cell button-group stacked-for-small">
-
+        <div class="multiseek-akcje">
+            <div class="multiseek-akcje__glowne">
                 <button type="button" class="button success"
                         data-action="submit-mine"
                         id="multiseek-szukaj">
-                    <i class="fi-magnifying-glass" aria-hidden="true"></i> Wyświetl wyniki wyszukiwania
+                    <i class="fi-magnifying-glass" aria-hidden="true"></i> Wyświetl wyniki
                 </button>
 
-                <button type="button" class="button"
+                <button type="button" class="button hollow"
                         data-action="submit-live"
                         id="sendQueryButton">
                     <i class="fi-refresh" aria-hidden="true"></i> Odśwież podgląd
                 </button>
 
-                <button type="button" class="button alert"
+                <button type="button" class="button alert hollow"
                         data-action="reset-form"
                         data-confirm="Czy na pewno? Zatwierdzenie tej opcji spowoduje zresetowanie formularza do stanu wyjściowego."
                         id="resetFormButton">
-                    <i class="fi-x" aria-hidden="true"></i> Resetuj formularz
+                    <i class="fi-x" aria-hidden="true"></i> Wyczyść formularz
                 </button>
+            </div>
 
-                {% if user_allowed_to_save_forms %}
-                    <button class="button warning" type="button"
-                            data-action="save-form"
-                            id="saveFormButton">
-                        <i class="fi-save" aria-hidden="true"></i> Zapisz formularz
-                    </button>
-                {% endif %}
-
-                {% if saved_forms %}
-                    <button type="button" class="secondary dropdown button" data-toggle="multiseek-form-menu" href="#"
-                            data-dropdown="drop2"
-                            aria-haspopup="menu">
-                        <i class="fi-upload" aria-hidden="true"></i> Wczytaj formularz
+            <div class="multiseek-akcje__formularz">
+                {% if user_allowed_to_save_forms or saved_forms or user|can_use_query_editor %}
+                    <button type="button" class="button secondary hollow dropdown"
+                            data-toggle="multiseek-form-menu"
+                            aria-haspopup="menu"
+                            id="multiseekFormularzMenu">
+                        Formularz
                     </button>
 
-                    <div class="dropdown-pane" id="multiseek-form-menu" data-dropdown>
+                    <div class="dropdown-pane multiseek-form-menu" id="multiseek-form-menu"
+                         data-dropdown data-position="bottom" data-alignment="right"
+                         data-close-on-click="true">
                         <ul class="no-bullet">
-                            {% for form in saved_forms %}
+                            {% if user_allowed_to_save_forms %}
                                 <li>
-                                    <a href="#"
-                                       data-load-form-id="{{ form.pk }}">{{ form }}</a>
+                                    <a href="#" data-action="save-form" id="saveFormButton">
+                                        <i class="fi-save" aria-hidden="true"></i> Zapisz formularz…
+                                    </a>
                                 </li>
-                            {% endfor %}
+                            {% endif %}
+                            {% if user|can_use_query_editor %}
+                                <li>
+                                    <a href="#" data-action="to-djangoql" id="toDjangoqlButton">
+                                        <i class="fi-clipboard-notes" aria-hidden="true"></i> Pokaż jako zapytanie DjangoQL
+                                    </a>
+                                </li>
+                            {% endif %}
+                            {% if saved_forms %}
+                                <li class="multiseek-form-menu__naglowek">Wczytaj zapisany formularz</li>
+                                {% for form in saved_forms %}
+                                    <li>
+                                        <a href="#" data-load-form-id="{{ form.pk }}">
+                                            <i class="fi-upload" aria-hidden="true"></i> {{ form }}
+                                        </a>
+                                    </li>
+                                {% endfor %}
+                            {% endif %}
                         </ul>
                     </div>
-
-
-
                 {% endif %}
 
-                {% if user|can_use_query_editor %}
-                    <button type="button" class="button secondary"
-                            data-action="to-djangoql"
-                            id="toDjangoqlButton">
-                        <i class="fi-clipboard-notes" aria-hidden="true"></i> Pokaż jako zapytanie DjangoQL
-                    </button>
-                {% endif %}
             </div>
         </div>
+        <script type="text/javascript">
+            {# Zmiana raportu / sortowania / kierunku od razu odświeża podgląd. #}
+            $("#id_report_type, .multiseek-ordering, .multiseek-sort__kierunek-pole")
+                .on("change", function () {
+                    $("#sendQueryButton").click();
+                });
+
+            {# Dodatkowe kryteria sortowania są schowane, dopóki nie są używane. #}
+            {# Ten ready() rejestruje się po tym z multiseek_fields.html, który #}
+            {# odtwarza z sesji wybrane sortowanie — więc widzimy już wartości. #}
+            function multiseekPokazSortowania() {
+                $(".multiseek-sort").each(function () {
+                    var uzywane = $(this).find("select").prop("selectedIndex") > 0;
+                    if (uzywane) {
+                        $(this).prop("hidden", false);
+                    }
+                });
+                $("#multiseekDodajSortowanie").prop(
+                    "hidden", $(".multiseek-sort[hidden]").length === 0
+                );
+            }
+
+            $(document).ready(multiseekPokazSortowania);
+
+            $(".multiseek-sort [data-action=usun-sortowanie]").on("click", function () {
+                var sort = $(this).closest(".multiseek-sort");
+                sort.find("select").prop("selectedIndex", 0);
+                sort.find(".multiseek-sort__kierunek-pole").prop("checked", false);
+                sort.prop("hidden", true);
+                $("#multiseekDodajSortowanie").prop("hidden", false);
+                $("#sendQueryButton").click();
+            });
+
+            $("#multiseekDodajSortowanie").on("click", function () {
+                var nastepne = $(".multiseek-sort[hidden]").first();
+                nastepne.prop("hidden", false);
+                nastepne.find("select").trigger("focus");
+                $(this).prop("hidden", $(".multiseek-sort[hidden]").length === 0);
+            });
+        </script>
         <script type="text/javascript">
 
             function submitEvent(button) {
@@ -241,6 +271,7 @@
                 btn = e.target.closest('[data-action="save-form"]');
                 if (btn) {
                     e.preventDefault();
+                    zamknijMenuFormularza();
                     saveForm(btn);
                     return;
                 }
@@ -257,6 +288,7 @@
                 btn = e.target.closest('[data-action="to-djangoql"]');
                 if (btn) {
                     e.preventDefault();
+                    zamknijMenuFormularza();
                     openDjangoqlDrawer();
                     return;
                 }
@@ -269,6 +301,13 @@
                     return;
                 }
             });
+
+            function zamknijMenuFormularza() {
+                var menu = $("#multiseek-form-menu");
+                if (menu.length) {
+                    menu.foundation("close");
+                }
+            }
 
             function getCsrfToken() {
                 var el = document.querySelector('input[name="csrfmiddlewaretoken"]');

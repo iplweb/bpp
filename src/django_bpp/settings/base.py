@@ -720,13 +720,29 @@ COMPRESS_ROOT = STATIC_ROOT
 # modelu, dzięki czemu zmiana listy nie wymaga migracji.
 BPP_THEMES = [
     ("app-green", "Zielony"),
+    ("app-green-auto", "Zielony (jasny lub ciemny wg ustawień systemu)"),
+    ("app-green-ciemny", "Zielony ciemny"),
     ("app-blue", "Niebieski"),
     ("app-blue-auto", "Niebieski (jasny lub ciemny wg ustawień systemu)"),
     ("app-blue-ciemny", "Niebieski ciemny"),
     ("app-orange", "Pomarańczowy"),
+    ("app-orange-auto", "Pomarańczowy (jasny lub ciemny wg ustawień systemu)"),
+    ("app-orange-ciemny", "Pomarańczowy ciemny"),
     ("app-vizja", "Bursztynowo-granatowy (VIZJA)"),
+    (
+        "app-vizja-auto",
+        "Bursztynowo-granatowy (jasny lub ciemny wg ustawień systemu; VIZJA)",
+    ),
+    ("app-vizja-ciemny", "Bursztynowo-granatowy ciemny (VIZJA)"),
     ("app-mwsl", "Pomarańczowo-granatowy (MWSL)"),
+    (
+        "app-mwsl-auto",
+        "Pomarańczowo-granatowy (jasny lub ciemny wg ustawień systemu; MWSL)",
+    ),
+    ("app-mwsl-ciemny", "Pomarańczowo-granatowy ciemny (MWSL)"),
     ("app-uafm", "Czerwono-błękitny"),
+    ("app-uafm-auto", "Czerwono-błękitny (jasny lub ciemny wg ustawień systemu)"),
+    ("app-uafm-ciemny", "Czerwono-błękitny ciemny"),
 ]
 
 # Motywy z konfiguratora wyglądu (src/bpp/static/scss/motywy/*.json) — bez

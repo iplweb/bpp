@@ -1,0 +1,27 @@
+// Motyw „Zielony”: jasny, a ciemny wtedy, gdy odwiedzający ma w systemie
+// (przeglądarce) włączony tryb ciemny albo wybrał „Ciemny” przełącznikiem na
+// pasku menu (`data-tryb-kolorow` na <html>). Mechanizm: _tryb-ciemny.scss,
+// wzór: app-blue-auto.scss.
+@import "app-green-baza";
+@import "tryb-ciemny";
+
+// `screen` — wydruk zawsze jasny.
+@media screen and (prefers-color-scheme: dark) {
+  @include bpp-tryb-ciemny(
+    $primary-color,
+    $drugi: $secondary-color,
+    $korzen: 'html:where(:not([data-tryb-kolorow="jasny"]))'
+  );
+}
+
+@media screen {
+  @include bpp-tryb-ciemny(
+    $primary-color,
+    $drugi: $secondary-color,
+    $korzen: 'html:where([data-tryb-kolorow="ciemny"])'
+  );
+}
+
+// Print styles — MUSZA byc ostatnie: Foundation (foundation-print-styles
+// wyzej) emituje wlasny blok @media print i chcemy byc za nim w kaskadzie.
+@import "print";

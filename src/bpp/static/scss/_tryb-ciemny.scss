@@ -91,6 +91,7 @@
 /// @param $ramka      obramowania i linie
 /// @param $tekst      tekst podstawowy
 /// @param $przygaszony tekst drugoplanowy
+/// @param $drugi      kolor dodatkowy motywu ($secondary-color) — akcent 2
 /// @param $korzen     selektor <html>, pod którym działają reguły — np.
 ///                    `html[data-tryb-kolorow="ciemny"]` (przełącznik trybu)
 @mixin bpp-tryb-ciemny(
@@ -101,12 +102,19 @@
   $ramka: #3b424d,
   $tekst: #e3e6ea,
   $przygaszony: #a9b2bd,
-  $korzen: "html"
+  $korzen: "html",
+  $drugi: null
 ) {
   // Akcent liczony względem tła hover (najjaśniejszej powierzchni).
   $akcent: tc-czytelny-na($glowny, color.mix(#fff, $pow-2, 8%));
   $akcent-tlo: tc-tlo-pod-bialy($glowny);
   $akcent-hover: color.mix(#fff, $akcent, 20%);
+  $akcent-2: $akcent;
+  $akcent-2-tlo: $akcent-tlo;
+  @if $drugi {
+    $akcent-2: tc-czytelny-na($drugi, color.mix(#fff, $pow-2, 8%));
+    $akcent-2-tlo: tc-tlo-pod-bialy($drugi);
+  }
 
   #{$korzen} {
     color-scheme: dark;
@@ -118,6 +126,8 @@
     --tc-przygaszony: #{$przygaszony};
     --tc-akcent: #{$akcent};
     --tc-akcent-hover: #{$akcent-hover};
+    --tc-akcent-2: #{$akcent-2};
+    --tc-akcent-2-tlo: #{$akcent-2-tlo};
     --tc-akcent-tlo: #{$akcent-tlo};
     --tc-akcent-slaby: #{rgba($akcent, 0.14)};
     // Komunikaty: ciemne, nasycone tła + jasny tekst.
@@ -1119,6 +1129,56 @@
     [style*="color: #cc4b37"],
     [style*="color:#dc2626"] {
       color: var(--tc-blad-tekst) !important;
+    }
+
+    // ---------------------------------------------------------------------
+    // Nadpisania z plików motywów (app-*-baza: tekst w kolorze głównym
+    // i dodatkowym) — na ciemnym tle kolor motywu bywa za ciemny
+    // (np. `green` w motywie zielonym ma 2.6:1), więc wersja czytelna.
+    // ---------------------------------------------------------------------
+    .author-profile-link,
+    .modern-header h1 .fi-foundation,
+    .modern-header h2 .fi-foundation,
+    .section-header h2 .fi-home,
+    .jednostka-name a:hover.link-aktualne {
+      color: var(--tc-akcent);
+    }
+
+    .section-header h2 .fi-torsos-all,
+    .jednostka-name a:hover.link-kola {
+      color: var(--tc-akcent-2);
+    }
+
+    // ---------------------------------------------------------------------
+    // Biały napis na kolorze motywu: jasne kolory główne (pomarańcz #f26621
+    // ma z bielą 3.1:1, bursztyn VIZJA mniej) → tło przyciemnione do AA
+    // (`--tc-akcent-tlo`). Dla niebieskiego to ten sam kolor co w jasnym.
+    // ---------------------------------------------------------------------
+    .button:not(.hollow):not(.clear):not(.secondary):not(.success):not(.warning):not(.alert),
+    .label:not(.secondary):not(.success):not(.warning):not(.alert),
+    .badge:not(.secondary):not(.success):not(.warning):not(.alert),
+    .bpp-support-button,
+    .button-search,
+    .autorzy-modern .autorzy-letter-index .autorzy-letter-pills .autorzy-letter-pill.active,
+    .letter-index .letter-pill.active,
+    .letter-index .letter-pills .letter-pill.active {
+      background-color: var(--tc-akcent-tlo);
+      border-color: var(--tc-akcent-tlo);
+      color: #fff;
+    }
+
+    .button-show-all {
+      background-color: var(--tc-akcent-2-tlo);
+      color: #fff;
+    }
+
+    // Motywy ustawiają te tła z !important (app-*-baza).
+    .funkcja-dnia-container #daily-feature-content .feature-button,
+    .select2-results__option--highlighted,
+    .select2-container--foundation .select2-results__option--highlighted,
+    .ui-state-focus {
+      background: var(--tc-akcent-tlo) !important;
+      color: #fff !important;
     }
   }
 }

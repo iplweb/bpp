@@ -2,24 +2,36 @@ from django.conf import settings
 from django.urls import reverse
 from django.utils.functional import SimpleLazyObject
 
+# Tryb konfiguratora → domyślny tryb motywu (atrybut <html data-tryb-domyslny>).
+_TRYB_Z_KONFIGU = {"automatyczny": "auto", "jasny": "jasny", "ciemny": "ciemny"}
 
-def przelacznik_trybu_kolorow(theme, uczelnia, podglad_motywu, przymiarka):
-    """Czy pokazać przełącznik jasny/ciemny na pasku menu.
 
-    Tylko gdy CSS motywu ma obie wersje: ręczne `*-auto` (z BPP_THEMES)
-    i motyw z konfiguratora w trybie „automatyczny”. W podglądzie
-    konfiguratora i przy przymiarce motywu — ukryty (tam tryb wybiera
-    konfigurator).
+def tryb_kolorow_domyslny(theme, uczelnia):
+    """Co widać bez wyboru odwiedzającego: „jasny”, „ciemny” albo „auto”
+    (wg ustawień systemu).
+
+    Każdy motyw ma obie wersje; ta druga włącza się pigułką ☀ | ☾ na pasku
+    menu (``<html data-tryb-kolorow>``). Domyślny tryb mówi pigułce, którą
+    połówkę podświetlić bez wyboru i kiedy wybór oznacza „wróć do
+    domyślnego” (tryb_kolorow_pigulka.html, _tryb-kolorow-przelacznik.scss).
     """
     from bpp.models.motyw_wlasny import MOTYW_WLASNY, MotywWlasny
+    from django_bpp.motywy_z_konfiguracji import tryb_kolorow_motywu
 
-    if podglad_motywu or przymiarka:
-        return False
     if theme == MOTYW_WLASNY:
-        return bool(uczelnia) and (
-            MotywWlasny.tryb_kolorow_dla(uczelnia.pk) == "automatyczny"
-        )
-    return theme.endswith("-auto") and theme in dict(settings.BPP_THEMES)
+        tryb = MotywWlasny.tryb_kolorow_dla(uczelnia.pk) if uczelnia else None
+        return _TRYB_Z_KONFIGU.get(tryb, "jasny")
+    if theme.endswith("-auto"):
+        return "auto"
+    if theme.endswith("-ciemny"):
+        return "ciemny"
+    return _TRYB_Z_KONFIGU.get(tryb_kolorow_motywu(theme), "jasny")
+
+
+def przelacznik_trybu_kolorow(podglad_motywu, przymiarka):
+    """Czy pokazać pigułkę ☀ | ☾ na pasku menu — zawsze, poza podglądem
+    konfiguratora i przymiarką motywu (tam tryb wybiera konfigurator)."""
+    return not (podglad_motywu or przymiarka)
 
 
 def bpp_configuration(request):
@@ -64,8 +76,9 @@ def bpp_configuration(request):
 
     return {
         "TRYB_KOLOROW_PRZELACZNIK": przelacznik_trybu_kolorow(
-            theme, uczelnia, podglad_motywu, przymiarka
+            podglad_motywu, przymiarka
         ),
+        "TRYB_KOLOROW_DOMYSLNY": tryb_kolorow_domyslny(theme, uczelnia),
         "PODGLAD_MOTYWU": podglad_motywu,
         # Link „Konfigurator wyglądu” w menu „redagowanie” (top_bar.html).
         "MOZE_KONFIGUROWAC_WYGLAD": SimpleLazyObject(

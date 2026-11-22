@@ -7,7 +7,7 @@ Run on the Witcher demo DB (docs/deweloper/zrzuty-ekranu.md):
 - creates the editor account ``vesemir`` (is_staff + "wprowadzanie danych"
   + "zgłoszenia publikacji") and the superuser ``regis`` (the university
   settings and the Administracja menu are superuser screens),
-- assigns ``vesemir`` to one faculty in "Obsługa zgłoszeń prac - wydziały",
+- assigns ``vesemir`` to one faculty (pierwszy alfabetycznie) in "Obsługa zgłoszeń prac - wydziały",
   so that list is not empty,
 - sets the submission form options to the values the page describes
   (button shown to everyone, no login required, fee questions for articles
@@ -53,7 +53,14 @@ konto(
     is_superuser=True,
 )
 
-wydzial = Jednostka.objects.get(nazwa="Wydział Bestiariuszu", parent__isnull=True)
+# Wydział z bazy, a nie po nazwie (nazwy losuje generator danych demo):
+# pierwszy alfabetycznie wydział (jednostka najwyższego poziomu).
+wydzial = Jednostka.objects.filter(parent__isnull=True).order_by("nazwa").first()
+if wydzial is None:
+    raise SystemExit(
+        "Brak wydziałów w bazie demo — wygeneruj dane wg "
+        "docs/deweloper/zrzuty-ekranu.md."
+    )
 Obslugujacy_Zgloszenia_Wydzialow.objects.get_or_create(user=vesemir, wydzial=wydzial)
 
 Uczelnia.objects.update(

@@ -1,4 +1,5 @@
 from io import BytesIO
+from uuid import uuid4
 
 import pytest
 from django.contrib.auth.models import Group
@@ -33,13 +34,17 @@ def _import_z_plikiem(owner, nazwa="testdata.xlsx"):
 def test_oryginal_pobiera_wlasciciel_z_grupa(client, django_user_model):
     u = _user_w_grupie(django_user_model)
     client.force_login(u)
-    imp = _import_z_plikiem(u)
+    # Nazwa unikalna (jak w test_po_imporcie_bez_snapshotu_...): współdzielony
+    # MEDIA_ROOT workera dokleja sufiks do powtórzonej nazwy „testdata.xlsx”
+    # z innych testów — asercja na dosłownej nazwie zależała od kolejności.
+    nazwa = f"oryginal_{uuid4().hex[:12]}.xlsx"
+    imp = _import_z_plikiem(u, nazwa=nazwa)
     resp = client.get(
         reverse("import_pracownikow:pobierz-oryginal", kwargs={"pk": imp.pk})
     )
     assert resp.status_code == 200
     assert "attachment" in resp["Content-Disposition"]
-    assert "testdata.xlsx" in resp["Content-Disposition"]
+    assert nazwa in resp["Content-Disposition"]
 
 
 @pytest.mark.django_db

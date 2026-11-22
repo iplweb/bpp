@@ -9420,17 +9420,16 @@ def konfigurator_wygladu(page: Page, base: str, out: Path) -> None:
     )
     konf_panel(adm, out / "12-zastosowano.png", 0, 420)
 
-    # the site after applying: light/dark switch in the menu bar
+    # the site after applying: light/dark pill in the menu bar
     strona = new_session(page, base, None)
-    li = ".bpp-tryb-kolorow"
-    strona.hover(f"{li} > a")
-    strona.wait_for_selector(f"{li} > ul", state="visible")
+    pigulka = ".top-bar .bpp-pigulka"
+    strona.wait_for_selector(pigulka, state="visible")
     strona.wait_for_timeout(800)
     mark(
         strona,
         [
             {
-                "sel": li,
+                "sel": pigulka,
                 "arrow": "right",
                 "label": "wybór odwiedzającego",
                 "dx": 60,

@@ -15,7 +15,8 @@ afterwards):
 - Cahir z Aretuzy: no 2024 discipline assignment, while his 2024 articles
   carry "archeologia",
 - two journals get a 2024 discipline, so "rozbieżności dyscyplin źródeł"
-  has rows,
+  has rows (pierwsze alfabetycznie czasopisma z pracami z 2024 r. — nazwy
+  czasopism losuje generator danych demo, więc nie szukamy ich po nazwie),
 - creates the editor account ``vesemir`` (is_staff + "wprowadzanie danych").
 
 Updates go through querysets on purpose: model validation would (correctly)
@@ -34,6 +35,7 @@ from bpp.models import (
     Wydawnictwo_Ciagle_Autor,
     Zrodlo,
 )
+from ewaluacja_common.models import Rodzaj_Autora
 
 ROK = 2024
 
@@ -58,6 +60,16 @@ teologia = Dyscyplina_Naukowa.objects.get(nazwa="nauki teologiczne")
 
 # --- work discipline differs from both author disciplines -----------------
 regis = Autor.objects.get(imiona="Regis", nazwisko="z Cintry")
+# Generator danych demo nie każdemu autorowi przypisuje dyscyplinę (zależy to
+# od puli nazw i --seed) — w razie potrzeby tworzymy przypisanie na ROK.
+Autor_Dyscyplina.objects.get_or_create(
+    autor=regis,
+    rok=ROK,
+    defaults=dict(
+        dyscyplina_naukowa=filozofia,
+        rodzaj_autora=Rodzaj_Autora.objects.get(skrot="N"),
+    ),
+)
 Autor_Dyscyplina.objects.filter(autor=regis, rok=ROK).update(
     dyscyplina_naukowa=filozofia, subdyscyplina_naukowa=archeologia
 )
@@ -73,13 +85,20 @@ Wydawnictwo_Ciagle_Autor.objects.filter(autor=cahir, rekord__rok=ROK).update(
 )
 
 # --- journal disciplines -----------------------------------------------------
-for nazwa, dyscyplina in [
-    ("Acta Oxenfurcka", filozofia),
-    ("Folia Kaedwenica", archeologia),
-]:
-    for zrodlo in Zrodlo.objects.filter(nazwa=nazwa):
-        Dyscyplina_Zrodla.objects.get_or_create(
-            zrodlo=zrodlo, rok=ROK, dyscyplina=dyscyplina
-        )
+zrodla = list(
+    Zrodlo.objects.filter(wydawnictwo_ciagle__rok=ROK)
+    .distinct()
+    .order_by("nazwa", "pk")[:2]
+)
+if len(zrodla) < 2:
+    raise SystemExit(
+        f"Za mało czasopism z pracami z {ROK} r. w bazie demo — wygeneruj dane "
+        "wg docs/deweloper/zrzuty-ekranu.md."
+    )
+for zrodlo, dyscyplina in zip(zrodla, [filozofia, archeologia], strict=True):
+    Dyscyplina_Zrodla.objects.get_or_create(
+        zrodlo=zrodlo, rok=ROK, dyscyplina=dyscyplina
+    )
+    print(f"{zrodlo.nazwa}: {dyscyplina.nazwa} w {ROK} r.")
 
 print("OK: rozbieżności dyscyplin seeded")

@@ -1,5 +1,16 @@
 // Motyw niebieski (jasny). Treść motywu: _app-blue-baza.scss.
 @import "app-blue-baza";
+@import "tryb-ciemny";
+
+// Domyślnie jasny niezależnie od ustawień systemu. Wersja ciemna — tylko
+// gdy odwiedzający wybierze ją pigułką ☀ | ☾ na pasku menu
+// (`<html data-tryb-kolorow="ciemny">`). `screen` — wydruk zawsze jasny.
+@media screen {
+  @include bpp-tryb-ciemny(
+    $primary-color,
+    $korzen: 'html:where([data-tryb-kolorow="ciemny"])'
+  );
+}
 
 // Print styles — MUSZA byc ostatnie: Foundation (foundation-print-styles
 // wyzej) emituje wlasny blok @media print i chcemy byc za nim w kaskadzie.
