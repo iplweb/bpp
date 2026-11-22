@@ -60,7 +60,7 @@
         {% if rekord_w_koszu %}
             <div class="bpp-kosz-ramka">
                 <div>
-                    <strong>🗑️ Rekord jest w koszu</strong> (od {{ w_koszu_od|date:"l, j E Y, H:i"|lower }}).
+                    <strong>🗑️ Rekord jest w koszu</strong> (od {{ w_koszu_od|date:"j E Y (l), H:i"|lower }}).
                     Wcześniejsze wersje można przeglądać i porównywać, ale przywrócić dopiero po wyjęciu rekordu z kosza.
                 </div>
                 {% if kosz_przywroc_url %}

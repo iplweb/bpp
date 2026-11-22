@@ -4,6 +4,7 @@
 
 {% block extrastyle %}
     {{ block.super }}
+    {% include "reversion/_style_historii.html" %}
     <style>
         .bpp-przywracanie {
             margin: 0 0 20px;
@@ -40,11 +41,11 @@
         <li><a href="{% url opts|admin_urlname:'changelist' %}">{{ opts.verbose_name_plural|capfirst }}</a></li>
         <li><a href="{% url opts|admin_urlname:'change' object_id %}">{{ original|truncatewords:"18" }}</a></li>
         <li><a href="{% url opts|admin_urlname:'history' object_id %}">Historia</a></li>
-        <li>Wersja z {{ wersja_podgladu.revision.date_created|date:"l, j E Y, H:i"|lower }}</li>
+        <li>Wersja z {{ wersja_podgladu.revision.date_created|date:"j E Y (l), H:i"|lower }}</li>
     </ul>
 {% endblock %}
 
-{% block content_title %}<h1>Wersja z {{ wersja_podgladu.revision.date_created|date:"l, j E Y, H:i"|lower }}: {{ original|truncatewords:"24" }}</h1>{% endblock %}
+{% block content_title %}<h1>Wersja z {{ wersja_podgladu.revision.date_created|date:"j E Y (l), H:i"|lower }}: {{ original|truncatewords:"24" }}</h1>{% endblock %}
 
 {% block object-tools %}
     <ul class="grp-object-tools">
@@ -57,12 +58,12 @@
     <div class="bpp-przywracanie">
         {% if wersja_aktualna %}
             <h3>To jest wersja aktualna <span class="bpp-aktualna">wersja aktualna</span></h3>
-            <p>Wersja z {{ wersja_podgladu.revision.date_created|date:"l, j E Y, H:i"|lower }} to najnowsza zapisana wersja, czyli obecny stan rekordu — nie ma czego przywracać. Aby wrócić do wcześniejszego stanu, wybierz starszą wersję na stronie <a href="{% url opts|admin_urlname:'history' object_id %}">Historia</a>; rekord edytujesz w <a href="{% url opts|admin_urlname:'change' object_id %}">zwykłym formularzu</a>.</p>
+            <p>Wersja z {{ wersja_podgladu.revision.date_created|date:"j E Y (l), H:i"|lower }} to najnowsza zapisana wersja, czyli obecny stan rekordu — nie ma czego przywracać. Aby wrócić do wcześniejszego stanu, wybierz starszą wersję na stronie <a href="{% url opts|admin_urlname:'history' object_id %}">Historia</a>; rekord edytujesz w <a href="{% url opts|admin_urlname:'change' object_id %}">zwykłym formularzu</a>.</p>
         {% elif wersja_jak_aktualna %}
-            <h3>Wersja z {{ wersja_podgladu.revision.date_created|date:"l, j E Y, H:i"|lower }} — taka sama jak aktualna <span class="bpp-aktualna">bez różnic</span></h3>
+            <h3>Wersja z {{ wersja_podgladu.revision.date_created|date:"j E Y (l), H:i"|lower }} — taka sama jak aktualna <span class="bpp-aktualna">bez różnic</span></h3>
             <p>Treść tej wersji niczym się nie różni od obecnego stanu rekordu (np. rekord został do niej właśnie przywrócony) — nie ma czego przywracać. Aby wrócić do innego stanu, wybierz inną wersję na stronie <a href="{% url opts|admin_urlname:'history' object_id %}">Historia</a>.</p>
         {% else %}
-            <h3>Podgląd wcześniejszej wersji z {{ wersja_podgladu.revision.date_created|date:"l, j E Y, H:i"|lower }}</h3>
+            <h3>Podgląd wcześniejszej wersji z {{ wersja_podgladu.revision.date_created|date:"j E Y (l), H:i"|lower }}</h3>
             <p>Poniżej rekord w stanie z tej wersji (nie obecny stan) — tylko do podglądu, bez edycji. {% if pokaz_przywroc %}Przycisk „♻️ Przywróć tę wersję” na dole strony przywraca rekord do tego stanu; samo przywrócenie też trafi do historii, więc da się je cofnąć.{% else %}Nie masz uprawnień do przywracania wersji tego rekordu.{% endif %}</p>
         {% endif %}
         {% if zmiany_powiazanych %}

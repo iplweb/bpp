@@ -119,6 +119,18 @@
     table.bpp-porownanie.bpp-zmiana-zwinieta td.bpp-kol-zmiana-diff::before { content: "→"; color: var(--bpp-tekst-przygaszony, #888); font-size: 16px; }
     table.bpp-porownanie.bpp-zmiana-zwinieta .bpp-zmiana-etykieta { display: none; }
     table.bpp-porownanie.bpp-zmiana-zwinieta .bpp-zmiana-strzalka { display: inline; }
+    /* Okruszki na stronach historii: długi tytuł rekordu skracany
+       wielokropkiem, a strzałka-separator (tło linku w prawym marginesie)
+       zawsze widoczna — wcześniej tekst ucinał się w pół słowa i nachodził
+       na „Historia”. */
+    #grp-breadcrumbs > ul li a {
+        display: inline-block;
+        max-width: 40vw;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+        vertical-align: bottom;
+    }
     .bpp-nieaktywny { opacity: .45; cursor: not-allowed; pointer-events: none; }
     /* Nieaktywny przycisk: nadal wygląda jak przycisk, tylko wyszarzony. */
     button.bpp-przycisk-nieaktywny,
