@@ -374,6 +374,40 @@ class BppSoftDeleteAdminMixin:
             return False
         return super().has_change_permission(request, obj)
 
+    def response_delete(self, request, obj_display, obj_id):
+        """Po „Usuń do kosza" wracamy na listę, nie na stronę główną admina.
+
+        Django kieruje na changelistę tylko przy ``has_change_permission``,
+        a niektóre admini z koszem mają edycję wyłączoną na stałe (np.
+        zgłoszenia publikacji) — wtedy użytkownik lądował na ``admin:index``.
+        O powrocie na listę decyduje więc prawo do jej OGLĄDANIA.
+        """
+        from django.contrib.admin.templatetags.admin_urls import (
+            add_preserved_filters,
+        )
+        from django.http import HttpResponseRedirect
+
+        response = super().response_delete(request, obj_display, obj_id)
+        if (
+            isinstance(response, HttpResponseRedirect)
+            and not self.has_change_permission(request, None)
+            and self.has_view_permission(request, None)
+        ):
+            post_url = reverse(
+                f"admin:{self.opts.app_label}_{self.opts.model_name}_changelist",
+                current_app=self.admin_site.name,
+            )
+            response = HttpResponseRedirect(
+                add_preserved_filters(
+                    {
+                        "preserved_filters": self.get_preserved_filters(request),
+                        "opts": self.opts,
+                    },
+                    post_url,
+                )
+            )
+        return response
+
     def get_view_on_site_url(self, obj=None):
         """Rekord z kosza nie ma „Pokaż na stronie" — strona publiczna daje
         dla niego 404."""
