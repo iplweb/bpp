@@ -6715,14 +6715,14 @@ def tabela_krzyzowa(page: Page, base: str, out: Path) -> None:
                 # label right of "Dodaj ramkę", so the arrow passes below it
                 "sel": "#id_report_type",
                 "arrow": "above",
-                "label": "3. Rodzaj raportu: tabela krzyżowa",
+                "label": "3. Raport: tabela krzyżowa",
                 "dx": 350,
                 "dy": 55,
             },
             {
                 "sel": "#multiseek-szukaj",
                 "arrow": "below",
-                "label": "4. Wyświetl wyniki wyszukiwania",
+                "label": "4. Wyświetl wyniki",
                 "dx": 175,
                 "dy": -60,
             },
@@ -8311,7 +8311,7 @@ def wyszukiwanie_precyzyjne(page: Page, base: str, out: Path) -> None:
             {
                 "sel": "#id_report_type",
                 "arrow": "above",
-                "label": "rodzaj raportu",
+                "label": "raport",
                 "dx": -30,
                 "dy": -30,
             },
