@@ -16751,6 +16751,44 @@ COPY public.django_countdown_sitecountdown (id, countdown_time, message, long_de
 --
 
 COPY public.django_migrations (id, app, name, applied) FROM stdin;
+234	bpp	0152_merge	2000-01-01 00:00:00+00
+1061	oauth2_provider	0001_initial	2000-01-01 00:00:00+00
+253	bpp	0168_dyscyplina_w_autorzy_mat	2000-01-01 00:00:00+00
+511	bpp	0404_add_oplaty_publikacji_log	2000-01-01 00:00:00+00
+620	django_celery_results	0011_taskresult_periodic_task_name	2000-01-01 00:00:00+00
+621	django_celery_results	0012_taskresult_date_started	2000-01-01 00:00:00+00
+622	django_celery_results	0013_taskresult_django_cele_periodi_1993cf_idx	2000-01-01 00:00:00+00
+623	django_celery_results	0014_alter_taskresult_status	2000-01-01 00:00:00+00
+624	sites	0002_alter_domain_unique	2000-01-01 00:00:00+00
+625	django_countdown	0001_initial	2000-01-01 00:00:00+00
+626	django_countdown	0002_alter_sitecountdown_countdown_time	2000-01-01 00:00:00+00
+1136	bpp	0488_purge_praca_tabela_dbtemplate	2000-01-01 00:00:00+00
+627	django_countdown	0003_sitecountdown_maintenance_until	2000-01-01 00:00:00+00
+628	django_countdown	0004_alter_sitecountdown_long_description	2000-01-01 00:00:00+00
+629	django_countdown	0005_alter_sitecountdown_options_and_more	2000-01-01 00:00:00+00
+631	dspace_api	0002_senttodspace	2000-01-01 00:00:00+00
+632	dspace_api	0003_senttodspace_bitstreams	2000-01-01 00:00:00+00
+633	dspace_api	0004_senttodspace_dspace_handle	2000-01-01 00:00:00+00
+634	easyaudit	0001_initial	2000-01-01 00:00:00+00
+635	easyaudit	0002_auto_20170125_0759	2000-01-01 00:00:00+00
+636	easyaudit	0003_auto_20170228_1505	2000-01-01 00:00:00+00
+637	easyaudit	0004_auto_20170620_1354	2000-01-01 00:00:00+00
+639	easyaudit	0006_auto_20171018_1242	2000-01-01 00:00:00+00
+640	easyaudit	0007_auto_20180105_0838	2000-01-01 00:00:00+00
+641	easyaudit	0008_auto_20180220_1908	2000-01-01 00:00:00+00
+642	easyaudit	0009_auto_20180314_2225	2000-01-01 00:00:00+00
+644	easyaudit	0011_auto_20181101_1339	2000-01-01 00:00:00+00
+645	easyaudit	0012_auto_20181018_0012	2000-01-01 00:00:00+00
+646	easyaudit	0013_auto_20190723_0126	2000-01-01 00:00:00+00
+648	easyaudit	0015_auto_20201019_1217	2000-01-01 00:00:00+00
+649	easyaudit	0016_alter_crudevent_event_type	2000-01-01 00:00:00+00
+650	easyaudit	0017_alter_requestevent_datetime	2000-01-01 00:00:00+00
+651	easyaudit	0018_rename_crudevent_object_id_content_type_index	2000-01-01 00:00:00+00
+652	easyaudit	0019_alter_crudevent_changed_fields_and_more	2000-01-01 00:00:00+00
+654	ewaluacja2021	0002_auto_20211026_1137	2000-01-01 00:00:00+00
+655	ewaluacja2021	0003_auto_20211027_2320	2000-01-01 00:00:00+00
+656	ewaluacja2021	0004_importmaksymalnychslotow_ostatnia_zmiana	2000-01-01 00:00:00+00
+1217	bpp	0525_autorzy_mat_bez_autora_z_kosza	2000-01-01 00:00:00+00
 1168	bpp	0507_zrodlo_issn_norm_indexes	2000-01-01 00:00:00+00
 1104	import_polon	0017_liveops	2000-01-01 00:00:00+00
 190	bpp	0109_rekordview	2000-01-01 00:00:00+00
@@ -17124,7 +17162,6 @@ COPY public.django_migrations (id, app, name, applied) FROM stdin;
 864	pbn_komparator_zrodel	0003_remove_rozbieznosczrodlapbn_pbn_kompara_zrodlo__8665da_idx_and_more	2000-01-01 00:00:00+00
 865	pbn_wysylka_oswiadczen	0001_initial	2000-01-01 00:00:00+00
 266	bpp	0179_auto_20190910_1416	2000-01-01 00:00:00+00
-234	bpp	0152_merge	2000-01-01 00:00:00+00
 875	przemapuj_zrodla_pbn	0001_initial	2000-01-01 00:00:00+00
 876	przemapuj_zrodla_pbn	0002_przemapowaniezrodla_typ_operacji_and_more	2000-01-01 00:00:00+00
 877	przemapuj_zrodla_pbn	0003_alter_przemapowaniezrodla_zrodlo_nowe_and_more	2000-01-01 00:00:00+00
@@ -17315,12 +17352,12 @@ COPY public.django_migrations (id, app, name, applied) FROM stdin;
 1118	import_pracownikow	0028_nadpisuj_daty_zatrudnienia	2000-01-01 00:00:00+00
 388	bpp	0295_instaluj_szablony	2000-01-01 00:00:00+00
 1052	importer_publikacji	0016_alter_importsession_status	2000-01-01 00:00:00+00
+256	bpp	0171_auto_20190806_2015	2000-01-01 00:00:00+00
 1053	pbn_api	0075_sentdata_fee_sent_sentdata_fee_uploaded_okay	2000-01-01 00:00:00+00
 1054	przemapuj_prace_autora	0003_przemapoaniepracautora_zrodlowy_import	2000-01-01 00:00:00+00
 1055	import_pracownikow	0016_importpracownikow_tworz_brakujace_jednostki_and_more	2000-01-01 00:00:00+00
 1056	import_pracownikow	0017_importpracownikow_tworz_brakujace_tytuly_and_more	2000-01-01 00:00:00+00
 1057	import_pracownikow	0018_importpracownikow_zakres_integracji	2000-01-01 00:00:00+00
-1061	oauth2_provider	0001_initial	2000-01-01 00:00:00+00
 969	bpp	0416_merge_20260428_1806	2000-01-01 00:00:00+00
 1065	oauth2_provider	0005_auto_20211222_2352	2000-01-01 00:00:00+00
 1066	oauth2_provider	0006_alter_application_client_secret	2000-01-01 00:00:00+00
@@ -17631,10 +17668,8 @@ COPY public.django_migrations (id, app, name, applied) FROM stdin;
 373	bpp	0280_auto_20210725_2217	2000-01-01 00:00:00+00
 376	bpp	0283_auto_20210809_0142	2000-01-01 00:00:00+00
 252	bpp	0167_dyscyplina_change_trigger_fix	2000-01-01 00:00:00+00
-253	bpp	0168_dyscyplina_w_autorzy_mat	2000-01-01 00:00:00+00
 254	bpp	0169_dyscyplina_change_trigger_cacher	2000-01-01 00:00:00+00
 255	bpp	0170_wydawnictwo_wydawca	2000-01-01 00:00:00+00
-256	bpp	0171_auto_20190806_2015	2000-01-01 00:00:00+00
 547	bpp	0431_search_index_gin	2000-01-01 00:00:00+00
 811	integrator2	0004_django32	2000-01-01 00:00:00+00
 263	bpp	0177_cache_punktacja_autora_query	2000-01-01 00:00:00+00
@@ -17836,7 +17871,6 @@ COPY public.django_migrations (id, app, name, applied) FROM stdin;
 508	bpp	0401_autorzy_przypieta	2000-01-01 00:00:00+00
 509	bpp	0402_autorzy_data_oswiadczenia	2000-01-01 00:00:00+00
 510	bpp	0403_autorzy_ostatnio_zmieniony	2000-01-01 00:00:00+00
-511	bpp	0404_add_oplaty_publikacji_log	2000-01-01 00:00:00+00
 513	bpp	0406_add_pbn_evaluation_fields	2000-01-01 00:00:00+00
 514	bpp	0407_remove_null_from_string_fields	2000-01-01 00:00:00+00
 515	bpp	0408_add_jest_wydawnictwem_zwartym_to_crossref_mapper	2000-01-01 00:00:00+00
@@ -17929,40 +17963,6 @@ COPY public.django_migrations (id, app, name, applied) FROM stdin;
 616	django_celery_results	0007_remove_taskresult_hidden	2000-01-01 00:00:00+00
 618	django_celery_results	0009_groupresult	2000-01-01 00:00:00+00
 619	django_celery_results	0010_remove_duplicate_indices	2000-01-01 00:00:00+00
-620	django_celery_results	0011_taskresult_periodic_task_name	2000-01-01 00:00:00+00
-621	django_celery_results	0012_taskresult_date_started	2000-01-01 00:00:00+00
-622	django_celery_results	0013_taskresult_django_cele_periodi_1993cf_idx	2000-01-01 00:00:00+00
-623	django_celery_results	0014_alter_taskresult_status	2000-01-01 00:00:00+00
-624	sites	0002_alter_domain_unique	2000-01-01 00:00:00+00
-625	django_countdown	0001_initial	2000-01-01 00:00:00+00
-626	django_countdown	0002_alter_sitecountdown_countdown_time	2000-01-01 00:00:00+00
-1136	bpp	0488_purge_praca_tabela_dbtemplate	2000-01-01 00:00:00+00
-627	django_countdown	0003_sitecountdown_maintenance_until	2000-01-01 00:00:00+00
-628	django_countdown	0004_alter_sitecountdown_long_description	2000-01-01 00:00:00+00
-629	django_countdown	0005_alter_sitecountdown_options_and_more	2000-01-01 00:00:00+00
-631	dspace_api	0002_senttodspace	2000-01-01 00:00:00+00
-632	dspace_api	0003_senttodspace_bitstreams	2000-01-01 00:00:00+00
-633	dspace_api	0004_senttodspace_dspace_handle	2000-01-01 00:00:00+00
-634	easyaudit	0001_initial	2000-01-01 00:00:00+00
-635	easyaudit	0002_auto_20170125_0759	2000-01-01 00:00:00+00
-636	easyaudit	0003_auto_20170228_1505	2000-01-01 00:00:00+00
-637	easyaudit	0004_auto_20170620_1354	2000-01-01 00:00:00+00
-639	easyaudit	0006_auto_20171018_1242	2000-01-01 00:00:00+00
-640	easyaudit	0007_auto_20180105_0838	2000-01-01 00:00:00+00
-641	easyaudit	0008_auto_20180220_1908	2000-01-01 00:00:00+00
-642	easyaudit	0009_auto_20180314_2225	2000-01-01 00:00:00+00
-644	easyaudit	0011_auto_20181101_1339	2000-01-01 00:00:00+00
-645	easyaudit	0012_auto_20181018_0012	2000-01-01 00:00:00+00
-646	easyaudit	0013_auto_20190723_0126	2000-01-01 00:00:00+00
-648	easyaudit	0015_auto_20201019_1217	2000-01-01 00:00:00+00
-649	easyaudit	0016_alter_crudevent_event_type	2000-01-01 00:00:00+00
-650	easyaudit	0017_alter_requestevent_datetime	2000-01-01 00:00:00+00
-651	easyaudit	0018_rename_crudevent_object_id_content_type_index	2000-01-01 00:00:00+00
-652	easyaudit	0019_alter_crudevent_changed_fields_and_more	2000-01-01 00:00:00+00
-654	ewaluacja2021	0002_auto_20211026_1137	2000-01-01 00:00:00+00
-655	ewaluacja2021	0003_auto_20211027_2320	2000-01-01 00:00:00+00
-656	ewaluacja2021	0004_importmaksymalnychslotow_ostatnia_zmiana	2000-01-01 00:00:00+00
-1217	bpp	0525_autorzy_mat_bez_autora_z_kosza	2000-01-01 00:00:00+00
 \.
 
 
