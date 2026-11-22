@@ -1,7 +1,12 @@
 from crossref_bpp.models import CrossrefAPICache
 from import_common.normalization import normalize_doi
 
-from . import DataProvider, FetchedPublication, register_provider
+from . import (
+    DataProvider,
+    FetchedPublication,
+    dolacz_redaktorow,
+    register_provider,
+)
 
 
 @register_provider
@@ -42,23 +47,14 @@ class CrossRefProvider(DataProvider):
         if isinstance(title, list):
             title = ". ".join(title) if title else ""
 
-        authors = []
-        for author in data.get("author", []):
-            family = author.get("family", "")
-            given = author.get("given", "")
-            # CrossRef czasami zwraca instytucje jako "autorów" — wtedy
-            # ma tylko klucz "name" bez "family"/"given". Pomijamy takie
-            # wpisy, bo nie sa to osoby (np. "Katedra Ekonomiki..." w
-            # DOI 10.17306/j.afw.2021.4.23 jako pierwszy autor).
-            if not family and not given:
-                continue
-            authors.append(
-                {
-                    "family": family,
-                    "given": given,
-                    "orcid": _extract_orcid(author.get("ORCID", "")),
-                }
-            )
+        # Redaktorzy (CrossRef ``editor``) idą do kroku „Autorzy" z rolą
+        # „redaktor" — ale tylko dla książek/monografii; w rozdziale
+        # ``editor`` to redaktorzy książki nadrzędnej (FD#619).
+        authors = dolacz_redaktorow(
+            _parse_persons(data.get("author", [])),
+            _parse_persons(data.get("editor", [])),
+            data.get("type"),
+        )
 
         container_title = data.get("container-title", [])
         source_title = container_title[0] if container_title else None
@@ -104,6 +100,28 @@ class CrossRefProvider(DataProvider):
             keywords=data.get("subject", []),
             extra=extra,
         )
+
+
+def _parse_persons(persons: list) -> list[dict]:
+    """Zamień listę osób CrossRef (``author``/``editor``) na format dostawcy."""
+    result = []
+    for person in persons or []:
+        family = person.get("family", "")
+        given = person.get("given", "")
+        # CrossRef czasami zwraca instytucje jako "autorów" — wtedy
+        # ma tylko klucz "name" bez "family"/"given". Pomijamy takie
+        # wpisy, bo nie sa to osoby (np. "Katedra Ekonomiki..." w
+        # DOI 10.17306/j.afw.2021.4.23 jako pierwszy autor).
+        if not family and not given:
+            continue
+        result.append(
+            {
+                "family": family,
+                "given": given,
+                "orcid": _extract_orcid(person.get("ORCID", "")),
+            }
+        )
+    return result
 
 
 def _build_extra(data: dict, title: str) -> dict:

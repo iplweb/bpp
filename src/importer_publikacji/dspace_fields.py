@@ -8,6 +8,7 @@ from importer_publikacji.providers.dspace_common import (
 EXTRACTED_KEYS = {
     "dc.title",
     "dc.contributor.author",
+    "dc.contributor.editor",
     "dc.date.issued",
     "dc.identifier.doi",
     "dc.identifier.issn",

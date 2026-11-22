@@ -46,6 +46,42 @@ class FetchedPublication:
     jurisdiction: str | None = None
 
 
+# Typy publikacji (znormalizowane do słownika CrossRef), dla których redaktorzy
+# podani przez dostawcę są redaktorami TEJ pracy. Dla rozdziałów i referatów
+# (``book-chapter``, ``proceedings-article`` itd.) pole ``editor`` opisuje
+# redaktorów książki/tomu nadrzędnego — tych NIE dopisujemy do rozdziału.
+TYPY_Z_WLASNYMI_REDAKTORAMI = frozenset(
+    {
+        "book",
+        "edited-book",
+        "monograph",
+        "reference-book",
+        "book-set",
+        "proceedings",
+    }
+)
+
+
+def dolacz_redaktorow(
+    authors: list[dict], editors: list[dict], publication_type: str | None
+) -> list[dict]:
+    """Zwróć listę osób do kroku „Autorzy": najpierw redaktorzy, potem autorzy.
+
+    Redaktorzy dostają klucz ``typ_ogolny`` = ``TO_REDAKTOR`` (z ``bpp.const``),
+    który dopasowanie autorów przenosi na ``ImportedAuthor.typ_ogolny``, a
+    tworzenie rekordu — na typ odpowiedzialności „red.". Kolejność
+    (redaktorzy, potem autorzy) jest taka sama jak przy imporcie z PBN
+    (``pbn_integrator``) i w istniejących rekordach monografii redagowanych.
+
+    Dla typów spoza ``TYPY_Z_WLASNYMI_REDAKTORAMI`` redaktorzy są pomijani.
+    """
+    from bpp.const import TO_REDAKTOR
+
+    if not editors or publication_type not in TYPY_Z_WLASNYMI_REDAKTORAMI:
+        return list(authors)
+    return [{**e, "typ_ogolny": TO_REDAKTOR} for e in editors] + list(authors)
+
+
 @dataclass
 class SplitRecord:
     """Pojedynczy rekord wyodrębniony z surowego wejścia providera.

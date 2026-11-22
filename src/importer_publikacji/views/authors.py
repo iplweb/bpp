@@ -9,6 +9,7 @@ pobraniu danych) oraz z ``CreateUnmatchedAuthorsView.post``
 from django.db import transaction
 from django.db.models import Count, Q
 
+from bpp import const
 from bpp.models import Autor, Autor_Jednostka
 from bpp.wersjonowanie import zapewnij_wersje_poczatkowa
 from crossref_bpp.core import Komparator, StatusPorownania
@@ -31,15 +32,18 @@ def _orcid_settable_qs(session):
     - ImportedAuthor ma ORCID od dostawcy (niepusty)
     - Jest dopasowany do Autora w BPP
     - Autor w BPP nie ma ORCID (NULL lub "")
-    - Ten sam Autor BPP nie jest dopasowany wielokrotnie w sesji
+    - Ten sam Autor BPP nie jest dopasowany w sesji do wierszy z RÓŻNYMI
+      ORCID-ami (konflikt). Ta sama osoba jako redaktor i autor (FD#619)
+      ma ten sam ORCID w obu wierszach — to nie konflikt.
     """
     all_authors = session.authors.all()
 
-    # Znajdź matched_autor_id pojawiające się więcej niż raz
+    # Znajdź matched_autor_id dopasowane do wierszy z różnymi ORCID-ami
     dupes = (
         all_authors.filter(matched_autor__isnull=False)
+        .exclude(orcid="")
         .values("matched_autor")
-        .annotate(cnt=Count("id"))
+        .annotate(cnt=Count("orcid", distinct=True))
         .filter(cnt__gt=1)
         .values_list("matched_autor", flat=True)
     )
@@ -100,12 +104,18 @@ def _auto_match_single_author(session, author_data, order, year):
     family = (author_data.get("family") or "")[:255]
     given = (author_data.get("given") or "")[:255]
     orcid = (author_data.get("orcid") or "")[:50]
+    # Rola od dostawcy (FD#619): redaktorzy monografii przychodzą z
+    # ``typ_ogolny`` = TO_REDAKTOR; brak klucza / nieznana wartość = autor.
+    typ_ogolny = author_data.get("typ_ogolny", const.TO_AUTOR)
+    if typ_ogolny not in (const.TO_AUTOR, const.TO_REDAKTOR):
+        typ_ogolny = const.TO_AUTOR
     imported = ImportedAuthor.objects.create(
         session=session,
         order=order,
         family_name=family,
         given_name=given,
         orcid=orcid,
+        typ_ogolny=typ_ogolny,
         zapisany_jako=f"{family} {given}".strip()[:512],
     )
 
@@ -328,5 +338,21 @@ def _create_unmatched_authors(session, obca, user=None):
     unmatched = session.authors.filter(
         match_status=(ImportedAuthor.MatchStatus.UNMATCHED)
     )
-    for imported in unmatched:
-        _create_single_author(imported, obca, user)
+    # Ta sama osoba może być w sesji dwa razy — jako redaktor i autor
+    # (FD#619). Bez ORCID-u ``_create_single_author`` nie ma po czym jej
+    # rozpoznać i utworzyłby dwa identyczne rekordy ``Autor``; drugi wiersz
+    # dostaje więc rekord utworzony dla pierwszego.
+    utworzeni = {}
+    for imported in unmatched.order_by("order"):
+        klucz = (
+            imported.orcid.strip()
+            or f"{imported.family_name.strip()} {imported.given_name.strip()}".lower()
+        )
+        autor = utworzeni.get(klucz)
+        if autor is None:
+            utworzeni[klucz] = _create_single_author(imported, obca, user)
+            continue
+        imported.matched_autor = autor
+        imported.matched_jednostka = obca
+        imported.match_status = ImportedAuthor.MatchStatus.MANUAL
+        imported.save()

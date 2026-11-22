@@ -13,6 +13,7 @@ from . import (
     FetchedPublication,
     InputMode,
     SplitRecord,
+    dolacz_redaktorow,
     register_provider,
 )
 
@@ -29,6 +30,8 @@ BIBTEX_TYPE_MAP = {
     "phdthesis": "dissertation",
     "mastersthesis": "dissertation",
     "proceedings": "proceedings",
+    # biblatex: książka redagowana (redaktorzy w ``editor``) — FD#619.
+    "collection": "edited-book",
     "techreport": "report",
     "manual": "monograph",
     "misc": "other",
@@ -175,7 +178,6 @@ class BibTeXProvider(DataProvider):
         if not title:
             return None
 
-        authors = _parse_authors(_get_field(fields, "author", ""))
         year = _parse_year(_get_field(fields, "year", ""))
         doi = _clean_doi(_get_field(fields, "doi", ""))
         pages = _clean_pages(_get_field(fields, "pages", ""))
@@ -189,6 +191,15 @@ class BibTeXProvider(DataProvider):
 
         bibtex_type = entry.entry_type.lower()
         publication_type = BIBTEX_TYPE_MAP.get(bibtex_type)
+
+        # Pole ``editor``: redaktorzy książki/tomu. W ``@incollection`` /
+        # ``@inproceedings`` to redaktorzy publikacji nadrzędnej — te
+        # pomija ``dolacz_redaktorow`` po typie (FD#619).
+        authors = dolacz_redaktorow(
+            _parse_authors(_get_field(fields, "author", "")),
+            _parse_authors(_get_field(fields, "editor", "")),
+            publication_type,
+        )
 
         raw_data = {
             "bibtex_text": identifier,
@@ -246,7 +257,7 @@ def _get_field(fields_dict, key, default=""):
 
 
 def _parse_authors(author_str: str) -> list[dict]:
-    """Parsuj string autorów BibTeX na listę dict."""
+    """Parsuj string autorów (albo redaktorów) BibTeX na listę dict."""
     if not author_str:
         return []
 
