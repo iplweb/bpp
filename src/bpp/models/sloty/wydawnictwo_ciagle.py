@@ -24,69 +24,78 @@ class SlotKalkulator_Wydawnictwo_Ciagle_Prog1(SlotMixin):
             return Decimal("1")
 
 
-class SlotKalkulator_Wydawnictwo_Ciagle_Prog2(SlotMixin):
+MINIMUM_UDZIALU = Decimal("0.1")
+
+
+class SlotKalkulator_Wspolczynnik_K_M(SlotMixin):
+    """Wspólna część progów 2 i 3: punkty = PK × współczynnik, gdzie
+    współczynnik to √(k/m) (próg 2) albo k/m (próg 3), zaokrąglony do 4 miejsc
+    (§ 13 ust. 6), ale nie mniej niż 0,1 („nie mniej niż 10 % tej wartości”,
+    § 13 ust. 1, 3 i 5).
+
+    Sloty wynikają z tej samej (podniesionej do minimum) wartości:
+    udział jednostkowy U = P/Pc × 1/k (§ 16 ust. 2), czyli slot dyscypliny
+    = P/Pc = współczynnik, a slot autora = współczynnik / k. Np. 70 pkt,
+    k = 1, m = 150: √(1/150) = 0,0816 < 0,1, więc P = 7,0000 i slot 0,1000.
+    """
+
+    def wartosc_k_m(self, dyscyplina):
+        raise NotImplementedError
+
+    def wspolczynnik(self, dyscyplina):
+        """P/Pc dla dyscypliny; None gdy rekord nie ma autorów (m = 0),
+        0 gdy nie ma autorów z dyscypliny (k = 0)."""
+        wartosc = self.wartosc_k_m(dyscyplina)
+        if wartosc is None:
+            return None
+        if self.liczba_k(dyscyplina) == 0:
+            return wartosc  # 0,0000 — brak autorów z afiliacją, bez minimum
+        return max(wartosc, MINIMUM_UDZIALU)
+
+    def punkty_pkd(self, dyscyplina):
+        if not self.ma_dyscypline(dyscyplina):
+            return
+        wspolczynnik = self.wspolczynnik(dyscyplina)
+        if wspolczynnik is None:
+            return
+        if self.liczba_k(dyscyplina) == 0:
+            return 0
+        return self.original.punkty_kbn * wspolczynnik
+
+    def slot_dla_autora_z_dyscypliny(self, dyscyplina):
+        if not self.ma_dyscypline(dyscyplina):
+            return
+        k = self.liczba_k(dyscyplina)
+        if k == 0:
+            return
+        wspolczynnik = self.wspolczynnik(dyscyplina)
+        if wspolczynnik is None:
+            return
+        return wspolczynnik / k
+
+    def slot_dla_dyscypliny(self, dyscyplina):
+        if not self.ma_dyscypline(dyscyplina):
+            return
+        return self.wspolczynnik(dyscyplina)
+
+
+class SlotKalkulator_Wydawnictwo_Ciagle_Prog2(SlotKalkulator_Wspolczynnik_K_M):
     """
     Artykuł z czasopisma z listy ministerialnej.
 
     Dla roku 2017-2018: punkty MNiSW/MEiN 20 lub 25
     """
 
-    def punkty_pkd(self, dyscyplina):
-        if self.ma_dyscypline(dyscyplina):
-            pierwiastek = self.pierwiastek_k_przez_m(dyscyplina)
-            if pierwiastek is None:
-                return None
-
-            if self.liczba_k(dyscyplina) == 0:
-                return 0
-
-            return self.original.punkty_kbn * max(pierwiastek, Decimal("0.1"))
-
-    def slot_dla_autora_z_dyscypliny(self, dyscyplina):
-        if not self.ma_dyscypline(dyscyplina):
-            return
-
-        azd = len(self.autorzy_z_dyscypliny(dyscyplina))
-        if azd > 0:
-            return self.pierwiastek_k_przez_m(dyscyplina) * 1 / azd
-
-    def slot_dla_dyscypliny(self, dyscyplina):
-        if not self.ma_dyscypline(dyscyplina):
-            return
-
+    def wartosc_k_m(self, dyscyplina):
         return self.pierwiastek_k_przez_m(dyscyplina)
 
 
-class SlotKalkulator_Wydawnictwo_Ciagle_Prog3(SlotMixin):
+class SlotKalkulator_Wydawnictwo_Ciagle_Prog3(SlotKalkulator_Wspolczynnik_K_M):
     """
     Artykuł z czasopisma z listy ministerialnej.
 
     Dla roku 2017-2018: punkty MNiSW/MEiN poniżej 20 lub 5
     """
 
-    def punkty_pkd(self, dyscyplina):
-        if self.ma_dyscypline(dyscyplina):
-            k_przez_m = self.k_przez_m(dyscyplina)
-            if k_przez_m is None:
-                return
-            if self.liczba_k(dyscyplina) == 0:
-                return 0
-            return self.original.punkty_kbn * max(k_przez_m, Decimal("0.1"))
-
-    def slot_dla_autora_z_dyscypliny(self, dyscyplina):
-        # Udział jednostkowy U = P/Pc × 1/k (§ 16 ust. 2), gdzie P/Pc to k/m
-        # zaokrąglone do 4 miejsc (§ 13 ust. 6) — a nie „surowe” 1/m.
-        if not self.ma_dyscypline(dyscyplina):
-            return
-        azd = self.liczba_k(dyscyplina)
-        if azd == 0:
-            return
-        k_przez_m = self.k_przez_m(dyscyplina)
-        if k_przez_m is None:
-            return
-        return k_przez_m / azd
-
-    def slot_dla_dyscypliny(self, dyscyplina):
-        if not self.ma_dyscypline(dyscyplina):
-            return
+    def wartosc_k_m(self, dyscyplina):
         return self.k_przez_m(dyscyplina)

@@ -15,7 +15,16 @@ ewaluacyjne, optymalizacja). Dla wzoru k/m także slot autora liczony jest
 teraz z zaokrąglonego k/m (k/m ÷ k): np. przy 2 autorach z dyscypliny na
 3 ogółem slot autora to 0,3334 (wcześniej 0,3333). Bez zmian: rekordy liczone
 w 100% (np. artykuły za 100, 140, 200 pkt) oraz przypadki, gdy wszyscy autorzy
-są z dyscypliny (k = m); minimum 10% wartości punktowej działa jak dotąd.
+są z dyscypliny (k = m). Poprawiono też sloty przy minimum 10% wartości
+punktowej: gdy √(k/m) albo k/m jest mniejsze niż 0,1, punkty były już dotąd
+podnoszone do 10% wartości, ale slot zostawał niższy. Teraz slot (udział
+jednostkowy, § 16 ust. 2: punkty dla dyscypliny ÷ punkty pracy ÷ k) wynika
+z tych podniesionych punktów — wynosi 0,1 dla dyscypliny i 0,1 ÷ k dla każdego
+autora z dyscypliny. Przykład: artykuł za 70 pkt ze 150 autorami, w tym 1
+z danej dyscypliny — √(1/150) = 0,0816, punkty 7,0000 (bez zmian), slot
+**0,1000** (wcześniej 0,0816); przy 2 autorach z dyscypliny na 500 ogółem
+slot każdego z nich to 0,0500. Dotyczy prac z bardzo dużą liczbą autorów;
+może to zmienić wybór prac w optymalizacji ewaluacji i sumy slotów autorów.
 **Po aktualizacji** administrator powinien przeliczyć zapisane wartości
 poleceniem ``python src/manage.py przelicz_punktacje_dyscyplin`` (przelicza
 tylko rekordy ze slotem mniejszym niż 1; strona działa normalnie w trakcie,

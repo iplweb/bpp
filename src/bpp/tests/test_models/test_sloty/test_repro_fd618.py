@@ -12,6 +12,7 @@ i pokazywał 8,1650.
 """
 
 from decimal import Decimal
+from types import SimpleNamespace
 
 import pytest
 
@@ -226,7 +227,10 @@ def test_fd618_artykul_20_pkt_k2_m3(
 def test_fd618_minimum_10_procent_k_przez_m(
     ciagle_z_dyscyplinami, dyscyplina1, rok, autor_maker, jednostka
 ):
-    """k/m = 1/12 = 0,0833 < 0,1 → P = 10% × 20 = 2,0000 (minimum bez zmian)."""
+    """k/m = 1/12 = 0,0833 < 0,1 → P = 10% × 20 = 2,0000, slot 0,1000.
+
+    Slot (udział jednostkowy, § 16 ust. 2: U = P/Pc × 1/k) wynika z punktów
+    podniesionych do minimum — wcześniej BPP dawał tu slot 0,0833."""
     ciagle_z_dyscyplinami.rok = 2022
     ciagle_z_dyscyplinami.punkty_kbn = 20
     ciagle_z_dyscyplinami.save()
@@ -241,6 +245,91 @@ def test_fd618_minimum_10_procent_k_przez_m(
     assert kalk.wszyscy() == 12
     assert kalk.k_przez_m(dyscyplina1) == Decimal("0.0833")
     assert kalk.punkty_pkd(dyscyplina1) == Decimal("2.0")
+    assert kalk.slot_dla_dyscypliny(dyscyplina1) == Decimal("0.1")
+    assert kalk.slot_dla_autora_z_dyscypliny(dyscyplina1) == Decimal("0.1")
+
+    cacher = IPunktacjaCacher(ciagle_z_dyscyplinami)
+    cacher.rebuildEntries()
+    cpd = cacher.cache_punktacja_dyscypliny.get(dyscyplina=dyscyplina1)
+    assert (cpd.pkd, cpd.slot) == (Decimal("2.0000"), Decimal("0.1000"))
+
+
+@pytest.mark.django_db
+def test_fd618_minimum_10_procent_pierwiastek_k1_m150(
+    ciagle_z_dyscyplinami, dyscyplina1, rok, autor_maker, jednostka
+):
+    """Artykuł 70 pkt, k = 1, m = 150: √(1/150) = 0,0816 < 0,1
+    → P = 7,0000 (10% × 70), slot dyscypliny i autora 0,1000 (było 0,0816)."""
+    ciagle_z_dyscyplinami.rok = 2022
+    ciagle_z_dyscyplinami.punkty_kbn = 70
+    ciagle_z_dyscyplinami.save()
+    for wca in ciagle_z_dyscyplinami.autorzy_set.all():
+        ad = wca.autor.autor_dyscyplina_set.get(rok=rok)
+        ad.pk = None
+        ad.rok = 2022
+        ad.save()
+    _dopisz_obcych(ciagle_z_dyscyplinami, autor_maker, jednostka, 148, "aut.")
+
+    kalk = ISlot(ciagle_z_dyscyplinami)
+    assert isinstance(kalk, SlotKalkulator_Wydawnictwo_Ciagle_Prog2)
+    assert kalk.wszyscy() == 150
+    assert kalk.pierwiastek_k_przez_m(dyscyplina1) == Decimal("0.0816")
+
+    cacher = IPunktacjaCacher(ciagle_z_dyscyplinami)
+    cacher.rebuildEntries()
+    cpd = cacher.cache_punktacja_dyscypliny.get(dyscyplina=dyscyplina1)
+    assert (cpd.pkd, cpd.slot) == (Decimal("7.0000"), Decimal("0.1000"))
+    cpa = cacher.cache_punktacja_autora.get(dyscyplina=dyscyplina1)
+    assert (cpa.pkdaut, cpa.slot) == (Decimal("7.0000"), Decimal("0.1000"))
+
+
+class _Prog2KM(SlotKalkulator_Wydawnictwo_Ciagle_Prog2, _KalkulatorKM):
+    def __init__(self, k, m, punkty):
+        _KalkulatorKM.__init__(self, k, m)
+        self.original = SimpleNamespace(punkty_kbn=Decimal(punkty))
+
+    def ma_dyscypline(self, dyscyplina):
+        return True
+
+
+class _Prog3KM(SlotKalkulator_Wydawnictwo_Ciagle_Prog3, _Prog2KM):
+    pass
+
+
+@pytest.mark.parametrize(
+    "klass,k,m,punkty,pkd,slot_d,slot_aut",
+    [
+        # √(k/m) poniżej progu, k > 1: P = 10%, slot 0,1 na dyscyplinę, 0,1/k
+        (_Prog2KM, 2, 500, 70, "7.0000", "0.1000", "0.0500"),
+        (_Prog2KM, 1, 150, 40, "4.0000", "0.1000", "0.1000"),
+        # √(1/100) = 0,1 — dokładnie na progu
+        (_Prog2KM, 1, 100, 70, "7.0000", "0.1000", "0.1000"),
+        # powyżej progu — bez zmian
+        (_Prog2KM, 1, 6, 20, "8.1640", "0.4082", "0.4082"),
+        # k/m poniżej progu (k > 1): 3/40 = 0,075
+        (_Prog3KM, 3, 40, 20, "2.0000", "0.1000", "0.0333"),
+        (_Prog3KM, 1, 12, 5, "0.5000", "0.1000", "0.1000"),
+        # k/m powyżej progu — bez zmian
+        (_Prog3KM, 2, 3, 20, "13.3340", "0.6667", "0.3334"),
+        # brak autorów z dyscypliny (k = 0): 0, bez minimum
+        (_Prog3KM, 0, 12, 20, "0", "0.0000", None),
+        (_Prog2KM, 0, 150, 70, "0", "0.0000", None),
+    ],
+)
+def test_fd618_minimum_10_procent_sloty(
+    klass, k, m, punkty, pkd, slot_d, slot_aut
+):
+    kalk = klass(k, m, punkty)
+
+    def q(v):
+        return None if v is None else zaokraglij_do_4_miejsc(v)
+
+    assert q(kalk.punkty_pkd(None)) == Decimal(pkd)
+    assert q(kalk.slot_dla_dyscypliny(None)) == Decimal(slot_d)
+    if slot_aut is None:
+        assert kalk.slot_dla_autora_z_dyscypliny(None) is None
+    else:
+        assert q(kalk.slot_dla_autora_z_dyscypliny(None)) == Decimal(slot_aut)
 
 
 @pytest.mark.django_db
