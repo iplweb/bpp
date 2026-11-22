@@ -231,7 +231,7 @@ class Uczelnia(
     NazwaISkrot,
     NazwaWDopelniaczu,
 ):
-    """Uczelnia (tenant). Kosz: tylko uczelnia bez jednostek (także w koszu)
+    """Uczelnia (tenant). Kosz: tylko uczelnia bez jednostek
     i bez użytkowników z dostępem do niej; konfiguracja, dane wyliczane
     i logi zostają przy niej (``pomijane_relacje_kosza``).
 

@@ -254,6 +254,26 @@ $$;
 
 
 --
+-- Name: bpp_autor_kosz_autorzy_mat(); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.bpp_autor_kosz_autorzy_mat() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+BEGIN
+    IF NEW.deleted_at IS NOT NULL THEN
+        DELETE FROM bpp_autorzy_mat WHERE autor_id = NEW.id;
+    ELSE
+        INSERT INTO bpp_autorzy_mat ("rekord_id", "id", "autor_id", "jednostka_id", "kolejnosc", "typ_odpowiedzialnosci_id", "zapisany_jako", "zatrudniony", "afiliuje", "dyscyplina_naukowa_id", "upowaznienie_pbn", "profil_orcid", "kierunek_studiow_id", "oswiadczenie_ken", "przypieta", "data_oswiadczenia")
+      SELECT "rekord_id", "id", "autor_id", "jednostka_id", "kolejnosc", "typ_odpowiedzialnosci_id", "zapisany_jako", "zatrudniony", "afiliuje", "dyscyplina_naukowa_id", "upowaznienie_pbn", "profil_orcid", "kierunek_studiow_id", "oswiadczenie_ken", "przypieta", "data_oswiadczenia" FROM bpp_autorzy
+      WHERE autor_id = NEW.id
+      ON CONFLICT (id) DO UPDATE SET "rekord_id" = EXCLUDED."rekord_id", "autor_id" = EXCLUDED."autor_id", "jednostka_id" = EXCLUDED."jednostka_id", "kolejnosc" = EXCLUDED."kolejnosc", "typ_odpowiedzialnosci_id" = EXCLUDED."typ_odpowiedzialnosci_id", "zapisany_jako" = EXCLUDED."zapisany_jako", "zatrudniony" = EXCLUDED."zatrudniony", "afiliuje" = EXCLUDED."afiliuje", "dyscyplina_naukowa_id" = EXCLUDED."dyscyplina_naukowa_id", "upowaznienie_pbn" = EXCLUDED."upowaznienie_pbn", "profil_orcid" = EXCLUDED."profil_orcid", "kierunek_studiow_id" = EXCLUDED."kierunek_studiow_id", "oswiadczenie_ken" = EXCLUDED."oswiadczenie_ken", "przypieta" = EXCLUDED."przypieta", "data_oswiadczenia" = EXCLUDED."data_oswiadczenia";
+    END IF;
+    RETURN NULL;
+END $$;
+
+
+--
 -- Name: bpp_autor_ustaw_jednostka_aktualna(); Type: FUNCTION; Schema: public; Owner: -
 --
 
@@ -311,6 +331,25 @@ BEGIN
     RETURN NEW;
 END;
 $$;
+
+
+--
+-- Name: bpp_autorzy_mat_bez_autora_z_kosza(); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.bpp_autorzy_mat_bez_autora_z_kosza() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+BEGIN
+    IF NEW.autor_id IS NOT NULL AND EXISTS (
+        SELECT 1 FROM bpp_autor
+        WHERE id = NEW.autor_id AND deleted_at IS NOT NULL
+    ) THEN
+        DELETE FROM bpp_autorzy_mat WHERE id = NEW.id;
+        RETURN NULL;
+    END IF;
+    RETURN NEW;
+END $$;
 
 
 --
@@ -16712,6 +16751,35 @@ COPY public.django_countdown_sitecountdown (id, countdown_time, message, long_de
 --
 
 COPY public.django_migrations (id, app, name, applied) FROM stdin;
+180	bpp	0099_nagrody	2000-01-01 00:00:00+00
+105	bpp	0028_openaccess	2000-01-01 00:00:00+00
+630	dspace_api	0001_initial	2000-01-01 00:00:00+00
+681	ewaluacja_liczba_n	0009_alter_dyscyplinanieraportowana_uczelnia_and_more	2000-01-01 00:00:00+00
+685	ewaluacja_metryki	0004_metrykaautora_rodzaj_autora	2000-01-01 00:00:00+00
+686	ewaluacja_metryki	0005_alter_metrykaautora_rodzaj_autora_and_more	2000-01-01 00:00:00+00
+687	ewaluacja_metryki	0006_alter_metrykaautora_autor_and_more	2000-01-01 00:00:00+00
+688	ewaluacja_optymalizacja	0001_initial	2000-01-01 00:00:00+00
+690	ewaluacja_optymalizacja	0003_unpinningopportunity_punkty_roznica_b_and_more	2000-01-01 00:00:00+00
+691	ewaluacja_optymalizacja	0004_unpinningopportunity_punkty_roznica_a_and_more	2000-01-01 00:00:00+00
+692	ewaluacja_optymalizacja	0005_add_real_unpinning_values	2000-01-01 00:00:00+00
+693	ewaluacja_optymalizacja	0006_add_status_optymalizacji_z_odpinaniem	2000-01-01 00:00:00+00
+694	ewaluacja_optymalizacja	0007_add_status_optymalizacji_bulk	2000-01-01 00:00:00+00
+695	ewaluacja_optymalizacja	0008_add_status_unpinning_analizy	2000-01-01 00:00:00+00
+696	ewaluacja_optymalizacja	0009_add_plik_zip_wszystkie_xls	2000-01-01 00:00:00+00
+697	ewaluacja_optymalizacja	0010_add_is_optimal_to_optimizationrun	2000-01-01 00:00:00+00
+698	ewaluacja_optymalizacja	0011_move_files_to_protected	2000-01-01 00:00:00+00
+699	ewaluacja_optymalizacja	0012_add_discipline_swap_models	2000-01-01 00:00:00+00
+700	ewaluacja_optymalizacja	0013_add_status_przegladarka_recalc	2000-01-01 00:00:00+00
+701	ewaluacja_optymalizacja	0014_add_optimality_gap_to_optimization_run	2000-01-01 00:00:00+00
+702	ewaluacja_optymalizacja	0015_remove_disciplineswapopportunity_ewaluacja_o_uczelni_ed0a90_idx_and_more	2000-01-01 00:00:00+00
+703	ewaluacja_optymalizuj_publikacje	0001_initial	2000-01-01 00:00:00+00
+707	favicon	0004_faviconimg_favicon_size_rel_unique	2000-01-01 00:00:00+00
+710	flexible_reports	0002_auto_20170823_2225	2000-01-01 00:00:00+00
+711	flexible_reports	0003_table_attrs	2000-01-01 00:00:00+00
+712	flexible_reports	0004_auto_20170823_2342	2000-01-01 00:00:00+00
+714	flexible_reports	0006_default_ordering	2000-01-01 00:00:00+00
+715	flexible_reports	0007_sort_desc	2000-01-01 00:00:00+00
+1215	pbn_api	0081_uzupelnij_tlumacza_dyscyplin_fd608	2000-01-01 00:00:00+00
 829	miniblog	0003_alter_article_article_body	2000-01-01 00:00:00+00
 1146	bpp	0446_merge_20260619_2128	2000-01-01 00:00:00+00
 880	raport_slotow	0001_initial	2000-01-01 00:00:00+00
@@ -16805,7 +16873,6 @@ COPY public.django_migrations (id, app, name, applied) FROM stdin;
 797	importer_publikacji	0005_importsession_wydawnictwo_nadrzedne	2000-01-01 00:00:00+00
 798	importer_publikacji	0005_alter_importsession_created_by	2000-01-01 00:00:00+00
 1213	first_run_wizard	0002_stamp_existing_superuser	2000-01-01 00:00:00+00
-180	bpp	0099_nagrody	2000-01-01 00:00:00+00
 249	bpp	0166_auto_20190702_1200	2000-01-01 00:00:00+00
 617	django_celery_results	0008_chordcounter	2000-01-01 00:00:00+00
 799	importer_publikacji	0006_merge_20260421_1100	2000-01-01 00:00:00+00
@@ -17388,7 +17455,6 @@ COPY public.django_migrations (id, app, name, applied) FROM stdin;
 100	bpp	0023_auto_20150830_1704	2000-01-01 00:00:00+00
 101	bpp	0024_auto_20150830_1705	2000-01-01 00:00:00+00
 103	bpp	0026_auto_20150902_2102	2000-01-01 00:00:00+00
-105	bpp	0028_openaccess	2000-01-01 00:00:00+00
 106	bpp	0029_auto_20150923_1343	2000-01-01 00:00:00+00
 107	bpp	0030_auto_20150923_1351	2000-01-01 00:00:00+00
 108	bpp	0031_zrodlo_openaccess_licencja	2000-01-01 00:00:00+00
@@ -17845,7 +17911,6 @@ COPY public.django_migrations (id, app, name, applied) FROM stdin;
 627	django_countdown	0003_sitecountdown_maintenance_until	2000-01-01 00:00:00+00
 628	django_countdown	0004_alter_sitecountdown_long_description	2000-01-01 00:00:00+00
 629	django_countdown	0005_alter_sitecountdown_options_and_more	2000-01-01 00:00:00+00
-630	dspace_api	0001_initial	2000-01-01 00:00:00+00
 631	dspace_api	0002_senttodspace	2000-01-01 00:00:00+00
 632	dspace_api	0003_senttodspace_bitstreams	2000-01-01 00:00:00+00
 633	dspace_api	0004_senttodspace_dspace_handle	2000-01-01 00:00:00+00
@@ -17896,32 +17961,7 @@ COPY public.django_migrations (id, app, name, applied) FROM stdin;
 678	ewaluacja_liczba_n	0006_alter_iloscudzialowdlaautorazacalosc_unique_together_and_more	2000-01-01 00:00:00+00
 679	ewaluacja_liczba_n	0007_alter_iloscudzialowdlaautorazacalosc_komentarz	2000-01-01 00:00:00+00
 848	pbn_export_queue	0005_reclassify_old_validation_errors	2000-01-01 00:00:00+00
-681	ewaluacja_liczba_n	0009_alter_dyscyplinanieraportowana_uczelnia_and_more	2000-01-01 00:00:00+00
-685	ewaluacja_metryki	0004_metrykaautora_rodzaj_autora	2000-01-01 00:00:00+00
-686	ewaluacja_metryki	0005_alter_metrykaautora_rodzaj_autora_and_more	2000-01-01 00:00:00+00
-687	ewaluacja_metryki	0006_alter_metrykaautora_autor_and_more	2000-01-01 00:00:00+00
-688	ewaluacja_optymalizacja	0001_initial	2000-01-01 00:00:00+00
-690	ewaluacja_optymalizacja	0003_unpinningopportunity_punkty_roznica_b_and_more	2000-01-01 00:00:00+00
-691	ewaluacja_optymalizacja	0004_unpinningopportunity_punkty_roznica_a_and_more	2000-01-01 00:00:00+00
-692	ewaluacja_optymalizacja	0005_add_real_unpinning_values	2000-01-01 00:00:00+00
-693	ewaluacja_optymalizacja	0006_add_status_optymalizacji_z_odpinaniem	2000-01-01 00:00:00+00
-694	ewaluacja_optymalizacja	0007_add_status_optymalizacji_bulk	2000-01-01 00:00:00+00
-695	ewaluacja_optymalizacja	0008_add_status_unpinning_analizy	2000-01-01 00:00:00+00
-696	ewaluacja_optymalizacja	0009_add_plik_zip_wszystkie_xls	2000-01-01 00:00:00+00
-697	ewaluacja_optymalizacja	0010_add_is_optimal_to_optimizationrun	2000-01-01 00:00:00+00
-698	ewaluacja_optymalizacja	0011_move_files_to_protected	2000-01-01 00:00:00+00
-699	ewaluacja_optymalizacja	0012_add_discipline_swap_models	2000-01-01 00:00:00+00
-700	ewaluacja_optymalizacja	0013_add_status_przegladarka_recalc	2000-01-01 00:00:00+00
-701	ewaluacja_optymalizacja	0014_add_optimality_gap_to_optimization_run	2000-01-01 00:00:00+00
-702	ewaluacja_optymalizacja	0015_remove_disciplineswapopportunity_ewaluacja_o_uczelni_ed0a90_idx_and_more	2000-01-01 00:00:00+00
-703	ewaluacja_optymalizuj_publikacje	0001_initial	2000-01-01 00:00:00+00
-707	favicon	0004_faviconimg_favicon_size_rel_unique	2000-01-01 00:00:00+00
-710	flexible_reports	0002_auto_20170823_2225	2000-01-01 00:00:00+00
-711	flexible_reports	0003_table_attrs	2000-01-01 00:00:00+00
-712	flexible_reports	0004_auto_20170823_2342	2000-01-01 00:00:00+00
-714	flexible_reports	0006_default_ordering	2000-01-01 00:00:00+00
-715	flexible_reports	0007_sort_desc	2000-01-01 00:00:00+00
-1215	pbn_api	0081_uzupelnij_tlumacza_dyscyplin_fd608	2000-01-01 00:00:00+00
+1216	bpp	0525_autorzy_mat_bez_autora_z_kosza	2000-01-01 00:00:00+00
 \.
 
 
@@ -20001,7 +20041,7 @@ SELECT pg_catalog.setval('public.django_countdown_sitecountdown_id_seq', 1, fals
 -- Name: django_migrations_id_seq; Type: SEQUENCE SET; Schema: public; Owner: -
 --
 
-SELECT pg_catalog.setval('public.django_migrations_id_seq', 1215, true);
+SELECT pg_catalog.setval('public.django_migrations_id_seq', 1216, true);
 
 
 --
@@ -32861,6 +32901,13 @@ CREATE CONSTRAINT TRIGGER bpp_autor_jednostka_jedno_podstawowe_trig AFTER INSERT
 
 
 --
+-- Name: bpp_autor bpp_autor_kosz_autorzy_mat; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER bpp_autor_kosz_autorzy_mat AFTER UPDATE OF deleted_at ON public.bpp_autor FOR EACH ROW WHEN ((old.deleted_at IS DISTINCT FROM new.deleted_at)) EXECUTE FUNCTION public.bpp_autor_kosz_autorzy_mat();
+
+
+--
 -- Name: bpp_autor bpp_autor_kosz_straznik; Type: TRIGGER; Schema: public; Owner: -
 --
 
@@ -32872,6 +32919,13 @@ CREATE TRIGGER bpp_autor_kosz_straznik BEFORE DELETE OR UPDATE ON public.bpp_aut
 --
 
 CREATE TRIGGER bpp_autor_ustaw_jednostka_aktualna_trigger AFTER INSERT OR DELETE OR UPDATE ON public.bpp_autor_jednostka FOR EACH ROW EXECUTE FUNCTION public.bpp_autor_ustaw_jednostka_aktualna();
+
+
+--
+-- Name: bpp_autorzy_mat bpp_autorzy_mat_bez_autora_z_kosza; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER bpp_autorzy_mat_bez_autora_z_kosza BEFORE INSERT ON public.bpp_autorzy_mat FOR EACH ROW EXECUTE FUNCTION public.bpp_autorzy_mat_bez_autora_z_kosza();
 
 
 --

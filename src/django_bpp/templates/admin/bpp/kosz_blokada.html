@@ -1,6 +1,6 @@
 {# Strona „Nie można przenieść do kosza”: komunikat guardu + rekordy blokujące. #}
 {# kosz_blokada_grupy — GrupaBlokady per relacja (bpp.models.soft_delete). #}
-{# Pozycje z kosza są oznaczone i linkują do rekordu (podgląd / przywrócenie). #}
+{# Blokują wyłącznie żywe rekordy; powiązania z koszem — kosz_powiazania_w_koszu.html. #}
 <div class="grp-module kosz-blokada">
   <h2>🗑️ Nie można przenieść „{{ object }}” do kosza</h2>
   <div class="grp-row">
@@ -8,7 +8,7 @@
   </div>
   {% if kosz_blokada_grupy %}
     <div class="grp-row">
-      <p class="grp-description">Poniżej rekordy, które blokują przeniesienie do kosza — kliknij, żeby otworzyć rekord.{% if kosz_blokada_w_koszu %} <strong>🗑️ {{ kosz_blokada_w_koszu }} z nich {{ kosz_blokada_w_koszu|pluralize:"jest,są" }} w koszu</strong> — one także blokują: przywróć je i odepnij powiązanie albo zostaw rekord.{% endif %}</p>
+      <p class="grp-description">Poniżej rekordy, które blokują przeniesienie do kosza — kliknij, żeby otworzyć rekord. Rekordy, które same są w koszu, nie blokują.</p>
     </div>
   {% endif %}
 </div>

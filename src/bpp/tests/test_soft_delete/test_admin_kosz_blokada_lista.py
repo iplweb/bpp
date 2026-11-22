@@ -64,22 +64,23 @@ def test_strona_blokady_listuje_powiazania_z_linkami(superuser_client, autor_z_p
 
     assert "Nie można przenieść" in tresc
     assert "Tak, przenieś do kosza" not in tresc
-    assert "Autorstwa w wydawnictwach ciągłych: 20" in tresc
-    assert "w tym 🗑️ 3 w koszu" in tresc
+    # Blokują tylko żywe prace (17 z 20) — te z kosza nie.
+    assert "Autorstwa w wydawnictwach ciągłych: 17" in tresc
     assert "Doktoraty (promotor): 1" in tresc
     assert f'href="{_url(doktorat)}"' in tresc
 
-    # Autorstwa linkują do publikacji-rodzica, najwyżej LIMIT na grupę,
-    # najpierw te w koszu.
-    linkowane = [p for p in prace if f'href="{_url(p)}"' in tresc]
-    assert len(linkowane) == LIMIT_POZYCJI_BLOKADY
-    assert set(prace[:3]) <= set(linkowane)
-    assert f"…i jeszcze {20 - LIMIT_POZYCJI_BLOKADY}" in tresc
+    # Autorstwa linkują do publikacji-rodzica, najwyżej LIMIT na grupę.
+    zywe = [p for p in prace[3:] if f'href="{_url(p)}"' in tresc]
+    assert len(zywe) == LIMIT_POZYCJI_BLOKADY
+    assert f"…i jeszcze {17 - LIMIT_POZYCJI_BLOKADY}" in tresc
+    assert ZNACZNIK_KOSZA not in tresc
 
-    # Rekordy z kosza są oznaczone — konkretna liczba zamiast ogólnika.
-    assert tresc.count(ZNACZNIK_KOSZA) == 3
-    assert "3 z nich są w koszu" in tresc
-    assert "także tych w koszu" not in tresc
+    # Prace z kosza — osobna informacja (nie blokują, ale ich przywrócenie
+    # wymaga najpierw przywrócenia autora).
+    assert "Powiązane rekordy w koszu: 3" in tresc
+    assert "Autorstwa w wydawnictwach ciągłych (w koszu): 3" in tresc
+    for praca in prace[:3]:
+        assert f'href="{_url(praca)}"' in tresc
 
 
 @pytest.mark.django_db
@@ -104,9 +105,9 @@ def test_guard_rzuca_blokada_kosza_z_grupami(autor_z_pracami):
     with pytest.raises(BlokadaKosza) as exc:
         autor.sprawdz_czy_mozna_do_kosza()
     assert isinstance(exc.value, ProtectedError)
-    assert "w tym 3 w koszu" in str(exc.value)
+    assert "w koszu" not in str(exc.value)
     etykiety = {g.etykieta: g.liczba for g in exc.value.grupy}
-    assert etykiety["Autorstwa w wydawnictwach ciągłych"] == 20
+    assert etykiety["Autorstwa w wydawnictwach ciągłych"] == 17
     assert etykiety["Doktoraty (promotor)"] == 1
 
 

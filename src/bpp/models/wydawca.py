@@ -11,9 +11,9 @@ from bpp.util.text import slugify_wydawca
 
 
 class Wydawca(BppSoftDeleteSlownikMixin, ModelZNazwa, ModelZPBN_UID):
-    """Wydawca. Kosz: tylko wydawca, na którego nic nie wskazuje (publikacje
-    — także doktoraty i habilitacje — aliasy, zgłoszenia); poziomy wydawcy
-    zostają przy nim."""
+    """Wydawca. Kosz: tylko wydawca, na którego nie wskazuje żaden żywy rekord
+    (publikacje — także doktoraty i habilitacje — aliasy, zgłoszenia;
+    rekordy z kosza nie blokują); poziomy wydawcy zostają przy nim."""
 
     pomijane_relacje_kosza = frozenset(
         {

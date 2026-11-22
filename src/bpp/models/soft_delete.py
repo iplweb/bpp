@@ -4,10 +4,12 @@ Pełna mapa „co jest kasowane miękko, a co nie i dlaczego" (z PBN, stage 2
 i oknem serwisowym): ``docs/deweloper/soft-delete.md``. Skrót:
 
 - TAK (``deleted_at``): pięć modeli publikacji
-  (``BppPublikacjaSoftDeleteMixin``), ``Autor`` (tylko autor bez prac),
+  (``BppPublikacjaSoftDeleteMixin``), ``Autor`` (tylko autor bez żywych
+  prac),
   ``Uczelnia`` i słowniki ``Zrodlo``,
   ``Wydawca``, ``Konferencja``, ``Seria_Wydawnicza``
-  (``BppSoftDeleteSlownikMixin`` — tylko rekord nieużywany), zgłoszenia
+  (``BppSoftDeleteSlownikMixin`` — tylko rekord nieużywany przez żywe
+  rekordy), zgłoszenia
   publikacji (ten sam mixin, guard nic nie blokuje); niezależnie od dawna
   ``Element_Repozytorium``.
 - NIE: tabele łączące ``*_Autor`` i dzieci publikacji
@@ -27,6 +29,9 @@ INWARIANTY:
   (``dopisz_znacznik_zmiany``) — konsumenci przyrostowi (OAI-PMH, CERIF,
   API) muszą zobaczyć zmianę: ``Model.deleted_objects.filter(
   ostatnio_zmieniony__gte=X)`` to gotowa lista nagrobków.
+- żywy rekord nie wskazuje na rekord z kosza: guard kosza blokuje rekord
+  wskazywany przez ŻYWE rekordy, a ``restore()`` odmawia
+  (``WskazaniaWKoszu``), gdy rekord albo jego dzieci wskazują na kosz.
 - nigdy ``queryset.update(deleted_at=...)`` (gate w
   ``BppSoftDeleteQuerySet.update``) — ominęłoby sygnały, ``SoftDeleteLog``
   i PBN.
@@ -269,12 +274,20 @@ class BlokadaKosza(ProtectedError):
         self.grupy = list(grupy)
 
 
+#: Atrybut klasy modelu BEZ własnego kosza, który żyje i umiera z rodzicem
+#: Z KOSZEM (np. ``Redakcja_Zrodla`` → ``"zrodlo"``): nazwa pola FK do
+#: rodzica. Dzieci publikacji (``BppZywyRodzicManager``) mają ją w menedżerze.
+ATRYBUT_POLA_RODZICA_KOSZA = "POLE_RODZICA_KOSZA"
+
+
 def _pole_rodzica(model):
-    """Pole FK do publikacji-rodzica dla dziecka publikacji, inaczej ``None``."""
+    """Pole FK do rodzica z koszem dla wiersza, który „jest w koszu razem
+    z rodzicem" (dziecko publikacji, redakcja źródła, autor zgłoszenia…),
+    inaczej ``None``."""
     manager = model._default_manager
     if isinstance(manager, BppZywyRodzicManager):
         return manager.pole_rodzica
-    return None
+    return getattr(model, ATRYBUT_POLA_RODZICA_KOSZA, None)
 
 
 def _ma_kosz(model):
@@ -293,11 +306,51 @@ def etykieta_relacji_kosza(model, pole):
     return f"{capfirst(model._meta.verbose_name_plural)} ({nazwa_pola})"
 
 
+#: Zakres ``grupa_blokady``: tylko powiązania od rekordów żywych / tylko od
+#: rekordów z kosza (``None`` — wszystkie).
+ZAKRES_ZYWE = "zywe"
+ZAKRES_KOSZ = "kosz"
+
+
+def _lookup_kosza(model, rodzic):
+    """Lookup ``…deleted_at__isnull`` mówiący, czy wiersz ``model`` jest
+    żywy (sam albo przez rodzica), albo ``None`` — wiersz zawsze żywy."""
+    if rodzic is not None:
+        return f"{rodzic}__deleted_at__isnull"
+    if _ma_kosz(model):
+        return "deleted_at__isnull"
+    return None
+
+
+def _zawez_do_zakresu(qs, lookup_kosza, zakres):
+    """``qs`` zawężony do ``zakres``; ``None``, gdy zakres jest z góry pusty
+    (szukamy wierszy w koszu modelu, który kosza nie ma)."""
+    if zakres is None:
+        return qs
+    if lookup_kosza is None:
+        return None if zakres == ZAKRES_KOSZ else qs
+    return qs.filter(**{lookup_kosza: zakres == ZAKRES_ZYWE})
+
+
 def grupa_blokady(
-    instance, model, pole, limit=None, qs=None, rodzic=None, etykieta=None
+    instance,
+    model,
+    pole,
+    limit=None,
+    qs=None,
+    rodzic=None,
+    etykieta=None,
+    zakres=None,
 ):
     """Powiązania ``instance`` w relacji ``(model, pole)`` jako
     ``GrupaBlokady`` albo ``None`` (brak powiązań).
+
+    ``zakres``: ``ZAKRES_ZYWE`` — tylko wiersze żywe (guard kosza: blokują
+    wyłącznie one), ``ZAKRES_KOSZ`` — tylko wiersze w koszu (informacja na
+    stronie potwierdzenia), ``None`` — wszystkie. Wiersz jest „w koszu",
+    gdy sam ma ``deleted_at`` albo jest w koszu jego rodzic
+    (``_pole_rodzica``); wiersz modelu bez kosza i bez rodzica z koszem jest
+    zawsze żywy.
 
     JEDNO zapytanie na relację: próbka ``limit`` wierszy (najpierw te
     w koszu) z liczbą wszystkich i liczbą tych w koszu policzonymi funkcją
@@ -317,12 +370,12 @@ def grupa_blokady(
         qs = model._base_manager.filter(**{pole: instance})
     if rodzic is None:
         rodzic = _pole_rodzica(model)
-    lookup_kosza = None
     if rodzic is not None:
-        lookup_kosza = f"{rodzic}__deleted_at__isnull"
         qs = qs.select_related(rodzic)
-    elif _ma_kosz(model):
-        lookup_kosza = "deleted_at__isnull"
+    lookup_kosza = _lookup_kosza(model, rodzic)
+    qs = _zawez_do_zakresu(qs, lookup_kosza, zakres)
+    if qs is None:
+        return None
 
     adnotacje = {"_bpp_razem": Window(Count("pk"))}
     kolejnosc = ["pk"]
@@ -352,12 +405,12 @@ def grupa_blokady(
 
 
 def raise_if_has_protected_children(instance, relations, label):
-    """Blokuje soft-delete ``instance``, jeśli ma „chronione" dzieci.
+    """Blokuje soft-delete ``instance``, jeśli wskazują na niego ŻYWE rekordy.
 
     ``relations`` to lista krotek ``(Model, "pole_fk")``. Rzuca
     ``BlokadaKosza`` (``ProtectedError``) z komunikatem PL i listą powiązań
     pogrupowaną per relacja, gdy w którejkolwiek z relacji jest co
-    najmniej jedno dziecko.
+    najmniej jeden żywy wiersz.
 
     DLACZEGO GUARD W OGÓLE MUSI ISTNIEĆ, SKORO FK SĄ ``PROTECT``: ``on_delete``
     obsługuje wyłącznie kolektor Django dla kasowania TWARDEGO. Miękkie
@@ -365,30 +418,50 @@ def raise_if_has_protected_children(instance, relations, label):
     kolektor i o ``PROTECT`` się nawet nie dowiaduje. Warstwa pierwsza (FK)
     broni przed ``hard_delete()``, ta broni przed ``delete()``.
 
-    DLACZEGO ``_base_manager``, A NIE ``objects``: domyślny menedżer
-    ``*_Autor`` ukrywa autorstwa publikacji z kosza. Autor, którego wszystkie
-    prace są w koszu, wyglądałby przez ``objects`` na pustego — a przywrócenie
-    takiej pracy dałoby publikację wskazującą na autora z kosza.
+    POWIĄZANIA OD REKORDÓW Z KOSZA NIE BLOKUJĄ (decyzja właściciela): autora,
+    którego jedyna praca jest w koszu, da się wyrzucić do kosza. Spójność
+    pilnuje druga strona — ``restore()`` rekordu wskazującego na coś
+    z kosza odmawia (``sprawdz_wskazania_przed_przywroceniem``), więc żywy
+    rekord nigdy nie wskazuje na rekord z kosza. Liczymy przez
+    ``_base_manager`` z jawnym filtrem na kosz (wiersza albo jego rodzica),
+    bo domyślny menedżer ``*_Autor`` ukrywa autorstwa publikacji z kosza.
     """
     grupy = [
         g
-        for g in (grupa_blokady(instance, model, pole) for model, pole in relations)
+        for g in (
+            grupa_blokady(instance, model, pole, zakres=ZAKRES_ZYWE)
+            for model, pole in relations
+        )
         if g is not None
     ]
     if not grupy:
         return
     ile = sum(g.liczba for g in grupy)
-    ile_w_koszu = sum(g.w_koszu for g in grupy)
     opisy = "; ".join(f"{g.etykieta}: {g.liczba}" for g in grupy)
-    w_tym = f", w tym {ile_w_koszu} w koszu" if ile_w_koszu else ""
     probka = [p.wiersz for g in grupy for p in g.pozycje][:LIMIT_PROBKI_CHRONIONYCH]
     raise BlokadaKosza(
         f"Nie można usunąć {label} „{instance}” — rekord ma {ile} "
-        f"powiązanych rekordów{w_tym} ({opisy}). Najpierw przenieś lub usuń "
+        f"powiązanych rekordów ({opisy}). Najpierw przenieś lub usuń "
         f"te powiązania.",
         probka,
         grupy,
     )
+
+
+def powiazania_w_koszu(instance, relations):
+    """Powiązania ``instance`` od rekordów Z KOSZA (``[GrupaBlokady]``).
+
+    Nie blokują kosza, ale ich przywrócenie będzie wymagało najpierw
+    przywrócenia ``instance`` — strona potwierdzenia kosza o tym uprzedza.
+    """
+    return [
+        g
+        for g in (
+            grupa_blokady(instance, model, pole, zakres=ZAKRES_KOSZ)
+            for model, pole in relations
+        )
+        if g is not None
+    ]
 
 
 def hard_delete_per_instancja(queryset):
@@ -712,6 +785,177 @@ def zapisz_przywrocenie(instance, update_fields):
         raise KonfliktPrzywracania(komunikat) from e
 
 
+#: Ile rekordów z kosza wymieniamy w komunikacie odmowy przywrócenia.
+LIMIT_WSKAZAN_W_KOMUNIKACIE = 10
+
+
+def _opis_rekordu(obj):
+    return f"{obj._meta.verbose_name} „{obj}”"
+
+
+class WskazaniaWKoszu(KonfliktPrzywracania):
+    """Rekordu nie da się przywrócić, bo on (albo jego dzieci — autorstwa,
+    autorzy zgłoszenia, redakcja…) wskazuje na rekordy w koszu. Bez
+    kaskadowego przywracania: użytkownik najpierw przywraca je sam.
+
+    ``obiekty`` — rekordy z kosza do przywrócenia najpierw (do linków)."""
+
+    def __init__(self, instance, obiekty):
+        self.instance = instance
+        self.obiekty = list(obiekty)
+        super().__init__(
+            f"Nie można przywrócić „{instance}” — wskazuje na rekordy, które "
+            f"są w koszu. Najpierw przywróć z kosza: {self._lista_tekstowa()}."
+        )
+
+    def _pokazane_i_reszta(self):
+        pokazane = self.obiekty[:LIMIT_WSKAZAN_W_KOMUNIKACIE]
+        return pokazane, len(self.obiekty) - len(pokazane)
+
+    def _lista_tekstowa(self):
+        pokazane, reszta = self._pokazane_i_reszta()
+        tekst = ", ".join(_opis_rekordu(o) for o in pokazane)
+        if reszta:
+            tekst += f" …i jeszcze {reszta}"
+        return tekst
+
+    def komunikat_html(self):
+        """Ten sam komunikat z linkami do rekordów w adminie."""
+        from django.utils.html import format_html, format_html_join
+
+        pokazane, reszta = self._pokazane_i_reszta()
+        pozycje = []
+        for obj in pokazane:
+            url = url_w_adminie(obj)
+            if url:
+                pozycje.append(
+                    format_html(
+                        '{} <a href="{}">„{}”</a>', obj._meta.verbose_name, url, obj
+                    )
+                )
+            else:
+                pozycje.append(format_html("{}", _opis_rekordu(obj)))
+        return format_html(
+            "Nie można przywrócić „{}” — wskazuje na rekordy, które są "
+            "w koszu. Najpierw przywróć z kosza: {}{}.",
+            self.instance,
+            format_html_join(", ", "{}", ((p,) for p in pozycje)),
+            f" …i jeszcze {reszta}" if reszta else "",
+        )
+
+
+def _pola_fk_do_kosza(model, pomin=()):
+    """Pola FK/O2O ``model`` wskazujące na modele z koszem (bez ``pomin``)."""
+    return [
+        f
+        for f in model._meta.concrete_fields
+        if f.is_relation
+        and (f.many_to_one or f.one_to_one)
+        and f.name not in pomin
+        and _ma_kosz(f.related_model)
+    ]
+
+
+def _pola_generyczne(model):
+    """``GenericForeignKey`` modelu jako ``[(attname_ct, attname_id)]``."""
+    from django.contrib.contenttypes.fields import GenericForeignKey
+
+    wynik = []
+    for f in model._meta.private_fields:
+        if isinstance(f, GenericForeignKey):
+            ct = model._meta.get_field(f.ct_field).attname
+            wynik.append((ct, f.fk_field))
+    return wynik
+
+
+def _zbierz_wskazania(model, qs, pomin, wynik):
+    """Dopisuje do ``wynik`` (``{model: {pk}}``) rekordy z koszem wskazywane
+    przez wiersze ``qs`` (FK i GenericFK; bez pól ``pomin``)."""
+    from django.contrib.contenttypes.models import ContentType
+
+    pola = _pola_fk_do_kosza(model, pomin)
+    generyczne = _pola_generyczne(model)
+    if not pola and not generyczne:
+        return
+    kolumny = [f.attname for f in pola] + [k for para in generyczne for k in para]
+    for wiersz in qs.order_by().values_list(*kolumny).distinct():
+        for pole, wartosc in zip(pola, wiersz[: len(pola)], strict=True):
+            if wartosc is not None:
+                wynik[pole.related_model].add(wartosc)
+        reszta = wiersz[len(pola) :]
+        for ct_id, obj_id in zip(reszta[::2], reszta[1::2], strict=True):
+            if ct_id is None or obj_id is None:
+                continue
+            cel = ContentType.objects.get_for_id(ct_id).model_class()
+            if cel is not None and _ma_kosz(cel):
+                wynik[cel].add(obj_id)
+
+
+def wskazania_wychodzace(instance):
+    """``{model: {pk}}`` — rekordy modeli z koszem, na które wskazuje
+    ``instance`` albo jego dzieci bez własnego kosza (wiersze, których
+    ``_pole_rodzica`` wskazuje na ``instance``: autorstwa ``*_Autor``,
+    autorzy zgłoszenia, redakcja źródła, powiązania habilitacji).
+
+    Wartości czytane z bazy, nie z (może nieaktualnej) instancji."""
+    model = type(instance)
+    wynik = defaultdict(set)
+    _zbierz_wskazania(model, model._base_manager.filter(pk=instance.pk), (), wynik)
+    for rel in model._meta.related_objects:
+        dziecko = rel.related_model
+        if rel.many_to_many or _ma_kosz(dziecko):
+            continue
+        if _pole_rodzica(dziecko) != rel.field.name:
+            continue
+        _zbierz_wskazania(
+            dziecko,
+            dziecko._base_manager.filter(**{rel.field.name: instance.pk}),
+            (rel.field.name,),
+            wynik,
+        )
+    # Wskazanie na samego siebie nie jest powiązaniem „z koszem".
+    if model in wynik:
+        wynik[model].discard(instance.pk)
+    return wynik
+
+
+def sprawdz_wskazania_przed_przywroceniem(instance):
+    """Odmowa przywrócenia (``WskazaniaWKoszu``), gdy ``instance`` albo jego
+    dzieci wskazują na rekordy w koszu — przywrócenie dałoby żywy rekord
+    wskazujący na rekord z kosza.
+
+    Wołać w transakcji przywrócenia. Wskazywane wiersze (żywe i z kosza) są
+    blokowane ``FOR SHARE`` do końca transakcji: równoległy kosz któregoś
+    z nich (``sprawdz_stan_kosza`` bierze ``FOR UPDATE``) poczeka, a jego
+    guard zobaczy już przywrócony, żywy rekord. Odwrotnie — gdy kosz był
+    pierwszy, ``FOR SHARE`` czeka na jego commit i czyta już ustawione
+    ``deleted_at`` (READ COMMITTED: wiersz po blokadzie jest odczytany
+    na nowo). Kolejność blokad stała (model, pk) — bez zakleszczeń między
+    równoległymi przywróceniami.
+    """
+    w_koszu = []
+    wskazania = wskazania_wychodzace(instance)
+    for model in sorted(wskazania, key=lambda m: m._meta.label):
+        pki = sorted(wskazania[model])
+        if not pki:
+            continue
+        tabela = connection.ops.quote_name(model._meta.db_table)
+        kolumna_pk = connection.ops.quote_name(model._meta.pk.column)
+        with connection.cursor() as cur:
+            cur.execute(
+                f"SELECT {kolumna_pk}, deleted_at IS NOT NULL FROM {tabela} "
+                f"WHERE {kolumna_pk} = ANY(%s) ORDER BY {kolumna_pk} FOR SHARE",
+                [pki],
+            )
+            pki_w_koszu = [pk for pk, jest_w_koszu in cur.fetchall() if jest_w_koszu]
+        if pki_w_koszu:
+            w_koszu.extend(
+                model._base_manager.filter(pk__in=pki_w_koszu).order_by("pk")
+            )
+    if w_koszu:
+        raise WskazaniaWKoszu(instance, w_koszu)
+
+
 def komunikat_wartosc_w_koszu(obj):
     """Komunikat walidacji: wartość należy do rekordu z kosza."""
     from django.utils.html import format_html
@@ -946,10 +1190,8 @@ class BppPublikacjaSoftDeleteMixin(
         }
     )
 
-    def _sprawdz_odwolania_generyczne(self):
-        """GenericFK nie są relacjami ``_meta`` (``relacje_przychodzace`` ich
-        nie widzi) — publikacja wskazana w habilitacji
-        (``Publikacja_Habilitacyjna.publikacja``) blokuje kosz jawnie."""
+    def _grupa_odwolan_generycznych(self, zakres):
+        """Powiązania publikacji z habilitacjami (GenericFK) w ``zakres``."""
         from django.contrib.contenttypes.models import ContentType
 
         from bpp.models.praca_habilitacyjna import Publikacja_Habilitacyjna
@@ -958,14 +1200,21 @@ class BppPublikacjaSoftDeleteMixin(
             content_type=ContentType.objects.get_for_model(self),
             object_id=self.pk,
         )
-        grupa = grupa_blokady(
+        return grupa_blokady(
             self,
             Publikacja_Habilitacyjna,
             None,
             qs=qs,
             rodzic="praca_habilitacyjna",
             etykieta="Habilitacje wskazujące tę publikację",
+            zakres=zakres,
         )
+
+    def _sprawdz_odwolania_generyczne(self):
+        """GenericFK nie są relacjami ``_meta`` (``relacje_przychodzace`` ich
+        nie widzi) — publikacja wskazana w ŻYWEJ habilitacji
+        (``Publikacja_Habilitacyjna.publikacja``) blokuje kosz jawnie."""
+        grupa = self._grupa_odwolan_generycznych(ZAKRES_ZYWE)
         if grupa is not None:
             raise BlokadaKosza(
                 f"Nie można przenieść do kosza „{self}” — publikacja jest "
@@ -979,16 +1228,15 @@ class BppPublikacjaSoftDeleteMixin(
         """Guard kosza (BEZ efektów ubocznych) — rzuca ``ProtectedError``,
         gdy publikacji nie wolno wyrzucić:
 
-        - wskazuje na nią żywy (albo z kosza) rekord, np. rozdział książki,
-          zgłoszenie z tą książką jako nadrzędną;
+        - wskazuje na nią ŻYWY rekord, np. rozdział książki, zgłoszenie z tą
+          książką jako nadrzędną (rekordy z kosza nie blokują — ich
+          przywrócenie odmówi, dopóki ta publikacja jest w koszu);
         - ma autorów z KILKU uczelni — kosz jest per instalacja, więc jedna
           uczelnia wyrzuciłaby rekord także drugiej (i wycofała go z jej
           PBN). Uczelnia powinna usunąć z rekordu SWOICH autorów i zapisać.
         """
         raise_if_has_protected_children(
-            self,
-            relacje_przychodzace(type(self), self.POMIJANE_RELACJE_KOSZA),
-            label="publikacji",
+            self, self.relacje_chronione_kosza(), label="publikacji"
         )
         self._sprawdz_odwolania_generyczne()
         rel = self._relacja_autorstw()
@@ -1009,6 +1257,19 @@ class BppPublikacjaSoftDeleteMixin(
                 [],
                 self._grupy_autorow_per_uczelnia(autorstwa),
             )
+
+    def relacje_chronione_kosza(self):
+        """``[(Model, "pole_fk"), …]`` — powiązania blokujące kosz."""
+        return relacje_przychodzace(type(self), self.POMIJANE_RELACJE_KOSZA)
+
+    def powiazania_w_koszu(self):
+        """Powiązania od rekordów z kosza (``[GrupaBlokady]``) — nie blokują,
+        ale ich przywrócenie wymaga najpierw przywrócenia tej publikacji."""
+        grupy = powiazania_w_koszu(self, self.relacje_chronione_kosza())
+        grupa = self._grupa_odwolan_generycznych(ZAKRES_KOSZ)
+        if grupa is not None:
+            grupy.append(grupa)
+        return grupy
 
     def _grupy_autorow_per_uczelnia(self, autorstwa):
         """Autorzy rekordu pogrupowani per uczelnia (do strony blokady)."""
@@ -1074,6 +1335,7 @@ class BppPublikacjaSoftDeleteMixin(
 
         with soft_delete_context(user=user), transaction.atomic():
             sprawdz_stan_kosza(self, ma_byc_w_koszu=True)
+            sprawdz_wskazania_przed_przywroceniem(self)
             txid = self.transaction_id
             # Ta sama reguła co przy koszu (np. wycofanie jeszcze trwa), pod
             # blokadą kolejki, w tej samej transakcji co zlecenie wysyłki.
@@ -1097,10 +1359,11 @@ class BppSoftDeleteSlownikMixin(
     ``Jednostka`` NIE ma kosza
     (nie kasuje się jej wcale — ``JednostkaNieDoUsuniecia``).
 
-    Do kosza trafia wyłącznie rekord NIEUŻYWANY: guard bierze WSZYSTKIE
-    przychodzące relacje (``relacje_przychodzace``) poza jawnie pominiętymi
-    w ``pomijane_relacje_kosza`` i liczy powiązania przez ``_base_manager``
-    (także w koszu). Kaskady pakietu NIE wołamy (kasowałaby twardo dzieci
+    Do kosza trafia wyłącznie rekord NIEUŻYWANY przez żywe rekordy: guard
+    bierze WSZYSTKIE przychodzące relacje (``relacje_przychodzace``) poza
+    jawnie pominiętymi w ``pomijane_relacje_kosza`` i liczy powiązania od
+    rekordów ŻYWYCH (te z kosza nie blokują; ich przywrócenie odmówi,
+    dopóki ten rekord jest w koszu). Kaskady pakietu NIE wołamy (kasowałaby twardo dzieci
     spoza kosza). Wartości unikalne zostają przy rekordzie — patrz
     komentarz sekcji wyżej.
 
@@ -1122,8 +1385,13 @@ class BppSoftDeleteSlownikMixin(
         """``[(Model, "pole_fk"), …]`` — powiązania blokujące kosz."""
         return relacje_przychodzace(type(self), self.pomijane_relacje_kosza)
 
+    def powiazania_w_koszu(self):
+        """Powiązania od rekordów z kosza (``[GrupaBlokady]``)."""
+        return powiazania_w_koszu(self, self.relacje_chronione_kosza())
+
     def sprawdz_czy_mozna_do_kosza(self, *args, **kwargs):
-        """Guard: rzuca ``ProtectedError``, gdy rekord jest używany."""
+        """Guard: rzuca ``ProtectedError``, gdy rekord jest używany przez
+        żywe rekordy."""
         raise_if_has_protected_children(
             self,
             self.relacje_chronione_kosza(),
@@ -1154,6 +1422,7 @@ class BppSoftDeleteSlownikMixin(
     def restore(self, *args, strict: bool = False, user=None, **kwargs):
         with soft_delete_context(user=user), transaction.atomic():
             sprawdz_stan_kosza(self, ma_byc_w_koszu=True)
+            sprawdz_wskazania_przed_przywroceniem(self)
             txid = self.transaction_id
             self.deleted_at = None
             self.restored_at = timezone.now()

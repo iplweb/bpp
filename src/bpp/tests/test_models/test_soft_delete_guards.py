@@ -5,8 +5,9 @@ Dwie warstwy ochrony przed osieroceniem rekordów:
 1. FK ``CASCADE`` → ``PROTECT`` na powiązaniach autora i na self-FK rozdziałów
    — obrona przed HARD delete (``hard_delete()``, kaskady ORM).
 2. Guard aplikacyjny w miękkim ``delete()`` modeli ``Autor`` i
-   ``Wydawnictwo_Zwarte`` — obrona przed SOFT delete, licząca dzieci przez
-   ``global_objects``, więc widząca także rekordy w koszu.
+   ``Wydawnictwo_Zwarte`` — obrona przed SOFT delete, licząca ŻYWE dzieci
+   (powiązania od rekordów z kosza nie blokują; ich ``restore()`` odmawia,
+   dopóki rodzic jest w koszu — ``test_soft_delete/test_powiazania_w_koszu``).
 
 Druga warstwa jest konieczna, bo ``on_delete`` żyje wyłącznie w kolektorze
 Django dla twardego kasowania — miękkie ``delete()`` w ogóle go nie pyta.
@@ -53,14 +54,11 @@ def test_raise_if_has_protected_children_blokuje_gdy_sa_dzieci():
 
 
 @pytest.mark.django_db
-def test_raise_if_has_protected_children_widzi_dzieci_w_koszu():
-    """Sedno guarda: dziecko w koszu NADAL chroni rodzica (spec §3.2).
-
-    Gdyby helper liczył przez ``objects``, autor „cały w koszu" (jego prace
-    i autorstwa skasowane kaskadą fazy 02) wyglądałby na pustego i dałby się
-    skasować — a wtedy przywrócenie którejkolwiek z tych prac dałoby
-    publikację z autorem, którego nie ma.
-    """
+def test_raise_if_has_protected_children_pomija_dzieci_w_koszu():
+    """Dziecko w koszu NIE chroni rodzica (decyzja właściciela, listopad
+    2026): autor, którego jedyna praca jest w koszu, trafia do kosza.
+    Spójność trzyma ``restore()`` publikacji — odmawia, dopóki autor jest
+    w koszu."""
     autor = baker.make(Autor)
     autorstwo = baker.make(Wydawnictwo_Ciagle_Autor, autor=autor)
     autorstwo.rekord.delete()
@@ -68,12 +66,11 @@ def test_raise_if_has_protected_children_widzi_dzieci_w_koszu():
     assert not Wydawnictwo_Ciagle_Autor.objects.filter(autor=autor).exists()
     assert Wydawnictwo_Ciagle_Autor.all_objects.filter(autor=autor).exists()
 
-    with pytest.raises(ProtectedError):
-        raise_if_has_protected_children(
-            autor,
-            [(Wydawnictwo_Ciagle_Autor, "autor")],
-            label="autora",
-        )
+    raise_if_has_protected_children(
+        autor,
+        [(Wydawnictwo_Ciagle_Autor, "autor")],
+        label="autora",
+    )
 
 
 @pytest.mark.django_db
@@ -396,29 +393,22 @@ def test_autor_w_projekcie_protect(autor_jan_nowak):
 
 
 @pytest.mark.django_db
-def test_autor_z_praca_tylko_w_koszu_nadal_protect(
+def test_autor_z_praca_tylko_w_koszu_trafia_do_kosza(
     wydawnictwo_ciagle, autor_jan_kowalski, jednostka, typy_odpowiedzialnosci
 ):
-    """Najważniejszy przypadek: autor „cały w koszu" NIE jest pusty.
-
-    Publikacja skasowana miękko zabiera kaskadą fazy 02 swoje autorstwa.
-    Przez ``objects`` autor wygląda wtedy na wolnego od zobowiązań — i to
-    jest pułapka: przywrócenie tej publikacji dałoby rekord wskazujący na
-    autora, którego nie ma. Guard liczy przez ``global_objects``
-    (spec §3.2).
-    """
+    """Autor, którego jedyna praca jest w koszu, trafia do kosza; autorstwo
+    zostaje przy nim (przywrócenie pracy odmówi, dopóki autor jest
+    w koszu)."""
     wydawnictwo_ciagle.dodaj_autora(autor_jan_kowalski, jednostka)
     wydawnictwo_ciagle.delete()
 
-    assert not Wydawnictwo_Ciagle_Autor.objects.filter(
-        autor=autor_jan_kowalski
-    ).exists()
+    autor_jan_kowalski.delete()
+
+    autor_jan_kowalski.refresh_from_db()
+    assert autor_jan_kowalski.deleted_at is not None
     assert Wydawnictwo_Ciagle_Autor.all_objects.filter(
         autor=autor_jan_kowalski
     ).exists()
-
-    with pytest.raises(ProtectedError):
-        autor_jan_kowalski.delete()
 
 
 @pytest.mark.django_db
@@ -463,21 +453,18 @@ def test_ksiazka_bez_rozdzialow_soft_delete_ok(wydawnictwo_zwarte):
 
 
 @pytest.mark.django_db
-def test_ksiazka_matka_z_rozdzialem_w_koszu_nadal_protect(wydawnictwo_zwarte):
-    """Rozdział w koszu też blokuje (spec §2.6).
-
-    Inaczej skasowanie książki-matki „przez kosz" (najpierw rozdział, potem
-    książka) dałoby się przeprowadzić w dwóch krokach, a przywrócenie
-    rozdziału zostawiłoby go bez książki.
-    """
+def test_ksiazka_matka_z_rozdzialem_w_koszu_trafia_do_kosza(wydawnictwo_zwarte):
+    """Rozdział w koszu NIE blokuje książki; przywrócenie rozdziału odmówi,
+    dopóki książka jest w koszu (``WskazaniaWKoszu``)."""
     rozdzial = baker.make(Wydawnictwo_Zwarte, wydawnictwo_nadrzedne=wydawnictwo_zwarte)
     rozdzial.delete()
 
-    assert not Wydawnictwo_Zwarte.objects.filter(pk=rozdzial.pk).exists()
-    assert Wydawnictwo_Zwarte.global_objects.filter(pk=rozdzial.pk).exists()
+    wydawnictwo_zwarte.delete()
+    wydawnictwo_zwarte.refresh_from_db()
+    assert wydawnictwo_zwarte.deleted_at is not None
 
-    with pytest.raises(ProtectedError):
-        wydawnictwo_zwarte.delete()
+    with pytest.raises(soft_delete.WskazaniaWKoszu):
+        rozdzial.restore()
 
 
 @pytest.mark.django_db
@@ -565,32 +552,25 @@ def test_husk_po_transferze_prac_soft_delete_ok(
 
 
 @pytest.mark.django_db
-def test_husk_z_autorstwem_zostawionym_w_koszu_JEST_blokowany(
+def test_husk_z_autorstwem_zostawionym_w_koszu_trafia_do_kosza(
     wydawnictwo_ciagle,
     autor_jan_kowalski,
     autor_jan_nowak,
     jednostka,
     typy_odpowiedzialnosci,
 ):
-    """Przypadek, którego plan fazy 04 nie przewidywał (§4c/R1 handoffu).
-
-    Symulacja z testu wyżej pokrywa wyłącznie CZYSTY transfer. Scalanie ma
-    jednak gałąź „kolizja": gdy główny autor ma już to samo autorstwo,
-    wiersza duplikatu nie da się przenieść. Gdyby zostawić go przy
-    duplikacie, guard zobaczyłby go przez ``global_objects`` i całe
-    scalanie padłoby na ``ProtectedError``.
-
-    Ten test pilnuje, że guard rzeczywiście tak zareaguje — czyli że
-    poprawka w ``_transfer_authorship_record`` (przepięcie wiersza na
-    głównego autora) jest KONIECZNA, a nie kosmetyczna. Gdyby guard
-    przepuszczał autorstwa w koszu, poprawka wyglądałaby na zbędną i ktoś
-    by ją usunął, a wtedy w koszu zostałaby sierota wskazująca na autora,
-    którego nie ma.
-    """
+    """Autorstwo publikacji z kosza zostawione przy duplikacie nie blokuje
+    jego kosza — ale przywrócenie tej publikacji odmówi, dopóki duplikat
+    jest w koszu. Scalanie autorów i tak przepina takie wiersze na głównego
+    autora (``_transfer_authorship_record``), żeby w koszu nie zostawała
+    praca wskazująca na duplikat."""
     wydawnictwo_ciagle.dodaj_autora(autor_jan_nowak, jednostka)
     wydawnictwo_ciagle.delete()  # autorstwo NADAL przy duplikacie
 
     assert not Wydawnictwo_Ciagle_Autor.objects.filter(autor=autor_jan_nowak).exists()
 
-    with pytest.raises(ProtectedError):
-        autor_jan_nowak.delete()
+    autor_jan_nowak.delete()
+
+    wydawnictwo_ciagle.refresh_from_db()
+    with pytest.raises(soft_delete.WskazaniaWKoszu):
+        wydawnictwo_ciagle.restore()
