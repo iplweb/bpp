@@ -872,3 +872,18 @@ def test_podglad_jako_gosc_bez_obslugi_nic_nie_zmienia(client, uczelnia):
     res = client.get("/?podglad_motywu=1&podglad_jako=gosc")
     assert res.status_code == 200
     assert 'id="bpp-motyw-podglad"' not in res.content.decode()
+
+
+@pytest.mark.django_db
+def test_link_do_konfiguratora_w_menu_redagowanie(staff_client, uczelnia):
+    adres = reverse("bpp:konfigurator_wygladu")
+    assert adres in staff_client.get("/").content.decode()
+    assert adres not in Client().get("/").content.decode()
+
+
+def test_link_do_konfiguratora_w_menu_www_admina():
+    from django_bpp.menu import WEB_MENU
+
+    assert ("Konfigurator wyglądu", reverse("bpp:konfigurator_wygladu")) in [
+        (str(nazwa), adres) for nazwa, adres in WEB_MENU
+    ]

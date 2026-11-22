@@ -121,6 +121,8 @@ WEB_MENU = [
     ("Favicon", "/admin/favicon/"),
     ("Szablony", "/admin/dbtemplates/template/"),
     ("Powiązania szablonów dla opisu", "/admin/bpp/szablondlaopisubibliograficznego/"),
+    # Wygląd strony WWW (kolory, czcionki, menu) — konfigurator dla obsługi.
+    ("Konfigurator wyglądu", "/bpp/konfigurator-wygladu/"),
 ]
 
 STRUKTURA_MENU = [
