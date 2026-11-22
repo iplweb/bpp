@@ -78,20 +78,43 @@ def test_auto_ciemny_wg_systemu_albo_przelacznika():
     )
 
 
-def test_ciemny_zawsze_ciemny_ale_nie_na_wydruku():
-    css = _skompilowany("app-blue-ciemny")
+MOTYWY_PODSTAWOWE = ["app-blue", "app-green", "app-orange", "app-vizja", "app-mwsl"]
+MOTYWY_PODSTAWOWE += ["app-uafm"]
+
+
+@pytest.mark.parametrize("motyw", [f"{m}-ciemny" for m in MOTYWY_PODSTAWOWE])
+def test_ciemny_domyslnie_ciemny_ale_nie_na_wydruku(motyw):
+    """*-ciemny: ciemny bez warunku na system; „Jasny” z pigułki go wyłącza."""
+    css = _skompilowany(motyw)
     assert "--tc-tlo" in css
     # (Foundation ma własne `prefers-color-scheme` w klasach widoczności —
     # sprawdzamy tylko, że NASZ blok nie jest od niego zależny.)
-    assert not re.search(r"prefers-color-scheme:\s*dark\)\s*\{\s*html\s*\{", css)
+    assert not re.search(
+        r"prefers-color-scheme:\s*dark\)\s*\{\s*html(:where|\s*\{)", css
+    )
     # Ciemne reguły siedzą w @media screen — wydruk zostaje jasny.
-    assert re.search(r"@media screen\s*\{\s*html\s*\{\s*color-scheme:\s*dark", css)
+    assert re.search(
+        r'@media screen\s*\{\s*html:where\(:not\(\[data-tryb-kolorow="?jasny"?\]\)\)'
+        r"\s*\{\s*color-scheme:\s*dark",
+        css,
+    )
 
 
-def test_jasny_app_blue_bez_trybu_ciemnego():
-    css = _skompilowany("app-blue")
-    assert "--tc-tlo" not in css
-    assert not re.search(r"html\s*\{\s*color-scheme:\s*dark", css)
+@pytest.mark.parametrize("motyw", MOTYWY_PODSTAWOWE)
+def test_zwykly_motyw_ciemny_tylko_z_pigulki(motyw):
+    """Zwykły motyw: domyślnie jasny NIEZALEŻNIE od systemu; ciemne reguły
+    tylko pod wyborem „Ciemny” (pigułka), w @media screen."""
+    css = _skompilowany(motyw)
+    assert re.search(
+        r'@media screen\s*\{\s*html:where\(\[data-tryb-kolorow="?ciemny"?\]\)\s*\{'
+        r"\s*color-scheme:\s*dark",
+        css,
+    )
+    assert not re.search(
+        r"prefers-color-scheme:\s*dark\)\s*\{\s*html(:where|\s*\{)", css
+    )
+    assert ':not([data-tryb-kolorow="jasny"])' not in css
+    assert not re.search(r"(^|[{}])html\s*\{\s*color-scheme:\s*dark", css)
 
 
 def test_kafle_strony_glownej_bez_bialego_hover_w_szablonie():
@@ -196,53 +219,72 @@ def test_tryb_ciemny_bez_bialych_plam(channels_live_server, page, uczelnia, scie
 
 @pytest.mark.parametrize(
     "motyw,oczekiwany",
-    [("app-blue-auto", True), ("app-blue", False), ("app-blue-ciemny", False)],
+    [
+        ("app-blue-auto", "auto"),
+        ("app-blue", "jasny"),
+        ("app-blue-ciemny", "ciemny"),
+        ("app-green", "jasny"),
+        ("app-uafm-auto", "auto"),
+        ("app-mwsl-ciemny", "ciemny"),
+    ],
 )
-def test_przelacznik_tylko_przy_motywie_z_dwiema_wersjami(motyw, oczekiwany):
+def test_tryb_domyslny_motywu(motyw, oczekiwany):
+    from bpp.context_processors.config import tryb_kolorow_domyslny
+
+    assert tryb_kolorow_domyslny(motyw, None) == oczekiwany
+
+
+def test_przelacznik_zawsze_poza_podgladem_i_przymiarka():
     from bpp.context_processors.config import przelacznik_trybu_kolorow
 
-    assert przelacznik_trybu_kolorow(motyw, None, False, None) is oczekiwany
-
-
-def test_przelacznik_ukryty_w_podgladzie_i_przymiarce():
-    from bpp.context_processors.config import przelacznik_trybu_kolorow
-
-    assert not przelacznik_trybu_kolorow("app-blue-auto", None, True, None)
-    assert not przelacznik_trybu_kolorow("app-blue-auto", None, False, "abc")
+    assert przelacznik_trybu_kolorow(False, None)
+    assert not przelacznik_trybu_kolorow(True, None)
+    assert not przelacznik_trybu_kolorow(False, "abc")
 
 
 @pytest.mark.django_db
 @pytest.mark.parametrize(
-    "tryb,oczekiwany", [("automatyczny", True), ("ciemny", False), ("jasny", False)]
+    "tryb,oczekiwany",
+    [("automatyczny", "auto"), ("ciemny", "ciemny"), ("jasny", "jasny")],
 )
-def test_przelacznik_przy_motywie_z_konfiguratora(uczelnia, tryb, oczekiwany):
-    from bpp.context_processors.config import przelacznik_trybu_kolorow
+def test_tryb_domyslny_motywu_z_konfiguratora(uczelnia, tryb, oczekiwany):
+    from bpp.context_processors.config import tryb_kolorow_domyslny
     from bpp.models import MOTYW_WLASNY, MotywWlasny
 
     MotywWlasny.objects.create(
         uczelnia=uczelnia, konfig={"wersja": 1, "tryb_kolorow": tryb}, css="a{}"
     )
-    assert przelacznik_trybu_kolorow(MOTYW_WLASNY, uczelnia, False, None) is oczekiwany
+    assert tryb_kolorow_domyslny(MOTYW_WLASNY, uczelnia) == oczekiwany
+
+
+def test_tryb_domyslny_motywu_z_pliku_konfiguracji(tmp_path):
+    from django_bpp.motywy_z_konfiguracji import tryb_kolorow_motywu
+
+    (tmp_path / "noc.json").write_text('{"nazwa": "noc", "tryb_kolorow": "ciemny"}')
+    (tmp_path / "dzien.json").write_text('{"nazwa": "dzien"}')
+    assert tryb_kolorow_motywu("app-noc", tmp_path) == "ciemny"
+    assert tryb_kolorow_motywu("app-dzien", tmp_path) == "jasny"
+    assert tryb_kolorow_motywu("app-blue", tmp_path) is None
 
 
 @pytest.mark.django_db
 @pytest.mark.parametrize(
-    "motyw,jest",
-    [("app-blue-auto", True), ("app-blue", False), ("app-blue-ciemny", False)],
+    "motyw,domyslny",
+    [("app-blue-auto", "auto"), ("app-blue", "jasny"), ("app-blue-ciemny", "ciemny")],
 )
-def test_pigulka_i_skrypt_w_head_tylko_z_flaga(client, uczelnia, motyw, jest):
+def test_pigulka_i_skrypt_w_head_przy_kazdym_motywie(client, uczelnia, motyw, domyslny):
     uczelnia.theme_name = motyw
     uczelnia.save()
     tresc = client.get("/").content.decode()
     # Dwie pigułki: pasek tytułowy (telefon) i pasek menu (komputer).
-    assert tresc.count('class="dropdown menu bpp-pigulka"') == (2 if jest else 0)
-    assert ('role="radiogroup" aria-label="Tryb kolorów"' in tresc) is jest
-    assert ('localStorage.getItem("bpp-tryb-kolorow")' in tresc) is jest
+    assert tresc.count('class="dropdown menu bpp-pigulka"') == 2
+    assert 'role="radiogroup" aria-label="Tryb kolorów"' in tresc
+    assert 'localStorage.getItem("bpp-tryb-kolorow")' in tresc
+    assert f'data-tryb-domyslny="{domyslny}"' in tresc
     # Stara pozycja menu „kolory” z listą zniknęła.
     assert "bpp-tryb-kolorow__przycisk" not in tresc
-    if jest:
-        # Skrypt ustawiający atrybut stoi PRZED arkuszami stylów.
-        assert tresc.index("bpp-tryb-kolorow") < tresc.index('rel="stylesheet"')
+    # Skrypt ustawiający atrybut stoi PRZED arkuszami stylów.
+    assert tresc.index("bpp-tryb-kolorow") < tresc.index('rel="stylesheet"')
 
 
 def _polowka(page, tryb):
@@ -358,3 +400,64 @@ def test_pigulka_na_telefonie_bez_otwierania_menu(channels_live_server, page, uc
 
     _polowka(page, "ciemny").click()
     assert _wybor(page) == ["ciemny", "ciemny"]
+
+
+@pytest.mark.django_db(transaction=True)
+def test_zwykly_motyw_jasny_przy_ciemnym_systemie_ciemny_z_pigulki(
+    channels_live_server, page, uczelnia
+):
+    """Zwykły motyw (app-green): ciemny system bez wyboru → jasno jak dotąd;
+    ☾ → ciemno; ☀ → z powrotem domyślny (bez wpisu w localStorage)."""
+    uczelnia.theme_name = "app-green"
+    uczelnia.save()
+
+    page.emulate_media(color_scheme="light", reduced_motion="reduce")
+    page.goto(channels_live_server.url + "/")
+    page.wait_for_load_state("networkidle")
+    jasne_przy_jasnym = _tlo_strony(page)
+
+    page.emulate_media(color_scheme="dark", reduced_motion="reduce")
+    page.reload()
+    page.wait_for_load_state("networkidle")
+    assert _tlo_strony(page) == jasne_przy_jasnym
+    assert not _suwak_przesuniety(page)
+    slonce = _polowka(page, "jasny")
+    assert slonce.get_attribute("aria-checked") == "true"
+    assert "domyślny wygląd strony" in slonce.get_attribute("aria-label")
+
+    _polowka(page, "ciemny").click()
+    assert _wybor(page) == ["ciemny", "ciemny"]
+    assert _tlo_strony(page) != jasne_przy_jasnym
+    assert _suwak_przesuniety(page)
+    page.reload()
+    page.wait_for_load_state("networkidle")
+    assert _suwak_przesuniety(page)
+    wynik = page.evaluate(_js_audytu(), [0.8, 40])
+    assert wynik["plamy"] == []
+
+    _polowka(page, "jasny").click()
+    assert _wybor(page) == [None, None]
+    assert _tlo_strony(page) == jasne_przy_jasnym
+
+
+@pytest.mark.django_db(transaction=True)
+def test_motyw_ciemny_pigulka_wymusza_jasny(channels_live_server, page, uczelnia):
+    """*-ciemny: bez wyboru ciemno (także przy jasnym systemie); ☀ → jasno;
+    ponowny klik ☀ → z powrotem domyślny ciemny."""
+    uczelnia.theme_name = "app-blue-ciemny"
+    uczelnia.save()
+
+    page.emulate_media(color_scheme="light", reduced_motion="reduce")
+    page.goto(channels_live_server.url + "/")
+    page.wait_for_load_state("networkidle")
+    ciemne = _tlo_strony(page)
+    assert _suwak_przesuniety(page)
+
+    _polowka(page, "jasny").click()
+    assert _wybor(page) == ["jasny", "jasny"]
+    assert _tlo_strony(page) != ciemne
+    assert not _suwak_przesuniety(page)
+
+    _polowka(page, "jasny").click()
+    assert _wybor(page) == [None, None]
+    assert _tlo_strony(page) == ciemne

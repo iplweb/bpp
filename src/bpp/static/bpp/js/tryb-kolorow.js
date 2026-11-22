@@ -1,23 +1,24 @@
 /*
  * Pigułka trybu kolorów ☀ | ☾ na pasku menu (tryb_kolorow_pigulka.html).
  *
- * Trzy stany: automatyczny (jak w systemie — domyślnie), jasny i ciemny
- * wybrane ręcznie. Podświetlona połówka = tryb, który faktycznie widać.
- * Klik w drugą połówkę wymusza ten tryb; klik w podświetloną połówkę przy
- * trybie wybranym ręcznie wraca do automatycznego (a przy automatycznym —
- * utrwala widoczny tryb jako wybór ręczny).
+ * Każdy motyw ma tryb domyślny — <html data-tryb-domyslny="jasny|ciemny|auto">
+ * (zwykłe motywy: jasny, `*-ciemny`: ciemny, `*-auto` i konfigurator
+ * w trybie automatycznym: wg ustawień systemu) — i drugą wersję, którą
+ * odwiedzający włącza pigułką. Podświetlona połówka = tryb, który faktycznie
+ * widać. Klik w połówkę trybu domyślnego albo w połówkę wybraną ręcznie
+ * wraca do domyślnego; klik w drugą — wymusza ją.
  *
  * Wybór trzymamy w localStorage („bpp-tryb-kolorow”), bez serwera — działa
  * dla niezalogowanych, a strona główna jest dla nich w cache. Atrybut
  * <html data-tryb-kolorow="jasny|ciemny"> ustawia przy wczytaniu krótki
  * skrypt w <head> (bare.html, przed CSS). Wygląd pigułki (która połówka
- * podświetlona, znacznik wyboru ręcznego) liczy CSS z tego atrybutu i media
+ * podświetlona, znacznik wyboru ręcznego) liczy CSS z tych atrybutów i media
  * query systemu — od pierwszej klatki, bez czekania na ten skrypt. Tu tylko
  * kliknięcia, klawiatura oraz aria-checked / tabindex / opisy.
  *
  * Semantyka: role="radiogroup" z dwoma role="radio". Zaznaczone radio to
  * widoczny tryb; strzałki przenoszą wybór (jak w każdej grupie radio),
- * Spacja/Enter na zaznaczonym przy wyborze ręcznym wraca do automatycznego.
+ * Spacja/Enter na zaznaczonym przy wyborze ręcznym wraca do domyślnego.
  */
 (function () {
     "use strict";
@@ -34,11 +35,23 @@
         return t === "jasny" || t === "ciemny" ? t : "auto";
     }
 
+    // Tryb motywu bez wyboru odwiedzającego: "jasny" | "ciemny" | "auto".
+    function domyslny() {
+        var t = document.documentElement.getAttribute("data-tryb-domyslny");
+        return t === "ciemny" || t === "auto" ? t : "jasny";
+    }
+
+    // Co widać bez wyboru odwiedzającego.
+    function domyslnyWidoczny() {
+        var t = domyslny();
+        if (t !== "auto") return t;
+        return systemCiemny && systemCiemny.matches ? "ciemny" : "jasny";
+    }
+
     // Tryb, który faktycznie widać.
     function widoczny() {
         var t = biezacy();
-        if (t !== "auto") return t;
-        return systemCiemny && systemCiemny.matches ? "ciemny" : "jasny";
+        return t !== "auto" ? t : domyslnyWidoczny();
     }
 
     function zapamietaj(tryb) {
@@ -52,14 +65,27 @@
     }
 
     function opis(tryb, zaznaczony, reczny) {
-        if (!zaznaczony) return NAZWA[tryb] + " — kliknij, aby wybrać";
-        if (reczny) {
+        var powrot =
+            domyslny() === "auto" ? "ustawień systemu" : "domyślnego wyglądu strony";
+        if (zaznaczony && reczny) {
             return (
                 NAZWA[tryb] +
-                " (wybrany ręcznie) — kliknij, aby wrócić do ustawień systemu"
+                " (wybrany ręcznie) — kliknij, aby wrócić do " +
+                powrot
             );
         }
-        return NAZWA[tryb] + " (zgodnie z ustawieniami systemu)";
+        if (zaznaczony) {
+            return (
+                NAZWA[tryb] +
+                (domyslny() === "auto"
+                    ? " (zgodnie z ustawieniami systemu)"
+                    : " (domyślny wygląd strony)")
+            );
+        }
+        if (reczny && tryb === domyslnyWidoczny()) {
+            return NAZWA[tryb] + " — kliknij, aby wrócić do " + powrot;
+        }
+        return NAZWA[tryb] + " — kliknij, aby wybrać";
     }
 
     function odswiezPigulki() {
@@ -88,11 +114,10 @@
         odswiezPigulki();
     }
 
-    // Klik w połówkę: drugi tryb → wymuś go; widoczny tryb wybrany ręcznie →
-    // wróć do automatycznego; widoczny tryb z systemu → utrwal go jako wybór
-    // ręczny (pojawia się znacznik, następny klik wraca do automatycznego).
+    // Klik w połówkę: tryb domyślny albo już wybrany ręcznie → wróć do
+    // domyślnego (bez wpisu w localStorage); drugi tryb → wymuś go.
     function wybierz(tryb) {
-        if (tryb === widoczny() && biezacy() !== "auto") ustaw("auto");
+        if (tryb === domyslnyWidoczny() || tryb === biezacy()) ustaw("auto");
         else ustaw(tryb);
     }
 
@@ -130,7 +155,7 @@
             }
         )[0];
         if (!drugi) return;
-        ustaw(drugi.getAttribute("data-ustaw-tryb-kolorow"));
+        wybierz(drugi.getAttribute("data-ustaw-tryb-kolorow"));
         drugi.focus();
     });
 
@@ -157,5 +182,10 @@
         odswiezPigulki();
     }
 
-    window.bppTrybKolorow = { ustaw: ustaw, biezacy: biezacy, widoczny: widoczny };
+    window.bppTrybKolorow = {
+        ustaw: ustaw,
+        biezacy: biezacy,
+        domyslny: domyslny,
+        widoczny: widoczny,
+    };
 })();

@@ -1,7 +1,8 @@
 {% load compress %}<!DOCTYPE html>
 {#PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN"#}
 {#        "http://www.w3.org/TR/html4/loose.dtd">#}
-<html class="no-js" lang="pl" dir="ltr">
+{# data-tryb-domyslny: tryb kolorów motywu bez wyboru odwiedzającego (jasny/ciemny/auto) — dla pigułki ☀ | ☾. #}
+<html class="no-js" lang="pl" dir="ltr"{% if TRYB_KOLOROW_DOMYSLNY %} data-tryb-domyslny="{{ TRYB_KOLOROW_DOMYSLNY }}"{% endif %}>
 <head>
     <meta http-equiv="X-UA-Compatible" content="IE=10">
     {% load static %}
