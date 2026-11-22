@@ -35,7 +35,7 @@ def bpp_configuration(request):
         and "podglad_motywu" in request.GET
         and user is not None
         and user.is_staff
-    )
+    ) or bool(getattr(request, "podglad_motywu", False))
 
     # Przymiarka (tylko ta sesja obsługi) wygrywa z motywem uczelni.
     przymiarka = przymiarka_aktywna(request) if request is not None else None

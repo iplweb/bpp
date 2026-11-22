@@ -94,6 +94,9 @@ def _podglady():
         ("Telefon: strona główna", "/", "telefon"),
         ("Telefon: autor", autor and autor.get_absolute_url(), "telefon"),
         ("Telefon: publikacja", adres_rekordu, "telefon"),
+        ("Tablet: strona główna", "/", "tablet"),
+        ("Tablet: autor", autor and autor.get_absolute_url(), "tablet"),
+        ("Tablet: wyszukiwarka", _adres("multiseek:index"), "tablet"),
     ]
     return [
         {"tytul": tytul, "adres": adres, "urzadzenie": urzadzenie}

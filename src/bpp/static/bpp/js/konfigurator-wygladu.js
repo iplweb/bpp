@@ -19,6 +19,7 @@
     var ROZMIAR = {
         komputer: { szerokosc: 1280, wysokosc: 800 },
         telefon: { szerokosc: 390, wysokosc: 780 },
+        tablet: { szerokosc: 820, wysokosc: 1180 },
     };
     var UKRYJ_W_PODGLADZIE =
         "#CookielawBanner, .cookie-pasek { display: none !important; }" +
@@ -638,10 +639,21 @@
 
     // --- Podglądy ------------------------------------------------------------------
 
+    // Widok w podglądach: jak gość (niezalogowany odwiedzający) albo jak
+    // obsługa (z przyciskami edycji itp.).
+    var KLUCZ_WIDOKU = "bpp-konfigurator-wygladu-widok";
+    var widok = window.localStorage.getItem(KLUCZ_WIDOKU) === "obsluga" ? "obsluga" : "gosc";
+
     function adresPodgladu(adres) {
         var url = new URL(adres, window.location.href);
         url.searchParams.set("podglad_motywu", "1");
+        if (widok === "gosc") url.searchParams.set("podglad_jako", "gosc");
+        else url.searchParams.delete("podglad_jako");
         return url.href;
+    }
+
+    function adresZgodnyZWidokiem(url) {
+        return (url.searchParams.get("podglad_jako") === "gosc") === (widok === "gosc");
     }
 
     function wszystkieRamki() {
@@ -658,7 +670,10 @@
         var miejsce = doc.getElementById("bpp-motyw-podglad");
         if (!miejsce) {
             var url = new URL(ramka.contentWindow.location.href);
-            if (url.origin === window.location.origin && !url.searchParams.has("podglad_motywu")) {
+            if (
+                url.origin === window.location.origin &&
+                (!url.searchParams.has("podglad_motywu") || !adresZgodnyZWidokiem(url))
+            ) {
                 ramka.contentWindow.location.replace(adresPodgladu(url.href));
             }
             return;
@@ -897,7 +912,8 @@
     // aktywnej zakładki. Przy obu wersjach kolorów: jasna po lewej (telefony:
     // na górze), ciemna po prawej (na dole).
     var KLUCZ_ZAKLADKI = "bpp-konfigurator-wygladu-zakladka";
-    var zakladka = window.localStorage.getItem(KLUCZ_ZAKLADKI) === "telefon" ? "telefon" : "komputer";
+    var zakladka = window.localStorage.getItem(KLUCZ_ZAKLADKI);
+    if (["komputer", "telefon", "tablet"].indexOf(zakladka) === -1) zakladka = "komputer";
     var zbudowaneWarianty = null;
 
     function kolumnaWersji(p, wariant, opisWersji) {
@@ -937,12 +953,15 @@
                 );
             });
         } else {
+            var nazwaUrzadzenia = zakladka === "tablet" ? "Tablet" : "Telefon";
             w.forEach(function (wariant) {
                 siatka.appendChild(
-                    el("section", { class: "karta karta-telefony" }, [
+                    el("section", { class: "karta karta-telefony", "data-urzadzenie": zakladka }, [
                         el("header", {}, [
                             el("span", {
-                                tekst: obie ? "Telefon — " + NAZWY_WARIANTOW[wariant].toLowerCase() : "Telefon",
+                                tekst: obie
+                                    ? nazwaUrzadzenia + " — " + NAZWY_WARIANTOW[wariant].toLowerCase()
+                                    : nazwaUrzadzenia,
                             }),
                         ]),
                         el(
@@ -951,7 +970,7 @@
                             strony.map(function (p) {
                                 return el("div", { class: "telefon" }, [
                                     el("div", { class: "telefon-naglowek" }, [
-                                        el("span", { tekst: p.tytul.replace(/^Telefon: /, "") }),
+                                        el("span", { tekst: p.tytul.replace(/^(Telefon|Tablet): /, "") }),
                                         przyciskPowieksz(p, wariant),
                                     ]),
                                     oknoPodgladu(p, wariant),
@@ -965,6 +984,9 @@
         document.querySelectorAll("[data-zakladka]").forEach(function (b) {
             b.setAttribute("aria-selected", String(b.dataset.zakladka === zakladka));
         });
+        document.querySelectorAll("[data-widok]").forEach(function (b) {
+            b.setAttribute("aria-selected", String(b.dataset.widok === widok));
+        });
         przeskaluj();
         if (css !== null) uruchomRamki();
     }
@@ -974,6 +996,14 @@
             if (zakladka === b.dataset.zakladka) return;
             zakladka = b.dataset.zakladka;
             window.localStorage.setItem(KLUCZ_ZAKLADKI, zakladka);
+            zbudujPodglady();
+        });
+    });
+    document.querySelectorAll("[data-widok]").forEach(function (b) {
+        b.addEventListener("click", function () {
+            if (widok === b.dataset.widok) return;
+            widok = b.dataset.widok;
+            window.localStorage.setItem(KLUCZ_WIDOKU, widok);
             zbudujPodglady();
         });
     });
@@ -1044,8 +1074,9 @@
             var telefony = karta.querySelectorAll(".telefon");
             var odstep = 12;
             var szer = (karta.clientWidth - 2 * odstep - odstep * (telefony.length - 1)) / telefony.length;
+            var rodzaj = karta.dataset.urzadzenie === "tablet" ? "tablet" : "telefon";
             telefony.forEach(function (t) {
-                ustawSkale(t.querySelector(".okno"), "telefon", szer);
+                ustawSkale(t.querySelector(".okno"), rodzaj, szer);
             });
         });
     }
@@ -1071,6 +1102,7 @@
             p.tytul + (warianty().length > 1 ? " — " + NAZWY_WARIANTOW[wariant].toLowerCase() : "");
         elPowiekszenieRamka.setAttribute("data-wariant", wariant);
         elPowiekszenie.querySelector(".ramka").classList.toggle("telefon", p.urzadzenie === "telefon");
+        elPowiekszenie.querySelector(".ramka").classList.toggle("tablet", p.urzadzenie === "tablet");
         elPowiekszenieRamka.src = adresPodgladu(p.adres);
         elPowiekszenie.classList.add("otwarte");
         document.getElementById("zamknij-powiekszenie").focus();
