@@ -37,14 +37,12 @@ def test_failing_post_import_command_is_reported_not_swallowed():
             "pbn_import.utils.import_manager.call_command",
             side_effect=fake_call_command,
         ),
-        patch(
-            "pbn_import.utils.import_manager.rollbar.report_exc_info"
-        ) as mock_rollbar,
+        patch("pbn_import.utils.import_manager.capture_exception") as mock_zgloszenie,
     ):
         manager._run_post_import_commands()
 
     # Błąd komendy MUSI trafić do Rollbara — nie do nikąd.
-    assert mock_rollbar.called
+    assert mock_zgloszenie.called
 
     # ...i zostać zapisany jako log sesji widoczny w UI importu.
     error_logs = ImportLog.objects.filter(session=manager.session, level="error")
@@ -69,7 +67,7 @@ def test_failing_post_import_command_does_not_abort_remaining():
             "pbn_import.utils.import_manager.call_command",
             side_effect=fake_call_command,
         ),
-        patch("pbn_import.utils.import_manager.rollbar.report_exc_info"),
+        patch("pbn_import.utils.import_manager.capture_exception"),
     ):
         manager._run_post_import_commands()
 

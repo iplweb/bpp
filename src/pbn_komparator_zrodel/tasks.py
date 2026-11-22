@@ -1,10 +1,11 @@
 import logging
 import sys
 
-import rollbar
 from celery import shared_task
 from celery.result import AsyncResult
 from django.core.cache import cache
+
+from bpp.zglaszanie_bledow import capture_exception
 
 logger = logging.getLogger(__name__)
 
@@ -171,7 +172,7 @@ def aktualizuj_wszystkie_task(self, pks, typ="oba", user_id=None):
             errors += 1
         except Exception as e:
             logger.exception(f"Błąd aktualizacji pk={pk}")
-            rollbar.report_exc_info(sys.exc_info())
+            capture_exception(sys.exc_info())
             # Store error in Meta object
             from .models import KomparatorZrodelMeta
 

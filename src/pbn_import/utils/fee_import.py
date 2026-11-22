@@ -98,7 +98,7 @@ class FeeImporter(ImportStepBase):
                         "Nie udało się pobrać opłat dla batcha "
                         f"{klass_name} ({batch_start + 1}-{batch_end})",
                         logger=logger,
-                        do_rollbar=False,  # Rollbar już w handle_error
+                        do_monitoringu=False,  # zgłoszenie już w handle_error
                     )
                     failed += len(batch_records)
                     self.handle_error(

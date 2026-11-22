@@ -2,10 +2,10 @@ import logging
 import sys
 from decimal import Decimal
 
-import rollbar
 from django.db import transaction
 
 from bpp.models import Dyscyplina_Naukowa, Punktacja_Zrodla
+from bpp.zglaszanie_bledow import capture_exception
 from import_common.normalization import normalize_kod_dyscypliny
 
 from .models import LogAktualizacjiZrodla, RozbieznoscZrodlaPBN
@@ -201,7 +201,7 @@ def aktualizuj_wiele_zrodel(pks, typ="oba", user=None):
             errors += 1
         except Exception as e:
             logger.exception(f"Błąd aktualizacji pk={pk}")
-            rollbar.report_exc_info(sys.exc_info())
+            capture_exception(sys.exc_info())
             # Store error in Meta object
             from .models import KomparatorZrodelMeta
 

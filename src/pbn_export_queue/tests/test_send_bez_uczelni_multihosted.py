@@ -15,6 +15,11 @@ from bpp.models import Uczelnia
 from pbn_export_queue.models import PBN_Export_Queue, RodzajBledu, SendStatus
 
 
+@pytest.fixture(autouse=True)
+def _rollbar_skonfigurowany(rollbar_skonfigurowany):
+    """Testy patchują ``rollbar.report_*`` globalnie — patrz fikstura."""
+
+
 @pytest.mark.django_db
 def test_send_to_pbn_bez_uczelni_przy_wielu_uczelniach(
     wydawnictwo_ciagle, admin_user, uczelnia

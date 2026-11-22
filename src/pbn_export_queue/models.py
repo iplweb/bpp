@@ -3,7 +3,6 @@ import sys
 import traceback
 from enum import Enum
 
-import rollbar
 from django.contrib.contenttypes.fields import GenericForeignKey
 from django.contrib.contenttypes.models import ContentType
 from django.core.exceptions import ObjectDoesNotExist
@@ -13,6 +12,7 @@ from django.urls import reverse
 from django.utils import timezone
 
 from bpp.util import zaloguj_polkniety_wyjatek
+from bpp.zglaszanie_bledow import capture_exception, capture_message
 from django_bpp.settings.base import AUTH_USER_MODEL
 from pbn_api.exceptions import (
     AccessDeniedException,
@@ -600,7 +600,7 @@ class PBN_Export_Queue(models.Model):
             )
 
         # Nieobsługiwany wyjątek
-        rollbar.report_exc_info(sys.exc_info())
+        capture_exception(sys.exc_info())
         return self.error(
             "Wystąpił nieobsługiwany błąd, załączam traceback:\n"
             + traceback.format_exc(),
@@ -663,7 +663,7 @@ class PBN_Export_Queue(models.Model):
                 "Nie udało się zbudować klienta PBN do wycofania oświadczeń "
                 f"(PBN_Export_Queue pk={self.pk})",
                 logger=logger,
-                do_rollbar=False,  # Rollbar w _obsluz_blad_wycofania
+                do_monitoringu=False,  # zgłoszenie w _obsluz_blad_wycofania
             )
             return self._obsluz_blad_wycofania(exc)
 
@@ -676,7 +676,7 @@ class PBN_Export_Queue(models.Model):
                 "Błąd podczas wycofywania oświadczeń z PBN z kolejki eksportu "
                 f"(PBN_Export_Queue pk={self.pk})",
                 logger=logger,
-                do_rollbar=False,  # Rollbar w _obsluz_blad_wycofania
+                do_monitoringu=False,  # zgłoszenie w _obsluz_blad_wycofania
             )
             return self._obsluz_blad_wycofania(exc)
 
@@ -713,7 +713,7 @@ class PBN_Export_Queue(models.Model):
             return SendStatus.RETRY_AFTER_USER_AUTHORISED
 
         if not isinstance(exc, HttpException):
-            rollbar.report_exc_info(sys.exc_info())
+            capture_exception(sys.exc_info())
         self.dopisz_komunikat(
             f"Błąd przy wycofaniu z PBN ({exc}). Wycofanie zostaje w kolejce "
             f"— ponowię później."
@@ -860,10 +860,10 @@ class PBN_Export_Queue(models.Model):
                 self.pk,
             )
             # Jeden zgrupowany, czytelny item zamiast tracebacku.
-            rollbar.report_message(
+            capture_message(
                 "Wpis kolejki PBN bez uczelni w instalacji wielouczelnianej",
                 level="warning",
-                extra_data={"pbn_export_queue_pk": self.pk},
+                extra={"pbn_export_queue_pk": self.pk},
             )
             return self.error(
                 "Wpis kolejki nie ma przypisanej uczelni, a w systemie jest "
@@ -903,7 +903,7 @@ class PBN_Export_Queue(models.Model):
                 "Błąd podczas wysyłki rekordu do PBN z kolejki eksportu "
                 f"(PBN_Export_Queue pk={self.pk})",
                 logger=logger,
-                do_rollbar=False,  # Rollbar dla nieobsłużonych w _handle_pbn_exception
+                do_monitoringu=False,  # zgłoszenie nieobsłużonych w _handle_pbn_exception
             )
             return self._handle_pbn_exception(exc)
 

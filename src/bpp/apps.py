@@ -73,6 +73,11 @@ class BppConfig(AppConfig):
 
         configure_rollbar()
 
+        # Sentry/GlitchTip — tylko gdy ustawiony SENTRY_DSN (inaczej no-op).
+        from bpp.sentry_config import configure_sentry
+
+        configure_sentry()
+
     def _podepnij_wersje_faviconu(self):
         """Każda zmiana ikony unieważnia cache faviconu (bpp/favicon_wersja.py)."""
         from django.apps import apps

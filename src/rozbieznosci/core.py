@@ -151,9 +151,8 @@ def ustaw_ze_zrodla(pks, metryka, user_id=None, kasuj_przy_pustym=False):
     * ``kasuj_przy_pustym=True`` — wartość w pracy jest czyszczona
       (kwartyl → ``None``, IF/MNiSW → ``0``).
     """
-    import rollbar
-
     from bpp.models import BppUser
+    from bpp.zglaszanie_bledow import capture_exception
 
     field = metryka.field_name
     updated = 0
@@ -210,7 +209,7 @@ def ustaw_ze_zrodla(pks, metryka, user_id=None, kasuj_przy_pustym=False):
             )
             updated += 1
         except Exception:
-            rollbar.report_exc_info()
+            capture_exception()
             errors += 1
 
     return updated, errors

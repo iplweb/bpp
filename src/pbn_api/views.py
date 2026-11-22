@@ -5,7 +5,6 @@ import secrets
 import sys
 from urllib.parse import urlsplit
 
-import rollbar
 from django.contrib import messages
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.http import HttpResponseBadRequest, HttpResponseRedirect
@@ -16,6 +15,7 @@ from django.views import View
 from django.views.generic import RedirectView
 
 from bpp.models import Uczelnia
+from bpp.zglaszanie_bledow import capture_exception
 
 from .autoryzacja import zapisz_token_z_ott
 from .client import OAuthMixin
@@ -167,7 +167,7 @@ class TokenLandingPage(LoginRequiredMixin, RedirectView):
             messages.error(
                 self.request, f"Nie można autoryzować zalogowania do PBN - {e}"
             )
-            rollbar.report_exc_info(sys.exc_info())
+            capture_exception(sys.exc_info())
 
         except AuthenticationResponseError:
             messages.error(
@@ -176,6 +176,6 @@ class TokenLandingPage(LoginRequiredMixin, RedirectView):
                 "autoryzacyjnego. Ze względów bezpieczeństwa wyświetlenie niewskazane - "
                 "błąd przekazano do administratora serwisu.  ",
             )
-            rollbar.report_exc_info(sys.exc_info())
+            capture_exception(sys.exc_info())
 
         return redirect_url

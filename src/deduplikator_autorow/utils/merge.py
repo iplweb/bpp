@@ -7,7 +7,6 @@ import sys
 import traceback
 from collections import defaultdict
 
-import rollbar
 from django.contrib.contenttypes.models import ContentType
 from django.db import transaction
 
@@ -19,6 +18,7 @@ from bpp.wersjonowanie import (
     zmiana_rekordu,
     zmiany_rekordow,
 )
+from bpp.zglaszanie_bledow import capture_exception
 
 from .analysis import analiza_duplikatow
 
@@ -524,7 +524,7 @@ def scal_autora(
 
     except Exception as e:
         traceback.print_exc()
-        rollbar.report_exc_info(sys.exc_info())
+        capture_exception(sys.exc_info())
         results["success"] = False
         results["error"] = str(e)
         return results
@@ -646,6 +646,6 @@ def scal_autorow(
         zaloguj_polkniety_wyjatek(
             "Scalanie duplikatu autora — nieoczekiwany błąd operacji scalania",
             logger=logger,
-            do_rollbar=True,
+            do_monitoringu=True,
         )
         return {"success": False, "error": f"Nieoczekiwany błąd: {str(e)}"}

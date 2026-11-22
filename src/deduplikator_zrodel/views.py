@@ -268,8 +268,9 @@ def download_duplicates_xlsx(request):
     import datetime
     import sys
 
-    import rollbar
     from django.http import HttpResponse
+
+    from bpp.zglaszanie_bledow import capture_exception
 
     from .utils import export_candidates_to_xlsx
 
@@ -291,6 +292,6 @@ def download_duplicates_xlsx(request):
         return response
 
     except Exception as e:
-        rollbar.report_exc_info(sys.exc_info())
+        capture_exception(sys.exc_info())
         messages.error(request, f"Błąd podczas generowania pliku XLSX: {str(e)}")
         return redirect("deduplikator_zrodel:duplicate_sources")

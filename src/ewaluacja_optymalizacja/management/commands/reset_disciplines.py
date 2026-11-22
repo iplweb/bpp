@@ -57,7 +57,7 @@ class Command(BaseCommand):
             zaloguj_polkniety_wyjatek(
                 "Odczyt liczby brudnych wpisów denorm (DirtyInstance) — zwracam 0",
                 logger=logger,
-                do_rollbar=False,
+                do_monitoringu=False,
             )
             return 0
 

@@ -26,7 +26,7 @@ try:
         normalize_tytul_publikacji = None
 except Exception:  # noqa
     # Django not available or not configured
-    # Import z modułu-liścia (sam logging/sys/rollbar) — NIE z ``bpp.util``,
+    # Import z modułu-liścia (sam logging/sys + bpp.zglaszanie_bledow) — NIE z ``bpp.util``,
     # bo facade wciąga ORM, a tu Django może być jeszcze nie gotowe.
     from bpp.util.wyjatki import zaloguj_polkniety_wyjatek
 
@@ -34,7 +34,7 @@ except Exception:  # noqa
         "Nie udało się zaimportować zależności Django dla pbn_integrator "
         "(import_common) — odroczono do _ensure_django_imports()",
         logger=logger,
-        do_rollbar=False,  # import-time bootstrap; Rollbar może być nieskonfigurowany
+        do_monitoringu=False,  # import-time bootstrap; monitoring może być nieskonfigurowany
     )
     matchuj_autora = None
     matchuj_wydawce = None

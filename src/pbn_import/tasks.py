@@ -4,13 +4,13 @@ import logging
 import sys
 import traceback
 
-import rollbar
 from celery import shared_task
 from django.utils import timezone
 
 from bpp.models import Uczelnia
 from bpp.util import zaloguj_polkniety_wyjatek
 from bpp.wersjonowanie import jako_uzytkownik
+from bpp.zglaszanie_bledow import capture_exception
 
 from .models import ImportLog, ImportSession
 from .utils import ImportManager
@@ -47,7 +47,7 @@ def run_pbn_import(self, session_id, uczelnia_id=None):
                 "Nie udało się utworzyć klienta PBN dla sesji importu "
                 f"#{session_id}; kontynuacja bez klienta",
                 logger=logger,
-                do_rollbar=True,
+                do_monitoringu=True,
             )
             ImportLog.objects.create(
                 session=session,
@@ -92,10 +92,10 @@ def run_pbn_import(self, session_id, uczelnia_id=None):
     except ImportSession.DoesNotExist:
         logger.error(f"Sesja {session_id} nie została znaleziona")
     except Exception as e:
-        # Report to Rollbar
-        rollbar.report_exc_info(
+        # Zgłoś do monitoringu błędów
+        capture_exception(
             sys.exc_info(),
-            extra_data={"session_id": session_id, "task": "run_pbn_import"},
+            extra={"session_id": session_id, "task": "run_pbn_import"},
         )
 
         tb_string = traceback.format_exc()
@@ -114,7 +114,7 @@ def run_pbn_import(self, session_id, uczelnia_id=None):
         except Exception:
             # Nie udało się nawet ZAPISAĆ błędu (np. baza padła). To NIE może
             # zniknąć po cichu — inaczej krytyczny błąd importu nie zostawia
-            # żadnego śladu. Zaloguj z tracebackiem i zgłoś do Rollbar.
+            # żadnego śladu. Zaloguj z tracebackiem i zgłoś do monitoringu.
             #
             # Świadomie łapiemy tylko Exception, NIE BaseException: przerwania
             # workera (KeyboardInterrupt, SystemExit — np. warm shutdown Celery)
@@ -125,9 +125,9 @@ def run_pbn_import(self, session_id, uczelnia_id=None):
                 "Nie udało się zapisać krytycznego błędu importu dla sesji %s",
                 session_id,
             )
-            rollbar.report_exc_info(
+            capture_exception(
                 sys.exc_info(),
-                extra_data={
+                extra={
                     "session_id": session_id,
                     "task": "run_pbn_import",
                     "phase": "error_persistence_failed",

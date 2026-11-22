@@ -154,7 +154,7 @@ def sprawdz_pojedynczy_arkusz(zrodlo):
     użytkownik dzieli plik i importuje każdy arkusz osobno.
 
     Podnosi ``BadNoOfSheetsException`` z czytelnym komunikatem (ekran
-    mapowania go łapie i pokazuje; w tle wyjątek trafia na konsolę/rollbar/
+    mapowania go łapie i pokazuje; w tle wyjątek trafia na konsolę/monitoring/
     admin). CSV to zawsze jeden arkusz — nigdy nie wyzwala tej reguły.
     """
     from import_common.exceptions import BadNoOfSheetsException

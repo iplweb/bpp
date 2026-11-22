@@ -6,9 +6,10 @@ import sys
 from datetime import datetime, timedelta
 from decimal import Decimal
 
-import rollbar
 from celery import chord
 from django.db.models import F
+
+from bpp.zglaszanie_bledow import capture_exception
 
 from .clustering import partition_works_into_chunks
 from .simulation import simulate_unpinning_benefit
@@ -333,7 +334,7 @@ def _run_parallel_analysis(  # noqa: C901
                             total_analyzed += result.result.get("analyzed_count", 0)
                             total_found += len(result.result.get("opportunities", []))
                 except Exception:
-                    rollbar.report_exc_info(sys.exc_info())
+                    capture_exception(sys.exc_info())
                     logger.debug(
                         "Błąd przetwarzania wyniku analizy chord", exc_info=True
                     )

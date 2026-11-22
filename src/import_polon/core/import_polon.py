@@ -4,7 +4,6 @@ from contextlib import nullcontext
 from decimal import Decimal
 from types import SimpleNamespace
 
-import rollbar
 from django.utils import timezone
 
 from bpp.models import (
@@ -13,6 +12,7 @@ from bpp.models import (
     przebuduj_prace_autora_po_udanej_transakcji,
 )
 from bpp.wersjonowanie import zmiana_rekordu
+from bpp.zglaszanie_bledow import capture_exception
 from ewaluacja_common.models import Rodzaj_Autora
 from import_common.core import matchuj_autora, matchuj_dyscypline, normalize_date
 from import_polon.models import ImportPlikuPolon, WierszImportuPlikuPolon
@@ -506,9 +506,9 @@ def analyze_file_import_polon(fn, parent_model: ImportPlikuPolon, p):
     except ValueError as e:
         # Handle file format errors gracefully
         error_msg = str(e)
-        rollbar.report_exc_info(
+        capture_exception(
             sys.exc_info(),
-            extra_data={"context": "import_polon", "error_type": "file_format"},
+            extra={"context": "import_polon", "error_type": "file_format"},
         )
         WierszImportuPlikuPolon.objects.create(
             parent=parent_model,
@@ -521,9 +521,9 @@ def analyze_file_import_polon(fn, parent_model: ImportPlikuPolon, p):
     except Exception as e:
         # Handle any other unexpected errors
         error_msg = f"Błąd podczas wczytywania pliku: {str(e)}"
-        rollbar.report_exc_info(
+        capture_exception(
             sys.exc_info(),
-            extra_data={"context": "import_polon", "error_type": "unexpected"},
+            extra={"context": "import_polon", "error_type": "unexpected"},
         )
         WierszImportuPlikuPolon.objects.create(
             parent=parent_model,

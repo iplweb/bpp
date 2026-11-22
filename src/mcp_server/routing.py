@@ -6,13 +6,13 @@ import json
 import logging
 import time
 
-import rollbar
 from bpp_mcp.auth import set_current_bearer
 from django.conf import settings
 from django.db import Error as BladBazy
 from redis.exceptions import ConnectionError as BladRedisa
 from redis.exceptions import TimeoutError as PrzekroczonyCzasRedisa
 
+from bpp.zglaszanie_bledow import capture_exception
 from django_bpp.client_ip import get_client_ip
 from mcp_server.auth import BramkaBearera
 from mcp_server.kontekst import (
@@ -194,7 +194,7 @@ class RouterHttp:
             # except-ów: te kończą się (return) bez re-raise, więc do tego
             # miejsca dochodzi wyłącznie to, czego węższy except NIE złapał.
             logger.exception("mcp: nieobsłużony wyjątek w obsłudze żądania")
-            rollbar.report_exc_info()
+            capture_exception()
             if "status" not in widziany:
                 # Nie próbuj wysyłać drugiego `http.response.start` — ASGI
                 # nie pozwala na dwa starty odpowiedzi, a warstwa niżej może
@@ -230,7 +230,7 @@ class RouterHttp:
         if self._awaria_bramki_uczelni_zgloszona:
             return
         logger.exception(komunikat)
-        rollbar.report_exc_info()
+        capture_exception()
         self._awaria_bramki_uczelni_zgloszona = True
 
     def _zglos_awarie_bramki_bearera(self, komunikat: str) -> None:
@@ -249,7 +249,7 @@ class RouterHttp:
         if self._awaria_bramki_bearera_zgloszona:
             return
         logger.exception(komunikat)
-        rollbar.report_exc_info()
+        capture_exception()
         self._awaria_bramki_bearera_zgloszona = True
 
     async def _obsluz(

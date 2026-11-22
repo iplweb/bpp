@@ -235,7 +235,7 @@ def process_single_publication(  # noqa: C901
             "Błąd podczas wysyłki oświadczeń dyscyplin do PBN dla publikacji "
             f"pk={publication.pk}",
             logger=logger,
-            do_rollbar=False,
+            do_monitoringu=False,
         )
         result["error"] = str(e)
         if stdout and style and progress_lock:

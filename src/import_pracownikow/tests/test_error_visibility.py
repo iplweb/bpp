@@ -19,6 +19,11 @@ from model_bakery import baker
 from import_pracownikow.models import ImportPracownikow
 
 
+@pytest.fixture(autouse=True)
+def _rollbar_skonfigurowany(rollbar_skonfigurowany):
+    """Testy patchują ``rollbar.report_*`` globalnie — patrz fikstura."""
+
+
 @pytest.mark.django_db
 def test_run_zglasza_wyjatek_na_rollbar_i_reraise(admin_user, monkeypatch):
     """Wyjątek w ``run()`` MUSI trafić na rollbar (i konsolę) oraz zostać

@@ -149,7 +149,7 @@ def _send_statements_with_retry(pbn_client, json_data, log_entry):
                 f"(próba {retry_count + 1}/{max_retries}, "
                 f"PbnWysylkaLog pk={log_entry.pk})",
                 logger=logger,
-                do_rollbar=True,
+                do_monitoringu=True,
             )
             last_error = e
             retry_count += 1

@@ -91,7 +91,7 @@ def user_safe_message(exc, *, task_kind):
       - "Problem danych wejściowych" — błąd walidacji (user podał coś
         niepoprawnego, np. niespełniający wymogi rekord).
       - "Problem aplikacji" — bug po naszej stronie. Admin powiadomiony
-        przez Rollbar (globalny @task_failure.connect).
+        przez monitoring błędów (globalny @task_failure.connect).
 
     task_kind: "fetch" lub "create" — wpływa na fallback message.
     """

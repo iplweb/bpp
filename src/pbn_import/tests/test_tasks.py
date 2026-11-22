@@ -95,7 +95,7 @@ def test_run_pbn_import_failure(uczelnia, admin_user):
 
     with patch("pbn_import.tasks.ImportManager", return_value=mock_import_manager):
         with patch.object(uczelnia, "pbn_client", return_value=MagicMock()):
-            with patch("pbn_import.tasks.rollbar"):
+            with patch("pbn_import.tasks.capture_exception"):
                 run_pbn_import.apply(args=(session.pk, uczelnia.pk))
 
     session.refresh_from_db()
@@ -130,7 +130,7 @@ def test_run_pbn_import_persistence_failure_is_reported_not_swallowed(
             with patch.object(
                 ImportSession, "mark_failed", side_effect=Exception("DB down")
             ):
-                with patch("pbn_import.tasks.rollbar") as mock_rollbar:
+                with patch("pbn_import.tasks.capture_exception") as mock_zgloszenie:
                     with patch("pbn_import.tasks.logger") as mock_logger:
                         run_pbn_import.apply(args=(session.pk, uczelnia.pk))
 
@@ -143,8 +143,7 @@ def test_run_pbn_import_persistence_failure_is_reported_not_swallowed(
     # Rollbar zawołany dwukrotnie: 1) oryginalny błąd importu,
     # 2) błąd persystencji z phase=error_persistence_failed.
     phases = [
-        c.kwargs.get("extra_data", {}).get("phase")
-        for c in mock_rollbar.report_exc_info.call_args_list
+        c.kwargs.get("extra", {}).get("phase") for c in mock_zgloszenie.call_args_list
     ]
     assert "error_persistence_failed" in phases
 
@@ -276,7 +275,7 @@ def test_run_pbn_import_without_uczelnia_id_does_not_fall_back(admin_user):
     mock_import_manager.run.return_value = {"success": True}
 
     with patch("pbn_import.tasks.ImportManager", return_value=mock_import_manager):
-        with patch("pbn_import.tasks.rollbar"):
+        with patch("pbn_import.tasks.capture_exception"):
             # brak uczelnia_id — entrypoint go nie podał
             run_pbn_import.apply(args=(session.pk,))
 

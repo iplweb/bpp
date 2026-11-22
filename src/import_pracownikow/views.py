@@ -1751,12 +1751,12 @@ class ZatwierdzImportView(_PkOwnerRestartMixin):
         obj.save(update_fields=obj.reset_liveops_state())
         try:
             # obj.run dispatchuje integruj() dla stanu ``zatwierdzony`` (zgłasza do
-            # rollbara i re-raise'uje na błędzie); integruj ustawia stan →
+            # monitoringu błędów i re-raise'uje na błędzie); integruj ustawia stan →
             # ``struktura_zintegrowana``.
             obj.run(TextProgress(obj, sys.stdout))
         except Exception:
             # Cofnij do Kroku 1 — reconcilery mają guardy ``utworzon*``, więc
-            # ponowna próba jest bezpieczna. obj.run już zgłosił błąd do rollbara.
+            # ponowna próba jest bezpieczna. obj.run już zgłosił błąd do monitoringu.
             obj.refresh_from_db()
             obj.stan = ImportPracownikow.STAN_PRZEANALIZOWANY
             obj.save(update_fields=["stan"])

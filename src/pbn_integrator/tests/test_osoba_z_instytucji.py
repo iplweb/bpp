@@ -68,7 +68,7 @@ def test_zapisz_osobe_bez_polonuuid_pomija_bez_raportu(instytucja, mocker):
     Wcześniej dowiadywaliśmy się o tym okrężnie — przez IntegrityError na
     NOT NULL, raportowany do Rollbara pod mylącą etykietą konfliktu.
     """
-    report = mocker.patch("pbn_integrator.utils.scientists.rollbar.report_exc_info")
+    report = mocker.patch("pbn_integrator.utils.scientists.capture_exception")
     scientist = baker.make(Scientist)
 
     dane = _person(scientist, instytucja, uuid.uuid4())
@@ -122,7 +122,7 @@ def test_zapisz_osobe_pomija_gdy_tozsamosci_nie_da_sie_pogodzic(instytucja, mock
     o danych, nie poprawka techniczna: raportujemy do Rollbara i idziemy
     dalej, zamiast przerywać cały import.
     """
-    report = mocker.patch("pbn_integrator.utils.scientists.rollbar.report_exc_info")
+    report = mocker.patch("pbn_integrator.utils.scientists.capture_exception")
     pierwsza = baker.make(Scientist)
     druga = baker.make(Scientist)
     uuid_a, uuid_b = uuid.uuid4(), uuid.uuid4()
@@ -136,5 +136,5 @@ def test_zapisz_osobe_pomija_gdy_tozsamosci_nie_da_sie_pogodzic(instytucja, mock
     assert report.called
     # Raport musi nieść treść naruszonego ograniczenia — bez tego kolizja
     # personId, NOT NULL i każdy inny IntegrityError wyglądają identycznie.
-    assert "constraint" in report.call_args.kwargs["extra_data"]
+    assert "constraint" in report.call_args.kwargs["extra"]
     assert OsobaZInstytucji.objects.count() == 2

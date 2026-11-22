@@ -52,7 +52,9 @@ class TestZapiszPublikacjeInstytucji:
                 side_effect=http_exc,
             ),
             patch("pbn_integrator.utils.mongodb_ops.logger") as mock_logger,
-            patch("pbn_integrator.utils.mongodb_ops.rollbar") as mock_rollbar,
+            patch(
+                "pbn_integrator.utils.mongodb_ops.capture_exception"
+            ) as mock_zgloszenie,
         ):
             result = zapisz_publikacje_instytucji(sample_elem, None, client=mock_client)
 
@@ -66,7 +68,7 @@ class TestZapiszPublikacjeInstytucji:
             assert sample_elem["publicationId"] in call_args[0]
 
             # Should report to rollbar
-            mock_rollbar.report_exc_info.assert_called_once()
+            mock_zgloszenie.assert_called_once()
 
     def test_logs_and_reports_on_institution_http_500(self, sample_elem, mock_client):
         """Should log warning and report to rollbar when institution fetch fails"""
@@ -81,7 +83,9 @@ class TestZapiszPublikacjeInstytucji:
                 side_effect=http_exc,
             ),
             patch("pbn_integrator.utils.mongodb_ops.logger") as mock_logger,
-            patch("pbn_integrator.utils.mongodb_ops.rollbar") as mock_rollbar,
+            patch(
+                "pbn_integrator.utils.mongodb_ops.capture_exception"
+            ) as mock_zgloszenie,
         ):
             result = zapisz_publikacje_instytucji(sample_elem, None, client=mock_client)
 
@@ -95,7 +99,7 @@ class TestZapiszPublikacjeInstytucji:
             assert sample_elem["institutionId"] in call_args[0]
 
             # Should report to rollbar
-            mock_rollbar.report_exc_info.assert_called_once()
+            mock_zgloszenie.assert_called_once()
 
     def test_logs_and_reports_on_person_http_500(self, sample_elem, mock_client):
         """Should log warning and report to rollbar when person fetch fails"""
@@ -111,7 +115,9 @@ class TestZapiszPublikacjeInstytucji:
                 side_effect=http_exc,
             ),
             patch("pbn_integrator.utils.mongodb_ops.logger") as mock_logger,
-            patch("pbn_integrator.utils.mongodb_ops.rollbar") as mock_rollbar,
+            patch(
+                "pbn_integrator.utils.mongodb_ops.capture_exception"
+            ) as mock_zgloszenie,
         ):
             result = zapisz_publikacje_instytucji(sample_elem, None, client=mock_client)
 
@@ -125,7 +131,7 @@ class TestZapiszPublikacjeInstytucji:
             assert sample_elem["insPersonId"] in call_args[0]
 
             # Should report to rollbar
-            mock_rollbar.report_exc_info.assert_called_once()
+            mock_zgloszenie.assert_called_once()
 
     def test_does_not_log_on_non_500_http_error(self, sample_elem, mock_client):
         """Should not log or report for non-500 HTTP errors (re-raises)"""
@@ -139,7 +145,9 @@ class TestZapiszPublikacjeInstytucji:
                 side_effect=http_exc,
             ),
             patch("pbn_integrator.utils.mongodb_ops.logger") as mock_logger,
-            patch("pbn_integrator.utils.mongodb_ops.rollbar") as mock_rollbar,
+            patch(
+                "pbn_integrator.utils.mongodb_ops.capture_exception"
+            ) as mock_zgloszenie,
         ):
             with pytest.raises(HttpException) as exc_info:
                 zapisz_publikacje_instytucji(sample_elem, None, client=mock_client)
@@ -148,7 +156,7 @@ class TestZapiszPublikacjeInstytucji:
 
             # Should NOT log or report for non-500 errors
             mock_logger.warning.assert_not_called()
-            mock_rollbar.report_exc_info.assert_not_called()
+            mock_zgloszenie.assert_not_called()
 
 
 # ============================================================================
@@ -190,7 +198,9 @@ class TestZapiszOswiadczenieInstytucji:
                 side_effect=http_exc,
             ),
             patch("pbn_integrator.utils.mongodb_ops.logger") as mock_logger,
-            patch("pbn_integrator.utils.mongodb_ops.rollbar") as mock_rollbar,
+            patch(
+                "pbn_integrator.utils.mongodb_ops.capture_exception"
+            ) as mock_zgloszenie,
         ):
             result = zapisz_oswiadczenie_instytucji(
                 sample_elem.copy(), None, client=mock_client
@@ -206,7 +216,7 @@ class TestZapiszOswiadczenieInstytucji:
             assert "oświadczenia" in call_args[0][0]
 
             # Should report to rollbar
-            mock_rollbar.report_exc_info.assert_called_once()
+            mock_zgloszenie.assert_called_once()
 
     def test_logs_and_reports_on_institution_http_500(self, sample_elem, mock_client):
         """Should log warning and report to rollbar when institution fetch fails"""
@@ -221,7 +231,9 @@ class TestZapiszOswiadczenieInstytucji:
                 side_effect=http_exc,
             ),
             patch("pbn_integrator.utils.mongodb_ops.logger") as mock_logger,
-            patch("pbn_integrator.utils.mongodb_ops.rollbar") as mock_rollbar,
+            patch(
+                "pbn_integrator.utils.mongodb_ops.capture_exception"
+            ) as mock_zgloszenie,
         ):
             result = zapisz_oswiadczenie_instytucji(
                 sample_elem.copy(), None, client=mock_client
@@ -236,7 +248,7 @@ class TestZapiszOswiadczenieInstytucji:
             assert "instytucji" in call_args[0][0]
 
             # Should report to rollbar
-            mock_rollbar.report_exc_info.assert_called_once()
+            mock_zgloszenie.assert_called_once()
 
     def test_logs_and_reports_on_person_http_500(self, sample_elem, mock_client):
         """Should log warning and report to rollbar when person fetch fails"""
@@ -252,7 +264,9 @@ class TestZapiszOswiadczenieInstytucji:
                 side_effect=http_exc,
             ),
             patch("pbn_integrator.utils.mongodb_ops.logger") as mock_logger,
-            patch("pbn_integrator.utils.mongodb_ops.rollbar") as mock_rollbar,
+            patch(
+                "pbn_integrator.utils.mongodb_ops.capture_exception"
+            ) as mock_zgloszenie,
         ):
             result = zapisz_oswiadczenie_instytucji(
                 sample_elem.copy(), None, client=mock_client
@@ -267,7 +281,7 @@ class TestZapiszOswiadczenieInstytucji:
             assert "osoby" in call_args[0][0]
 
             # Should report to rollbar
-            mock_rollbar.report_exc_info.assert_called_once()
+            mock_zgloszenie.assert_called_once()
 
     def test_transforms_timestamp_format(self, sample_elem, mock_client):
         """Should transform timestamp from dot to dash format"""
@@ -305,7 +319,9 @@ class TestZapiszOswiadczenieInstytucji:
                 side_effect=http_exc,
             ),
             patch("pbn_integrator.utils.mongodb_ops.logger") as mock_logger,
-            patch("pbn_integrator.utils.mongodb_ops.rollbar") as mock_rollbar,
+            patch(
+                "pbn_integrator.utils.mongodb_ops.capture_exception"
+            ) as mock_zgloszenie,
         ):
             with pytest.raises(HttpException) as exc_info:
                 zapisz_oswiadczenie_instytucji(
@@ -316,7 +332,7 @@ class TestZapiszOswiadczenieInstytucji:
 
             # Should NOT log or report for non-500 errors
             mock_logger.warning.assert_not_called()
-            mock_rollbar.report_exc_info.assert_not_called()
+            mock_zgloszenie.assert_not_called()
 
 
 # ============================================================================

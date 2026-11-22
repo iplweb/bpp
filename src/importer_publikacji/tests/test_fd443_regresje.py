@@ -923,7 +923,7 @@ def test_wyjatek_w_zapisie_zwrotnym_zostawia_sesje_completed(importer_user):
         patch(
             "importer_publikacji.zgloszenia.oznacz_jako_zaimportowane"
         ) as mock_oznacz,
-        patch("importer_publikacji.tasks.rollbar") as mock_rollbar,
+        patch("importer_publikacji.tasks.capture_exception") as mock_zgloszenie,
     ):
         mock_create.return_value = rekord
         mock_oznacz.side_effect = RuntimeError("zapis zwrotny wybuchł")
@@ -933,7 +933,7 @@ def test_wyjatek_w_zapisie_zwrotnym_zostawia_sesje_completed(importer_user):
             args=[session.pk, session.created_by_id, False]
         ).get()
 
-        assert mock_rollbar.report_exc_info.called
+        assert mock_zgloszenie.called
 
     session.refresh_from_db()
     assert session.status == ImportSession.Status.COMPLETED
@@ -956,7 +956,7 @@ def test_wyjatek_w_zapisie_zwrotnym_loguje_traceback(importer_user, caplog):
         patch(
             "importer_publikacji.zgloszenia.oznacz_jako_zaimportowane"
         ) as mock_oznacz,
-        patch("importer_publikacji.tasks.rollbar"),
+        patch("importer_publikacji.tasks.capture_exception"),
         caplog.at_level(logging.ERROR, logger="importer_publikacji.tasks"),
     ):
         mock_create.return_value = _rekord()

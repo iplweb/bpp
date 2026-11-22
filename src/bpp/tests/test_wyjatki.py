@@ -11,7 +11,7 @@ def test_loguje_pelny_traceback(caplog):
     try:
         raise ValueError("boom")
     except ValueError:
-        zaloguj_polkniety_wyjatek("Coś padło przy X", do_rollbar=False)
+        zaloguj_polkniety_wyjatek("Coś padło przy X", do_monitoringu=False)
 
     assert "Coś padło przy X" in caplog.text
     # logger.exception -> traceback z oryginalnym wyjątkiem
@@ -24,34 +24,43 @@ def test_uzywa_przekazanego_loggera():
     try:
         raise KeyError("k")
     except KeyError:
-        zaloguj_polkniety_wyjatek("opis", logger=logger, do_rollbar=False)
+        zaloguj_polkniety_wyjatek("opis", logger=logger, do_monitoringu=False)
 
     logger.exception.assert_called_once_with("opis")
 
 
-def test_raportuje_do_rollbara_gdy_wlaczony():
-    with mock.patch("bpp.util.wyjatki.rollbar") as rb:
+def test_zglasza_do_monitoringu_gdy_wlaczony():
+    with mock.patch("bpp.util.wyjatki.capture_exception") as zglos:
         try:
             raise RuntimeError("x")
         except RuntimeError:
-            zaloguj_polkniety_wyjatek("opis", do_rollbar=True)
-        rb.report_exc_info.assert_called_once()
+            zaloguj_polkniety_wyjatek("opis", do_monitoringu=True)
+        zglos.assert_called_once()
+        exc_info = zglos.call_args.args[0]
+        assert isinstance(exc_info[1], RuntimeError)
 
 
-def test_nie_raportuje_do_rollbara_gdy_wylaczony():
-    with mock.patch("bpp.util.wyjatki.rollbar") as rb:
+def test_nie_zglasza_do_monitoringu_gdy_wylaczony():
+    with mock.patch("bpp.util.wyjatki.capture_exception") as zglos:
         try:
             raise RuntimeError("x")
         except RuntimeError:
-            zaloguj_polkniety_wyjatek("opis", do_rollbar=False)
-        rb.report_exc_info.assert_not_called()
+            zaloguj_polkniety_wyjatek("opis", do_monitoringu=False)
+        zglos.assert_not_called()
 
 
-def test_blad_rollbara_nie_wybucha(caplog):
-    with mock.patch("bpp.util.wyjatki.rollbar") as rb:
-        rb.report_exc_info.side_effect = RuntimeError("rollbar down")
+def test_blad_rollbara_nie_wybucha(caplog, monkeypatch):
+    """Awaria wysyłki do Rollbara nie może wysadzić kodu wołającego."""
+    import rollbar
+
+    monkeypatch.setitem(rollbar.SETTINGS, "access_token", "atrapa")
+    with mock.patch(
+        "bpp.zglaszanie_bledow.rollbar.report_exc_info",
+        side_effect=RuntimeError("rollbar down"),
+    ):
         try:
             raise ValueError("boom")
         except ValueError:
-            # nie powinno podnieść wyjątku z rollbara
-            zaloguj_polkniety_wyjatek("opis", do_rollbar=True)
+            zaloguj_polkniety_wyjatek("opis", do_monitoringu=True)
+
+    assert "Nie udało się zgłosić wyjątku do Rollbara" in caplog.text

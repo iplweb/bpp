@@ -7,12 +7,12 @@ attachment.
 import datetime
 import sys
 
-import rollbar
 from django.contrib import messages
 from django.http import HttpResponse
 from django.shortcuts import redirect
 
 from bpp.const import GR_WPROWADZANIE_DANYCH
+from bpp.zglaszanie_bledow import capture_exception
 
 from ..utils import export_duplicates_to_xlsx
 from .helpers import group_required
@@ -47,6 +47,6 @@ def download_duplicates_xlsx(request):
         return response
 
     except Exception as e:
-        rollbar.report_exc_info(sys.exc_info())
+        capture_exception(sys.exc_info())
         messages.error(request, f"Błąd podczas generowania pliku XLSX: {str(e)}")
         return redirect("deduplikator_autorow:duplicate_authors")

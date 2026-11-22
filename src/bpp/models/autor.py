@@ -1289,7 +1289,7 @@ class Autor_Jednostka(models.Model):
             # ``logging.lastResort``. Diagnostyka jest zatem słaba — ale to
             # osobny temat (konfiguracja LOGGING), nie powód, by zostawiać
             # fałszywy alarm w Rollbarze.
-            zaloguj_polkniety_wyjatek(komunikat, logger=logger, do_rollbar=False)
+            zaloguj_polkniety_wyjatek(komunikat, logger=logger, do_monitoringu=False)
             return fallback
         except Exception:
             # Cokolwiek innego jest naprawdę nieoczekiwane — raportuj.

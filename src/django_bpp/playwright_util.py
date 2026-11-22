@@ -127,7 +127,7 @@ def select_select2_autocomplete(
             f"Kliknięcie w element Select2 nie powiodło się, fallback do "
             f"JS-clicku (element_id={element_id})",
             logger=logger,
-            do_rollbar=False,
+            do_monitoringu=False,
         )
         page.locator(select_selector).evaluate(
             """element => {
@@ -189,7 +189,7 @@ def select_select2_autocomplete(
             f"Brak opcji Select2 zawierającej szukaną frazę, fallback do "
             f"Enter na pierwszym wyniku (value={value!r})",
             logger=logger,
-            do_rollbar=False,
+            do_monitoringu=False,
         )
         # No option literally containing the search term — fall back to
         # selecting the first/highlighted result via Enter.
@@ -204,7 +204,7 @@ def select_select2_autocomplete(
         zaloguj_polkniety_wyjatek(
             "Dropdown Select2 nie zamknął się sam, wymuszam zamknięcie przez JS",
             logger=logger,
-            do_rollbar=False,
+            do_monitoringu=False,
         )
         # Force close if still open
         page.evaluate("django.jQuery('.select2-hidden-accessible').select2('close')")

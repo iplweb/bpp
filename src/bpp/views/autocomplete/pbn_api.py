@@ -2,7 +2,6 @@ import logging
 import sys
 from abc import abstractmethod
 
-import rollbar
 from dal import autocomplete
 from django import http
 from django.contrib.auth.mixins import LoginRequiredMixin
@@ -13,6 +12,7 @@ from bpp import const
 from bpp.const import PBN_UID_LEN
 from bpp.models import Uczelnia
 from bpp.util.wyjatki import zaloguj_polkniety_wyjatek
+from bpp.zglaszanie_bledow import capture_exception
 from pbn_api.client import PBNClient
 from pbn_api.exceptions import (
     AccessDeniedException,
@@ -159,8 +159,8 @@ class BasePBNAutocomplete(
             return _odpowiedz_bledem(tekst)
 
         except Exception as e:
-            # Zaloguj wyjątek do Rollbara
-            rollbar.report_exc_info(sys.exc_info())
+            # Zaloguj wyjątek i zgłoś do monitoringu
+            capture_exception(sys.exc_info())
             return http.HttpResponseBadRequest(str(e))
 
         return http.JsonResponse(

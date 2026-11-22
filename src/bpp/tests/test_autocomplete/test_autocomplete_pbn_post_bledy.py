@@ -24,6 +24,12 @@ from pbn_api.exceptions import (
     PublicationNotFound,
 )
 
+
+@pytest.fixture(autouse=True)
+def _rollbar_skonfigurowany(rollbar_skonfigurowany):
+    """Testy patchują ``rollbar.report_*`` globalnie — patrz fikstura."""
+
+
 UID = "a" * PBN_UID_LEN
 
 

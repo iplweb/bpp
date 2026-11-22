@@ -231,7 +231,7 @@ class Command(BaseCommand):
                 f"Optymalizacja ewaluacji dla dyscypliny '{dyscyplina}' "
                 "nie powiodła się",
                 logger=logger,
-                do_rollbar=False,
+                do_monitoringu=False,
             )
             self.stdout.write(self.style.ERROR(f"Optimization failed: {e}"))
             return

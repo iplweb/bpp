@@ -1047,7 +1047,7 @@ def integruj(parent, p):
 
     # Zamroź „po imporcie" jako trwały, niezmienny rekord tego, co trafiło do
     # BPP. Błąd generacji NIE może wywalić już-zakończonej integracji (osoby są
-    # zapisane); logujemy (stderr + rollbar) i lecimy dalej — widok pobierania
+    # zapisane); logujemy (stderr + monitoring błędów) i lecimy dalej — widok pobierania
     # degraduje wtedy do budowy w locie. Świadomie NIE re-raise.
     # Sama generacja snapshotu nie jest write-once/idempotentna, ale
     # finalizacja jest jednorazowa (bramka stanu blokuje re-integrację
@@ -1059,10 +1059,10 @@ def integruj(parent, p):
     except Exception:
         import traceback as _tb
 
-        import rollbar
+        from bpp.zglaszanie_bledow import capture_exception
 
         _tb.print_exc()
-        rollbar.report_exc_info()
+        capture_exception()
 
     pominieto_nieaktualne = parent.importpracownikowrow_set.filter(
         pominiety_bo_nieaktualny=True

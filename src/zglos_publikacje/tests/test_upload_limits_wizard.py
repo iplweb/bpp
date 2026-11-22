@@ -108,7 +108,7 @@ def _goto_step(webtest_app, page, step):
 def _patch_rollbar(monkeypatch):
     calls = []
     monkeypatch.setattr(
-        "zglos_publikacje.views.rollbar.report_message",
+        "zglos_publikacje.views.capture_message",
         lambda *a, **k: calls.append((a, k)),
     )
     return calls

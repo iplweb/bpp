@@ -1,7 +1,6 @@
 import sys
 from functools import wraps
 
-import rollbar
 from django.contrib import messages
 from django.contrib.auth.views import redirect_to_login
 from django.core.exceptions import PermissionDenied
@@ -11,6 +10,7 @@ from django.shortcuts import get_object_or_404, redirect, render
 
 from bpp.const import GR_WPROWADZANIE_DANYCH
 from bpp.models import Autor, Wydawnictwo_Ciagle_Autor, Wydawnictwo_Zwarte_Autor
+from bpp.zglaszanie_bledow import capture_exception
 
 from . import service
 from .forms import PrzemapoaniePracAutoraForm
@@ -125,7 +125,7 @@ def _wykonaj_przemapowanie(request, autor, form):
             autor, jednostka_z, jednostka_do, request.user
         )
     except Exception as e:
-        rollbar.report_exc_info(sys.exc_info())
+        capture_exception(sys.exc_info())
         messages.error(request, f"Wystąpił błąd podczas przemapowania prac: {e}")
         return None
 

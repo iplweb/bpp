@@ -199,6 +199,17 @@ env = environ.Env(
     # stronie, której nie naprawimy kodem.
     DJANGO_BPP_ROLLBAR_IGNORE_SMTP_AUTH_ERRORS=(bool, False),
     #
+    # Sentry / GlitchTip (protokół Sentry) — patrz bpp.sentry_config.
+    # Pusty DSN = Sentry wyłączony (zachowanie jak przed jego dodaniem).
+    #
+    SENTRY_DSN=(str, ""),
+    # Pusty = to samo środowisko, które dostaje Rollbar
+    # (development / production / staging).
+    SENTRY_ENVIRONMENT=(str, ""),
+    # 0 = bez śledzenia wydajności (serwer GlitchTip jest mały).
+    SENTRY_TRACES_SAMPLE_RATE=(float, 0.0),
+    SENTRY_SEND_DEFAULT_PII=(bool, False),
+    #
     # Prometheus
     #
     DJANGO_BPP_ENABLE_PROMETHEUS=(bool, False),
@@ -1972,6 +1983,18 @@ ROLLBAR = {
     ),
 }
 
+#
+# Sentry / GlitchTip — inicjalizacja w bpp.sentry_config.configure_sentry()
+# (z BppConfig.ready, obok Rollbara), TYLKO gdy SENTRY_DSN jest niepusty.
+# Oba backendy mogą działać równolegle; zgłoszenia z kodu idą przez
+# bpp.zglaszanie_bledow do każdego skonfigurowanego.
+#
+SENTRY_DSN = env("SENTRY_DSN")
+# production.py przelicza to ponownie po ustawieniu środowiska Rollbara.
+SENTRY_ENVIRONMENT = env("SENTRY_ENVIRONMENT") or ROLLBAR["environment"]
+SENTRY_TRACES_SAMPLE_RATE = env("SENTRY_TRACES_SAMPLE_RATE")
+SENTRY_SEND_DEFAULT_PII = env("SENTRY_SEND_DEFAULT_PII")
+
 # Publiczny token klienta (post_client_item) do frontendowego Rollbara.
 # INNY niż sekretny ROLLBAR["access_token"] (post_server_item) — ten można
 # bezpiecznie renderować w przeglądarce. Pusty = front-end Rollbar wyłączony.
@@ -2039,6 +2062,13 @@ LOGGING = {
         # errors have no other path to Rollbar (see denorm_queue below).
         "rollbar": {
             "class": "rollbar.logger.RollbarHandler",
+            "level": "ERROR",
+        },
+        # Odpowiednik handlera "rollbar" dla Sentry/GlitchTip. Bez SENTRY_DSN
+        # (sentry_sdk nie zainicjalizowany) nic nie wysyła. Podpinany do tych
+        # samych loggerów co "rollbar" — patrz bpp.sentry_config.
+        "sentry": {
+            "class": "sentry_sdk.integrations.logging.EventHandler",
             "level": "ERROR",
         },
     },
@@ -2116,13 +2146,14 @@ LOGGING = {
         },
         # denorm_queue daemon (the LISTEN/NOTIFY -> Celery bridge). It is a
         # plain management command, not a Celery task or a request, so its
-        # errors reach Rollbar only through this handler. It reconnects on its
-        # own after a database restart and only WARNs; it logs an ERROR when
+        # errors reach Rollbar/Sentry only through these handlers. It
+        # reconnects on its own after a database restart and only WARNs; it
+        # logs an ERROR when
         # the database stays unreachable longer than DENORM_QUEUE_OUTAGE_GRACE
         # (django-denorm-iplweb, default 15 min), then every
         # DENORM_QUEUE_OUTAGE_REPEAT (default 30 min).
         "denorm.management.commands.denorm_queue": {
-            "handlers": ["console", "rollbar"],
+            "handlers": ["console", "rollbar", "sentry"],
             "level": "INFO",
             "propagate": False,
         },

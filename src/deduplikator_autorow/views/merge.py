@@ -7,7 +7,6 @@
 import sys
 import traceback
 
-import rollbar
 from django.contrib import messages
 from django.http import JsonResponse
 from django.shortcuts import redirect
@@ -16,6 +15,7 @@ from django.views.decorators.http import require_http_methods
 from bpp.const import GR_WPROWADZANIE_DANYCH
 from bpp.models import Autor, Uczelnia
 from bpp.models.cache import Rekord
+from bpp.zglaszanie_bledow import capture_exception
 
 from ..models import DuplicateCandidate
 from ..utils import scal_autora
@@ -56,7 +56,7 @@ def scal_autorow_view(request):
     )
 
     if not main_autor_id or not duplicate_autor_id:
-        # Sygnalizujemy do Rollbar — to nie powinno się zdarzać przy poprawnym
+        # Sygnalizujemy do monitoringu — to nie powinno się zdarzać przy poprawnym
         # wywołaniu z UI; raczej oznacza błąd JS-a lub niespójne dane (np.
         # scientist_id wskazujący na rekord, którego rekord_w_bpp == None).
         try:
@@ -67,7 +67,7 @@ def scal_autorow_view(request):
             )
         except ValueError:
             traceback.print_exc()
-            rollbar.report_exc_info(sys.exc_info())
+            capture_exception(sys.exc_info())
         return JsonResponse(
             {
                 "success": False,
@@ -83,7 +83,7 @@ def scal_autorow_view(request):
             main_autor = Autor.objects.get(pk=main_autor_id)
             duplicate_autor = Autor.objects.get(pk=duplicate_autor_id)
         except Autor.DoesNotExist:
-            rollbar.report_exc_info(sys.exc_info())
+            capture_exception(sys.exc_info())
             return JsonResponse(
                 {"success": False, "error": "Nie znaleziono autora."},
                 status=404,
@@ -118,7 +118,7 @@ def scal_autorow_view(request):
         return JsonResponse({"success": False, "error": str(e)}, status=501)
     except Exception:
         traceback.print_exc()
-        rollbar.report_exc_info(sys.exc_info())
+        capture_exception(sys.exc_info())
         return JsonResponse(
             {
                 "success": False,

@@ -154,13 +154,13 @@ class ImportSession(models.Model):
                 # Błąd połączenia z brokerem - nie możemy zweryfikować statusu.
                 # Oczekiwana, przejściowa flaka brokera (Celery/Redis), nie błąd
                 # importu — logujemy (standard: zaloguj_polkniety_wyjatek), ale
-                # bez Rollbara (do_rollbar=False), bo byłby szum przy każdym
+                # bez zgłoszenia do monitoringu (do_monitoringu=False), bo byłby szum przy każdym
                 # mignięciu połączenia.
                 zaloguj_polkniety_wyjatek(
                     "Błąd weryfikacji statusu zadania Celery "
                     f"(task_id={self.task_id}) dla sesji importu PBN",
                     logger=logger,
-                    do_rollbar=False,
+                    do_monitoringu=False,
                 )
 
         return False, None

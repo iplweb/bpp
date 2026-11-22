@@ -60,9 +60,9 @@ def _uruchom_import(parent, p, analyze):
     wywołaniu.
 
     ``liveops.runner._handle_error`` zapisuje traceback WYŁĄCZNIE do pola
-    ``traceback`` (bez śladu na konsoli workera i bez rollbara). Owijamy
+    ``traceback`` (bez śladu na konsoli workera i w monitoringu). Owijamy
     właściwy przebieg, żeby błąd był WIDOCZNY: surowy traceback na stderr
-    (konsola celery/run-site) + rollbar (konwencja bg-tasków), po czym
+    (konsola celery/run-site) + monitoring błędów (konwencja bg-tasków), po czym
     re-raise — liveops i tak zapisze traceback do bazy i pokaże błąd w UI."""
     from bpp.wersjonowanie import jako_uzytkownik
 
@@ -74,10 +74,10 @@ def _uruchom_import(parent, p, analyze):
         import sys
         import traceback as _traceback
 
-        import rollbar
+        from bpp.zglaszanie_bledow import capture_exception
 
         _traceback.print_exc()
-        rollbar.report_exc_info(sys.exc_info())
+        capture_exception(sys.exc_info())
         raise
     p.result({"total": parent.get_details_set().count(), **(wynik or {})})
 

@@ -128,7 +128,7 @@ class Command(BaseCommand):
                     "Przeliczanie liczby N dla uczelni przed obliczaniem "
                     "metryk nie powiodło się — kontynuuję obliczanie metryk",
                     logger=logger,
-                    do_rollbar=False,
+                    do_monitoringu=False,
                 )
                 self.stdout.write(
                     self.style.ERROR(f"✗ Błąd przy przeliczaniu liczby N: {str(e)}")

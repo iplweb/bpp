@@ -53,7 +53,7 @@ def process_single_page_v2(
                     "Błąd podczas zapisu pojedynczej publikacji instytucji "
                     f"(uuid={elem.get('uuid', 'unknown')}) ze strony {page_num}",
                     logger=logger,
-                    do_rollbar=False,
+                    do_monitoringu=False,
                 )
                 result["error_count"] += 1
                 error_msg = (
@@ -68,7 +68,7 @@ def process_single_page_v2(
         zaloguj_polkniety_wyjatek(
             f"Błąd podczas przetwarzania strony {page_num} publikacji instytucji",
             logger=logger,
-            do_rollbar=False,
+            do_monitoringu=False,
         )
         result["success"] = False
         result["error"] = str(e)

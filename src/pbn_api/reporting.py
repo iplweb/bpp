@@ -1,24 +1,29 @@
-"""BPP error-reporting adapter for the standalone PBN client."""
+"""BPP error-reporting adapter for the standalone PBN client.
 
-import rollbar
+Przekazuje diagnostykę klienta PBN do :mod:`bpp.zglaszanie_bledow`, czyli do
+każdego skonfigurowanego backendu (Rollbar i/lub Sentry/GlitchTip).
+"""
+
+from bpp.zglaszanie_bledow import capture_exception, capture_message
 
 
-class RollbarReporter:
-    """Forward scrubbed PBN diagnostics to BPP's configured Rollbar client."""
+class ZglaszanieBledowReporter:
+    """Implementacja ``pbn_client.reporting.ErrorReporter`` dla BPP."""
 
     def report_message(self, message, *, level=None, extra_data=None):
-        return rollbar.report_message(
+        # `rollbar.report_message` bez poziomu zgłaszał "error" — zachowujemy to.
+        return capture_message(
             message,
-            level=level,
-            extra_data=extra_data,
+            level=level if level is not None else "error",
+            extra=extra_data,
         )
 
     def report_exc_info(self, exc_info=None, *, level=None, extra_data=None):
-        return rollbar.report_exc_info(
+        return capture_exception(
             exc_info,
             level=level,
-            extra_data=extra_data,
+            extra=extra_data,
         )
 
 
-rollbar_reporter = RollbarReporter()
+bpp_reporter = ZglaszanieBledowReporter()
