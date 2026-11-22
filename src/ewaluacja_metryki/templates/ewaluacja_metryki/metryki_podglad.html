@@ -1,0 +1,78 @@
+{% extends "base.html" %}
+{# Podgląd zestawienia „Metryki jednostki/wydziału” (FD#617) jako zwykła strona serwisu: menu, okruszki, przyciski. #}
+{# Treść ta sama co w PDF (_metryki_tresc.html), pokazana jako kartka papieru. #}
+
+{% block title %}Metryki {{ raport.slowa.dopelniacz }} — {{ raport.jednostka.nazwa }}{% endblock %}
+
+{% block extrahead %}
+    {{ block.super }}
+    <style>
+        {{ fonty }}
+{% include "ewaluacja_metryki/_metryki_style.html" %}
+
+        .metryki-podglad__pasek {
+            display: flex; flex-wrap: wrap; gap: .5rem 1rem; align-items: center;
+            justify-content: space-between; margin-bottom: 1rem;
+        }
+        .metryki-podglad__pasek .button { margin: 0; }
+        .metryki-podglad__kartka {
+            background: #fff; border: 1px solid #e1e0d9; border-radius: 4px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, .06);
+            padding: 2.5rem 3rem 2rem; margin: 0 auto 2rem; max-width: 62rem;
+            overflow-x: auto;
+        }
+        /* W PDF dyscypliny zaczynają nowe strony; na ekranie — wyraźny odstęp. */
+        .metryki-podglad__kartka .metryki-raport .sekcja.nowa-strona {
+            margin-top: 14mm; padding-top: 8mm; border-top: 1px solid #e1e0d9;
+        }
+        .metryki-podglad__kartka .metryki-raport .naglowek h1 { margin-top: 2mm; }
+        .metryki-podglad__kartka .metryki-raport a { color: #1f5fae; }
+        .metryki-podglad__kartka .metryki-raport svg { max-width: 100%; height: auto; }
+        @media screen and (min-width: 64em) {
+            /* Treść jest w punktach i milimetrach jak na A4 — na dużym ekranie powiększamy. */
+            .metryki-podglad__kartka .metryki-raport { zoom: 1.2; }
+        }
+        @media screen and (max-width: 40em) {
+            .metryki-podglad__kartka { padding: 1rem; }
+        }
+    </style>
+{% endblock %}
+
+{% block breadcrumbs %}
+    {{ block.super }}
+    <li><a href="/">Strona główna</a></li>
+    <li><a href="{% url 'ewaluacja_metryki:lista' %}">Metryki ewaluacyjne</a></li>
+    {% if raport.wydzial %}
+        <li><a href="{% url 'ewaluacja_metryki:metryki_wydzialow' %}">Metryki wydziałów</a></li>
+    {% else %}
+        <li><a href="{% url 'ewaluacja_metryki:metryki_jednostek' %}">Metryki jednostek</a></li>
+    {% endif %}
+    <li class="current">{{ raport.jednostka.nazwa }}</li>
+{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="columns">
+        <div class="metryki-podglad__pasek">
+            <div>
+                <span class="label warning" title="Wersja testowa">beta</span>
+                Podgląd zestawienia za okres <strong>{{ raport.okres }}</strong> — tak samo wygląda w PDF.
+            </div>
+            <div>
+                <a class="button" href="{{ url_pdf }}"><span class="fi-download"></span> Pobierz PDF</a>
+                {% if raport.wydzial %}
+                    <a class="button secondary" href="{% url 'ewaluacja_metryki:metryki_wydzialow' %}"><span class="fi-list"></span> Inny wydział</a>
+                {% else %}
+                    <a class="button secondary" href="{% url 'ewaluacja_metryki:metryki_jednostek' %}"><span class="fi-list"></span> Inna jednostka</a>
+                {% endif %}
+            </div>
+        </div>
+
+        <div class="metryki-podglad__kartka">
+            <div class="metryki-raport">
+                {% include "ewaluacja_metryki/_metryki_tresc.html" with podglad=True %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

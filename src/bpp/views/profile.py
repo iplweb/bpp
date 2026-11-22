@@ -129,14 +129,26 @@ class ProfilUzytkownikaView(LoginRequiredMixin, TemplateView):
             ma_dostep_do_metryk_jednostek,
             widzi_wszystkie_jednostki,
         )
-        from ewaluacja_metryki.views.metryki_jednostek import jednostki_z_metrykami
+        from ewaluacja_metryki.views.metryki_jednostek import (
+            jednostki_z_metrykami,
+            uzywa_wydzialow,
+            wydzialy_z_metrykami,
+        )
 
         user = self.request.user
+        wydzialy = uzywa_wydzialow(self.request)
         if widzi_wszystkie_jednostki(user):
-            return {"metryki_jednostek_wszystkie": True}
+            return {
+                "metryki_jednostek_wszystkie": True,
+                "metryki_wydzialow_wszystkie": wydzialy,
+            }
         if not ma_dostep_do_metryk_jednostek(user):
             return {}
         return {
             "metryki_jednostek_dostep": True,
             "metryki_jednostek": jednostki_z_metrykami(self.request),
+            # Np. dziekan — kierownik jednostki głównej wydziału.
+            "metryki_wydzialow": (
+                wydzialy_z_metrykami(self.request) if wydzialy else []
+            ),
         }

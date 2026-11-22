@@ -3,7 +3,7 @@ from bpp.models.soft_delete import BppSoftDeleteSlownikMixin
 
 
 class Seria_Wydawnicza(BppSoftDeleteSlownikMixin, ModelZNazwa):
-    """Seria wydawnicza. Kosz: tylko seria bez publikacji (także w koszu)."""
+    """Seria wydawnicza. Kosz: tylko seria bez żywych publikacji."""
 
     class Meta:
         verbose_name_plural = "serie wydawnicze"

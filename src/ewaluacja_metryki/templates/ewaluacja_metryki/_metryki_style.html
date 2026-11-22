@@ -1,0 +1,145 @@
+{# Style treści zestawień „Metryki jednostki/wydziału” (FD#617) — wspólne dla PDF i podglądu na stronie. #}
+{# Każda reguła zawężona do .metryki-raport, żeby w podglądzie nie ruszać stylów serwisu. #}
+{# Reguły strony (@page, body) są tylko w metryki_jednostki_pdf.html. #}
+        .metryki-raport {
+            font-family: "Inter", "DejaVu Sans", Arial, sans-serif;
+            font-size: 8.8pt;
+            color: #1f1f1d;
+            line-height: 1.45;
+            font-feature-settings: "tnum";
+        }
+        .metryki-raport table { margin: 0; }
+        .metryki-raport ul { margin-bottom: 0; }
+        .metryki-raport p { margin: 0 0 .4em; }
+
+        /* --- Strona tytułowa ------------------------------------------------ */
+        .metryki-raport .naglowek { margin-bottom: 7mm; }
+        .metryki-raport .naglowek .etykieta {
+            font-size: 7.5pt; font-weight: 700; letter-spacing: .14em;
+            text-transform: uppercase; color: #2a78d6;
+        }
+        .metryki-raport .naglowek .beta {
+            display: inline-block; margin-left: 2.5mm; padding: .4mm 2mm;
+            border-radius: 1.2mm; background: #fdf0d2; color: #7a5300;
+            letter-spacing: .06em; font-size: 6.6pt; vertical-align: .3mm;
+        }
+        .metryki-raport .naglowek h1 {
+            font-size: 22pt; line-height: 1.15; font-weight: 700;
+            margin: 2mm 0 2.5mm; string-set: jednostka content();
+        }
+        .metryki-raport .naglowek .meta { color: #52514e; font-size: 9pt; }
+        .metryki-raport .naglowek .meta span + span::before { content: "·"; margin: 0 .5em; color: #b5b4ac; }
+        .metryki-raport .linia { height: 2.2pt; width: 18mm; background: #2a78d6; margin-top: 5mm; }
+
+        .metryki-raport .poufne {
+            margin-top: 8mm; padding: 3.5mm 4.5mm; border-radius: 2mm;
+            background: #fbf3f2; color: #7a2b28; font-size: 7.6pt;
+        }
+
+        /* --- Sekcje ---------------------------------------------------------- */
+        .metryki-raport h2 {
+            font-size: 15pt; font-weight: 700; line-height: 1.2;
+            margin: 0 0 1mm; break-after: avoid;
+        }
+        .metryki-raport .sekcja { margin-top: 11mm; }
+        .metryki-raport .sekcja.nowa-strona { break-before: page; margin-top: 0; }
+        .metryki-raport .sekcja .podtytul { color: #6b6a65; font-size: 8.5pt; margin-bottom: 5mm; }
+        .metryki-raport h3 {
+            font-size: 7.6pt; font-weight: 700; letter-spacing: .1em;
+            text-transform: uppercase; color: #52514e;
+            margin: 8mm 0 2.5mm; padding-bottom: 1.2mm;
+            border-bottom: .6pt solid #e1e0d9; break-after: avoid;
+        }
+        .metryki-raport .objasnienie { color: #6b6a65; font-size: 7.6pt; margin-bottom: 2.5mm; }
+        .metryki-raport .blok { break-inside: avoid; }
+
+        /* --- Kafelki --------------------------------------------------------- */
+        .metryki-raport .kpi { display: flex; gap: 3mm; }
+        .metryki-raport .kpi > div {
+            flex: 1; background: #f6f5f1; border-radius: 2.5mm;
+            padding: 4mm 3mm 3.5mm; text-align: center;
+            display: flex; flex-direction: column; justify-content: center;
+        }
+        .metryki-raport .kpi .liczba { font-size: 17pt; font-weight: 700; line-height: 1.1; margin: 0 0 1.5mm; }
+        .metryki-raport .kpi .opis { font-size: 7.4pt; color: #52514e; line-height: 1.35; }
+        .metryki-raport .kpi svg { display: block; margin: 0 auto 1.5mm; }
+
+        /* --- Wnioski --------------------------------------------------------- */
+        .metryki-raport .wnioski {
+            margin: 0; padding: 3.5mm 4.5mm 3.5mm 9mm; border-radius: 2.5mm;
+            background: #eef4fc; break-inside: avoid;
+        }
+        .metryki-raport .wnioski li { margin: 1.2mm 0; }
+        .metryki-raport .wnioski li::marker { color: #2a78d6; }
+
+        /* --- Karty osób ------------------------------------------------------ */
+        /* inline-block, nie flex: WeasyPrint nie dzieli kontenera flex między */
+        /* strony i cała siatka przeskakiwała na kolejną stronę */
+        /* orphans/widows 1: siatka może zacząć się już jednym rzędem na dole */
+        /* strony, zamiast przeskakiwać w całości i zostawiać pół pustej strony */
+        .metryki-raport .karty { font-size: 0; orphans: 1; widows: 1; }
+        .metryki-raport .karta {
+            display: inline-block; vertical-align: top; box-sizing: border-box;
+            width: 32.4%; margin: 0 1.4% 2mm 0; padding: 2.5mm 2.5mm 2mm;
+            border: .6pt solid #e1e0d9; border-radius: 2mm;
+            font-size: 8.8pt; break-inside: avoid;
+        }
+        .metryki-raport .karta:nth-child(3n) { margin-right: 0; }
+        .metryki-raport .karta .nazwisko {
+            font-weight: 600; font-size: 8.2pt; margin-bottom: 1.5mm;
+            white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+        }
+        .metryki-raport .karta table { width: 100%; border-collapse: collapse; }
+        .metryki-raport .karta td { padding: 0; border: 0; vertical-align: middle; }
+        .metryki-raport .karta .pod { text-align: center; font-size: 6.4pt; color: #6b6a65; width: 15mm; }
+        .metryki-raport .karta .pod svg { display: block; margin: 0 auto .5mm; }
+        .metryki-raport .karta .dane { font-size: 6.9pt; color: #52514e; line-height: 1.4; padding-left: 1.5mm; }
+
+        /* --- Tabele ---------------------------------------------------------- */
+        .metryki-raport table.dane-tab { width: 100%; border-collapse: collapse; font-size: 8pt; }
+        .metryki-raport .dane-tab thead { display: table-header-group; }
+        .metryki-raport .dane-tab tr { break-inside: avoid; }
+        .metryki-raport .dane-tab th {
+            font-size: 6.8pt; font-weight: 700; letter-spacing: .04em;
+            text-transform: uppercase; color: #6b6a65; text-align: left;
+            padding: 1.5mm 1.5mm; border-bottom: .8pt solid #1f1f1d;
+        }
+        .metryki-raport .dane-tab td { padding: 1.4mm 1.5mm; border-bottom: .5pt solid #ecebe6; vertical-align: top; }
+        .metryki-raport .dane-tab tbody tr:nth-child(even) td { background: #faf9f6; }
+        .metryki-raport .dane-tab .l { text-align: right; white-space: nowrap; }
+        .metryki-raport .dane-tab .slabe { color: #8a8983; }
+        .metryki-raport .rodzaj { color: #8a8983; font-size: 7pt; }
+        .metryki-raport .dane-tab td.osoba { white-space: nowrap; }
+        .metryki-raport .dane-tab .jednostka-osoby {
+            display: block; white-space: normal; max-width: 46mm;
+            font-size: 6.8pt; color: #8a8983; line-height: 1.3;
+        }
+        .metryki-raport .dane-tab td.grupa { font-size: 7.2pt; color: #52514e; padding-left: 4.5mm; text-indent: -3.5mm; }
+
+        .metryki-raport .status { white-space: nowrap; font-weight: 600; }
+        .metryki-raport .status-dobry { color: #006300; }
+        .metryki-raport .status-sredni { color: #8a5d00; }
+        .metryki-raport .status-slaby { color: #b02a2a; }
+        .metryki-raport .status-brak { color: #8a8983; font-weight: 400; }
+        .metryki-raport .kropka {
+            display: inline-block; width: 2.2mm; height: 2.2mm; border-radius: 50%;
+            margin-right: 1.3mm; vertical-align: .1mm;
+        }
+
+        /* --- Struktura punktacji -------------------------------------------- */
+        .metryki-raport .legenda-struktury { margin-top: 2.5mm; font-size: 7.6pt; color: #52514e; }
+        .metryki-raport .legenda-struktury span.poz { display: inline-block; margin: 0 4.5mm 1.2mm 0; white-space: nowrap; }
+
+        /* --- Zalecenia ------------------------------------------------------- */
+        .metryki-raport .zalecenie {
+            break-inside: avoid; padding: 2.5mm 0 2.5mm 4mm; margin-bottom: 1.5mm;
+            border-left: 2.2pt solid #e1e0d9;
+        }
+        .metryki-raport .zalecenie .tytul { font-weight: 700; }
+        .metryki-raport .zalecenie .osoby { color: #6b6a65; font-size: 7.6pt; margin-top: .8mm; }
+
+        .metryki-raport .metoda {
+            margin-top: 12mm; padding-top: 3mm; border-top: .6pt solid #e1e0d9;
+            font-size: 7pt; color: #6b6a65; break-inside: avoid;
+        }
+        .metryki-raport .metoda strong { color: #52514e; }

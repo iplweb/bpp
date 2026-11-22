@@ -11,6 +11,11 @@ from bpp.models.soft_delete import BppPublikacjaSoftDeleteMixin
 
 
 class Publikacja_Habilitacyjna(models.Model):
+    #: Powiązanie żyje z habilitacją: jest „w koszu" razem z nią (nie blokuje
+    #: kosza publikacji), a przywrócenie habilitacji sprawdza, czy wskazana
+    #: publikacja nie jest w koszu (``bpp.models.soft_delete._pole_rodzica``).
+    POLE_RODZICA_KOSZA = "praca_habilitacyjna"
+
     # db_index=False: redundantny względem unique_together
     # (praca_habilitacyjna, content_type, object_id) — praca_habilitacyjna
     # jest wiodącą kolumną tego indeksu.

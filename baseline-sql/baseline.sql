@@ -254,6 +254,26 @@ $$;
 
 
 --
+-- Name: bpp_autor_kosz_autorzy_mat(); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.bpp_autor_kosz_autorzy_mat() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+BEGIN
+    IF NEW.deleted_at IS NOT NULL THEN
+        DELETE FROM bpp_autorzy_mat WHERE autor_id = NEW.id;
+    ELSE
+        INSERT INTO bpp_autorzy_mat ("rekord_id", "id", "autor_id", "jednostka_id", "kolejnosc", "typ_odpowiedzialnosci_id", "zapisany_jako", "zatrudniony", "afiliuje", "dyscyplina_naukowa_id", "upowaznienie_pbn", "profil_orcid", "kierunek_studiow_id", "oswiadczenie_ken", "przypieta", "data_oswiadczenia")
+      SELECT "rekord_id", "id", "autor_id", "jednostka_id", "kolejnosc", "typ_odpowiedzialnosci_id", "zapisany_jako", "zatrudniony", "afiliuje", "dyscyplina_naukowa_id", "upowaznienie_pbn", "profil_orcid", "kierunek_studiow_id", "oswiadczenie_ken", "przypieta", "data_oswiadczenia" FROM bpp_autorzy
+      WHERE autor_id = NEW.id
+      ON CONFLICT (id) DO UPDATE SET "rekord_id" = EXCLUDED."rekord_id", "autor_id" = EXCLUDED."autor_id", "jednostka_id" = EXCLUDED."jednostka_id", "kolejnosc" = EXCLUDED."kolejnosc", "typ_odpowiedzialnosci_id" = EXCLUDED."typ_odpowiedzialnosci_id", "zapisany_jako" = EXCLUDED."zapisany_jako", "zatrudniony" = EXCLUDED."zatrudniony", "afiliuje" = EXCLUDED."afiliuje", "dyscyplina_naukowa_id" = EXCLUDED."dyscyplina_naukowa_id", "upowaznienie_pbn" = EXCLUDED."upowaznienie_pbn", "profil_orcid" = EXCLUDED."profil_orcid", "kierunek_studiow_id" = EXCLUDED."kierunek_studiow_id", "oswiadczenie_ken" = EXCLUDED."oswiadczenie_ken", "przypieta" = EXCLUDED."przypieta", "data_oswiadczenia" = EXCLUDED."data_oswiadczenia";
+    END IF;
+    RETURN NULL;
+END $$;
+
+
+--
 -- Name: bpp_autor_ustaw_jednostka_aktualna(); Type: FUNCTION; Schema: public; Owner: -
 --
 
@@ -311,6 +331,25 @@ BEGIN
     RETURN NEW;
 END;
 $$;
+
+
+--
+-- Name: bpp_autorzy_mat_bez_autora_z_kosza(); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.bpp_autorzy_mat_bez_autora_z_kosza() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+BEGIN
+    IF NEW.autor_id IS NOT NULL AND EXISTS (
+        SELECT 1 FROM bpp_autor
+        WHERE id = NEW.autor_id AND deleted_at IS NOT NULL
+    ) THEN
+        DELETE FROM bpp_autorzy_mat WHERE id = NEW.id;
+        RETURN NULL;
+    END IF;
+    RETURN NEW;
+END $$;
 
 
 --
@@ -16712,6 +16751,105 @@ COPY public.django_countdown_sitecountdown (id, countdown_time, message, long_de
 --
 
 COPY public.django_migrations (id, app, name, applied) FROM stdin;
+234	bpp	0152_merge	2000-01-01 00:00:00+00
+1061	oauth2_provider	0001_initial	2000-01-01 00:00:00+00
+253	bpp	0168_dyscyplina_w_autorzy_mat	2000-01-01 00:00:00+00
+511	bpp	0404_add_oplaty_publikacji_log	2000-01-01 00:00:00+00
+620	django_celery_results	0011_taskresult_periodic_task_name	2000-01-01 00:00:00+00
+621	django_celery_results	0012_taskresult_date_started	2000-01-01 00:00:00+00
+622	django_celery_results	0013_taskresult_django_cele_periodi_1993cf_idx	2000-01-01 00:00:00+00
+623	django_celery_results	0014_alter_taskresult_status	2000-01-01 00:00:00+00
+624	sites	0002_alter_domain_unique	2000-01-01 00:00:00+00
+625	django_countdown	0001_initial	2000-01-01 00:00:00+00
+626	django_countdown	0002_alter_sitecountdown_countdown_time	2000-01-01 00:00:00+00
+1136	bpp	0488_purge_praca_tabela_dbtemplate	2000-01-01 00:00:00+00
+627	django_countdown	0003_sitecountdown_maintenance_until	2000-01-01 00:00:00+00
+628	django_countdown	0004_alter_sitecountdown_long_description	2000-01-01 00:00:00+00
+629	django_countdown	0005_alter_sitecountdown_options_and_more	2000-01-01 00:00:00+00
+631	dspace_api	0002_senttodspace	2000-01-01 00:00:00+00
+632	dspace_api	0003_senttodspace_bitstreams	2000-01-01 00:00:00+00
+633	dspace_api	0004_senttodspace_dspace_handle	2000-01-01 00:00:00+00
+634	easyaudit	0001_initial	2000-01-01 00:00:00+00
+635	easyaudit	0002_auto_20170125_0759	2000-01-01 00:00:00+00
+636	easyaudit	0003_auto_20170228_1505	2000-01-01 00:00:00+00
+637	easyaudit	0004_auto_20170620_1354	2000-01-01 00:00:00+00
+639	easyaudit	0006_auto_20171018_1242	2000-01-01 00:00:00+00
+640	easyaudit	0007_auto_20180105_0838	2000-01-01 00:00:00+00
+641	easyaudit	0008_auto_20180220_1908	2000-01-01 00:00:00+00
+642	easyaudit	0009_auto_20180314_2225	2000-01-01 00:00:00+00
+644	easyaudit	0011_auto_20181101_1339	2000-01-01 00:00:00+00
+645	easyaudit	0012_auto_20181018_0012	2000-01-01 00:00:00+00
+646	easyaudit	0013_auto_20190723_0126	2000-01-01 00:00:00+00
+648	easyaudit	0015_auto_20201019_1217	2000-01-01 00:00:00+00
+649	easyaudit	0016_alter_crudevent_event_type	2000-01-01 00:00:00+00
+650	easyaudit	0017_alter_requestevent_datetime	2000-01-01 00:00:00+00
+651	easyaudit	0018_rename_crudevent_object_id_content_type_index	2000-01-01 00:00:00+00
+652	easyaudit	0019_alter_crudevent_changed_fields_and_more	2000-01-01 00:00:00+00
+654	ewaluacja2021	0002_auto_20211026_1137	2000-01-01 00:00:00+00
+655	ewaluacja2021	0003_auto_20211027_2320	2000-01-01 00:00:00+00
+656	ewaluacja2021	0004_importmaksymalnychslotow_ostatnia_zmiana	2000-01-01 00:00:00+00
+1217	bpp	0525_autorzy_mat_bez_autora_z_kosza	2000-01-01 00:00:00+00
+1168	bpp	0507_zrodlo_issn_norm_indexes	2000-01-01 00:00:00+00
+1104	import_polon	0017_liveops	2000-01-01 00:00:00+00
+190	bpp	0109_rekordview	2000-01-01 00:00:00+00
+657	ewaluacja2021	0005_auto_20211028_0039	2000-01-01 00:00:00+00
+658	ewaluacja2021	0006_auto_20211110_0000	2000-01-01 00:00:00+00
+659	ewaluacja2021	0007_auto_20211110_0002	2000-01-01 00:00:00+00
+660	ewaluacja2021	0008_auto_20211122_0103	2000-01-01 00:00:00+00
+661	ewaluacja2021	0009_zamowienienaraport_status	2000-01-01 00:00:00+00
+662	ewaluacja2021	0010_django32	2000-01-01 00:00:00+00
+663	ewaluacja2021	0011_nullbooleanfield	2000-01-01 00:00:00+00
+664	ewaluacja2021	0012_liczbandlauczelni_2022_2025_and_more	2000-01-01 00:00:00+00
+665	ewaluacja2021	0013_alter_iloscudzialowdlaautora_ilosc_udzialow_and_more	2000-01-01 00:00:00+00
+666	ewaluacja2021	0014_iloscudzialowzarok	2000-01-01 00:00:00+00
+667	ewaluacja2021	0015_dyscyplina_nie_raportowana	2000-01-01 00:00:00+00
+668	ewaluacja2021	0016_alter_iloscudzialowdlaautora_2022_2025_unique_together_and_more	2000-01-01 00:00:00+00
+669	ewaluacja2021	0017_alter_liczbandlauczelni_dyscyplina_naukowa_and_more	2000-01-01 00:00:00+00
+670	ewaluacja2021	0018_move_files_to_protected	2000-01-01 00:00:00+00
+671	ewaluacja2021	0019_remove_null_from_string_fields	2000-01-01 00:00:00+00
+672	ewaluacja2021	0020_delete_ewaluacja2021_models	2000-01-01 00:00:00+00
+991	bpp	0448_rodzajjednostki	2000-01-01 00:00:00+00
+371	bpp	0278_autorzy_profil_orcid	2000-01-01 00:00:00+00
+487	bpp	0380_rekord_wydawca	2000-01-01 00:00:00+00
+592	deduplikator_zrodel	0001_initial	2000-01-01 00:00:00+00
+674	ewaluacja_liczba_n	0002_rename_dyscyplinanieraportowana_2022_2025_dyscyplinanieraportowana_and_more	2000-01-01 00:00:00+00
+675	ewaluacja_liczba_n	0003_add_liczba_n_to_dyscyplina_nieraportowana	2000-01-01 00:00:00+00
+676	ewaluacja_liczba_n	0004_add_ilosc_udzialow_za_calosc	2000-01-01 00:00:00+00
+765	import_polon	0001_initial	2000-01-01 00:00:00+00
+677	ewaluacja_liczba_n	0005_iloscudzialowdlaautorazarok_autor_dyscyplina	2000-01-01 00:00:00+00
+678	ewaluacja_liczba_n	0006_alter_iloscudzialowdlaautorazacalosc_unique_together_and_more	2000-01-01 00:00:00+00
+679	ewaluacja_liczba_n	0007_alter_iloscudzialowdlaautorazacalosc_komentarz	2000-01-01 00:00:00+00
+848	pbn_export_queue	0005_reclassify_old_validation_errors	2000-01-01 00:00:00+00
+1216	ewaluacja_metryki	0015_statusgenerowania_reset_sekwencji	2000-01-01 00:00:00+00
+180	bpp	0099_nagrody	2000-01-01 00:00:00+00
+105	bpp	0028_openaccess	2000-01-01 00:00:00+00
+630	dspace_api	0001_initial	2000-01-01 00:00:00+00
+681	ewaluacja_liczba_n	0009_alter_dyscyplinanieraportowana_uczelnia_and_more	2000-01-01 00:00:00+00
+685	ewaluacja_metryki	0004_metrykaautora_rodzaj_autora	2000-01-01 00:00:00+00
+686	ewaluacja_metryki	0005_alter_metrykaautora_rodzaj_autora_and_more	2000-01-01 00:00:00+00
+687	ewaluacja_metryki	0006_alter_metrykaautora_autor_and_more	2000-01-01 00:00:00+00
+688	ewaluacja_optymalizacja	0001_initial	2000-01-01 00:00:00+00
+690	ewaluacja_optymalizacja	0003_unpinningopportunity_punkty_roznica_b_and_more	2000-01-01 00:00:00+00
+691	ewaluacja_optymalizacja	0004_unpinningopportunity_punkty_roznica_a_and_more	2000-01-01 00:00:00+00
+692	ewaluacja_optymalizacja	0005_add_real_unpinning_values	2000-01-01 00:00:00+00
+693	ewaluacja_optymalizacja	0006_add_status_optymalizacji_z_odpinaniem	2000-01-01 00:00:00+00
+694	ewaluacja_optymalizacja	0007_add_status_optymalizacji_bulk	2000-01-01 00:00:00+00
+695	ewaluacja_optymalizacja	0008_add_status_unpinning_analizy	2000-01-01 00:00:00+00
+696	ewaluacja_optymalizacja	0009_add_plik_zip_wszystkie_xls	2000-01-01 00:00:00+00
+697	ewaluacja_optymalizacja	0010_add_is_optimal_to_optimizationrun	2000-01-01 00:00:00+00
+698	ewaluacja_optymalizacja	0011_move_files_to_protected	2000-01-01 00:00:00+00
+699	ewaluacja_optymalizacja	0012_add_discipline_swap_models	2000-01-01 00:00:00+00
+700	ewaluacja_optymalizacja	0013_add_status_przegladarka_recalc	2000-01-01 00:00:00+00
+701	ewaluacja_optymalizacja	0014_add_optimality_gap_to_optimization_run	2000-01-01 00:00:00+00
+702	ewaluacja_optymalizacja	0015_remove_disciplineswapopportunity_ewaluacja_o_uczelni_ed0a90_idx_and_more	2000-01-01 00:00:00+00
+703	ewaluacja_optymalizuj_publikacje	0001_initial	2000-01-01 00:00:00+00
+707	favicon	0004_faviconimg_favicon_size_rel_unique	2000-01-01 00:00:00+00
+710	flexible_reports	0002_auto_20170823_2225	2000-01-01 00:00:00+00
+711	flexible_reports	0003_table_attrs	2000-01-01 00:00:00+00
+712	flexible_reports	0004_auto_20170823_2342	2000-01-01 00:00:00+00
+714	flexible_reports	0006_default_ordering	2000-01-01 00:00:00+00
+715	flexible_reports	0007_sort_desc	2000-01-01 00:00:00+00
+1215	pbn_api	0081_uzupelnij_tlumacza_dyscyplin_fd608	2000-01-01 00:00:00+00
 829	miniblog	0003_alter_article_article_body	2000-01-01 00:00:00+00
 1146	bpp	0446_merge_20260619_2128	2000-01-01 00:00:00+00
 880	raport_slotow	0001_initial	2000-01-01 00:00:00+00
@@ -16805,7 +16943,6 @@ COPY public.django_migrations (id, app, name, applied) FROM stdin;
 797	importer_publikacji	0005_importsession_wydawnictwo_nadrzedne	2000-01-01 00:00:00+00
 798	importer_publikacji	0005_alter_importsession_created_by	2000-01-01 00:00:00+00
 1213	first_run_wizard	0002_stamp_existing_superuser	2000-01-01 00:00:00+00
-180	bpp	0099_nagrody	2000-01-01 00:00:00+00
 249	bpp	0166_auto_20190702_1200	2000-01-01 00:00:00+00
 617	django_celery_results	0008_chordcounter	2000-01-01 00:00:00+00
 799	importer_publikacji	0006_merge_20260421_1100	2000-01-01 00:00:00+00
@@ -16965,7 +17102,6 @@ COPY public.django_migrations (id, app, name, applied) FROM stdin;
 744	import_dyscyplin	0015_auto_20190326_0553	2000-01-01 00:00:00+00
 1166	bpp	0505_wydawca_slug_dane	2000-01-01 00:00:00+00
 1167	bpp	0506_wydawca_slug_unique	2000-01-01 00:00:00+00
-1168	bpp	0507_zrodlo_issn_norm_indexes	2000-01-01 00:00:00+00
 1169	bpp	0508_uczelnia_help_texty_pbn_profil	2000-01-01 00:00:00+00
 1170	zglos_publikacje	0028_obslugujacy_verbose_name	2000-01-01 00:00:00+00
 1171	nowe_raporty	0003_opis_bibliograficzny_link	2000-01-01 00:00:00+00
@@ -17026,7 +17162,6 @@ COPY public.django_migrations (id, app, name, applied) FROM stdin;
 864	pbn_komparator_zrodel	0003_remove_rozbieznosczrodlapbn_pbn_kompara_zrodlo__8665da_idx_and_more	2000-01-01 00:00:00+00
 865	pbn_wysylka_oswiadczen	0001_initial	2000-01-01 00:00:00+00
 266	bpp	0179_auto_20190910_1416	2000-01-01 00:00:00+00
-234	bpp	0152_merge	2000-01-01 00:00:00+00
 875	przemapuj_zrodla_pbn	0001_initial	2000-01-01 00:00:00+00
 876	przemapuj_zrodla_pbn	0002_przemapowaniezrodla_typ_operacji_and_more	2000-01-01 00:00:00+00
 877	przemapuj_zrodla_pbn	0003_alter_przemapowaniezrodla_zrodlo_nowe_and_more	2000-01-01 00:00:00+00
@@ -17061,6 +17196,7 @@ COPY public.django_migrations (id, app, name, applied) FROM stdin;
 452	bpp	0345_alter_wydzial_opis	2000-01-01 00:00:00+00
 653	ewaluacja2021	0001_initial	2000-01-01 00:00:00+00
 1017	ewaluacja_liczba_n	0010_merge_20260604_1952	2000-01-01 00:00:00+00
+928	sessions	0001_initial	2000-01-01 00:00:00+00
 899	raport_slotow	0020_fix_do_roku_default_modulowa_funkcja	2000-01-01 00:00:00+00
 900	reversion	0001_squashed_0004_auto_20160611_1202	2000-01-01 00:00:00+00
 901	reversion	0002_add_index_on_version_for_content_type_and_db	2000-01-01 00:00:00+00
@@ -17155,7 +17291,6 @@ COPY public.django_migrations (id, app, name, applied) FROM stdin;
 1000	bpp	0457_faza_b_i4	2000-01-01 00:00:00+00
 1002	bpp	0444_charakter_formalny_ukryty_charakter_pbn_ukryty_and_more	2000-01-01 00:00:00+00
 647	easyaudit	0014_auto_20200513_0008	2000-01-01 00:00:00+00
-928	sessions	0001_initial	2000-01-01 00:00:00+00
 1007	bpp	0463_faza_b_iv2_multiseek_values	2000-01-01 00:00:00+00
 1008	bpp	0464_rodzajjednostki_autor_moze_afiliowac	2000-01-01 00:00:00+00
 1009	bpp	0454_merge_20260706_0727	2000-01-01 00:00:00+00
@@ -17217,12 +17352,12 @@ COPY public.django_migrations (id, app, name, applied) FROM stdin;
 1118	import_pracownikow	0028_nadpisuj_daty_zatrudnienia	2000-01-01 00:00:00+00
 388	bpp	0295_instaluj_szablony	2000-01-01 00:00:00+00
 1052	importer_publikacji	0016_alter_importsession_status	2000-01-01 00:00:00+00
+256	bpp	0171_auto_20190806_2015	2000-01-01 00:00:00+00
 1053	pbn_api	0075_sentdata_fee_sent_sentdata_fee_uploaded_okay	2000-01-01 00:00:00+00
 1054	przemapuj_prace_autora	0003_przemapoaniepracautora_zrodlowy_import	2000-01-01 00:00:00+00
 1055	import_pracownikow	0016_importpracownikow_tworz_brakujace_jednostki_and_more	2000-01-01 00:00:00+00
 1056	import_pracownikow	0017_importpracownikow_tworz_brakujace_tytuly_and_more	2000-01-01 00:00:00+00
 1057	import_pracownikow	0018_importpracownikow_zakres_integracji	2000-01-01 00:00:00+00
-1061	oauth2_provider	0001_initial	2000-01-01 00:00:00+00
 969	bpp	0416_merge_20260428_1806	2000-01-01 00:00:00+00
 1065	oauth2_provider	0005_auto_20211222_2352	2000-01-01 00:00:00+00
 1066	oauth2_provider	0006_alter_application_client_secret	2000-01-01 00:00:00+00
@@ -17271,7 +17406,6 @@ COPY public.django_migrations (id, app, name, applied) FROM stdin;
 1097	bpp	0468_faza_c_drop_legacy_markery	2000-01-01 00:00:00+00
 1098	bpp	0469_faza_c_czysc_contenttype_wydzial	2000-01-01 00:00:00+00
 476	bpp	0369_wyd_zwarte_nadrzedne_w_pbn	2000-01-01 00:00:00+00
-1104	import_polon	0017_liveops	2000-01-01 00:00:00+00
 1105	pbn_api	0078_deduplikacja_publikacji_instytucji	2000-01-01 00:00:00+00
 1106	pbn_api	0079_constraint_publikacja_instytucji	2000-01-01 00:00:00+00
 1107	raport_slotow	0022_liveops	2000-01-01 00:00:00+00
@@ -17352,6 +17486,7 @@ COPY public.django_migrations (id, app, name, applied) FROM stdin;
 59	pbn_api	0025_auto_20210809_0149	2000-01-01 00:00:00+00
 60	pbn_api	0026_auto_20210816_0815	2000-01-01 00:00:00+00
 61	pbn_api	0027_przemapuj_rok_publikacji	2000-01-01 00:00:00+00
+193	bpp	0112_fix_refresh_cache	2000-01-01 00:00:00+00
 62	pbn_api	0028_gist_idx_publications	2000-01-01 00:00:00+00
 63	pbn_api	0029_indeksy_gist_inne_tabele	2000-01-01 00:00:00+00
 64	pbn_api	0030_auto_20210818_2343	2000-01-01 00:00:00+00
@@ -17388,7 +17523,6 @@ COPY public.django_migrations (id, app, name, applied) FROM stdin;
 100	bpp	0023_auto_20150830_1704	2000-01-01 00:00:00+00
 101	bpp	0024_auto_20150830_1705	2000-01-01 00:00:00+00
 103	bpp	0026_auto_20150902_2102	2000-01-01 00:00:00+00
-105	bpp	0028_openaccess	2000-01-01 00:00:00+00
 106	bpp	0029_auto_20150923_1343	2000-01-01 00:00:00+00
 107	bpp	0030_auto_20150923_1351	2000-01-01 00:00:00+00
 108	bpp	0031_zrodlo_openaccess_licencja	2000-01-01 00:00:00+00
@@ -17463,10 +17597,8 @@ COPY public.django_migrations (id, app, name, applied) FROM stdin;
 187	bpp	0106_pokazuj_uczelnia	2000-01-01 00:00:00+00
 188	bpp	0107_poprawki_wydajnosci	2000-01-01 00:00:00+00
 189	bpp	0108_bpp_nowe_sumy_view_bug	2000-01-01 00:00:00+00
-190	bpp	0109_rekordview	2000-01-01 00:00:00+00
 191	bpp	0110_uczelnia_pokazuj_praca_recenzowana	2000-01-01 00:00:00+00
 192	bpp	0111_autorzy_afiliacja_zatrudniony	2000-01-01 00:00:00+00
-193	bpp	0112_fix_refresh_cache	2000-01-01 00:00:00+00
 194	bpp	0113_auto_20171111_0035	2000-01-01 00:00:00+00
 195	bpp	0114_auto_20171111_0036	2000-01-01 00:00:00+00
 196	bpp	0115_auto_20171111_0038	2000-01-01 00:00:00+00
@@ -17536,10 +17668,8 @@ COPY public.django_migrations (id, app, name, applied) FROM stdin;
 373	bpp	0280_auto_20210725_2217	2000-01-01 00:00:00+00
 376	bpp	0283_auto_20210809_0142	2000-01-01 00:00:00+00
 252	bpp	0167_dyscyplina_change_trigger_fix	2000-01-01 00:00:00+00
-253	bpp	0168_dyscyplina_w_autorzy_mat	2000-01-01 00:00:00+00
 254	bpp	0169_dyscyplina_change_trigger_cacher	2000-01-01 00:00:00+00
 255	bpp	0170_wydawnictwo_wydawca	2000-01-01 00:00:00+00
-256	bpp	0171_auto_20190806_2015	2000-01-01 00:00:00+00
 547	bpp	0431_search_index_gin	2000-01-01 00:00:00+00
 811	integrator2	0004_django32	2000-01-01 00:00:00+00
 263	bpp	0177_cache_punktacja_autora_query	2000-01-01 00:00:00+00
@@ -17741,7 +17871,6 @@ COPY public.django_migrations (id, app, name, applied) FROM stdin;
 508	bpp	0401_autorzy_przypieta	2000-01-01 00:00:00+00
 509	bpp	0402_autorzy_data_oswiadczenia	2000-01-01 00:00:00+00
 510	bpp	0403_autorzy_ostatnio_zmieniony	2000-01-01 00:00:00+00
-511	bpp	0404_add_oplaty_publikacji_log	2000-01-01 00:00:00+00
 513	bpp	0406_add_pbn_evaluation_fields	2000-01-01 00:00:00+00
 514	bpp	0407_remove_null_from_string_fields	2000-01-01 00:00:00+00
 515	bpp	0408_add_jest_wydawnictwem_zwartym_to_crossref_mapper	2000-01-01 00:00:00+00
@@ -17834,94 +17963,6 @@ COPY public.django_migrations (id, app, name, applied) FROM stdin;
 616	django_celery_results	0007_remove_taskresult_hidden	2000-01-01 00:00:00+00
 618	django_celery_results	0009_groupresult	2000-01-01 00:00:00+00
 619	django_celery_results	0010_remove_duplicate_indices	2000-01-01 00:00:00+00
-620	django_celery_results	0011_taskresult_periodic_task_name	2000-01-01 00:00:00+00
-621	django_celery_results	0012_taskresult_date_started	2000-01-01 00:00:00+00
-622	django_celery_results	0013_taskresult_django_cele_periodi_1993cf_idx	2000-01-01 00:00:00+00
-623	django_celery_results	0014_alter_taskresult_status	2000-01-01 00:00:00+00
-624	sites	0002_alter_domain_unique	2000-01-01 00:00:00+00
-625	django_countdown	0001_initial	2000-01-01 00:00:00+00
-626	django_countdown	0002_alter_sitecountdown_countdown_time	2000-01-01 00:00:00+00
-1136	bpp	0488_purge_praca_tabela_dbtemplate	2000-01-01 00:00:00+00
-627	django_countdown	0003_sitecountdown_maintenance_until	2000-01-01 00:00:00+00
-628	django_countdown	0004_alter_sitecountdown_long_description	2000-01-01 00:00:00+00
-629	django_countdown	0005_alter_sitecountdown_options_and_more	2000-01-01 00:00:00+00
-630	dspace_api	0001_initial	2000-01-01 00:00:00+00
-631	dspace_api	0002_senttodspace	2000-01-01 00:00:00+00
-632	dspace_api	0003_senttodspace_bitstreams	2000-01-01 00:00:00+00
-633	dspace_api	0004_senttodspace_dspace_handle	2000-01-01 00:00:00+00
-634	easyaudit	0001_initial	2000-01-01 00:00:00+00
-635	easyaudit	0002_auto_20170125_0759	2000-01-01 00:00:00+00
-636	easyaudit	0003_auto_20170228_1505	2000-01-01 00:00:00+00
-637	easyaudit	0004_auto_20170620_1354	2000-01-01 00:00:00+00
-639	easyaudit	0006_auto_20171018_1242	2000-01-01 00:00:00+00
-640	easyaudit	0007_auto_20180105_0838	2000-01-01 00:00:00+00
-641	easyaudit	0008_auto_20180220_1908	2000-01-01 00:00:00+00
-642	easyaudit	0009_auto_20180314_2225	2000-01-01 00:00:00+00
-644	easyaudit	0011_auto_20181101_1339	2000-01-01 00:00:00+00
-645	easyaudit	0012_auto_20181018_0012	2000-01-01 00:00:00+00
-646	easyaudit	0013_auto_20190723_0126	2000-01-01 00:00:00+00
-648	easyaudit	0015_auto_20201019_1217	2000-01-01 00:00:00+00
-649	easyaudit	0016_alter_crudevent_event_type	2000-01-01 00:00:00+00
-650	easyaudit	0017_alter_requestevent_datetime	2000-01-01 00:00:00+00
-651	easyaudit	0018_rename_crudevent_object_id_content_type_index	2000-01-01 00:00:00+00
-652	easyaudit	0019_alter_crudevent_changed_fields_and_more	2000-01-01 00:00:00+00
-654	ewaluacja2021	0002_auto_20211026_1137	2000-01-01 00:00:00+00
-655	ewaluacja2021	0003_auto_20211027_2320	2000-01-01 00:00:00+00
-656	ewaluacja2021	0004_importmaksymalnychslotow_ostatnia_zmiana	2000-01-01 00:00:00+00
-657	ewaluacja2021	0005_auto_20211028_0039	2000-01-01 00:00:00+00
-658	ewaluacja2021	0006_auto_20211110_0000	2000-01-01 00:00:00+00
-659	ewaluacja2021	0007_auto_20211110_0002	2000-01-01 00:00:00+00
-660	ewaluacja2021	0008_auto_20211122_0103	2000-01-01 00:00:00+00
-661	ewaluacja2021	0009_zamowienienaraport_status	2000-01-01 00:00:00+00
-662	ewaluacja2021	0010_django32	2000-01-01 00:00:00+00
-663	ewaluacja2021	0011_nullbooleanfield	2000-01-01 00:00:00+00
-664	ewaluacja2021	0012_liczbandlauczelni_2022_2025_and_more	2000-01-01 00:00:00+00
-665	ewaluacja2021	0013_alter_iloscudzialowdlaautora_ilosc_udzialow_and_more	2000-01-01 00:00:00+00
-666	ewaluacja2021	0014_iloscudzialowzarok	2000-01-01 00:00:00+00
-667	ewaluacja2021	0015_dyscyplina_nie_raportowana	2000-01-01 00:00:00+00
-668	ewaluacja2021	0016_alter_iloscudzialowdlaautora_2022_2025_unique_together_and_more	2000-01-01 00:00:00+00
-669	ewaluacja2021	0017_alter_liczbandlauczelni_dyscyplina_naukowa_and_more	2000-01-01 00:00:00+00
-670	ewaluacja2021	0018_move_files_to_protected	2000-01-01 00:00:00+00
-671	ewaluacja2021	0019_remove_null_from_string_fields	2000-01-01 00:00:00+00
-672	ewaluacja2021	0020_delete_ewaluacja2021_models	2000-01-01 00:00:00+00
-991	bpp	0448_rodzajjednostki	2000-01-01 00:00:00+00
-371	bpp	0278_autorzy_profil_orcid	2000-01-01 00:00:00+00
-487	bpp	0380_rekord_wydawca	2000-01-01 00:00:00+00
-592	deduplikator_zrodel	0001_initial	2000-01-01 00:00:00+00
-674	ewaluacja_liczba_n	0002_rename_dyscyplinanieraportowana_2022_2025_dyscyplinanieraportowana_and_more	2000-01-01 00:00:00+00
-675	ewaluacja_liczba_n	0003_add_liczba_n_to_dyscyplina_nieraportowana	2000-01-01 00:00:00+00
-676	ewaluacja_liczba_n	0004_add_ilosc_udzialow_za_calosc	2000-01-01 00:00:00+00
-765	import_polon	0001_initial	2000-01-01 00:00:00+00
-677	ewaluacja_liczba_n	0005_iloscudzialowdlaautorazarok_autor_dyscyplina	2000-01-01 00:00:00+00
-678	ewaluacja_liczba_n	0006_alter_iloscudzialowdlaautorazacalosc_unique_together_and_more	2000-01-01 00:00:00+00
-679	ewaluacja_liczba_n	0007_alter_iloscudzialowdlaautorazacalosc_komentarz	2000-01-01 00:00:00+00
-848	pbn_export_queue	0005_reclassify_old_validation_errors	2000-01-01 00:00:00+00
-681	ewaluacja_liczba_n	0009_alter_dyscyplinanieraportowana_uczelnia_and_more	2000-01-01 00:00:00+00
-685	ewaluacja_metryki	0004_metrykaautora_rodzaj_autora	2000-01-01 00:00:00+00
-686	ewaluacja_metryki	0005_alter_metrykaautora_rodzaj_autora_and_more	2000-01-01 00:00:00+00
-687	ewaluacja_metryki	0006_alter_metrykaautora_autor_and_more	2000-01-01 00:00:00+00
-688	ewaluacja_optymalizacja	0001_initial	2000-01-01 00:00:00+00
-690	ewaluacja_optymalizacja	0003_unpinningopportunity_punkty_roznica_b_and_more	2000-01-01 00:00:00+00
-691	ewaluacja_optymalizacja	0004_unpinningopportunity_punkty_roznica_a_and_more	2000-01-01 00:00:00+00
-692	ewaluacja_optymalizacja	0005_add_real_unpinning_values	2000-01-01 00:00:00+00
-693	ewaluacja_optymalizacja	0006_add_status_optymalizacji_z_odpinaniem	2000-01-01 00:00:00+00
-694	ewaluacja_optymalizacja	0007_add_status_optymalizacji_bulk	2000-01-01 00:00:00+00
-695	ewaluacja_optymalizacja	0008_add_status_unpinning_analizy	2000-01-01 00:00:00+00
-696	ewaluacja_optymalizacja	0009_add_plik_zip_wszystkie_xls	2000-01-01 00:00:00+00
-697	ewaluacja_optymalizacja	0010_add_is_optimal_to_optimizationrun	2000-01-01 00:00:00+00
-698	ewaluacja_optymalizacja	0011_move_files_to_protected	2000-01-01 00:00:00+00
-699	ewaluacja_optymalizacja	0012_add_discipline_swap_models	2000-01-01 00:00:00+00
-700	ewaluacja_optymalizacja	0013_add_status_przegladarka_recalc	2000-01-01 00:00:00+00
-701	ewaluacja_optymalizacja	0014_add_optimality_gap_to_optimization_run	2000-01-01 00:00:00+00
-702	ewaluacja_optymalizacja	0015_remove_disciplineswapopportunity_ewaluacja_o_uczelni_ed0a90_idx_and_more	2000-01-01 00:00:00+00
-703	ewaluacja_optymalizuj_publikacje	0001_initial	2000-01-01 00:00:00+00
-707	favicon	0004_faviconimg_favicon_size_rel_unique	2000-01-01 00:00:00+00
-710	flexible_reports	0002_auto_20170823_2225	2000-01-01 00:00:00+00
-711	flexible_reports	0003_table_attrs	2000-01-01 00:00:00+00
-712	flexible_reports	0004_auto_20170823_2342	2000-01-01 00:00:00+00
-714	flexible_reports	0006_default_ordering	2000-01-01 00:00:00+00
-715	flexible_reports	0007_sort_desc	2000-01-01 00:00:00+00
-1215	pbn_api	0081_uzupelnij_tlumacza_dyscyplin_fd608	2000-01-01 00:00:00+00
 \.
 
 
@@ -20001,7 +20042,7 @@ SELECT pg_catalog.setval('public.django_countdown_sitecountdown_id_seq', 1, fals
 -- Name: django_migrations_id_seq; Type: SEQUENCE SET; Schema: public; Owner: -
 --
 
-SELECT pg_catalog.setval('public.django_migrations_id_seq', 1215, true);
+SELECT pg_catalog.setval('public.django_migrations_id_seq', 1217, true);
 
 
 --
@@ -32861,6 +32902,13 @@ CREATE CONSTRAINT TRIGGER bpp_autor_jednostka_jedno_podstawowe_trig AFTER INSERT
 
 
 --
+-- Name: bpp_autor bpp_autor_kosz_autorzy_mat; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER bpp_autor_kosz_autorzy_mat AFTER UPDATE OF deleted_at ON public.bpp_autor FOR EACH ROW WHEN ((old.deleted_at IS DISTINCT FROM new.deleted_at)) EXECUTE FUNCTION public.bpp_autor_kosz_autorzy_mat();
+
+
+--
 -- Name: bpp_autor bpp_autor_kosz_straznik; Type: TRIGGER; Schema: public; Owner: -
 --
 
@@ -32872,6 +32920,13 @@ CREATE TRIGGER bpp_autor_kosz_straznik BEFORE DELETE OR UPDATE ON public.bpp_aut
 --
 
 CREATE TRIGGER bpp_autor_ustaw_jednostka_aktualna_trigger AFTER INSERT OR DELETE OR UPDATE ON public.bpp_autor_jednostka FOR EACH ROW EXECUTE FUNCTION public.bpp_autor_ustaw_jednostka_aktualna();
+
+
+--
+-- Name: bpp_autorzy_mat bpp_autorzy_mat_bez_autora_z_kosza; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER bpp_autorzy_mat_bez_autora_z_kosza BEFORE INSERT ON public.bpp_autorzy_mat FOR EACH ROW EXECUTE FUNCTION public.bpp_autorzy_mat_bez_autora_z_kosza();
 
 
 --

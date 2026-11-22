@@ -63,7 +63,15 @@ class OptionalPBNSaveMixin:
     ):
         from bpp.models import Uczelnia
 
-        uczelnia = Uczelnia.objects.get_for_request(request)
+        # „Zapisz i wyślij do PBN" ma sens tylko, gdy formularz da się zapisać.
+        # Rekord z kosza (albo widok tylko do odczytu) nie ma przycisku „Zapisz",
+        # więc nie może też mieć przycisków wysyłki do PBN.
+        moze_zapisac = (
+            self.has_add_permission(request)
+            if add
+            else self.has_change_permission(request, obj)
+        )
+        uczelnia = Uczelnia.objects.get_for_request(request) if moze_zapisac else None
         if uczelnia is not None:
             if uczelnia.pbn_integracja and uczelnia.pbn_aktualizuj_na_biezaco:
                 context.update({"show_save_and_pbn": True})
@@ -524,17 +532,25 @@ class BppSoftDeleteAdminMixin:
         """„Usuń" na rekordzie = kosz, ze stroną potwierdzenia, która:
 
         - pokazuje, że rekord zostanie WYCOFANY z PBN (gdy ma odpowiednik),
-        - odmawia od razu, gdy guard blokuje (autor z pracami, książka
-          z rozdziałami, używany słownik) albo rekord jest w kolejce PBN.
+        - odmawia od razu, gdy guard blokuje (autor z żywymi pracami,
+          książka z żywymi rozdziałami, używany słownik) albo rekord jest
+          w kolejce PBN,
+        - uprzedza o powiązaniach od rekordów Z KOSZA (np. prace autora
+          w koszu): nie blokują, ale ich przywrócenie będzie wymagało
+          najpierw przywrócenia tego rekordu.
         """
         obj = self.get_object(request, unquote(object_id))
         if obj is not None and self.has_delete_permission(request, obj):
             blokada, grupy = self.blokada_kosza_szczegoly(obj)
+            powiazania = getattr(obj, "powiazania_w_koszu", None)
+            powiazania = powiazania() if powiazania is not None else []
             extra_context = {
                 **(extra_context or {}),
                 "kosz_blokada": blokada,
                 "kosz_blokada_grupy": grupy,
                 "kosz_blokada_w_koszu": sum(g.w_koszu for g in grupy),
+                "kosz_powiazania_w_koszu": powiazania,
+                "kosz_powiazania_w_koszu_liczba": sum(g.liczba for g in powiazania),
                 "title": "Usuń do kosza",
                 "kosz_pbn": self.stan_pbn_przed_koszem(obj),
             }
@@ -627,7 +643,13 @@ class BppSoftDeleteAdminMixin:
             RekordWKolejcePBN,
             NiedozwolonaZmianaKosza,
         ) as e:
-            self.message_user(request, str(e), level=messages.ERROR)
+            # ``WskazaniaWKoszu`` ma wersję z linkami do rekordów z kosza.
+            komunikat = getattr(e, "komunikat_html", None)
+            self.message_user(
+                request,
+                komunikat() if komunikat is not None else str(e),
+                level=messages.ERROR,
+            )
             return False
         return True
 
