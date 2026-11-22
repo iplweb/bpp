@@ -416,49 +416,43 @@
                     }
                 });
 
-                // Polish loading messages for scientific bibliography
+                // Komunikaty podczas filtrowania: stonowane, z lekkim uśmiechem,
+                // bez przytyków (do ministerstwa, wydawców, ewaluacji) i bez
+                // tekstów, które można wziąć za komunikat o błędzie.
                 const loadingMessages = [
-                    // Academic Life & Publishing
+                    "Filtruję rekordy...",
+                    "Przeglądam katalog...",
                     "Szukam igły w stogu publikacji...",
                     "Wertuję punkty ministerialne...",
-                    "Szukam humoru recenzenta...",
-                    "Teleportuję elektrony...",
-                    "Przesyłki błąd - natychmiast...",
-                    "Poszukiwany... aktor? Imp-akt-f... aktor...",
-
-                    // Humorous & Relatable
+                    "Przeglądam afiliacje...",
+                    "Zestawiam autorów z jednostkami...",
+                    "Sprawdzam numery ISSN...",
+                    "Przekładam fiszki...",
                     "Budzę uśpione cytowania...",
-                    "Negocjuję z serwerem...",
                     "Przekonuję bazę do współpracy...",
+                    "Układam wyniki na półce...",
+                    "Porządkuję bibliografię...",
+                    "Zaglądam do kartoteki...",
+                    "Odkurzam stare roczniki...",
+                    "Liczę strony i tomy...",
+                    "Sprawdzam, kto z kim publikował...",
+                    "Przewracam kartki czasopism...",
+                    "Dopasowuję dyscypliny...",
+                    "Zbieram rekordy w jedno miejsce...",
+                    "Sortuję po alfabecie i latach...",
+                    "Przeglądam półkę z monografiami...",
+                    "Szukam we właściwej szufladzie...",
+                    "Jeszcze chwilka...",
 
-                    // Self-Deprecating & Silly
-                    "Szukam sensu w algorytmach punktacji...",
-                    "Rozmawiam z duchami dawnych publikacji...",
-
-                    // Academic Frustrations
-                    "Walczę z formularzami...",
-                    "Odszyfrowuję ministerialne wytyczne...",
-                    "Szukam sensu w algorytmach ewaluacji...",
-                    "Poszukiwanie plagiatów...",
-                    "Odkopuję publikacje spod biurokracji...",
-
-                    // Philosophical & Witty
-                    "Kontempluję istotę h-indexu...",
-                    "Medytuję nad sensem współautorstwa...",
-                    "Filozofuję nad paradoksem open access...",
-                    "Rozważam dylemat publikuj albo giń...",
-                    "Analizuję chaos teorii cytowań...",
-
-                    // Pop Culture References
-                    "Hakuję matrycę bibliograficzną...",
-                    "Teleportuję dane z PBN...",
-                    "Wywołuję zaklęcie przyspieszenia bazy...",
-                    "Łączę się z bibliograficzną mocą...",
-                    "Przekraczam próg cytowań...",
-
-
-                    "Zwalczam drapieżnych wydawców..."
-
+                    // Wskazówki — tylko funkcje dostępne na KAŻDEJ liście admina.
+                    "Wskazówka: przypnij panel filtrów pinezką, a zostanie " +
+                        "otwarty po przeładowaniu strony.",
+                    "Wskazówka: klawisz Esc zamyka panel filtrów.",
+                    "Wskazówka: kliknięcie w wiersz otwiera rekord, " +
+                        "z Ctrl (⌘ na Macu) — w nowej karcie.",
+                    "Wskazówka: wiersz wybrany klawiaturą otworzysz " +
+                        "Enterem lub spacją.",
+                    "Wskazówka: klawisz ? otwiera okno pomocy technicznej."
                 ];
 
                 // Function to get random loading message
@@ -492,9 +486,10 @@
 
                             var textSpan = loadingIndicator.querySelector('span');
                             if (textSpan) {
-                                // Add ellipsis if the message doesn't already have it
+                                // Wielokropek tylko dla tekstów bez kropki na końcu
+                                // (wskazówki kończą się zwykłą kropką).
                                 var message = getRandomLoadingMessage();
-                                if (!message.endsWith('...')) {
+                                if (!message.endsWith('.')) {
                                     message += '...';
                                 }
                                 textSpan.textContent = message;

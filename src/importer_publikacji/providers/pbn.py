@@ -7,7 +7,12 @@ from pbn_api.exceptions import (
     PraceSerwisoweException,
 )
 
-from . import DataProvider, FetchedPublication, register_provider
+from . import (
+    DataProvider,
+    FetchedPublication,
+    dolacz_redaktorow,
+    register_provider,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -68,14 +73,15 @@ def _get_pbn_client(uczelnia):
     return PBNClient(transport)
 
 
-def _extract_authors(obj: dict) -> list[dict]:
-    """Wyciągnij autorów z PBN publication object.
+def _extract_authors(obj: dict, key: str = "authors") -> list[dict]:
+    """Wyciągnij autorów (albo redaktorów: ``key="editors"``) z PBN
+    publication object.
 
-    PBN get_publication_by_id returns authors as a dict:
+    PBN get_publication_by_id returns authors/editors as a dict:
         {pbn_uid: {lastName, name}, ...}
     FetchedPublication format: {family, given, orcid}
     """
-    raw = obj.get("authors", {})
+    raw = obj.get(key, {})
     authors = []
     if isinstance(raw, dict):
         for _pbn_uid, author in raw.items():
@@ -283,7 +289,12 @@ class PBNProvider(DataProvider):
             title=obj.get("title", ""),
             doi=obj.get("doi"),
             year=_extract_year(obj),
-            authors=_extract_authors(obj),
+            # Redaktorzy książki redagowanej (PBN ``editors``) — FD#619.
+            authors=dolacz_redaktorow(
+                _extract_authors(obj),
+                _extract_authors(obj, "editors"),
+                PBN_TYPE_MAP.get(obj.get("type", "")),
+            ),
             source_title=journal.get("title"),
             issn=_extract_issn(journal.get("issn")),
             e_issn=_extract_issn(journal.get("eissn")),
