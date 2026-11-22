@@ -52,26 +52,38 @@ def test_liczby_prac_autora(
     okresy, autor_jan_kowalski, jednostka, statusy_korekt, typy_odpowiedzialnosci
 ):
     _prace(autor_jan_kowalski, jednostka, [2019, 2022, 2023, 2025, 2027])
+    # Każda praca testowa dostaje własny (losowy) charakter formalny.
+    nazwy = sorted(
+        autor_jan_kowalski.wydawnictwo_ciagle_set.values_list(
+            "charakter_formalny__nazwa", flat=True
+        )
+    )
     wynik = liczby_prac_autora(autor_jan_kowalski)
+    # Przy równych liczbach kolejność zależy od sortowania nazw w bazie.
+    wynik["charaktery"].sort(key=lambda c: c["nazwa"])
+    # Losowe charaktery testowe nie są ani publikacją, ani streszczeniem.
+    assert wynik.pop("typy") == [{"nazwa": "inne", "liczba": 5}]
     assert wynik == {
         "wszystkie": 5,
         "okresy": [
             {"rok_od": 2022, "rok_do": 2025, "liczba": 3},
             {"rok_od": 2026, "rok_do": 2030, "liczba": 1},
         ],
+        "charaktery": [{"nazwa": nazwa, "liczba": 1} for nazwa in nazwy],
     }
 
 
-def test_liczby_prac_autora_dwa_zapytania(
+def test_liczby_prac_autora_trzy_zapytania(
     okresy, autor_jan_kowalski, jednostka, statusy_korekt, typy_odpowiedzialnosci
 ):
-    """Okresy (jedno małe zapytanie) + wszystkie liczby JEDNYM agregatem —
-    niezależnie od liczby okresów i prac."""
+    """Okresy (jedno małe zapytanie) + wszystkie liczby JEDNYM agregatem +
+    najliczniejsze charaktery (jedno grupujące) — niezależnie od liczby
+    okresów i prac."""
     _prace(autor_jan_kowalski, jednostka, [2022, 2023, 2027])
     OkresEwaluacji.objects.create(rok_od=2031, rok_do=2035)
     with CaptureQueriesContext(connection) as zapytania:
         liczby_prac_autora(autor_jan_kowalski)
-    assert len(zapytania) == 2
+    assert len(zapytania) == 3
 
 
 def test_strona_autora_jeden_okres(
@@ -217,3 +229,35 @@ def test_klik_w_wspolautora_prowadzi_do_wspolnych_prac(
         },
     )
     assert res["Location"].endswith(reverse("multiseek:results"))
+
+
+def test_menu_przycisku_ma_typy_charaktery_i_link_do_filtrow(
+    client, okresy, autor_jan_kowalski, jednostka, statusy_korekt, typy_odpowiedzialnosci
+):
+    _prace(autor_jan_kowalski, jednostka, [2022, 2023])
+    charakter = autor_jan_kowalski.wydawnictwo_ciagle_set.first().charakter_formalny
+    tresc = client.get(
+        reverse("bpp:browse_autor", args=(autor_jan_kowalski.slug,))
+    ).content.decode()
+    assert "Według typu" in tresc
+    assert 'name="typ" value="inne"' in tresc
+    assert "Według charakteru" in tresc
+    assert f'name="charakter_formalny" value="{charakter.nazwa}"' in tresc
+    assert 'href="#wyszukaj-publikacje-autora"' in tresc
+
+
+def test_post_charakteru_prowadzi_do_prac_o_tym_charakterze(
+    client, okresy, autor_jan_kowalski, jednostka, statusy_korekt, typy_odpowiedzialnosci
+):
+    _prace(autor_jan_kowalski, jednostka, [2022])
+    charakter = autor_jan_kowalski.wydawnictwo_ciagle_set.first().charakter_formalny
+    res = client.post(
+        reverse("bpp:browse_build_search"),
+        {
+            "autor": autor_jan_kowalski.pk,
+            "charakter_formalny": charakter.nazwa,
+            "cel": "wyniki",
+        },
+    )
+    assert res.status_code == 302
+    assert "Praca 2022" in client.get(res["Location"]).content.decode()

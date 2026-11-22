@@ -73,6 +73,8 @@
     display: inline-flex;
     align-items: stretch;
     position: relative;
+    // Menu ma leżeć NAD kaflami podsumowania i resztą treści pod spodem.
+    z-index: 50;
     margin-bottom: 1rem;
     border-radius: 6px;
     box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
@@ -180,6 +182,33 @@
 
   &__okres-liczba {
     opacity: 0.65;
+  }
+
+  // Nagłówki grup w menu („Z lat”, „Według typu”, „Według charakteru”).
+  &__menu-naglowek {
+    padding: 8px 16px 2px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    opacity: 0.55;
+  }
+
+  // Długie nazwy charakterów zawijają się zamiast rozpychać menu.
+  &__charakter-btn {
+    white-space: normal;
+    text-align: left;
+  }
+
+  // „Wyszukiwarka z filtrami” — oddzielona kreską od gotowych wyborów.
+  &__menu-filtry {
+    margin-top: 4px;
+    border-top: 1px solid rgba(0, 0, 0, 0.1);
+    text-decoration: none;
+
+    &[hidden] {
+      display: none;
+    }
   }
 
   // Grid with gap

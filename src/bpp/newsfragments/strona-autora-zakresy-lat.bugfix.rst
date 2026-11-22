@@ -1,4 +1,6 @@
-Strona autora: zakresy lat („Prace z lat 2022–2025” itd., z liczbą prac) są
-teraz w rozwijanej liście pod strzałką będącą częścią przycisku „Pokaż
-wszystkie prace” — wcześniej mały przycisk zakresu stał między dwoma dużymi
-przyciskami i psuł układ.
+Strona autora: przycisk „Pokaż wszystkie prace” ma teraz strzałkę z menu
+gotowych wyborów (z liczbą prac przy każdym): prace z zakresów lat, według
+typu (publikacje, streszczenia, inne), według najliczniejszych charakterów
+formalnych oraz przejście do wyszukiwarki z filtrami na tej samej stronie.
+Wcześniej mały przycisk zakresu lat stał między dwoma dużymi przyciskami
+i psuł układ.

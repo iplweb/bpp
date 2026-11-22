@@ -60,7 +60,8 @@
 {# (bez formularza wyszukiwarki). Liczby: views.browse.liczby_prac_autora. #}
 <div class="autor-page__quick-actions">
     {# „Pokaż wszystkie prace” jako przycisk dzielony: główna część — wszystkie #}
-    {# prace, strzałka ▾ obok — lista zakresów lat (z liczbą prac w każdym). #}
+    {# prace, strzałka obok — menu: zakresy lat, typy, najliczniejsze charaktery #}
+    {# (z liczbami) i przejście do wyszukiwarki z filtrami na tej stronie. #}
     <div class="autor-page__split">
         <form method="post"
               action="{% url "bpp:browse_build_search" %}"
@@ -70,29 +71,65 @@
             <input type="hidden" name="suggested-title" value="{{ autor }}"/>
             <input type="hidden" name="cel" value="wyniki"/>
             <button type="submit"
-                    class="button primary large autor-page__show-all-btn{% if liczby_prac.okresy %} autor-page__split-glowny{% endif %}">
+                    class="button primary large autor-page__show-all-btn{% if liczby_prac.okresy or liczby_prac.charaktery %} autor-page__split-glowny{% endif %}">
                 <i class="fi-list-bullet autor-page__icon--mr-lg"></i>Pokaż wszystkie prace ({{ liczby_prac.wszystkie }})
             </button>
         </form>
-        {% if liczby_prac.okresy %}
+        {% if liczby_prac.okresy or liczby_prac.charaktery %}
             <details class="autor-page__okresy">
                 <summary class="button primary large autor-page__show-all-btn autor-page__split-strzalka"
-                         title="Prace z wybranego zakresu lat"
-                         aria-label="Prace z wybranego zakresu lat"><svg viewBox="0 0 14 14" aria-hidden="true" focusable="false"><path d="M2 5l5 5 5-5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></summary>
-                <div class="autor-page__okresy-lista" role="group" aria-label="Prace z zakresów lat">
-                    {% for okres in liczby_prac.okresy %}
-                        <form method="post"
-                              action="{% url "bpp:browse_build_search" %}"
-                              class="autor-page__quick-actions-form">
-                            <input type="hidden" name="autor" value="{{ autor.pk }}"/>
-                            <input type="hidden" name="zakres_lat" value="[{{ okres.rok_od|stringformat:"d" }},{{ okres.rok_do|stringformat:"d" }}]"/>
-                            <input type="hidden" name="suggested-title" value="{{ autor }} — prace {{ okres.rok_od|stringformat:"d" }}–{{ okres.rok_do|stringformat:"d" }}"/>
-                            <input type="hidden" name="cel" value="wyniki"/>
-                            <button type="submit"
-                                    class="autor-page__okres-btn"
-                                    title="Prace z lat {{ okres.rok_od|stringformat:"d" }}–{{ okres.rok_do|stringformat:"d" }}"><span>Prace z lat {{ okres.rok_od|stringformat:"d" }}–{{ okres.rok_do|stringformat:"d" }}</span><span class="autor-page__okres-liczba">{{ okres.liczba }}</span></button>
-                        </form>
-                    {% endfor %}
+                         title="Wybierz, które prace pokazać"
+                         aria-label="Wybierz, które prace pokazać"><svg viewBox="0 0 14 14" aria-hidden="true" focusable="false"><path d="M2 5l5 5 5-5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></summary>
+                <div class="autor-page__okresy-lista">
+                    {% if liczby_prac.okresy %}
+                        <div class="autor-page__menu-naglowek">Z lat</div>
+                        {% for okres in liczby_prac.okresy %}
+                            <form method="post"
+                                  action="{% url "bpp:browse_build_search" %}"
+                                  class="autor-page__quick-actions-form">
+                                <input type="hidden" name="autor" value="{{ autor.pk }}"/>
+                                <input type="hidden" name="zakres_lat" value="[{{ okres.rok_od|stringformat:"d" }},{{ okres.rok_do|stringformat:"d" }}]"/>
+                                <input type="hidden" name="suggested-title" value="{{ autor }} — prace {{ okres.rok_od|stringformat:"d" }}–{{ okres.rok_do|stringformat:"d" }}"/>
+                                <input type="hidden" name="cel" value="wyniki"/>
+                                <button type="submit"
+                                        class="autor-page__okres-btn"
+                                        title="Prace z lat {{ okres.rok_od|stringformat:"d" }}–{{ okres.rok_do|stringformat:"d" }}"><span>Prace z lat {{ okres.rok_od|stringformat:"d" }}–{{ okres.rok_do|stringformat:"d" }}</span><span class="autor-page__okres-liczba">{{ okres.liczba }}</span></button>
+                            </form>
+                        {% endfor %}
+                    {% endif %}
+                    {% if liczby_prac.typy %}
+                        <div class="autor-page__menu-naglowek">Według typu</div>
+                        {% for typ in liczby_prac.typy %}
+                            <form method="post"
+                                  action="{% url "bpp:browse_build_search" %}"
+                                  class="autor-page__quick-actions-form">
+                                <input type="hidden" name="autor" value="{{ autor.pk }}"/>
+                                <input type="hidden" name="typ" value="{{ typ.nazwa }}"/>
+                                <input type="hidden" name="suggested-title" value="{{ autor }} — {{ typ.nazwa }}"/>
+                                <input type="hidden" name="cel" value="wyniki"/>
+                                <button type="submit"
+                                        class="autor-page__okres-btn autor-page__typ-btn"><span>{{ typ.nazwa|capfirst }}</span><span class="autor-page__okres-liczba">{{ typ.liczba }}</span></button>
+                            </form>
+                        {% endfor %}
+                    {% endif %}
+                    {% if liczby_prac.charaktery %}
+                        <div class="autor-page__menu-naglowek">Według charakteru</div>
+                        {% for charakter in liczby_prac.charaktery %}
+                            <form method="post"
+                                  action="{% url "bpp:browse_build_search" %}"
+                                  class="autor-page__quick-actions-form">
+                                <input type="hidden" name="autor" value="{{ autor.pk }}"/>
+                                <input type="hidden" name="charakter_formalny" value="{{ charakter.nazwa }}"/>
+                                <input type="hidden" name="suggested-title" value="{{ autor }} — {{ charakter.nazwa }}"/>
+                                <input type="hidden" name="cel" value="wyniki"/>
+                                <button type="submit"
+                                        class="autor-page__okres-btn autor-page__charakter-btn"><span>{{ charakter.nazwa }}</span><span class="autor-page__okres-liczba">{{ charakter.liczba }}</span></button>
+                            </form>
+                        {% endfor %}
+                    {% endif %}
+                    {# Pokazywany przez skrypt tylko, gdy wyszukiwarka jest na stronie. #}
+                    <a href="#wyszukaj-publikacje-autora"
+                       class="autor-page__okres-btn autor-page__menu-filtry" hidden><span><i class="fi-magnifying-glass"></i> Wyszukiwarka z filtrami</span></a>
                 </div>
             </details>
         {% endif %}
@@ -104,9 +141,10 @@
         </a>
     {% endif %}
 </div>
-{% if liczby_prac.okresy %}
+{% if liczby_prac.okresy or liczby_prac.charaktery %}
 <script>
-    // Lista zakresów lat: zamknij kliknięciem obok albo klawiszem Esc.
+    // Menu przycisku „Pokaż wszystkie prace”: zamknij kliknięciem obok albo
+    // Esc; „Wyszukiwarka z filtrami” przewija do formularza na tej stronie.
     (function () {
         var lista = document.querySelector(".autor-page__okresy");
         if (!lista) { return; }
@@ -118,6 +156,21 @@
                 lista.open = false;
                 lista.querySelector("summary").focus();
             }
+        });
+        document.addEventListener("DOMContentLoaded", function () {
+            var filtry = lista.querySelector(".autor-page__menu-filtry");
+            var cel = document.getElementById("wyszukaj-publikacje-autora");
+            if (!filtry || !cel) { return; }
+            filtry.hidden = false;
+            filtry.addEventListener("click", function (e) {
+                e.preventDefault();
+                lista.open = false;
+                if (window.bpp && window.bpp.scrollToVisible) {
+                    window.bpp.scrollToVisible(cel);
+                } else {
+                    window.location.hash = "wyszukaj-publikacje-autora";
+                }
+            });
         });
     })();
 </script>

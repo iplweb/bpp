@@ -305,6 +305,11 @@ class JednostkaView(DetailView):
         }
 
 
+#: Ile najliczniejszych charakterów formalnych pokazuje menu przycisku
+#: „Pokaż wszystkie prace” na stronie autora.
+LICZBA_CHARAKTEROW_W_MENU = 5
+
+
 def liczby_prac_autora(autor, uczelnia=None, zalogowany=False):
     """Liczby prac autora do przycisków „Pokaż wszystkie prace (N)” i zakresów
     lat („2022–2025 (34)”) na stronie autora.
@@ -318,8 +323,10 @@ def liczby_prac_autora(autor, uczelnia=None, zalogowany=False):
     bez żadnych warunków ewaluacyjnych (N, dyscypliny itp.), a UI nie używa
     słownictwa ewaluacyjnego. Zakresy — jedno małe zapytanie;
     wszystkie liczby — JEDNO zapytanie agregujące (``COUNT(rok) FILTER``).
-    Zwraca ``{"wszystkie": N, "okresy": [{"rok_od", "rok_do", "liczba"}]}``,
-    tylko okresy z co najmniej jedną pracą. ``uczelnia`` — już pobrana przez
+    Zwraca ``{"wszystkie": N, "okresy": [{"rok_od", "rok_do", "liczba"}],
+    "charaktery": [{"nazwa", "liczba"}], "typy": [{"nazwa", "liczba"}]}`` —
+    tylko okresy i typy z co najmniej jedną pracą oraz kilka najliczniejszych
+    charakterów formalnych (osobne zapytanie). ``uczelnia`` — już pobrana przez
     widok (bez dodatkowego zapytania); ``zalogowany`` — jak w multiseeku,
     ukryte statusy odcinamy tylko anonimowi.
     """
@@ -340,10 +347,37 @@ def liczby_prac_autora(autor, uczelnia=None, zalogowany=False):
     for nr, (rok_od, rok_do) in enumerate(okresy):
         w_okresie = Q(rok__range=(rok_od, rok_do))
         agregaty[f"okres_{nr}"] = Count("rok", filter=w_okresie)
+    # Typy jak w filtrze „Typ publikacji” (por. ``TypRekorduObject``).
+    publikacja = Q(charakter_formalny__publikacja=True)
+    streszczenie = Q(charakter_formalny__streszczenie=True)
+    agregaty["typ_publikacje"] = Count("pk", filter=publikacja)
+    agregaty["typ_streszczenia"] = Count("pk", filter=streszczenie)
+    agregaty["typ_inne"] = Count(
+        "pk",
+        filter=Q(charakter_formalny__isnull=False) & ~publikacja & ~streszczenie,
+    )
     liczby = qs.aggregate(**agregaty)
+
+    # Najliczniejsze charaktery formalne — do menu „Według charakteru” przy
+    # przycisku „Pokaż wszystkie prace” (jedno zapytanie grupujące).
+    charaktery = list(
+        qs.exclude(charakter_formalny=None)
+        .values("charakter_formalny__nazwa")
+        .annotate(liczba=Count("*"))
+        .order_by("-liczba", "charakter_formalny__nazwa")[:LICZBA_CHARAKTEROW_W_MENU]
+    )
 
     return {
         "wszystkie": liczby["wszystkie"],
+        "charaktery": [
+            {"nazwa": c["charakter_formalny__nazwa"], "liczba": c["liczba"]}
+            for c in charaktery
+        ],
+        "typy": [
+            {"nazwa": typ, "liczba": liczby[f"typ_{typ}"]}
+            for typ in TYPY
+            if liczby[f"typ_{typ}"]
+        ],
         "okresy": [
             {"rok_od": rok_od, "rok_do": rok_do, "liczba": liczby[f"okres_{nr}"]}
             for nr, (rok_od, rok_do) in enumerate(okresy)
