@@ -1,0 +1,35 @@
+{# Pigułka trybu kolorów ☀ | ☾ (bpp/js/tryb-kolorow.js, scss/_tryb-kolorow-przelacznik.scss). #}
+{# Dołączana dwa razy z top_bar.html: na pasku tytułowym (telefon) i na pasku menu (komputer). #}
+{# Semantyka: radiogroup z dwoma radio — zaznaczone jest to, co faktycznie widać. #}
+{# Lista ul.dropdown.menu > li > a (bez data-dropdown-menu, więc Foundation jej nie rusza) — #}
+{# dzięki temu połówki dostają kolor napisów paska z reguł każdego motywu (także ciemnego). #}
+{# Stan widać od pierwszej klatki z CSS (data-tryb-kolorow + prefers-color-scheme); #}
+{# JS dopisuje tylko aria-checked, tabindex i opisy. #}
+<ul class="dropdown menu bpp-pigulka" role="radiogroup" aria-label="Tryb kolorów">
+    {# Suwak podświetlenia (przesuwa go CSS). Też li > a — żeby wziął kolor napisów paska. #}
+    <li role="none" class="bpp-pigulka__tor" aria-hidden="true"><a class="bpp-pigulka__suwak"></a></li>
+    <li role="none">
+        <a role="radio" tabindex="0" aria-checked="true" data-ustaw-tryb-kolorow="jasny"
+           class="bpp-pigulka__polowka bpp-pigulka__jasny"
+           aria-label="Tryb jasny (zgodnie z ustawieniami systemu)"
+           title="Tryb jasny (zgodnie z ustawieniami systemu)">
+            <svg class="bpp-pigulka__ikona" viewBox="0 0 24 24" width="16" height="16"
+                 aria-hidden="true" focusable="false" fill="none" stroke="currentColor"
+                 stroke-width="2" stroke-linecap="round">
+                <circle cx="12" cy="12" r="4.2" fill="currentColor" stroke="none"/>
+                <path d="M12 2v2.5M12 19.5V22M2 12h2.5M19.5 12H22M4.9 4.9l1.8 1.8M17.3 17.3l1.8 1.8M4.9 19.1l1.8-1.8M17.3 6.7l1.8-1.8"/>
+            </svg>
+        </a>
+    </li>
+    <li role="none">
+        <a role="radio" tabindex="-1" aria-checked="false" data-ustaw-tryb-kolorow="ciemny"
+           class="bpp-pigulka__polowka bpp-pigulka__ciemny"
+           aria-label="Tryb ciemny — kliknij, aby wybrać"
+           title="Tryb ciemny — kliknij, aby wybrać">
+            <svg class="bpp-pigulka__ikona" viewBox="0 0 24 24" width="16" height="16"
+                 aria-hidden="true" focusable="false">
+                <path fill="currentColor" d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8Z"/>
+            </svg>
+        </a>
+    </li>
+</ul>

@@ -281,7 +281,19 @@ Zawartości `<canvas>` nie ocenia.
 
 Przy motywach z obiema wersjami (`*-auto` z `BPP_THEMES` i motyw
 z konfiguratora w trybie „automatyczny”) `top_bar.html` pokazuje
-przełącznik **kolory** (Automatyczny / Jasny / Ciemny). Flagę
+„pigułkę” ☀ | ☾ (`tryb_kolorow_pigulka.html`, dołączana dwa razy: pasek
+tytułowy na telefonie, prawa strona paska menu na komputerze — z odstępem na
+przycisk UserWay). Semantyka: `role="radiogroup"` z dwoma `role="radio"`
+(zaznaczone = widoczny tryb; roving tabindex, strzałki przenoszą wybór,
+Spacja/Enter na zaznaczonym przy wyborze ręcznym wraca do automatycznego).
+Klik w drugą połówkę wymusza tryb, klik w wybraną ręcznie — wraca do
+automatycznego. Podświetlenie (suwak) i obwódkę wyboru ręcznego liczy
+**sam CSS** (`_tryb-kolorow-przelacznik.scss`: `data-tryb-kolorow`
++ `prefers-color-scheme`) — poprawne od pierwszej klatki; JS ustawia tylko
+`aria-checked`, `tabindex`, `aria-label`, `title`. Połówki i suwak to
+`ul.dropdown.menu > li > a` (bez `data-dropdown-menu`), więc kolor napisów
+paska dają im reguły każdego motywu, a przezroczystości są w `opacity`
+pseudoelementów (przetworzCss nie musi ich znać). Flagę
 `TRYB_KOLOROW_PRZELACZNIK` liczy `przelacznik_trybu_kolorow()`
 w `bpp/context_processors/config.py` (w podglądzie konfiguratora i przy
 przymiarce — ukryty).

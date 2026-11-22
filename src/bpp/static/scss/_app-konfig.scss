@@ -114,7 +114,11 @@ nav.sticky-header {
   box-shadow: $cfg-cien-menu;
 }
 
-.top-bar,
+// `nav.sticky-header .top-bar` — specyficzność wyższa niż ciemna wersja
+// reguły Foundation `.top-bar, .top-bar ul` (przetworzCss: `html:where(…)
+// .top-bar`). Bez tego w trybie ciemnym pasek wokół menu (np. pod pigułką
+// trybu kolorów po prawej) robił się szary, a samo menu zostawało w kolorze.
+nav.sticky-header .top-bar,
 .top-bar > .top-bar-left > ul.dropdown.menu,
 .top-bar > .top-bar-right > ul.dropdown.menu,
 .title-bar {
