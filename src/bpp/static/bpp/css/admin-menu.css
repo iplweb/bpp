@@ -160,7 +160,9 @@
     visibility: visible;
     opacity: 1;
     pointer-events: auto;
-    transition: opacity 0.2s ease, visibility 0s linear 0s;
+    /* Otwarcie natychmiastowe - patrz "Przełączanie między pozycjami menu"
+       na końcu pliku. */
+    transition: none;
 }
 
 #grp-navigation ul#navigation-menu li:hover ul li,
@@ -513,7 +515,9 @@ header#grp-header #grp-navigation ul#grp-user-tools {
     visibility: visible;
     opacity: 1;
     pointer-events: auto;
-    transition: opacity 0.2s ease, visibility 0s linear 0s;
+    /* Otwarcie natychmiastowe - patrz "Przełączanie między pozycjami menu"
+       na końcu pliku. */
+    transition: none;
 }
 
 #grp-navigation ul#navigation-menu li.has-columns ul li {
@@ -568,15 +572,20 @@ header#grp-header #grp-navigation ul#grp-user-tools {
 
 /* At 1200px: Allow search to wrap to next line */
 @media (max-width: 1200px) {
+    /* Pusty pas między paskiem menu a zawiniętą wyszukiwarką robił row-gap
+       flexa (gap: 12px + margin-top: 2px), a nie margines wyszukiwarki -
+       dlatego wyzerowanie jej margin-top nic nie dawało. Wiersze idą bez
+       przerwy; wyszukiwarka ma tylko mały odstęp od dołu. */
     #nav-global-container {
         flex-wrap: wrap;
-        gap: 12px;
+        gap: 0 12px;
     }
 
     #search-container {
         flex-basis: 100%;
         margin-left: 0;
-        margin-top: 2px;
+        margin-top: 0;
+        padding-bottom: 3px;
         justify-content: flex-start;
     }
 
@@ -605,7 +614,16 @@ header#grp-header #grp-navigation ul#grp-user-tools {
 /* -------------------------------------------------------------------------------- */
 
 /* When search wraps to new line (< 1200px), increase padding to accommodate two-line menu */
+/* Nagłówek ma tu ok. 93 px (menu 34 + wyszukiwarka 28+3 + okruszki 27). */
 @media (max-width: 1200px) {
+    #grp-content {
+        padding-top: 108px !important;
+    }
+}
+
+/* Poniżej 1050 px menu ma same (większe) ikony - pasek ma 46 px,
+   nagłówek ok. 105 px. */
+@media (max-width: 1050px) {
     #grp-content {
         padding-top: 120px !important;
     }
@@ -626,4 +644,21 @@ header#grp-header #grp-navigation ul#grp-user-tools {
 #grp-header:has(#navigation-menu > li:hover),
 #grp-header:has(#navigation-menu > li.over) {
     z-index: 100000;
+}
+
+/* -------------------------------------------------------------------------------- */
+/* Przełączanie między pozycjami menu bez migania */
+/* -------------------------------------------------------------------------------- */
+
+/* Gdy kursor przechodził z pozycji A na sąsiednią B, podmenu A wygasało
+   (0.15 s), a podmenu B jednocześnie się pojawiało (0.2 s) - przez chwilę
+   widać było dwa półprzezroczyste menu naraz ("miganie"). Dopóki kursor jest
+   nad paskiem menu, podmenu przełączają się bez animacji: A znika od razu,
+   B od razu się pokazuje. Łagodne wygaszanie zostaje tylko przy wyjściu
+   kursorem z całego menu (reguła bazowa wyżej) - razem z pointer-events: none
+   nie da się wtedy "wejść" z powrotem w wygasające menu.
+   Te same reguły (z !important) są w themes/_base.scss, bo admin-themes.css
+   wymusza tam własne transition. */
+#grp-navigation ul#navigation-menu:hover li ul {
+    transition: none;
 }
