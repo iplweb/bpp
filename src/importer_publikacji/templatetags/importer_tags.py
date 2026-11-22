@@ -40,3 +40,15 @@ def admin_change_url(obj):
         )
     except NoReverseMatch:
         return ""
+
+
+@register.filter(name="dyscyplina_do_przypisania")
+def dyscyplina_do_przypisania(author, session):
+    """FD#620: czy wybrana dyscyplina zostanie przypisana autorowi na rok
+    pracy przy tworzeniu rekordu (autor nie ma przypisania na ten rok)."""
+    from importer_publikacji.dyscypliny import ma_przypisanie_na_rok
+
+    if not author.matched_autor_id or not author.matched_dyscyplina_id:
+        return False
+    rok = (session.normalized_data or {}).get("year")
+    return not ma_przypisanie_na_rok(author.matched_autor, rok)

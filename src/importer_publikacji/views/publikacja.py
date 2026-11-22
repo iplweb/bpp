@@ -23,6 +23,7 @@ from bpp.models import (
     Wydawnictwo_Zwarte,
 )
 
+from ..dyscypliny import przypisz_brakujace_dyscypliny
 from ..historia import komunikat_utworzenia, zapisz_utworzenie
 from ..models import ImportedAuthor, ImportSession
 from .helpers import _detect_language
@@ -461,6 +462,10 @@ def _create_publication(session, user=None):
 
     is_patent = session.rodzaj_rekordu == ImportSession.RodzajRekordu.PATENT
 
+    # FD#620: autor bez dyscypliny na rok pracy, któremu operator wybrał
+    # dyscyplinę z typowych — przypisz mu ją na ten rok (inaczej walidacja
+    # rekordu autora odrzuci dyscyplinę).
+    przypisz_brakujace_dyscypliny(session, record, user or session.created_by)
     _add_authors_to_record(session, record)
     # Patent nie ma relacji ``streszczenia`` (tylko Wydawnictwo_Ciagle/Zwarte
     # ją mają) — @patent z polem abstract (typowy eksport Zotero) wywaliłby

@@ -506,6 +506,11 @@ class Dyscyplina_Naukowa_PrzypisanieAutocomplete(
 
     def _validate_autor(self, autor):
         """Validate and convert autor parameter."""
+        # FD#620: importer publikacji przekazuje ID autora jako liczbę JSON
+        # (jQuery ``.data()`` zamienia atrybut ``data-autor-pk`` na Number),
+        # widżety DAL — jako napis. Oba warianty są poprawne.
+        if isinstance(autor, int) and not isinstance(autor, bool):
+            return autor, None
         if autor is None or not isinstance(autor, str) or not autor.strip():
             return None, "Podaj autora"
 
@@ -550,6 +555,55 @@ class Dyscyplina_Naukowa_PrzypisanieAutocomplete(
         res = list(res)
         res.sort(key=lambda obj: obj[1])
         return res, None
+
+    def _propozycja_gdy_brak_przypisania(self):
+        """FD#620: gdy klient poprosił (``forward`` ``typowe``) i autor nie ma
+        ŻADNEGO przypisania dyscypliny na dany rok — zwróć ``(rok,
+        propozycja)``: dyscypliny autora z najbliższego wcześniejszego roku,
+        a gdy nie miał ich nigdy — typowe dla uczelni. W każdym innym
+        przypadku ``None`` (zachowanie jak dotąd)."""
+        if not self.forwarded.get("typowe"):
+            return None
+        autor, error = self._validate_autor(self.forwarded.get("autor", None))
+        if error:
+            return None
+        rok, error = self._validate_rok(self.forwarded.get("rok", None))
+        if error:
+            return None
+        # ``all_objects``: przypisanie autora z kosza też blokuje (unique
+        # rok+autor); ukryte przed oglądającym przypisanie to nie „brak".
+        if Autor_Dyscyplina.all_objects.filter(autor_id=autor, rok=rok).exists():
+            return None
+
+        from bpp.models import Uczelnia
+        from bpp.util.typowe_dyscypliny import propozycja_dla_autora_bez_przypisania
+
+        uczelnia = Uczelnia.objects.get_for_request(self.request)
+        return rok, propozycja_dla_autora_bez_przypisania(autor, rok, uczelnia)
+
+    def get(self, request, *args, **kwargs):
+        wynik = self._propozycja_gdy_brak_przypisania()
+        if wynik is None:
+            return super().get(request, *args, **kwargs)
+
+        rok, propozycja = wynik
+        dzieci = [{"id": d.pk, "text": d.nazwa} for d in propozycja.dyscypliny]
+        if self.q:
+            dzieci = [d for d in dzieci if self.q.lower() in d["text"].lower()]
+        etykieta = f"Autor nie ma dyscypliny na rok {rok} — {propozycja.opis_zrodla()}"
+        return http.JsonResponse(
+            {
+                "results": [{"text": etykieta, "children": dzieci}],
+                "brak_przypisania": {
+                    "rok": rok,
+                    "zrodlo": propozycja.zrodlo,
+                    "rok_zrodla": propozycja.rok_zrodla,
+                    "rok_od": propozycja.rok_od,
+                    "rok_do": propozycja.rok_do,
+                    "opis_zrodla": propozycja.opis_zrodla(),
+                },
+            }
+        )
 
     def get_list(self):
         # Validate autor

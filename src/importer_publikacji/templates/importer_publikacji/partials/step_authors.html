@@ -296,6 +296,10 @@
                         data-rok="{{ session.normalized_data.year }}"
                         style="width:100%">
                 </select>
+                {# FD#620: autor bez dyscypliny na rok pracy — skąd lista i co się stanie #}
+                <div class="callout warning small"
+                     id="modal-dyscyplina-brak-przypisania"
+                     style="display:none;margin-top:0.4rem;padding:0.5rem"></div>
             </div>
         </div>
 
@@ -579,45 +583,11 @@ $(document).ready(function() {
             language: 'pl'
         });
 
-        // Load disciplines for current autor
-        function loadDyscypliny() {
-            var autorId = $autor.val();
-            var currentVal = $dyscyplina.val();
-            $dyscyplina.empty().append(
-                '<option value="">---</option>'
-            );
-            if (autorId && rok) {
-                var fwd = JSON.stringify(
-                    {autor: autorId, rok: rok}
-                );
-                $.ajax({
-                    url: $dyscyplina.data('url'),
-                    data: {forward: fwd},
-                    dataType: 'json'
-                }).done(function(data) {
-                    data.results.forEach(function(item) {
-                        if (item.id) {
-                            var sel =
-                                String(item.id)
-                                === String(currentVal)
-                                ? ' selected' : '';
-                            $dyscyplina.append(
-                                '<option value="'
-                                + item.id + '"'
-                                + sel + '>'
-                                + item.text
-                                + '</option>'
-                            );
-                        }
-                    });
-                    $dyscyplina.trigger('change.select2');
-                });
-            }
-        }
-
-        // When autor changes: auto-fill jednostka + dyscyplina
+        // When autor changes: auto-fill jednostka + dyscyplina.
+        // Listę dyscyplin przeładowuje loadModalDyscypliny() (handler
+        // 'change.modalLinks' niżej) — drugie, równoległe ładowanie tutaj
+        // dublowało opcje (FD#620).
         $autor.on('change', function() {
-            loadDyscypliny();
             var autorId = $(this).val();
             if (!autorId) {
                 $jednostka.val(null)
@@ -793,26 +763,59 @@ $(document).ready(function() {
 
     function loadModalDyscypliny(autorId) {
         var $d = $('#modal-dyscyplina-select');
+        var $info = $('#modal-dyscyplina-brak-przypisania');
         var cur = $d.val();
         $d.empty().append('<option value="">---</option>');
+        $info.hide().empty();
         if (!(autorId && rok)) return;
-        var fwd = JSON.stringify({autor: autorId, rok: rok});
+        // FD#620: ID autora i rok zawsze jako napisy — jQuery .data()
+        // zamienia data-autor-pk na Number, a autocomplete przyjmował tylko
+        // napis (pusta lista dyscyplin). ``typowe`` — gdy autor nie ma
+        // dyscypliny na rok pracy, serwer podpowie dyscypliny autora
+        // z wcześniejszego roku albo typowe dla uczelni.
+        var fwd = JSON.stringify({
+            autor: String(autorId), rok: String(rok), typowe: true
+        });
         $.ajax({
             url: $d.data('url'),
             data: {forward: fwd},
             dataType: 'json'
         }).done(function(data) {
-            var withId = data.results.filter(function(i) {
-                return i.id;
+            var withId = [];
+            var $target = $d;
+            data.results.forEach(function(item) {
+                if (item.children) {
+                    $target = $('<optgroup>').attr('label', item.text);
+                    $d.append($target);
+                    item.children.forEach(function(ch) {
+                        withId.push(ch);
+                        $target.append(
+                            $('<option>').val(ch.id).text(ch.text)
+                                .prop('selected', String(ch.id) === String(cur))
+                        );
+                    });
+                } else if (item.id) {
+                    withId.push(item);
+                    $d.append(
+                        $('<option>').val(item.id).text(item.text)
+                            .prop('selected', String(item.id) === String(cur))
+                    );
+                }
             });
-            withId.forEach(function(item) {
-                var sel = String(item.id) === String(cur);
-                $d.append(
-                    '<option value="' + item.id + '"'
-                    + (sel ? ' selected' : '')
-                    + '>' + item.text + '</option>'
-                );
-            });
+            var bp = data.brak_przypisania;
+            if (bp) {
+                $info.text(
+                    'Autor nie ma przypisanej dyscypliny na rok ' + bp.rok
+                    + '. Do wyboru: ' + bp.opis_zrodla + '. Wybrana '
+                    + 'dyscyplina zostanie przypisana autorowi na rok '
+                    + bp.rok + ' (wpis w historii autora) i użyta w tej '
+                    + 'pracy przy tworzeniu rekordu.'
+                ).show();
+                // Bez auto-wyboru — operator świadomie wybiera dyscyplinę,
+                // którą przypiszemy autorowi.
+                $d.trigger('change.select2');
+                return;
+            }
             // Auto-select gdy dla autora+roku istnieje DOKLADNIE jedna
             // dyscyplina i user jeszcze nic nie wybrał — odzwierciedla
             // server-side ostatnia_dyscyplina() z bpp.views.api.

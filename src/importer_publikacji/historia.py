@@ -48,6 +48,27 @@ def komunikat_orcid(session, orcid):
     )
 
 
+def opis_uzytkownika(user):
+    """„Imię Nazwisko (login)” albo sam login — do treści wpisów historii."""
+    if user is None:
+        return "system"
+    pelne = (user.get_full_name() or "").strip()
+    return f"{pelne} ({user.username})" if pelne else user.username
+
+
+def komunikat_dyscypliny(session, record, dyscyplina, rok, user):
+    """Treść wpisu historii, gdy importer przypisał autorowi dyscyplinę na
+    rok pracy, bo autor nie miał żadnej (FD#620)."""
+    tytul = (getattr(record, "tytul_oryginalny", "") or "").strip()
+    if len(tytul) > 120:
+        tytul = tytul[:119] + "…"
+    return (
+        f"Przypisano dyscyplinę „{dyscyplina}” na rok {rok} przez użytkownika "
+        f"{opis_uzytkownika(user)} podczas importu pracy „{tytul}” "
+        f"(sesja importu #{session.pk}, rekord #{record.pk})"
+    )
+
+
 def zapisz_utworzenie(user, obj, komunikat):
     """Zapisz ``LogEntry`` (ADDITION) dla ``obj`` w imieniu ``user``.
 

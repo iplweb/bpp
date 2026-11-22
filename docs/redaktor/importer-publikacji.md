@@ -151,6 +151,30 @@ Importer otworzysz na dwa sposoby:
    ma włączone podpowiadanie dyscyplin). Kliknij
    **„Zapisz”**.
 
+    Lista **„Dyscyplina”** zawiera dyscypliny przypisane autorowi na rok
+    publikacji. Jeśli autor **nie ma przypisanej dyscypliny na ten rok**,
+    pod polem pojawia się żółty komunikat *„Autor nie ma przypisanej
+    dyscypliny na rok …”*, a lista podpowiada:
+
+    - dyscypliny autora z **ubiegłego roku** (albo z najbliższego
+      wcześniejszego roku, w którym autor miał przypisanie — komunikat
+      mówi, z którego roku pochodzą),
+    - gdy autor nie miał dyscypliny **nigdy** — dyscypliny **typowe dla
+      uczelni**, czyli najczęściej przypisywane autorom w pracach z ostatnich
+      trzech lat (od najczęstszej; lista jest przeliczana raz na dobę),
+    - gdy w bazie nie ma jeszcze prac z dyscyplinami — wszystkie dyscypliny.
+
+    Wybrana w ten sposób dyscyplina zostanie przy **„Utwórz publikację”**
+    **przypisana autorowi na rok publikacji** (w module redagowania:
+    autor → „Powiązania autor-dyscyplina”) i użyta w tworzonej pracy.
+    W wierszu autora widać wtedy etykietę **„przypiszę na rok …”**.
+    Przypisanie zostaje odnotowane w historii autora (i samego przypisania)
+    z Twoim loginem, tytułem pracy oraz numerem sesji importu i rekordu,
+    np. *„Przypisano dyscyplinę „nauki o bezpieczeństwie” na rok 2026 przez
+    użytkownika Jan Kowalski (jkowalski) podczas importu pracy „…”
+    (sesja importu #116, rekord #9398)”*. Autorowi, który ma już
+    przypisanie na ten rok, importer niczego nie zmienia.
+
     ![Okno edycji autora: lista kandydatów i przycisk „Zapisz”](../images/redaktor/importer-publikacji/10-kandydaci.png)
 
     Gdy nikt z listy nie pasuje, w polu **„Autor w BPP”** zacznij pisać
