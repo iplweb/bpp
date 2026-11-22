@@ -20,7 +20,7 @@
 <script src="{% static 'liveops/liveops.js' %}"></script>
 <style>
     .liveop-scan .progress-bar {
-        background: #e6e6e6;
+        background: var(--bpp-tlo-pow-2, #e6e6e6);
         border-radius: 4px;
         height: 1.6rem;
         overflow: hidden;
@@ -42,7 +42,7 @@
         max-height: 12rem;
         overflow-y: auto;
         font-size: .85rem;
-        color: #555;
+        color: var(--bpp-tekst-przygaszony, #555);
         font-family: monospace;
         margin: .5rem 0;
     }

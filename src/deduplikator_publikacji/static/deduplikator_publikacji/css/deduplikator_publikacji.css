@@ -13,22 +13,22 @@
 
 .deduplikator-publikacji__status-text--muted {
     font-size: 0.85rem;
-    color: #666;
+    color: var(--bpp-tekst-przygaszony, #666);
     margin-bottom: 0.5rem;
 }
 
 .deduplikator-publikacji__status-running {
-    color: #0077cc;
+    color: var(--bpp-akcent, #0077cc);
 }
 
 .deduplikator-publikacji__status-completed {
-    color: #28a745;
+    color: var(--bpp-tekst-sukces, #28a745);
 }
 
 /* Progress bar */
 .deduplikator-publikacji__progress-container {
     height: 20px;
-    background-color: #e9ecef;
+    background-color: var(--bpp-tlo-pow-2, #e9ecef);
     border-radius: 4px;
     margin-bottom: 0.5rem;
     overflow: hidden;
@@ -72,18 +72,18 @@
 .deduplikator-publikacji__table td {
     padding: 0.75rem;
     text-align: left;
-    border-bottom: 1px solid #e9ecef;
+    border-bottom: 1px solid var(--bpp-ramka, #e9ecef);
     vertical-align: top;
 }
 
 .deduplikator-publikacji__table th {
-    background-color: #f8f9fa;
+    background-color: var(--bpp-tlo-pow-2, #f8f9fa);
     font-weight: 600;
     font-size: 0.9rem;
 }
 
 .deduplikator-publikacji__table tbody tr:hover {
-    background-color: #f8f9fa;
+    background-color: var(--bpp-tlo-hover, #f8f9fa);
 }
 
 /* Similarity badge */
@@ -101,18 +101,18 @@
 }
 
 .deduplikator-publikacji__similarity-badge--high {
-    background-color: #d4edda;
-    color: #155724;
+    background-color: var(--bpp-tlo-sukces, #d4edda);
+    color: var(--bpp-tekst-sukces, #155724);
 }
 
 .deduplikator-publikacji__similarity-badge--medium {
-    background-color: #fff3cd;
-    color: #856404;
+    background-color: var(--bpp-tlo-ostrzezenie, #fff3cd);
+    color: var(--bpp-tekst-ostrzezenie, #856404);
 }
 
 .deduplikator-publikacji__similarity-badge--low {
-    background-color: #f8d7da;
-    color: #721c24;
+    background-color: var(--bpp-tlo-blad, #f8d7da);
+    color: var(--bpp-tekst-blad, #721c24);
 }
 
 /* Publication info */
@@ -121,7 +121,7 @@
 }
 
 .deduplikator-publikacji__pub-info a {
-    color: #0077cc;
+    color: var(--bpp-akcent, #0077cc);
     text-decoration: none;
 }
 
@@ -132,7 +132,7 @@
 .deduplikator-publikacji__pub-type {
     display: inline-block;
     font-size: 0.75rem;
-    background-color: #e9ecef;
+    background-color: var(--bpp-tlo-pow-2, #e9ecef);
     padding: 0.1rem 0.4rem;
     border-radius: 3px;
     margin-right: 0.5rem;
@@ -140,7 +140,7 @@
 }
 
 .deduplikator-publikacji__pub-year {
-    color: #666;
+    color: var(--bpp-tekst-przygaszony, #666);
     font-size: 0.85rem;
 }
 
@@ -148,7 +148,7 @@
 .deduplikator-publikacji__reason-badge {
     display: inline-block;
     font-size: 0.75rem;
-    background-color: #e9ecef;
+    background-color: var(--bpp-tlo-pow-2, #e9ecef);
     padding: 0.2rem 0.5rem;
     border-radius: 3px;
     margin-right: 0.25rem;

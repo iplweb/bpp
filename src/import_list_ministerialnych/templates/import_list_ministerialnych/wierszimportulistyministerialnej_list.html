@@ -154,11 +154,11 @@
             </thead>
             <tbody>
             {% for row in object_list %}
-                <tr {% if row.is_duplicate %}class="duplicate-row" style="background-color: #fff3cd;"{% endif %}>
+                <tr {% if row.is_duplicate %}class="duplicate-row" style="background-color: var(--bpp-tlo-ostrzezenie, #fff3cd);"{% endif %}>
                     <td>
                         <a href="{% url "import_list_ministerialnych:importrow-detail" object.pk row.pk %}">{{ row.nr_wiersza }}</a>
                         {% if row.is_duplicate %}
-                            <br/><small style="color: #856404;">
+                            <br/><small style="color: var(--bpp-tekst-ostrzezenie, #856404);">
                                 <span class="fi-link"></span> Duplikat wiersza {{ row.duplicate_of_row }}
                             </small>
                         {% endif %}
@@ -167,7 +167,7 @@
                         {{ row.dane_z_xls.Tytul_1 }}
                         {% if row.dane_z_xls.issn %}(ISSN: {{ row.dane_z_xls.issn }}){% endif %}
                         {% if row.is_duplicate and row.duplicate_reason %}
-                            <br/><small style="color: #856404;">Duplikat po: {{ row.duplicate_reason }}</small>
+                            <br/><small style="color: var(--bpp-tekst-ostrzezenie, #856404);">Duplikat po: {{ row.duplicate_reason }}</small>
                         {% endif %}
                     </td>
                     <td>{% if row.zrodlo_id %}
@@ -176,7 +176,7 @@
                     {% endif %}</td>
                     <td>
                         {% if row.is_duplicate %}
-                            <span class="fi-alert" style="color: #856404;"></span>
+                            <span class="fi-alert" style="color: var(--bpp-tekst-ostrzezenie, #856404);"></span>
                         {% endif %}
                         {{ row.rezultat }}
                     </td>

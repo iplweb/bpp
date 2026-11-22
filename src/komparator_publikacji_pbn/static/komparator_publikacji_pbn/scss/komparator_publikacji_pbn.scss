@@ -36,15 +36,15 @@
         border-collapse: collapse;
 
         th {
-            background-color: #f8f9fa;
+            background-color: var(--bpp-tlo-pow-2, #f8f9fa);
             padding: 8px;
             text-align: left;
-            border: 1px solid #dee2e6;
+            border: 1px solid var(--bpp-ramka, #dee2e6);
         }
 
         td {
             padding: 8px;
-            border: 1px solid #dee2e6;
+            border: 1px solid var(--bpp-ramka, #dee2e6);
         }
     }
 
@@ -59,13 +59,13 @@
 
     // Value highlight - BPP (yellow)
     &__value-bpp {
-        background-color: #fff3cd;
+        background-color: var(--bpp-tlo-ostrzezenie, #fff3cd);
         padding: 2px 4px;
     }
 
     // Value highlight - PBN (blue)
     &__value-pbn {
-        background-color: #d1ecf1;
+        background-color: var(--bpp-tlo-info, #d1ecf1);
         padding: 2px 4px;
     }
 
@@ -77,5 +77,5 @@
 
 // Text muted helper (kept for compatibility)
 .text-muted {
-    color: #6c757d;
+    color: var(--bpp-tekst-przygaszony, #6c757d);
 }

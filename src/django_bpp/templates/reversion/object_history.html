@@ -10,18 +10,18 @@
             border-collapse: collapse;
             border-spacing: 0;
             margin: 0;
-            background: #fff;
+            background: var(--bpp-tlo-pow, #fff);
         }
 
         .bpp-historia-tabela thead th {
             padding: 10px 20px;
             text-align: left;
             font-weight: bold;
-            background: #e4e4e4;
-            background-image: linear-gradient(#f7f7f7, #e4e4e4);
-            border-bottom: 1px solid #d4d4d4;
-            border-right: 1px solid #d4d4d4;
-            color: #666;
+            background: var(--bpp-tlo-pow-2, #e4e4e4);
+            background-image: linear-gradient(var(--bpp-tlo-pow-2, #f7f7f7), var(--bpp-tlo-pow-2, #e4e4e4));
+            border-bottom: 1px solid var(--bpp-ramka, #d4d4d4);
+            border-right: 1px solid var(--bpp-ramka, #d4d4d4);
+            color: var(--bpp-tekst-przygaszony, #666);
             text-shadow: 0 1px 0 rgba(255,255,255,0.5);
             font-size: 11px;
             text-transform: uppercase;
@@ -29,15 +29,15 @@
         }
 
         .bpp-historia-tabela tbody tr {
-            border-bottom: 1px solid #e4e4e4;
+            border-bottom: 1px solid var(--bpp-ramka, #e4e4e4);
         }
 
         .bpp-historia-tabela tbody tr:nth-child(even) {
-            background: #f9f9f9;
+            background: var(--bpp-tlo-pow-2, #f9f9f9);
         }
 
         .bpp-historia-tabela tbody tr:hover {
-            background: #f0f0f0;
+            background: var(--bpp-tlo-hover, #f0f0f0);
         }
 
         .bpp-historia-tabela tbody th,
@@ -53,21 +53,21 @@
         }
 
         .bpp-historia-tabela tbody th a {
-            color: #309bbf;
+            color: var(--bpp-akcent, #309bbf);
             font-weight: bold;
             text-decoration: none;
         }
 
         .bpp-historia-tabela tbody th a:hover {
-            color: #444;
+            color: var(--bpp-tekst, #444);
             text-decoration: underline;
         }
 
         .grp-module {
             margin: 0 0 20px;
-            border: 1px solid #d4d4d4;
+            border: 1px solid var(--bpp-ramka, #d4d4d4);
             border-radius: 3px;
-            background: #fff;
+            background: var(--bpp-tlo-pow, #fff);
         }
 
         .grp-module h2 {
@@ -77,16 +77,16 @@
             text-transform: uppercase;
             letter-spacing: 0.5px;
             font-weight: bold;
-            color: #666;
-            background: #e4e4e4;
-            background-image: linear-gradient(#f7f7f7, #e4e4e4);
-            border-bottom: 1px solid #d4d4d4;
+            color: var(--bpp-tekst-przygaszony, #666);
+            background: var(--bpp-tlo-pow-2, #e4e4e4);
+            background-image: linear-gradient(var(--bpp-tlo-pow-2, #f7f7f7), var(--bpp-tlo-pow-2, #e4e4e4));
+            border-bottom: 1px solid var(--bpp-ramka, #d4d4d4);
             border-radius: 2px 2px 0 0;
         }
 
         .grp-module .grp-row {
             padding: 10px 20px;
-            border-bottom: 1px solid #e4e4e4;
+            border-bottom: 1px solid var(--bpp-ramka, #e4e4e4);
         }
 
         .grp-module .grp-row:last-child {
@@ -95,9 +95,9 @@
 
         .grp-description {
             padding: 10px 20px;
-            background: #f9f9f9;
-            border-bottom: 1px solid #e4e4e4;
-            color: #666;
+            background: var(--bpp-tlo-pow-2, #f9f9f9);
+            border-bottom: 1px solid var(--bpp-ramka, #e4e4e4);
+            color: var(--bpp-tekst-przygaszony, #666);
             font-size: 12px;
             line-height: 18px;
         }
