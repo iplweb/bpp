@@ -211,11 +211,43 @@ describe("przetworzCss — tryb ciemny i tło treści", () => {
         expect(M.kontrast(kolor, "#1a1a1a")).toBeGreaterThanOrEqual(4.5);
     });
 
-    test("automatyczny: jasny CSS + wariant w prefers-color-scheme", () => {
+    test("automatyczny: jasny CSS + wariant wg systemu i wymuszony przełącznikiem", () => {
         const css = M.przetworzCss(CSS, { tryb_kolorow: "automatyczny" });
         expect(css.startsWith(CSS)).toBe(true);
-        expect(css).toContain("@media (prefers-color-scheme: dark){");
-        expect(css).toContain("body{background:#1a1a1a;color:#ececec}");
+        const media = css.indexOf("@media screen and (prefers-color-scheme: dark){");
+        const wymuszony = css.indexOf("@media screen{", media);
+        expect(media).toBeGreaterThan(-1);
+        expect(wymuszony).toBeGreaterThan(media);
+        // Wg systemu — chyba że wybrano „Jasny”.
+        expect(css.slice(media, wymuszony)).toContain(
+            'html:where(:not([data-tryb-kolorow="jasny"])) body{background:#1a1a1a;color:#ececec}',
+        );
+        // Wymuszony „Ciemny” — bez warunku na system.
+        expect(css.slice(wymuszony)).toContain(
+            'html:where([data-tryb-kolorow="ciemny"]) body{background:#1a1a1a;color:#ececec}',
+        );
+        // Wydruk zostaje jasny: ciemne reguły tylko w `screen`.
+        expect(css).not.toContain("@media (prefers-color-scheme: dark)");
+    });
+
+    test("automatyczny: selektory html/:root, listy z :not(a,b), klatki animacji", () => {
+        const wejscie =
+            "html{background:#fff}html.x .y,:root .z{color:#333}" +
+            ".a:not(.b,.c){background:#fff}@keyframes k{from{background:#fff}}";
+        const css = M.przetworzCss(wejscie, { tryb_kolorow: "automatyczny" });
+        const K = 'html:where([data-tryb-kolorow="ciemny"])';
+        expect(css).toContain(K + "{background:");
+        expect(css).toContain(K + ".x .y," + K + " .z{color:");
+        expect(css).toContain(K + " .a:not(.b,.c){background:");
+        expect(css).not.toContain(K + " from");
+    });
+
+    test("podgląd konfiguratora z wymuszonym trybem — bez przełącznika", () => {
+        const k = { tryb_kolorow: "automatyczny" };
+        const ciemny = M.przetworzCss(CSS, k, { trybPodgladu: "ciemny" });
+        expect(ciemny).toContain("body{background:#1a1a1a;color:#ececec}");
+        expect(ciemny).not.toContain("data-tryb-kolorow");
+        expect(M.przetworzCss(CSS, k, { trybPodgladu: "jasny" })).toBe(CSS);
     });
 
     test("zmienne --bpp-* (style spoza CSS motywu) tylko w wariancie ciemnym", () => {
@@ -226,10 +258,11 @@ describe("przetworzCss — tryb ciemny i tło treści", () => {
         const tekst = /--bpp-tekst:(#[0-9a-f]{6})/.exec(ciemny)[1];
         expect(M.kontrast(tekst, tlo)).toBeGreaterThanOrEqual(4.5);
         expect(ciemny).toMatch(/--bpp-akcent:#[0-9a-f]{6}/);
-        // Automatyczny: definicje wewnątrz prefers-color-scheme, nie w jasnym CSS.
+        // Automatyczny: definicje pod korzeniami przełącznika, nie w jasnym CSS.
         const auto = M.przetworzCss(CSS, { tryb_kolorow: "automatyczny" });
-        const media = auto.indexOf("@media (prefers-color-scheme: dark){");
+        const media = auto.indexOf("@media screen and (prefers-color-scheme: dark){");
         expect(auto.indexOf("--bpp-tlo-pow")).toBeGreaterThan(media);
+        expect(auto).toContain('html:where([data-tryb-kolorow="ciemny"]){--bpp-tlo-pow:');
     });
 
     test("przezroczyste tło treści: karty tak, menu i body nie", () => {
@@ -242,7 +275,7 @@ describe("przetworzCss — tryb ciemny i tło treści", () => {
     test("prawdziwy motyw w trybie automatycznym się kompiluje", () => {
         const k = { ...PEŁNY, tryb_kolorow: "automatyczny", tlo_tresci: "polprzezroczyste" };
         const css = M.przetworzCss(kompiluj(k), k);
-        expect(css).toContain("@media (prefers-color-scheme: dark){");
+        expect(css).toContain("@media screen and (prefers-color-scheme: dark){");
     }, 30000);
 });
 

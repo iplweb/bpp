@@ -227,6 +227,11 @@ def argumenty():
     p.add_argument("--wyjscie", default=None, help="katalog na zrzuty i raport")
     p.add_argument("--mobile", action="store_true", help="wąski ekran 390×844")
     p.add_argument("--jasny", action="store_true", help="color_scheme=light")
+    p.add_argument(
+        "--przelacznik",
+        choices=["jasny", "ciemny"],
+        help="wybór przełącznika trybu kolorów (localStorage) przed wczytaniem",
+    )
     p.add_argument("--prog", type=float, default=0.8)
     p.add_argument("--min-rozmiar", type=int, default=40)
     p.add_argument("--strony", help="lista nazw stron po przecinku")
@@ -334,11 +339,20 @@ class Przebieg:
         page.wait_for_timeout(500)
         self.zbadaj(page, "menu", "/ (menu)", full_page=False, hover=False)
 
+    def nowy_kontekst(self, przegladarka):
+        kontekst = przegladarka.new_context(**self.opcje)
+        if self.a.przelacznik:
+            kontekst.add_init_script(
+                f"window.localStorage.setItem('bpp-tryb-kolorow', "
+                f"'{self.a.przelacznik}')"
+            )
+        return kontekst
+
     def logowanie(self, przegladarka):
         # Strona logowania — bez sesji.
         if not self.chce("logowanie"):
             return
-        kontekst = przegladarka.new_context(**self.opcje)
+        kontekst = self.nowy_kontekst(przegladarka)
         page = kontekst.new_page()
         page.goto(self.baza + "/accounts/login/", wait_until="networkidle")
         self.zbadaj(page, "logowanie", "/accounts/login/")
@@ -355,7 +369,7 @@ def main():
     przebieg = Przebieg(a, baza, wyjscie)
     with sync_playwright() as pw:
         przegladarka = pw.chromium.launch()
-        page = przegladarka.new_context(**przebieg.opcje).new_page()
+        page = przebieg.nowy_kontekst(przegladarka).new_page()
         if token:
             page.goto(f"{baza}/__autologin__/?token={token}")
         przebieg.strony(page)

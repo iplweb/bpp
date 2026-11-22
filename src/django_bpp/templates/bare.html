@@ -59,6 +59,25 @@
         document.documentElement.classList.add("bpp-js-init");
         setTimeout(function () { document.documentElement.classList.remove("bpp-js-init"); }, 3000);
     </script>
+
+    {# Przełącznik trybu kolorów (top_bar.html): wybór z localStorage jako atrybut elementu html #}
+    {# PRZED arkuszami stylów — bez mignięcia jasnej strony. Brak wpisu = jak system. #}
+    {% if TRYB_KOLOROW_PRZELACZNIK %}
+        <script>
+            (function () {
+                try {
+                    var tryb = window.localStorage.getItem("bpp-tryb-kolorow");
+                    if (tryb === "jasny" || tryb === "ciemny") {
+                        document.documentElement.setAttribute("data-tryb-kolorow", tryb);
+                    }
+                } catch (e) {
+                    // localStorage zablokowany (np. tryb prywatny) — zostaje tryb systemu.
+                    if (e.name !== "SecurityError") throw e;
+                }
+            })();
+        </script>
+    {% endif %}
+
     <style>
         {# Podmenu (listy i wielokolumnowe bloki) dostają klasy Foundation dopiero od JS — #}
         {# do tego czasu rozpychały pozycje menu na całą szerokość paska (!important + id menu: reguły podmenu w top_bar.scss mają display: block !important i 5 klas). #}
@@ -173,6 +192,7 @@
         <script src="{% static 'bpp/js/dist/bundle.js' %}"></script>
         {# Centralized event handlers: data-confirm, data-submit-on-change, data-open-url #}
         <script src="{% static 'bpp/js/event-handlers.js' %}"></script>
+        <script src="{% static 'bpp/js/tryb-kolorow.js' %}"></script>
     {% endcompress %}
 
     {# DataTables: polski język + lengthMenu ustawiamy SYNCHRONICZNIE tu, zaraz #}

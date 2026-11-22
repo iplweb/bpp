@@ -277,8 +277,8 @@ def klasyfikuj_regule(czesci, dekl, grupy):
 
 
 def wypisz_mixin(grupy):
-    print("@mixin bpp-tryb-ciemny-komponenty {")
-    print("  html {")
+    print('@mixin bpp-tryb-ciemny-komponenty($korzen: "html") {')
+    print("  #{$korzen} {")
     for (rodzaj, zmienna, gradient, wazne), selektory in sorted(grupy.items()):
         sel = sorted(dict.fromkeys(selektory))
         imp = " !important" if wazne else ""

@@ -14,8 +14,8 @@
 // (bin/tryb-ciemny-audyt.py pokaże, czego brakuje).
 // =============================================================================
 
-@mixin bpp-tryb-ciemny-komponenty {
-  html {
+@mixin bpp-tryb-ciemny-komponenty($korzen: "html") {
+  #{$korzen} {
     // ramka: border-bottom-color
     #breadcrumbs-wrapper,
     .bpp-historia-tabela tbody tr,

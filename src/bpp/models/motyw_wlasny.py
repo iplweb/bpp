@@ -19,6 +19,10 @@ def _klucz_cache(uczelnia_id):
     return f"bpp:motyw_wlasny:skrot:{uczelnia_id}"
 
 
+def _klucz_cache_trybu(uczelnia_id):
+    return f"bpp:motyw_wlasny:tryb:{uczelnia_id}"
+
+
 class MotywWlasny(models.Model):
     uczelnia = models.OneToOneField(
         "bpp.Uczelnia", on_delete=models.CASCADE, related_name="motyw_wlasny"
@@ -68,6 +72,7 @@ class MotywWlasny(models.Model):
             kwargs["update_fields"] = set(update_fields) | {"skrot"}
         super().save(*args, **kwargs)
         cache.delete(_klucz_cache(self.uczelnia_id))
+        cache.delete(_klucz_cache_trybu(self.uczelnia_id))
 
     @classmethod
     def skrot_dla(cls, uczelnia_id):
@@ -82,6 +87,24 @@ class MotywWlasny(models.Model):
             ) or ""
             cache.set(klucz, skrot, 3600)
         return skrot or None
+
+    @classmethod
+    def tryb_kolorow_dla(cls, uczelnia_id):
+        """`tryb_kolorow` zastosowanego motywu („automatyczny”, „jasny”,
+        „ciemny”) albo None — z cache. Przełącznik trybu kolorów na pasku
+        menu ma sens tylko przy „automatycznym” (CSS z obiema wersjami)."""
+        klucz = _klucz_cache_trybu(uczelnia_id)
+        tryb = cache.get(klucz)
+        if tryb is None:
+            konfig = (
+                cls.objects.filter(uczelnia_id=uczelnia_id)
+                .exclude(css="")
+                .values_list("konfig", flat=True)
+                .first()
+            )
+            tryb = (konfig or {}).get("tryb_kolorow") or ""
+            cache.set(klucz, tryb, 3600)
+        return tryb or None
 
 
 # Ile ostatnich zastosowanych wersji trzymamy na uczelnię (konfig z obrazkami
