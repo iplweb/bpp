@@ -39,3 +39,7 @@ plakietkę „wersja aktualna”, a podgląd wersji o tej samej treści co
 aktualna mówi wprost, że zapis niczego nie zmieni. Jedną akcją masową na publikacjach można teraz
 zmienić najwyżej 5000 rekordów (wcześniej 20000); przy większej liczbie
 wystarczy zawęzić listę filtrami.
+Przy okazji: gdy formularz w module redagowania ma błędy, a pierwsze pole
+z błędem jest poza ekranem, komunikat „Prosimy naprawić poniższe błędy”
+ma link „Przejdź do pierwszego błędu”, który rozwija sekcję, przewija do
+pola i ustawia w nim kursor.

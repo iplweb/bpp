@@ -113,6 +113,21 @@
         color: #fff !important;
         border-color: #2b88a8 !important;
     }
+    /* Zwijana kolumna „Zmiana” w porównaniu */
+    .bpp-przelacz-zmiane {
+        all: unset;
+        cursor: pointer;
+        font: inherit;
+        color: inherit;
+        text-decoration: underline dotted;
+    }
+    .bpp-przelacz-zmiane:focus-visible { outline: 2px solid #309bbf; }
+    .bpp-zmiana-strzalka { display: none; font-size: 18px; line-height: 1; text-decoration: none; }
+    table.bpp-porownanie.bpp-zmiana-zwinieta .bpp-kol-zmiana-diff { width: 28px; padding-left: 4px; padding-right: 4px; text-align: center; }
+    table.bpp-porownanie.bpp-zmiana-zwinieta td.bpp-kol-zmiana-diff > * { display: none; }
+    table.bpp-porownanie.bpp-zmiana-zwinieta td.bpp-kol-zmiana-diff::before { content: "→"; color: var(--bpp-tekst-przygaszony, #888); font-size: 16px; }
+    table.bpp-porownanie.bpp-zmiana-zwinieta .bpp-zmiana-etykieta { display: none; }
+    table.bpp-porownanie.bpp-zmiana-zwinieta .bpp-zmiana-strzalka { display: inline; }
     .bpp-nieaktywny { opacity: .45; cursor: not-allowed; pointer-events: none; }
     /* Nieaktywny przycisk: nadal wygląda jak przycisk, tylko wyszarzony. */
     .bpp-porownanie-nawigacja button.bpp-przycisk-nieaktywny,

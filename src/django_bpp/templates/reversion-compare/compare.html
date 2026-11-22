@@ -29,6 +29,33 @@
 
 {% block content_title %}<h1>Porównanie wersji: {{ original|truncatewords:"24" }}</h1>{% endblock %}
 
+{% block javascripts %}
+    {{ block.super }}
+    <script type="text/javascript">
+        // Kolumna „Zmiana”: klik w nagłówek zwija ją do strzałki „→”
+        // (kierunek: wersja starsza → nowsza) i chowa listę różnic; wybór
+        // zapamiętany w przeglądarce.
+        document.addEventListener("DOMContentLoaded", function () {
+            var KLUCZ = "bpp-porownanie-zmiana-zwinieta";
+            var tabela = document.querySelector("table.bpp-porownanie");
+            var przycisk = tabela && tabela.querySelector(".bpp-przelacz-zmiane");
+            if (!przycisk) { return; }
+            function ustaw(zwinieta) {
+                tabela.classList.toggle("bpp-zmiana-zwinieta", zwinieta);
+                przycisk.setAttribute("aria-expanded", zwinieta ? "false" : "true");
+            }
+            var zapamietane = null;
+            try { zapamietane = window.localStorage.getItem(KLUCZ); } catch (e) { zapamietane = null; }
+            ustaw(zapamietane === "1");
+            przycisk.addEventListener("click", function () {
+                var zwinieta = !tabela.classList.contains("bpp-zmiana-zwinieta");
+                ustaw(zwinieta);
+                try { window.localStorage.setItem(KLUCZ, zwinieta ? "1" : "0"); } catch (e) { /* tryb prywatny — bez zapamiętywania */ }
+            });
+        });
+    </script>
+{% endblock %}
+
 {% block content %}
     <div class="g-d-c bpp-historia">
         {% if rekord_w_koszu %}
@@ -50,7 +77,7 @@
                     <tr>
                         <td class="bpp-kol-pole bpp-naroznik" aria-hidden="true"></td>
                         {% for wersja, nazwa, klasa in wersje_porownania %}
-                            {% if forloop.last %}<th scope="col" class="bpp-kol-zmiana-diff">Zmiana</th>{% endif %}
+                            {% if forloop.last %}<th scope="col" class="bpp-kol-zmiana-diff"><button type="button" class="bpp-przelacz-zmiane" aria-expanded="true" title="Zwiń / rozwiń kolumnę ze zmianami"><span class="bpp-zmiana-etykieta">Zmiana ◂</span><span class="bpp-zmiana-strzalka" aria-hidden="true">→</span></button></th>{% endif %}
                             <th scope="col" class="bpp-naglowek-wersji {{ klasa }}">
                                 <div class="bpp-naglowek-nazwa">{{ nazwa }}{% if wersja.pk == aktualna_wersja_pk %} <span class="bpp-aktualna">wersja aktualna</span>{% endif %}{% if wersja.pk == najstarsza_wersja_pk %} <span class="bpp-najstarsza">wersja najstarsza</span>{% endif %}</div>
                                 <div><strong>{{ wersja.revision.date_created|date:"l, j E Y, H:i"|lower }}</strong>, {% if wersja.revision.user %}{{ wersja.revision.user.get_full_name|default:wersja.revision.user.get_username }}{% else %}bez użytkownika{% endif %}
