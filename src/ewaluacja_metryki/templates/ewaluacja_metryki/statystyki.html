@@ -731,10 +731,10 @@
     .stat {
         font-size: 2rem;
         font-weight: bold;
-        color: #1779ba;
+        color: var(--bpp-akcent, #1779ba);
     }
     .text-muted {
-        color: #8a8a8a;
+        color: var(--bpp-tekst-przygaszony, #8a8a8a);
     }
 
     /* Circular Progress Bar Styles */
@@ -761,14 +761,14 @@
         transform: translate(-50%, -50%);
         font-size: 14px;
         font-weight: 600;
-        color: #333;
+        color: var(--bpp-tekst, #333);
         z-index: 1;
     }
 
     .circular-progress-wrapper .progress-label {
         display: block;
         margin-top: 5px;
-        color: #666;
+        color: var(--bpp-tekst-przygaszony, #666);
         font-size: 0.85rem;
         white-space: nowrap;
     }
@@ -778,7 +778,7 @@
         display: inline-block;
         min-width: 200px;
         padding: 10px;
-        background: #f8f9fa;
+        background: var(--bpp-tlo-pow-2, #f8f9fa);
         border-radius: 8px;
         box-shadow: 0 2px 4px rgba(0,0,0,0.1);
     }
@@ -790,12 +790,12 @@
 
     .pkd-value-label strong {
         font-size: 1.25rem;
-        color: #2c3e50;
+        color: var(--bpp-tekst, #2c3e50);
         display: block;
     }
 
     .pkd-value-label small {
-        color: #7f8c8d;
+        color: var(--bpp-tekst-przygaszony, #7f8c8d);
         font-size: 0.75rem;
     }
 
@@ -805,7 +805,7 @@
 
     .pkd-progress-track {
         height: 20px;
-        background: #e0e0e0;
+        background: var(--bpp-tlo-pow-2, #e0e0e0);
         border-radius: 10px;
         overflow: hidden;
         position: relative;
@@ -896,7 +896,7 @@
     }
     .pkd-quality-label.temp-100 {
         background: #fcb69f;
-        color: #333;
+        color: var(--bpp-tekst, #333);
     }
 
     .pkd-progress-fill.temp-120 {
@@ -1085,6 +1085,8 @@
 
 
 
+{# Kolory wykresów w trybie ciemnym (owija circleProgress). #}
+{% load static %}<script src="{% static 'ewaluacja_metryki/js/wykresy-motyw.js' %}"></script>
 <script>
 // Inicjalizacja Foundation
 $(document).foundation();

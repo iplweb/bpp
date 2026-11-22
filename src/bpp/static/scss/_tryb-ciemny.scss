@@ -134,6 +134,26 @@
     // Hover na powierzchni.
     --tc-pow-hover: #{color.mix(#fff, $pow-2, 6%)};
 
+    // Zmienne kolorów dla stylów SPOZA CSS motywu: bloki <style>
+    // w szablonach i osobne arkusze modułów piszą `var(--bpp-tlo-pow, #fff)`
+    // (bin/tryb-ciemny-zmienne.py). W trybie jasnym zmienne nie istnieją
+    // (zostaje kolor zapasowy); tu dostają ciemne wartości. Tę samą listę
+    // definiuje konfigurator wyglądu (ZMIENNE_KOLOROW w motyw-konfig.js).
+    --bpp-tlo-pow: var(--tc-pow);
+    --bpp-tlo-pow-2: var(--tc-pow-2);
+    --bpp-tlo-hover: var(--tc-pow-hover);
+    --bpp-tlo-sukces: var(--tc-sukces-tlo);
+    --bpp-tlo-ostrzezenie: var(--tc-ostrzezenie-tlo);
+    --bpp-tlo-blad: var(--tc-blad-tlo);
+    --bpp-tlo-info: var(--tc-info-tlo);
+    --bpp-ramka: var(--tc-ramka);
+    --bpp-tekst: var(--tc-tekst);
+    --bpp-tekst-przygaszony: var(--tc-przygaszony);
+    --bpp-tekst-sukces: var(--tc-sukces-tekst);
+    --bpp-tekst-ostrzezenie: var(--tc-ostrzezenie-tekst);
+    --bpp-tekst-blad: var(--tc-blad-tekst);
+    --bpp-akcent: var(--tc-akcent);
+
     // _layout.scss ustawia tło <html> z !important.
     background-color: $tlo !important;
   }
@@ -492,6 +512,17 @@
     // ---------------------------------------------------------------------
     // Foundation: biały tekst na #cc4b37 ma kontrast 4.49:1 — minimalnie
     // ciemniej, żeby przejść próg AA.
+    .badge.alert,
+    .label.alert {
+      background-color: #b9412f;
+    }
+
+    // Nagłówek na barwnym pasku z białym napisem (optymalizacja publikacji)
+    // — ogólna reguła nagłówków wyżej nadała mu kolor tekstu strony.
+    .ewaluacja-optymalizuj__discipline-header h4 {
+      color: inherit;
+    }
+
     .button.alert:not(.hollow):not(.clear) {
       background-color: #b9412f;
 
@@ -991,18 +1022,6 @@
       color: #15181d;
     }
 
-    // _callouts.scss: `.callout a:not(.close-button) { color: inherit }`
-    // przejmuje też przyciski-linki. W jasnym motywie dziedziczą ciemny
-    // tekst, w ciemnym — jasny, nieczytelny na zielonym/żółtym przycisku.
-    .callout a.button:not(.hollow):not(.clear) {
-      color: #fefefe;
-    }
-
-    .callout a.button.success:not(.hollow):not(.clear),
-    .callout a.button.warning:not(.hollow):not(.clear) {
-      color: #0a0a0a;
-    }
-
     // ---------------------------------------------------------------------
     // Style inline w szablonach (style="color: #666" itp.) — nadpisujemy
     // je selektorami atrybutów zamiast ruszać szablony. !important, bo
@@ -1066,6 +1085,14 @@
 
     [style*="background-color: #d4edda"] {
       background-color: var(--tc-sukces-tlo) !important;
+    }
+
+    // Komunikat z tłem ustawionym inline (np. statystyki metryk: niebieski
+    // callout) — tło zostaje jasne/nasycone, więc tekst ciemny jak w jasnym.
+    .callout[style*="background"] {
+      > h1, > h2, > h3, > h4, > h5, > h6, > p {
+        color: #0a0a0a;
+      }
     }
 
     [style*="color: blue"],

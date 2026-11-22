@@ -18,10 +18,10 @@
 {% block extrahead %}
 <style>
     .author-card {
-        border: 1px solid #e1e4e8;
+        border: 1px solid var(--bpp-ramka, #e1e4e8);
         border-radius: 12px;
         margin-bottom: 25px;
-        background: white;
+        background: var(--bpp-tlo-pow, white);
         overflow: hidden;
         transition: all 0.3s ease;
         box-shadow: 0 1px 3px rgba(0,0,0,0.05);
@@ -33,9 +33,9 @@
     }
 
     .author-header {
-        background: linear-gradient(135deg, #f5f6fa 0%, #ffffff 100%);
+        background: linear-gradient(135deg, var(--bpp-tlo-pow-2, #f5f6fa) 0%, var(--bpp-tlo-pow, #ffffff) 100%);
         padding: 15px 20px;
-        border-bottom: 2px solid #e1e4e8;
+        border-bottom: 2px solid var(--bpp-ramka, #e1e4e8);
         display: flex;
         justify-content: space-between;
         align-items: center;
@@ -45,7 +45,7 @@
     .author-name {
         font-size: 1.3em;
         font-weight: 600;
-        color: #2c3e50;
+        color: var(--bpp-tekst, #2c3e50);
     }
 
     .author-status {
@@ -62,14 +62,14 @@
     }
 
     .evaluation-badge.selected {
-        background: #d4edda;
-        color: #155724;
+        background: var(--bpp-tlo-sukces, #d4edda);
+        color: var(--bpp-tekst-sukces, #155724);
         border: 1px solid #c3e6cb;
     }
 
     .evaluation-badge.not-selected {
-        background: #f8d7da;
-        color: #721c24;
+        background: var(--bpp-tlo-blad, #f8d7da);
+        color: var(--bpp-tekst-blad, #721c24);
         border: 1px solid #f5c6cb;
     }
 
@@ -79,10 +79,10 @@
 
     .discipline-name {
         font-size: 1.1em;
-        color: #495057;
+        color: var(--bpp-tekst, #495057);
         margin-bottom: 20px;
         padding-bottom: 10px;
-        border-bottom: 1px solid #e9ecef;
+        border-bottom: 1px solid var(--bpp-ramka, #e9ecef);
     }
 
     .data-sections {
@@ -95,13 +95,13 @@
     .section {
         padding: 15px;
         border-radius: 8px;
-        background: #f8f9fa;
+        background: var(--bpp-tlo-pow-2, #f8f9fa);
     }
 
     .section h4 {
         margin: 0 0 15px 0;
         font-size: 1em;
-        color: #495057;
+        color: var(--bpp-tekst, #495057);
         font-weight: 600;
         display: flex;
         align-items: center;
@@ -110,16 +110,16 @@
 
     .section h4 .fi-page,
     .section h4 .fi-graph-bar {
-        color: #6c757d;
+        color: var(--bpp-tekst-przygaszony, #6c757d);
     }
 
     .publication-section {
-        background: linear-gradient(135deg, #fff5f5 0%, #ffe8e8 100%);
-        border: 1px solid #ffdddd;
+        background: linear-gradient(135deg, var(--bpp-tlo-pow-2, #fff5f5) 0%, var(--bpp-tlo-blad, #ffe8e8) 100%);
+        border: 1px solid var(--bpp-ramka, #ffdddd);
     }
 
     .metrics-section {
-        background: linear-gradient(135deg, #f0f8ff 0%, #e6f2ff 100%);
+        background: linear-gradient(135deg, var(--bpp-tlo-pow-2, #f0f8ff) 0%, var(--bpp-tlo-info, #e6f2ff) 100%);
         border: 1px solid #cce5ff;
     }
 
@@ -135,26 +135,26 @@
 
     .data-label {
         font-size: 0.85em;
-        color: #6c757d;
+        color: var(--bpp-tekst-przygaszony, #6c757d);
         margin-bottom: 5px;
     }
 
     .data-value {
         font-size: 1.8em;
         font-weight: bold;
-        color: #495057;
+        color: var(--bpp-tekst, #495057);
     }
 
     .data-value.points {
-        color: #dc3545;
+        color: var(--bpp-tekst-blad, #dc3545);
     }
 
     .data-value.slots {
-        color: #007bff;
+        color: var(--bpp-akcent, #007bff);
     }
 
     .data-value.average {
-        color: #28a745;
+        color: var(--bpp-tekst-sukces, #28a745);
     }
 
     .progress-container {
@@ -163,13 +163,13 @@
 
     .progress-label {
         font-size: 0.85em;
-        color: #6c757d;
+        color: var(--bpp-tekst-przygaszony, #6c757d);
         margin-bottom: 8px;
     }
 
     .progress-bar-wrapper {
         position: relative;
-        background: #e9ecef;
+        background: var(--bpp-tlo-pow-2, #e9ecef);
         border-radius: 10px;
         height: 30px;
         overflow: visible;
@@ -204,10 +204,10 @@
     .overflow-indicator {
         margin-top: 8px;
         padding: 5px 10px;
-        background: #fff3cd;
+        background: var(--bpp-tlo-ostrzezenie, #fff3cd);
         border: 1px solid #ffeeba;
         border-radius: 4px;
-        color: #856404;
+        color: var(--bpp-tekst-ostrzezenie, #856404);
         font-size: 0.85em;
         display: inline-block;
     }
@@ -219,7 +219,7 @@
 
     .no-data {
         text-align: center;
-        color: #6c757d;
+        color: var(--bpp-tekst-przygaszony, #6c757d);
         padding: 20px;
         font-style: italic;
     }
@@ -227,7 +227,7 @@
     .action-section {
         margin-top: 20px;
         padding-top: 20px;
-        border-top: 1px solid #e9ecef;
+        border-top: 1px solid var(--bpp-ramka, #e9ecef);
     }
 
     .pin-status {
@@ -245,7 +245,7 @@
 
     .pin-status.unpinned {
         background: #ccc;
-        color: #666;
+        color: var(--bpp-tekst-przygaszony, #666);
     }
 
     .totals-section {
@@ -269,7 +269,7 @@
     }
 
     .publication-title {
-        background: #f0f0f0;
+        background: var(--bpp-tlo-pow-2, #f0f0f0);
         padding: 15px;
         border-left: 4px solid #667eea;
         margin-bottom: 20px;

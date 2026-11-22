@@ -1,0 +1,20 @@
+// =============================================================================
+// Stany wierszy tabel: <tr class="success|warning|alert">
+// =============================================================================
+//
+// Używane w szablonach (np. prace wybrane w szczegółach metryki, duplikaty
+// w imporcie punktacji). Foundation ich nie definiuje, a pasek
+// `tbody tr:nth-child(even)` przykrywał kolor co drugiego wiersza.
+// W CSS motywu, żeby tryb ciemny (oba mechanizmy) dostał ich ciemne odpowiedniki.
+
+table tbody tr.success {
+    background-color: #e1faea;
+}
+
+table tbody tr.warning {
+    background-color: #fff3cd;
+}
+
+table tbody tr.alert {
+    background-color: #fdecea;
+}

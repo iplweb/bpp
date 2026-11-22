@@ -64,8 +64,10 @@
         }
     }
 
-    // Links inside callouts
-    a:not(.close-button) {
+    // Links inside callouts (bez przycisków-linków — inaczej `inherit`
+    // dawał im kolor tekstu komunikatu: czarny napis na niebieskim przycisku,
+    // a w trybie ciemnym jasny na zielonym/żółtym)
+    a:not(.close-button):not(.button) {
         color: inherit;
         font-weight: bolder;  // Changed from 600 to normal
         text-decoration: none;  // Remove underline

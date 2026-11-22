@@ -230,6 +230,24 @@ def jasna_ramka(kolory_ramki):
     return luminancja(*c) > 0.55 and odcien(*c)[1] < 0.15
 
 
+def barwne_tlo_danych(dekl):
+    """Gradient z wyraźnie barwnym kolorem (skala „temperatury”) albo
+    plakietka (barwne jasne tło + ciemny tekst) — reguła zostaje bez zmian."""
+    tlo_barwne = tekst_ciemny = False
+    for d in dekl:
+        k = kolory(d.value)
+        if d.lower_name in ("background", "background-color", "background-image"):
+            barwne = [c for c in k if odcien(*c)[1] > 0.25]
+            gradient = "gradient" in tinycss2.serialize(d.value)
+            if barwne and gradient:
+                return True
+            if barwne and any(luminancja(*c) > 0.7 for c in barwne):
+                tlo_barwne = True
+        if d.lower_name == "color" and k and luminancja(*k[0]) < 0.3:
+            tekst_ciemny = True
+    return tlo_barwne and tekst_ciemny
+
+
 def klasyfikuj_regule(czesci, dekl, grupy):
     """Dopisz selektory jednej reguły do grup (tło / tekst / ramka)."""
     ma_ciemne_tlo = False
@@ -296,7 +314,7 @@ def main():
     for sel, dekl in reguly(arkusz):
         czesci = [" ".join(s.split()) for s in sel.split(",")]
         czesci = [s for s in czesci if s and not pomijany(s)]
-        if czesci:
+        if czesci and not barwne_tlo_danych(dekl):
             klasyfikuj_regule(czesci, dekl, grupy)
     wypisz_mixin(grupy)
 

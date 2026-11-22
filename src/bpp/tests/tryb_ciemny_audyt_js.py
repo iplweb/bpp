@@ -5,7 +5,7 @@ w `src/`, bo obraz testowy w CI nie zawiera katalogu `bin/`.
 """
 
 JS_AUDYT = r"""
-([progLuminancji, minRozmiar]) => {
+([progLuminancji, minRozmiar, korzen]) => {
   function parsujKolory(tekst) {
     const wynik = [];
     const re = /rgba?\(([^)]+)\)/g;
@@ -22,6 +22,10 @@ JS_AUDYT = r"""
       return v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4);
     };
     return 0.2126 * f(c.r) + 0.7152 * f(c.g) + 0.0722 * f(c.b);
+  }
+  function nasycony(c) {
+    const max = Math.max(c.r, c.g, c.b), min = Math.min(c.r, c.g, c.b);
+    return max > 0 && (max - min) / max > 0.25;
   }
   function kontrast(a, b) {
     const l1 = lum(a), l2 = lum(b);
@@ -103,7 +107,13 @@ JS_AUDYT = r"""
   const plamy = [];
   const kontrastLista = [];
   const widziane = new Set();
-  const wszystkie = document.querySelectorAll("body *");
+  // `korzen` (opcjonalny selektor) zawęża audyt do jednego poddrzewa — np.
+  // wiersza tabeli w stanie :hover. Sam korzeń też jest sprawdzany.
+  const start = korzen ? document.querySelector(korzen) : document.body;
+  if (!start) return {plamy: [], kontrast: []};
+  const wszystkie = korzen
+    ? [start, ...start.querySelectorAll("*")]
+    : document.querySelectorAll("body *");
   for (const el of wszystkie) {
     if (["SCRIPT", "STYLE", "NOSCRIPT", "BR", "OPTION"].includes(el.tagName)) {
       continue;
@@ -115,11 +125,17 @@ JS_AUDYT = r"""
 
     // 1) Plamy: własne tło elementu.
     if (r.width > minRozmiar && r.height > minRozmiar
-        && !["IMG", "SVG", "CANVAS", "VIDEO", "IFRAME", "svg"].includes(el.tagName)) {
+        && !["IMG", "CANVAS", "VIDEO", "IFRAME"].includes(el.tagName)) {
       let kolory = parsujKolory(st.backgroundColor).filter((c) => c.a >= 0.5);
+      // Tło wykresów SVG (Plotly: rect.bg) to `fill` prostokąta.
+      if (el.tagName === "rect" && st.fillOpacity !== "0") {
+        kolory = kolory.concat(parsujKolory(st.fill).filter((c) => c.a >= 0.5));
+      }
       if (st.backgroundImage && st.backgroundImage.includes("gradient")) {
-        kolory = kolory.concat(
-          parsujKolory(st.backgroundImage).filter((c) => c.a >= 0.5));
+        const zGradientu = parsujKolory(st.backgroundImage).filter((c) => c.a >= 0.5);
+        // Gradient z wyraźnie barwnym kolorem to skala danych (plakietki
+        // „temperatury” PKDaut), nie tło pod treścią — pomijamy.
+        if (!zGradientu.some(nasycony)) kolory = kolory.concat(zGradientu);
       }
       for (const c of kolory) {
         const l = lum(c);
@@ -144,7 +160,9 @@ JS_AUDYT = r"""
       }
     }
     if (!maTekst) continue;
-    const kolorTekstu = parsujKolory(st.color)[0];
+    // Tekst SVG (wykresy Plotly itp.) ma kolor w `fill`, nie w `color`.
+    const svgTekst = el.namespaceURI === "http://www.w3.org/2000/svg";
+    const kolorTekstu = parsujKolory(svgTekst ? st.fill : st.color)[0];
     if (!kolorTekstu || kolorTekstu.a < 0.3) continue;
     const tlo = tloEfektywne(el);
     if (tlo.obraz) continue;  // tło z obrazka — nie umiemy ocenić
@@ -161,7 +179,7 @@ JS_AUDYT = r"""
       kontrastLista.push({
         element: opis(el),
         tekst: el.textContent.trim().replace(/\s+/g, " ").slice(0, 40),
-        kolor: st.color,
+        kolor: svgTekst ? st.fill : st.color,
         tlo: `rgb(${Math.round(tlo.kolor.r)},${Math.round(tlo.kolor.g)},`
           + `${Math.round(tlo.kolor.b)})`,
         kontrast: Math.round(k * 100) / 100,
