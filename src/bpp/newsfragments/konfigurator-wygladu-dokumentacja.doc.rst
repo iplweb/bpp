@@ -1,1 +1,0 @@
-Rozbudowano dokumentację „Konfigurator wyglądu” (Instrukcja administratora): opis wszystkich sekcji ustawień, podglądów (komputer/telefon/tablet, gość/obsługa, wersja jasna i ciemna), inspektora, zapisywania motywów, przymiarki, zastosowania i historii zmian — ze zrzutami ekranu i przykładami krok po kroku.

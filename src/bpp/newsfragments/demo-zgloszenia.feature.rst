@@ -1,1 +1,0 @@
-Generator danych demo (``create_demo_data``) tworzy także zgłoszenia publikacji (opcja ``--zgloszen``, domyślnie 40) we wszystkich statusach obiegu; zaakceptowane są podpięte do wygenerowanych prac, a ``cleanup_demo_data`` je usuwa.

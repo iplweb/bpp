@@ -1,1 +1,0 @@
-Wydruk oświadczeń (dawniej „wydruk oświadczeń 2022-25”) działa dla okresu ewaluacji wybranego na pasku okresu, a treść oświadczenia podaje lata okresu, do którego należy praca (np. „za lata 2026-2030”), zamiast na sztywno „2022-2025”. Stary adres strony przekierowuje na nowy.

@@ -1,1 +1,0 @@
-Strony źródła i wydawcy: ramka „Ewaluacja” pokazuje bieżący okres ewaluacji (z tabeli okresów, dziś 2026–2030), a poprzednie okresy są zwinięte pod nią; gdy wykazu za bieżący okres jeszcze nie wczytano, ramka mówi to wprost zamiast „spoza wykazu”.

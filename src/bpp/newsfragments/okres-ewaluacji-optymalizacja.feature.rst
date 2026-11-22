@@ -1,1 +1,0 @@
-Optymalizacja ewaluacji (przebiegi solvera, przypięcia, zamiana dyscyplin, przeglądarka, eksporty, weryfikacja) działa dla okresu ewaluacji wybranego na pasku okresu u góry strony zamiast na sztywno dla lat 2022–2025; wyniki i analizy są zapisywane osobno dla każdego okresu.

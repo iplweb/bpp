@@ -1,1 +1,0 @@
-Kreator pierwszego uruchomienia pyta o konto administratora także wtedy, gdy w bazie są już zwykłe konta (np. konto techniczne ``bpp-system`` zakładane przy generowaniu danych demo) — liczy się tylko superużytkownik; na instalacjach z administratorem krok zakładania konta zostaje zamknięty na stałe, także po skasowaniu konta admina (django-first-run-wizard 0.3.0).

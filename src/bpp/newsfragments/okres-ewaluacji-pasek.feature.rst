@@ -1,1 +1,0 @@
-Wybór okresu ewaluacji jest teraz paskiem na całą szerokość strony pod ścieżką nawigacji (zamiast pozycji w górnym menu): okresy są przyciskami obok siebie, wybrany jest wyróżniony, a pasek podkreśla, że od niego zależy cała treść strony poniżej.

@@ -1,1 +1,0 @@
-Okres ewaluacji jest w adresie stron ewaluacji (np. /ewaluacja_liczba_n/2026-2030/udzialy-za-calosc/), więc link do strony za konkretny okres można komuś wysłać; przełączanie okresu na pasku działa za każdym kliknięciem (wcześniej wybór bywał gubiony, gdy strona odpytywała status generowania).

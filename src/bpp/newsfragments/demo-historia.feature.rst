@@ -1,1 +1,0 @@
-``create_demo_data`` zapisuje w historii każdego utworzonego rekordu (publikacje, autorzy, jednostki, źródła, wydawcy, zgłoszenia publikacji i in.) wpis „Utworzono poleceniem create_demo_data”, przypisany do konta technicznego ``bpp-system`` albo użytkownika z ``--uzytkownik``; ``cleanup_demo_data`` usuwa tę historię razem z danymi demo.

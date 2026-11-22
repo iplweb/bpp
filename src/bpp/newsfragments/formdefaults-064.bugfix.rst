@@ -1,1 +1,0 @@
-„Moje wartości domyślne” w formularzach raportów (m.in. raport slotów — autor i ewaluacja) nie gubią już pól „Od roku”/„Do roku” ani zapisanych w nich wartości: pakiet django-formdefaults 0.6.4 wylicza wartości początkowe podawane przez funkcję zamiast okresowo kasować takie pola razem z ustawieniami użytkowników.

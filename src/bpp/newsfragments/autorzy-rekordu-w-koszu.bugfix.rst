@@ -1,1 +1,0 @@
-Lista autorów rekordu w module redagowania (``?rekord__id__exact=…``) nie kończy się już błędem 500, gdy rekord jest w koszu — zamiast listy wyświetla się informacja, że rekord jest w koszu, z linkiem do jego edycji (bez „Pokaż na stronie" i bez dodawania autorów); dla nieistniejącego rekordu pojawia się czytelny komunikat.

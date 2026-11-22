@@ -1,1 +1,0 @@
-Okno „Moje wartości domyślne” nie bywa już puste po usunięciu lub zmianie opisu formularza w bazie (np. po zmianie adresu raportu), a formularz, którego klasy nie da się już odtworzyć, daje stronę „nie znaleziono” zamiast błędu serwera — pakiet django-formdefaults 0.6.5.

@@ -1,1 +1,0 @@
-Snapshoty odpięć są zapisywane osobno dla każdego okresu ewaluacji: obejmują tylko prace z lat okresu wybranego na pasku okresu, a ich zaaplikowanie nie zmienia przypięć prac z innego okresu. Lista snapshotów pokazuje snapshoty wybranego okresu oraz starsze snapshoty obejmujące wszystkie lata.

@@ -1,1 +1,0 @@
-Importer publikacji, krok „Punktacja”: informacja o autorach z dyscyplin HST (dziedziny humanistyczne, społeczne i teologiczne, dla których obowiązują inne zasady punktacji) wyświetla się jako żółte ostrzeżenie, a nie jako czerwony komunikat wyglądający na błąd uniemożliwiający import. Prawdziwe błędy formularza nadal są wyświetlane na czerwono.

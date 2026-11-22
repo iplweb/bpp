@@ -1,1 +1,0 @@
-Ustawienie autorowi ORCID-u z danych dostawcy w importerze publikacji (pojedynczo i zbiorczo) trafia teraz do historii autora w adminie: kto, kiedy i przy której sesji importu zmienił ORCID. Poprzedni stan można przywrócić z historii. Wcześniej ORCID zmieniał się bez śladu.

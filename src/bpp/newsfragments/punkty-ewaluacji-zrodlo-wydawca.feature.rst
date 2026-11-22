@@ -1,1 +1,0 @@
-Strony źródła i wydawcy pokazują, ile punktów w bieżącej ewaluacji daje publikacja jednego autora: artykuł w czasopiśmie (punktacja z wykazu) oraz monografia, rozdział i redakcja u wydawcy (wg poziomu wydawcy).

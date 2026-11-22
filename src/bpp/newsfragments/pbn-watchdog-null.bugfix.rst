@@ -1,1 +1,0 @@
-Strażnik kolejki eksportu do PBN (``queue_watchdog``) znów budzi wpisy, które nigdy nie zostały podjęte lub których ponowienie przepadło — wcześniej filtr ``retry_after_user_authorised=False`` pomijał wszystkie wpisy, bo pole przyjmuje tylko wartości ``True`` lub puste (NULL).
