@@ -1,9 +1,11 @@
 from django.conf import settings
 from django.urls import reverse
+from django.utils.functional import SimpleLazyObject
 
 
 def bpp_configuration(request):
     from bpp.favicon_wersja import wersja as favicon_wersja
+    from bpp.konfigurator_dostep import moze_konfigurowac_wyglad
     from bpp.models.abstract import POLA_PUNKTACJI
     from bpp.models.motyw_wlasny import MOTYW_WLASNY, MotywWlasny
     from bpp.przymiarka_motywu import aktywna as przymiarka_aktywna
@@ -33,8 +35,7 @@ def bpp_configuration(request):
     podglad_motywu = bool(
         request is not None
         and "podglad_motywu" in request.GET
-        and user is not None
-        and user.is_staff
+        and moze_konfigurowac_wyglad(user)
     ) or bool(getattr(request, "podglad_motywu", False))
 
     # Przymiarka (tylko ta sesja obsługi) wygrywa z motywem uczelni.
@@ -44,6 +45,10 @@ def bpp_configuration(request):
 
     return {
         "PODGLAD_MOTYWU": podglad_motywu,
+        # Link „Konfigurator wyglądu” w menu „redagowanie” (top_bar.html).
+        "MOZE_KONFIGUROWAC_WYGLAD": SimpleLazyObject(
+            lambda: moze_konfigurowac_wyglad(user)
+        ),
         "PRZYMIARKA_MOTYWU": bool(przymiarka) and not podglad_motywu,
         "FAVICON_WERSJA": favicon_wersja(),
         "MOTYW_WLASNY_URL": motyw_wlasny_url,

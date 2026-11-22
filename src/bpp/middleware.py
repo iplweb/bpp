@@ -512,11 +512,12 @@ class PodgladJakoGoscMiddleware:
 
     def __call__(self, request):
         user = getattr(request, "user", None)
+        from bpp.konfigurator_dostep import moze_konfigurowac_wyglad
+
         if (
             "podglad_motywu" in request.GET
             and request.GET.get("podglad_jako") == "gosc"
-            and user is not None
-            and user.is_staff
+            and moze_konfigurowac_wyglad(user)
         ):
             from django.contrib.auth.models import AnonymousUser
 

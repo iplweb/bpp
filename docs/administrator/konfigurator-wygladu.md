@@ -8,11 +8,18 @@ aktualizacji systemu.
 
 ## Gdzie go znaleźć
 
-Konfigurator jest pod adresem `/bpp/konfigurator-wygladu/`. Link do niego
-jest też w module redagowania: **Uczelnia** → pole **Motyw kolorystyczny**.
+Konfigurator jest pod adresem `/bpp/konfigurator-wygladu/`. Linki do niego:
 
-- Oglądać, próbować i **zapisywać** ustawienia mogą wszyscy użytkownicy
-  z dostępem do modułu redagowania.
+- na stronie: menu **redagowanie** → **Konfigurator wyglądu**,
+- w module redagowania: zakładka **WWW** → **Konfigurator wyglądu**, a także
+  **Uczelnia** → pole **Motyw kolorystyczny**.
+
+Kto ma dostęp:
+
+- Oglądać, próbować i **zapisywać** ustawienia mogą superużytkownicy oraz
+  użytkownicy z dostępem do modułu redagowania w grupie **web** albo
+  **administracja**. Pozostali nie widzą linków, a adres konfiguratora
+  zwraca im „brak dostępu”.
 - **Zastosować** wygląd (włączyć go na stronie) może tylko superużytkownik.
 
 Ustawienia są pogrupowane w sekcje, które można zwijać i rozwijać.

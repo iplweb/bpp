@@ -261,3 +261,20 @@ def test_menu_dane_systemowe_ma_nowe_slowniki():
     assert "Stanowiska dydaktyczne" in labels
     assert "/admin/bpp/stopiensluzbowy/" in urls
     assert "/admin/bpp/stanowiskodydaktyczne/" in urls
+
+
+@pytest.mark.django_db
+def test_grupa_administracja_widzi_w_www_tylko_konfigurator():
+    u = baker.make("bpp.BppUser", is_superuser=False, is_staff=True, first_name="Ewa")
+    u.groups.add(Group.objects.get_or_create(name="administracja")[0])
+    m = _menu_for(u)
+    assert "WWW" in _labels(m)
+    assert [c.url for c in _child(m, "WWW").children] == ["/bpp/konfigurator-wygladu/"]
+
+
+@pytest.mark.django_db
+def test_grupa_web_ma_konfigurator_w_www():
+    u = baker.make("bpp.BppUser", is_superuser=False, is_staff=True, first_name="Fil")
+    u.groups.add(Group.objects.get_or_create(name="web")[0])
+    adresy = [c.url for c in _child(_menu_for(u), "WWW").children]
+    assert "/bpp/konfigurator-wygladu/" in adresy

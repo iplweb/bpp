@@ -43,13 +43,14 @@ def css(skrot):
 
 
 def aktywna(request):
-    """Skrót przymierzanego motywu albo None (tylko obsługa; po wygaśnięciu
-    przymiarka kończy się sama)."""
+    """Skrót przymierzanego motywu albo None (tylko osoby z dostępem do
+    konfiguratora wyglądu; po wygaśnięciu przymiarka kończy się sama)."""
+    from bpp.konfigurator_dostep import moze_konfigurowac_wyglad
     from bpp.models import MotywPrzymiarka
 
     user = getattr(request, "user", None)
     sesja = getattr(request, "session", None)
-    if user is None or not user.is_staff or sesja is None:
+    if not moze_konfigurowac_wyglad(user) or sesja is None:
         return None
     skrot = sesja.get(KLUCZ_SESJI)
     if not skrot:

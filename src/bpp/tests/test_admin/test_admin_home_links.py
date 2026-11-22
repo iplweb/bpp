@@ -135,7 +135,7 @@ def test_registry_admin_urls_nonempty():
 
 
 @pytest.mark.django_db
-def test_admin_home_links_resolve_and_custom_reachable(admin_user):
+def test_admin_home_links_resolve_and_custom_reachable(admin_user, uczelnia):
     """Każdy link ze strony /admin/ resolvuje się; custom/add-linki też 200.
 
     Łapie regresje typu: stale URL w menu po przemianowaniu aplikacji
@@ -149,6 +149,9 @@ def test_admin_home_links_resolve_and_custom_reachable(admin_user):
     Nie podążamy za przekierowaniami: 3xx do widoku w admin jest OK, bo to sam
     URL z menu sprawdzamy — nie cały graf nawigacji.
     """
+    # ``uczelnia``: link „Konfigurator wyglądu” (zakładka WWW) prowadzi do
+    # widoku, który konfiguruje uczelnię z requestu — bez niej zwraca 404,
+    # czego na prawdziwej instalacji nie ma.
     client = Client()
     client.force_login(admin_user)
     home = client.get("/admin/")

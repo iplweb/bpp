@@ -746,7 +746,7 @@
         [".bpp-strona-glowna, .bpp-logo, .bpp-napis", ["logo_bpp", "napis_w_pasku", "napis_wlasny", "logo_uczelni"]],
         [".top-bar .menu.vertical, .top-bar .menu-columns-wrapper", ["menu_zaokraglone", "cien_menu", "ikony_w_menu"]],
         [".menu-icon, .title-bar-title", ["ikona_menu", "ikona_menu_animacja", "napis_menu", "napis_menu_wlasny"]],
-        ["nav.sticky-header, .top-bar, .title-bar", ["kolor_naglowka", "ikony_w_menu", "menu_zaokraglone", "cien_menu"]],
+        ["nav.sticky-header, .top-bar, .title-bar", ["kolor_naglowka", "menu_polozenie", "ikony_w_menu", "menu_zaokraglone", "cien_menu"]],
         [".uczelnia__tile, .browse-tile", ["kafle_styl", "kolor_glowny"]],
         [".autor-page__slupek, .autor-page__wykres-linia, .autor-page__wykres-punkt", ["kolor_wykresow"]],
         ["h1, h2, h3, h4, h5, h6", ["czcionka_naglowkow", "naglowki", "czcionka_wlasna"]],
@@ -1361,8 +1361,23 @@
             wczytaj.addEventListener("click", function () {
                 wczytajWersje(w);
             });
-            var pozycja = el("li", {}, [el("span", { tekst: w.kiedy + (w.kto ? " · " + w.kto : "") })]);
-            if (w.id) pozycja.appendChild(wczytaj); // świeży wpis: id po przeładowaniu
+            var TRYBY = { jasny: "jasny", ciemny: "ciemny", automatyczny: "jasny + ciemny" };
+            var probki = el(
+                "span",
+                { class: "probki" },
+                (w.kolory || []).map(function (k) {
+                    var p = el("span", { class: "probka", title: k });
+                    p.style.background = /^#[0-9a-fA-F]{3,8}$/.test(k) ? k : "transparent";
+                    return p;
+                }),
+            );
+            var pozycja = el("li", {}, [
+                probki,
+                el("span", {
+                    tekst: w.kiedy + (w.kto ? " · " + w.kto : "") + (TRYBY[w.tryb] ? " · " + TRYBY[w.tryb] : ""),
+                }),
+            ]);
+            if (w.id) pozycja.appendChild(wczytaj);
             if (i === 0 && serwer.motyw_aktywny === "app-wlasny") {
                 pozycja.appendChild(el("span", { class: "aktualny", tekst: "(na stronie teraz)" }));
             }
@@ -1621,17 +1636,14 @@
                     return dane;
                 });
             })
-            .then(function () {
+            .then(function (odp) {
                 serwer.roboczy = null;
                 pokazRoboczy();
                 serwer.zapisany_konfig = konfig;
                 serwer.motyw_aktywny = "app-wlasny";
-                (serwer.historia = serwer.historia || []).unshift({
-                    id: null,
-                    kiedy: "przed chwilą",
-                    kto: "",
-                });
-                // Pełna lista (z identyfikatorami) po przeładowaniu strony.
+                // Serwer odsyła aktualną historię (z identyfikatorami) —
+                // „Wczytaj” od razu przy nowym wpisie.
+                serwer.historia = odp.historia || serwer.historia;
                 pokazHistorie();
                 if (nowyFavicon) {
                     serwer.favicon_url = nowyFavicon;

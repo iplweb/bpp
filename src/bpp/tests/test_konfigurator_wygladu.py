@@ -12,6 +12,18 @@ from django_bpp.version import VERSION
 # Link do CSS-a motywu z plików statycznych (w testach z haszem w nazwie).
 RE_MOTYW_STATYCZNY = re.compile(r'href="[^"]*/scss/app-[^"]*\.css"')
 
+
+@pytest.fixture
+def staff_client(client, staff_user):
+    """Obsługa w grupie „web” — ma dostęp do konfiguratora wyglądu
+    (bpp.konfigurator_dostep). Nadpisuje ogólny ``staff_client``."""
+    from django.contrib.auth.models import Group
+
+    staff_user.groups.add(Group.objects.get_or_create(name="web")[0])
+    client.force_login(staff_user)
+    return client
+
+
 KONFIG = {"wersja": 1, "kolor_glowny": "#284fab", "tryb_kolorow": "ciemny"}
 CSS = "body{color:#123456}"
 
@@ -872,3 +884,53 @@ def test_podglad_jako_gosc_bez_obslugi_nic_nie_zmienia(client, uczelnia):
     res = client.get("/?podglad_motywu=1&podglad_jako=gosc")
     assert res.status_code == 200
     assert 'id="bpp-motyw-podglad"' not in res.content.decode()
+
+
+@pytest.mark.django_db
+def test_link_do_konfiguratora_w_menu_redagowanie(staff_client, uczelnia):
+    adres = reverse("bpp:konfigurator_wygladu")
+    assert adres in staff_client.get("/").content.decode()
+    assert adres not in Client().get("/").content.decode()
+
+
+def test_link_do_konfiguratora_w_menu_www_admina():
+    from django_bpp.menu import WEB_MENU
+
+    assert ("Konfigurator wyglądu", reverse("bpp:konfigurator_wygladu")) in [
+        (str(nazwa), adres) for nazwa, adres in WEB_MENU
+    ]
+
+
+@pytest.mark.django_db
+def test_obsluga_bez_grupy_nie_ma_konfiguratora(staff_user, uczelnia):
+    c = Client()
+    c.force_login(staff_user)
+    assert c.get(reverse("bpp:konfigurator_wygladu")).status_code == 403
+    # Bez linku w menu „redagowanie” i bez trybu podglądu.
+    tresc = c.get("/?podglad_motywu=1").content.decode()
+    assert reverse("bpp:konfigurator_wygladu") not in tresc
+    assert 'id="bpp-motyw-podglad"' not in tresc
+
+
+@pytest.mark.django_db
+def test_grupa_administracja_ma_konfigurator(staff_user, uczelnia):
+    from django.contrib.auth.models import Group
+
+    staff_user.groups.add(Group.objects.get_or_create(name="administracja")[0])
+    c = Client()
+    c.force_login(staff_user)
+    assert c.get(reverse("bpp:konfigurator_wygladu")).status_code == 200
+    assert reverse("bpp:konfigurator_wygladu") in c.get("/").content.decode()
+
+
+@pytest.mark.django_db
+def test_zastosuj_odsyla_historie_z_identyfikatorami(superuser_client, uczelnia):
+    for kolor in ("#123456", "#654321"):
+        res = _zastosuj(superuser_client, konfig={**KONFIG, "kolor_glowny": kolor})
+        assert res.status_code == 200, res.content
+    historia = res.json()["historia"]
+    assert len(historia) == 2
+    assert all(w["id"] for w in historia)
+    # Najnowszy pierwszy, z próbkami kolorów do rozróżnienia wpisów.
+    assert "#654321" in historia[0]["kolory"]
+    assert "#123456" in historia[1]["kolory"]

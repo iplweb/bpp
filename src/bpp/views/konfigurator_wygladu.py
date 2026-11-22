@@ -20,10 +20,10 @@ import re
 
 from django.conf import settings
 from django.contrib import messages
-from django.contrib.admin.views.decorators import staff_member_required
 from django.core.exceptions import PermissionDenied, ValidationError
 from django.core.files.base import ContentFile
 from django.core.management import call_command
+from django.db.models.fields.json import KT
 from django.http import Http404, HttpResponse, HttpResponseRedirect, JsonResponse
 from django.shortcuts import get_object_or_404, render
 from django.urls import NoReverseMatch, reverse
@@ -32,6 +32,7 @@ from django.utils.timezone import localtime, now
 from django.views.decorators.http import require_POST
 
 from bpp import przymiarka_motywu as przymiarka
+from bpp.konfigurator_dostep import konfigurator_wymagany
 from bpp.models import (
     MOTYW_WLASNY,
     MotywWersja,
@@ -162,16 +163,30 @@ def _zapisz_favicon(request, uczelnia, plik):
 
 
 def _historia(uczelnia):
-    """Lista ostatnich „Zastosuj” (bez konfigów — te pobiera się osobno)."""
+    """Lista ostatnich „Zastosuj” (bez konfigów — te pobiera się osobno).
+
+    Do rozróżnienia wpisów: kolor paska, kolor główny i tryb kolorów — tylko
+    te klucze z JSON-a (pełny konfig może mieć obrazki po kilkaset KB).
+    """
+    wersje = (
+        MotywWersja.objects.filter(uczelnia=uczelnia)
+        .annotate(
+            k_naglowek=KT("konfig__kolor_naglowka"),
+            k_glowny=KT("konfig__kolor_glowny"),
+            k_tryb=KT("konfig__tryb_kolorow"),
+        )
+        .select_related("zastosowal")
+        .defer("konfig")
+    )
     return [
         {
             "id": w.pk,
             "kiedy": localtime(w.zastosowano).strftime("%d.%m.%Y %H:%M"),
             "kto": str(w.zastosowal or ""),
+            "kolory": [k for k in (w.k_naglowek, w.k_glowny) if k],
+            "tryb": w.k_tryb or "",
         }
-        for w in MotywWersja.objects.filter(uczelnia=uczelnia).select_related(
-            "zastosowal"
-        )
+        for w in wersje
     ]
 
 
@@ -226,7 +241,7 @@ def _uczelnia(request):
     return uczelnia
 
 
-@staff_member_required
+@konfigurator_wymagany
 def konfigurator_wygladu(request):
     uczelnia = _uczelnia(request)
     zapisany = (
@@ -282,7 +297,7 @@ def konfigurator_wygladu(request):
     )
 
 
-@staff_member_required
+@konfigurator_wymagany
 def konfigurator_wygladu_demo(request):
     """Strona demo do podglądu: wszystkie komunikaty, przyciski i pola."""
     for poziom, tekst in (
@@ -315,7 +330,7 @@ def konfigurator_wygladu_demo(request):
 
 
 @require_POST
-@staff_member_required
+@konfigurator_wymagany
 def konfigurator_wygladu_zastosuj(request):
     """Kompiluje motyw z przesłanych ustawień, zapisuje go i włącza dla uczelni.
 
@@ -366,7 +381,9 @@ def konfigurator_wygladu_zastosuj(request):
 
     MotywWersja.zapisz(uczelnia, konfig, motyw_przed, request.user, VERSION)
     _przebuduj_strony_bledu(uczelnia)
-    return JsonResponse({"ok": True})
+    # Aktualna historia (z identyfikatorami) — konfigurator od razu pokazuje
+    # „Wczytaj” przy nowym wpisie, bez przeładowania strony.
+    return JsonResponse({"ok": True, "historia": _historia(uczelnia)})
 
 
 def _przebuduj_strony_bledu(uczelnia):
@@ -386,7 +403,7 @@ def _przebuduj_strony_bledu(uczelnia):
 
 
 @require_POST
-@staff_member_required
+@konfigurator_wymagany
 def konfigurator_wygladu_zapisz(request):
     """Zapisuje ustawienia BEZ stosowania (motyw roboczy).
 
@@ -419,7 +436,7 @@ MAKS_DLUGOSC_NAZWY_MOTYWU = 100
 
 
 @require_POST
-@staff_member_required
+@konfigurator_wymagany
 def konfigurator_wygladu_motyw_zapisz(request):
     """„Zapisz jako…” — motyw pod nazwą, do wczytania później. Ta sama nazwa
     nadpisuje wcześniejszy zapis. Strona się nie zmienia."""
@@ -448,21 +465,21 @@ def konfigurator_wygladu_motyw_zapisz(request):
     )
 
 
-@staff_member_required
+@konfigurator_wymagany
 def konfigurator_wygladu_motyw(request, pk):
     motyw = get_object_or_404(MotywZapisany, pk=pk, uczelnia=_uczelnia(request))
     return JsonResponse({"nazwa": motyw.nazwa, "konfig": motyw.konfig})
 
 
 @require_POST
-@staff_member_required
+@konfigurator_wymagany
 def konfigurator_wygladu_motyw_usun(request, pk):
     uczelnia = _uczelnia(request)
     get_object_or_404(MotywZapisany, pk=pk, uczelnia=uczelnia).delete()
     return JsonResponse({"ok": True, "motywy": _motywy_zapisane(uczelnia)})
 
 
-@staff_member_required
+@konfigurator_wymagany
 def konfigurator_wygladu_wersja(request, pk):
     """Ustawienia jednej wersji z historii — do wczytania w konfiguratorze."""
     wersja = get_object_or_404(MotywWersja, pk=pk, uczelnia=_uczelnia(request))
@@ -470,7 +487,7 @@ def konfigurator_wygladu_wersja(request, pk):
 
 
 @require_POST
-@staff_member_required
+@konfigurator_wymagany
 def konfigurator_wygladu_przywroc(request):
     """Wraca do jednego z motywów BPP_THEMES (np. sprzed konfiguratora).
 
@@ -492,7 +509,7 @@ def konfigurator_wygladu_przywroc(request):
 
 
 @require_POST
-@staff_member_required
+@konfigurator_wymagany
 def konfigurator_wygladu_przymierz(request):
     """Przymiarka: motyw widoczny na całej stronie tylko w tej sesji."""
     try:
@@ -508,7 +525,7 @@ def konfigurator_wygladu_przymierz(request):
 
 
 @require_POST
-@staff_member_required
+@konfigurator_wymagany
 def konfigurator_wygladu_przymiarka_koniec(request):
     przymiarka.zakoncz(request)
     nastepny = request.POST.get("next", "")
@@ -519,7 +536,7 @@ def konfigurator_wygladu_przymiarka_koniec(request):
     return HttpResponseRedirect("/")
 
 
-@staff_member_required
+@konfigurator_wymagany
 def motyw_przymiarka_css(request, skrot):
     tresc = przymiarka.css(skrot)
     if tresc is None:
