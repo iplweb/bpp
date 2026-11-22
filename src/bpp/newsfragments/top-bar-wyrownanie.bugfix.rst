@@ -1,0 +1,1 @@
+Wyrównano w pionie pasek menu: pozycje menu („szukaj”, „przeglądaj”, „raporty” itd.) były o kilka pikseli wyżej niż napis „BPP” z logo, a ikona widgetu dostępności UserWay w prawym górnym rogu stała niżej niż środek paska i wystawała pod niego. Teraz wszystkie elementy stoją w osi paska niezależnie od motywu kolorystycznego, także na telefonie.
