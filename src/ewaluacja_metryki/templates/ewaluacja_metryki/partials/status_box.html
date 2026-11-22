@@ -8,7 +8,7 @@
      hx-swap="outerHTML"
      {% endif %}>
     <div class="row">
-        <div class="medium-9 columns">
+        <div class="small-12 medium-9 columns">
             {% if status_generowania.w_trakcie %}
                 <p>
                     <span class="fi-clock"></span>
@@ -47,7 +47,7 @@
                 </p>
             {% endif %}
         </div>
-        <div class="medium-3 columns text-right">
+        <div class="small-12 medium-3 columns text-right">
             {% if user.is_staff %}
                 {% if not status_generowania.w_trakcie %}
                     <button class="button primary" data-open="generowanie-modal">
