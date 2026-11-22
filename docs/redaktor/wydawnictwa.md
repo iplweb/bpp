@@ -88,10 +88,12 @@ narzędzie, API / MCP z nazwą aplikacji, system) i co zmieniono (np.
   nowe”. Dla list (autorzy, granty, pliki…) po bokach są pełne listy, a
   w środku pozycje usunięte (−), dodane (+) i zmienione, np. „Afiliuje:
   tak → nie”. Plakietki „wersja aktualna” i „wersja najstarsza” pokazują,
-  gdzie w historii leży wersja. Przyciski „Wcześniejsza zmiana” /
-  „Następna zmiana” przechodzą po kolejnych parach wersji, a „Przywróć
-  wersję starszą…” / „Przywróć wersję nowszą…” otwierają podgląd danej
-  wersji z przyciskiem przywracania.
+  gdzie w historii leży wersja. W ostatnim wierszu tabeli, pod każdą
+  wersją, jest przycisk „♻️ Przywróć…” — otwiera podgląd tej wersji
+  z przyciskiem przywracania (pod wersją aktualną go nie ma). Pod tabelą
+  „← Poprzednia zmiana” / „Następna zmiana →” przechodzą po kolejnych
+  parach wersji, a „✏️ Edytuj rekord” i „📜 Historia” prowadzą do
+  formularza i listy wersji.
 - **Przywrócenie wersji** — kliknięcie daty pokazuje rekord w stanie z tej
   wersji (tylko do podglądu, bez edycji). Przycisk **„♻️ Przywróć tę
   wersję”** na dole strony przywraca rekord do tego stanu (samo

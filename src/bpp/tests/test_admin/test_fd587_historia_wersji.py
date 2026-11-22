@@ -469,7 +469,8 @@ def test_wersja_aktualna_oznaczona(admin_client, wydawnictwo_ciagle):
     assert 'class="bpp-kol-zmiana-diff"' in porownanie
     assert "Wersja A" not in porownanie
     # Nowsza wersja jest aktualna — nie ma czego przywracać.
-    assert "Przywróć wersję nowszą" not in porownanie
+    assert porownanie.count("♻️ Przywróć…") == 1  # tylko pod wersją starszą
+    assert "To jest wersja aktualna — nie ma czego przywracać" in porownanie
 
 
 def test_komunikat_po_przywroceniu_linkuje_do_rekordu(admin_app, wydawnictwo_ciagle):

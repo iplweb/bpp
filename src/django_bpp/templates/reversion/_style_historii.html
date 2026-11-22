@@ -104,15 +104,6 @@
     .bpp-znacznik-usunieta { background: #c0392b; }
     .bpp-znacznik-dodana { background: #2e8b57; }
     .bpp-znacznik-zmiana { background: #b8860b; }
-    /* „✏️ Edytuj rekord” w narzędziach obok tytułu — niebieski, jak
-       przycisk główny, zamiast ciemnego domyślnego. */
-    .grp-object-tools a.bpp-edytuj-rekord,
-    .grp-object-tools a.bpp-edytuj-rekord:hover {
-        background: #309bbf !important;
-        background-image: none !important;
-        color: #fff !important;
-        border-color: #2b88a8 !important;
-    }
     /* Zwijana kolumna „Zmiana” w porównaniu */
     .bpp-przelacz-zmiane {
         all: unset;
@@ -130,8 +121,8 @@
     table.bpp-porownanie.bpp-zmiana-zwinieta .bpp-zmiana-strzalka { display: inline; }
     .bpp-nieaktywny { opacity: .45; cursor: not-allowed; pointer-events: none; }
     /* Nieaktywny przycisk: nadal wygląda jak przycisk, tylko wyszarzony. */
-    .bpp-porownanie-nawigacja button.bpp-przycisk-nieaktywny,
-    .bpp-porownanie-nawigacja button.bpp-przycisk-nieaktywny:hover {
+    button.bpp-przycisk-nieaktywny,
+    button.bpp-przycisk-nieaktywny:hover {
         width: auto;
         min-width: 0;
         display: inline-flex;
@@ -197,7 +188,27 @@
     table.bpp-porownanie del { background: #ffd7d5; color: #82071e; text-decoration: line-through; padding: 0 1px; border-radius: 2px; }
     table.bpp-porownanie ins { background: #ccffd8; color: #055d20; text-decoration: none; padding: 0 1px; border-radius: 2px; }
     .bpp-bez-zmian { margin: 4px 0 0; color: var(--bpp-tekst-przygaszony, #888); font-size: 11px; }
-    .bpp-porownanie-nawigacja { display: flex; flex-wrap: wrap; gap: 8px; margin: 14px 0; }
+    /* Nawigacja pod tabelą: poprzednia zmiana z lewej, edycja i historia
+       pośrodku, następna zmiana z prawej. */
+    .bpp-porownanie-nawigacja {
+        display: grid;
+        grid-template-columns: 1fr auto 1fr;
+        align-items: center;
+        gap: 8px;
+        margin: 14px 0;
+    }
+    .bpp-nawigacja-lewa { justify-self: start; }
+    .bpp-nawigacja-srodek { justify-self: center; display: flex; gap: 8px; }
+    .bpp-nawigacja-prawa { justify-self: end; }
+    table.bpp-porownanie tr.bpp-wiersz-przywroc td { vertical-align: middle; padding-top: 8px; padding-bottom: 8px; white-space: normal; }
+    table.bpp-porownanie tr.bpp-wiersz-przywroc .grp-button {
+        display: inline-flex;
+        align-items: center;
+        height: 30px;
+        padding: 0 14px;
+        line-height: normal;
+        width: auto;
+    }
     /* Przyciski pod porównaniem i w pasku historii: tekst wyśrodkowany
        w pionie (domyślny line-height Grappelli spycha go do góry). */
     .bpp-porownanie-nawigacja .grp-button,

@@ -22,7 +22,7 @@
 
 {% block object-tools %}
     <ul class="grp-object-tools">
-        <li><a class="bpp-edytuj-rekord" href="{% url opts|admin_urlname:'change' original.pk|admin_urlquote %}">✏️ Edytuj rekord</a></li>
+        <li><a href="{% url opts|admin_urlname:'change' original.pk|admin_urlquote %}">Edytuj rekord</a></li>
         <li><a href="{{ history_url }}">Historia</a></li>
     </ul>
 {% endblock %}
@@ -97,6 +97,24 @@
                             <td>{{ wiersz.nowe }}</td>
                         </tr>
                     {% endfor %}
+                    {# Ostatni wiersz: przywracanie wersji pod jej kolumną. #}
+                    <tr class="bpp-wiersz-przywroc">
+                        <td class="bpp-kol-pole"></td>
+                        {% for wersja, nazwa, klasa in wersje_porownania %}
+                            {% if forloop.last %}<td class="bpp-kol-zmiana-diff"></td>{% endif %}
+                            <td>
+                                {% if wersja.pk == aktualna_wersja_pk %}
+                                    <span class="bpp-przygaszony">To jest wersja aktualna — nie ma czego przywracać.</span>
+                                {% elif rekord_w_koszu %}
+                                    <button type="button" class="grp-button bpp-przycisk-nieaktywny" disabled title="Rekord jest w koszu — najpierw przywróć go z kosza (przycisk na górze strony), potem przywracaj wersje">♻️ Przywróć…</button>
+                                {% elif forloop.first %}
+                                    <a class="grp-button grp-default" href="{{ save_url }}" title="Podgląd tej wersji z przyciskiem „Przywróć tę wersję”">♻️ Przywróć…</a>
+                                {% else %}
+                                    <a class="grp-button grp-default" href="{{ przywroc_nowsza_url }}" title="Podgląd tej wersji z przyciskiem „Przywróć tę wersję”">♻️ Przywróć…</a>
+                                {% endif %}
+                            </td>
+                        {% endfor %}
+                    </tr>
                 </tbody>
             </table>
         {% else %}
@@ -104,19 +122,16 @@
         {% endif %}
 
         <div class="bpp-porownanie-nawigacja">
-            {% if prev_url %}<a class="grp-button" href="{{ prev_url }}">&lsaquo; Wcześniejsza zmiana</a>{% endif %}
-            {% if next_url %}<a class="grp-button" href="{{ next_url }}">Następna zmiana &rsaquo;</a>{% endif %}
-            <a class="grp-button" href="{{ history_url }}">Wróć do historii</a>
-            <a class="grp-button" href="{% url opts|admin_urlname:'change' original.pk|admin_urlquote %}">✏️ Edytuj rekord</a>
-            {% if rekord_w_koszu %}
-                <button type="button" class="grp-button bpp-przycisk-nieaktywny" disabled title="Rekord jest w koszu — najpierw przywróć go z kosza, potem przywracaj wcześniejsze wersje">Przywróć wersję starszą ({{ version1.revision.date_created|date:"l, j E Y, H:i"|lower }})…</button>
-                <span class="bpp-historia-pomoc">🗑️ Rekord jest w koszu — najpierw przywróć go z kosza (przycisk na górze strony).</span>
-            {% else %}
-                <a class="grp-button grp-default" href="{{ save_url }}" title="Podgląd wersji starszej z przyciskiem „Przywróć tę wersję”">Przywróć wersję starszą ({{ version1.revision.date_created|date:"l, j E Y, H:i"|lower }})…</a>
-                {% if version2.pk != aktualna_wersja_pk %}
-                    <a class="grp-button" href="{{ przywroc_nowsza_url }}" title="Podgląd wersji nowszej z przyciskiem „Przywróć tę wersję”">Przywróć wersję nowszą ({{ version2.revision.date_created|date:"l, j E Y, H:i"|lower }})…</a>
-                {% endif %}
-            {% endif %}
+            <div class="bpp-nawigacja-lewa">
+                {% if prev_url %}<a class="grp-button" href="{{ prev_url }}">← Poprzednia zmiana</a>{% endif %}
+            </div>
+            <div class="bpp-nawigacja-srodek">
+                <a class="grp-button" href="{% url opts|admin_urlname:'change' original.pk|admin_urlquote %}">✏️ Edytuj rekord</a>
+                <a class="grp-button" href="{{ history_url }}">📜 Historia</a>
+            </div>
+            <div class="bpp-nawigacja-prawa">
+                {% if next_url %}<a class="grp-button" href="{{ next_url }}">Następna zmiana →</a>{% endif %}
+            </div>
         </div>
     </div>
 {% endblock %}
