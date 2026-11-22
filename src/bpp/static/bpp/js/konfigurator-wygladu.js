@@ -19,6 +19,8 @@
     var ROZMIAR = {
         komputer: { szerokosc: 1280, wysokosc: 800 },
         telefon: { szerokosc: 390, wysokosc: 780 },
+        tablet: { szerokosc: 820, wysokosc: 1180 },
+        "tablet-poziomo": { szerokosc: 1180, wysokosc: 820 },
     };
     var UKRYJ_W_PODGLADZIE =
         "#CookielawBanner, .cookie-pasek { display: none !important; }" +
@@ -638,10 +640,21 @@
 
     // --- Podglądy ------------------------------------------------------------------
 
+    // Widok w podglądach: jak gość (niezalogowany odwiedzający) albo jak
+    // obsługa (z przyciskami edycji itp.).
+    var KLUCZ_WIDOKU = "bpp-konfigurator-wygladu-widok";
+    var widok = window.localStorage.getItem(KLUCZ_WIDOKU) === "obsluga" ? "obsluga" : "gosc";
+
     function adresPodgladu(adres) {
         var url = new URL(adres, window.location.href);
         url.searchParams.set("podglad_motywu", "1");
+        if (widok === "gosc") url.searchParams.set("podglad_jako", "gosc");
+        else url.searchParams.delete("podglad_jako");
         return url.href;
+    }
+
+    function adresZgodnyZWidokiem(url) {
+        return (url.searchParams.get("podglad_jako") === "gosc") === (widok === "gosc");
     }
 
     function wszystkieRamki() {
@@ -658,7 +671,10 @@
         var miejsce = doc.getElementById("bpp-motyw-podglad");
         if (!miejsce) {
             var url = new URL(ramka.contentWindow.location.href);
-            if (url.origin === window.location.origin && !url.searchParams.has("podglad_motywu")) {
+            if (
+                url.origin === window.location.origin &&
+                (!url.searchParams.has("podglad_motywu") || !adresZgodnyZWidokiem(url))
+            ) {
                 ramka.contentWindow.location.replace(adresPodgladu(url.href));
             }
             return;
@@ -729,6 +745,7 @@
         [".footer-container", ["stopka_tlo", "stopka_kolor"]],
         [".bpp-strona-glowna, .bpp-logo, .bpp-napis", ["logo_bpp", "napis_w_pasku", "napis_wlasny", "logo_uczelni"]],
         [".top-bar .menu.vertical, .top-bar .menu-columns-wrapper", ["menu_zaokraglone", "cien_menu", "ikony_w_menu"]],
+        [".menu-icon, .title-bar-title", ["ikona_menu", "ikona_menu_animacja", "napis_menu", "napis_menu_wlasny"]],
         ["nav.sticky-header, .top-bar, .title-bar", ["kolor_naglowka", "ikony_w_menu", "menu_zaokraglone", "cien_menu"]],
         [".uczelnia__tile, .browse-tile", ["kafle_styl", "kolor_glowny"]],
         [".autor-page__slupek, .autor-page__wykres-linia, .autor-page__wykres-punkt", ["kolor_wykresow"]],
@@ -897,7 +914,8 @@
     // aktywnej zakładki. Przy obu wersjach kolorów: jasna po lewej (telefony:
     // na górze), ciemna po prawej (na dole).
     var KLUCZ_ZAKLADKI = "bpp-konfigurator-wygladu-zakladka";
-    var zakladka = window.localStorage.getItem(KLUCZ_ZAKLADKI) === "telefon" ? "telefon" : "komputer";
+    var zakladka = window.localStorage.getItem(KLUCZ_ZAKLADKI);
+    if (["komputer", "telefon", "tablet"].indexOf(zakladka) === -1) zakladka = "komputer";
     var zbudowaneWarianty = null;
 
     function kolumnaWersji(p, wariant, opisWersji) {
@@ -919,7 +937,8 @@
         zbudowaneWarianty = kluczWariantow();
         siatka.classList.toggle("obie-wersje", obie);
         var strony = podglady.filter(function (p) {
-            return p.urzadzenie === zakladka;
+            // Zakładka „Tablet”: obie orientacje.
+            return p.urzadzenie === zakladka || p.urzadzenie === zakladka + "-poziomo";
         });
         if (zakladka === "komputer") {
             strony.forEach(function (p) {
@@ -937,21 +956,24 @@
                 );
             });
         } else {
+            var nazwaUrzadzenia = zakladka === "tablet" ? "Tablet" : "Telefon";
             w.forEach(function (wariant) {
                 siatka.appendChild(
-                    el("section", { class: "karta karta-telefony" }, [
+                    el("section", { class: "karta karta-telefony", "data-urzadzenie": zakladka }, [
                         el("header", {}, [
                             el("span", {
-                                tekst: obie ? "Telefon — " + NAZWY_WARIANTOW[wariant].toLowerCase() : "Telefon",
+                                tekst: obie
+                                    ? nazwaUrzadzenia + " — " + NAZWY_WARIANTOW[wariant].toLowerCase()
+                                    : nazwaUrzadzenia,
                             }),
                         ]),
                         el(
                             "div",
                             { class: "telefony" },
                             strony.map(function (p) {
-                                return el("div", { class: "telefon" }, [
+                                return el("div", { class: "telefon", "data-rozmiar": p.urzadzenie }, [
                                     el("div", { class: "telefon-naglowek" }, [
-                                        el("span", { tekst: p.tytul.replace(/^Telefon: /, "") }),
+                                        el("span", { tekst: p.tytul.replace(/^(Telefon|Tablet): /, "") }),
                                         przyciskPowieksz(p, wariant),
                                     ]),
                                     oknoPodgladu(p, wariant),
@@ -965,6 +987,9 @@
         document.querySelectorAll("[data-zakladka]").forEach(function (b) {
             b.setAttribute("aria-selected", String(b.dataset.zakladka === zakladka));
         });
+        document.querySelectorAll("[data-widok]").forEach(function (b) {
+            b.setAttribute("aria-selected", String(b.dataset.widok === widok));
+        });
         przeskaluj();
         if (css !== null) uruchomRamki();
     }
@@ -974,6 +999,14 @@
             if (zakladka === b.dataset.zakladka) return;
             zakladka = b.dataset.zakladka;
             window.localStorage.setItem(KLUCZ_ZAKLADKI, zakladka);
+            zbudujPodglady();
+        });
+    });
+    document.querySelectorAll("[data-widok]").forEach(function (b) {
+        b.addEventListener("click", function () {
+            if (widok === b.dataset.widok) return;
+            widok = b.dataset.widok;
+            window.localStorage.setItem(KLUCZ_WIDOKU, widok);
             zbudujPodglady();
         });
     });
@@ -1043,9 +1076,16 @@
         document.querySelectorAll(".karta-telefony").forEach(function (karta) {
             var telefony = karta.querySelectorAll(".telefon");
             var odstep = 12;
-            var szer = (karta.clientWidth - 2 * odstep - odstep * (telefony.length - 1)) / telefony.length;
+            // Różne rozmiary (tablet pionowo i poziomo) — wspólna skala, żeby
+            // ekrany zmieściły się w wierszu w prawdziwych proporcjach.
+            var suma = 0;
             telefony.forEach(function (t) {
-                ustawSkale(t.querySelector(".okno"), "telefon", szer);
+                suma += ROZMIAR[t.dataset.rozmiar].szerokosc;
+            });
+            var dostepne = karta.clientWidth - 2 * odstep - odstep * (telefony.length - 1);
+            telefony.forEach(function (t) {
+                var r = ROZMIAR[t.dataset.rozmiar];
+                ustawSkale(t.querySelector(".okno"), t.dataset.rozmiar, (r.szerokosc * dostepne) / suma);
             });
         });
     }
@@ -1071,6 +1111,8 @@
             p.tytul + (warianty().length > 1 ? " — " + NAZWY_WARIANTOW[wariant].toLowerCase() : "");
         elPowiekszenieRamka.setAttribute("data-wariant", wariant);
         elPowiekszenie.querySelector(".ramka").classList.toggle("telefon", p.urzadzenie === "telefon");
+        elPowiekszenie.querySelector(".ramka").classList.toggle("tablet", p.urzadzenie === "tablet");
+        elPowiekszenie.querySelector(".ramka").classList.toggle("tablet-poziomo", p.urzadzenie === "tablet-poziomo");
         elPowiekszenieRamka.src = adresPodgladu(p.adres);
         elPowiekszenie.classList.add("otwarte");
         document.getElementById("zamknij-powiekszenie").focus();

@@ -379,6 +379,7 @@ MIDDLEWARE = [
     "django_bpp.middleware.HtmxLoginRedirectMiddleware",
     "bpp.middleware.SiteResolutionMiddleware",  # After auth - resolves Site/Uczelnia from hostname
     "bpp.middleware.UzytkownikHistoriiMiddleware",  # After auth - author of history entries
+    "bpp.middleware.PodgladJakoGoscMiddleware",  # After auth - konfigurator wyglądu
     # After auth: okres ewaluacji z adresu URL (/ewaluacja_metryki/2026-2030/...)
     "ewaluacja_common.url_okres.OkresWUrlMiddleware",
     "django_countdown.middleware.CountdownBlockingMiddleware",  # After auth - needs request.user

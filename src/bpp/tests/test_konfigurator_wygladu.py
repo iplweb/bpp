@@ -850,3 +850,25 @@ def test_konfigurator_pokazuje_zapisane_motywy(staff_client, uczelnia):
     res = staff_client.get(reverse("bpp:konfigurator_wygladu"))
     motywy = res.context["stan_serwera"]["motywy_zapisane"]
     assert [m["nazwa"] for m in motywy] == ["Mój motyw"]
+
+
+@pytest.mark.django_db
+def test_podglad_jako_gosc_ukrywa_przyciski_obslugi(superuser_client, uczelnia):
+    from bpp.models import Autor
+
+    autor = baker.make(Autor, nazwisko="Testowy", imiona="Jan")
+    adres = autor.get_absolute_url()
+    jako_obsluga = superuser_client.get(adres + "?podglad_motywu=1")
+    jako_gosc = superuser_client.get(adres + "?podglad_motywu=1&podglad_jako=gosc")
+    assert "Otwórz do edycji" in jako_obsluga.content.decode()
+    tresc = jako_gosc.content.decode()
+    assert "Otwórz do edycji" not in tresc
+    # Nadal tryb podglądu (miejsce na motyw z konfiguratora).
+    assert 'id="bpp-motyw-podglad"' in tresc
+
+
+@pytest.mark.django_db
+def test_podglad_jako_gosc_bez_obslugi_nic_nie_zmienia(client, uczelnia):
+    res = client.get("/?podglad_motywu=1&podglad_jako=gosc")
+    assert res.status_code == 200
+    assert 'id="bpp-motyw-podglad"' not in res.content.decode()

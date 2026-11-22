@@ -65,6 +65,19 @@
     {% if PODGLAD_MOTYWU %}
         <style id="bpp-motyw-podglad"></style>
         <script>
+            {# Dev: przeładowanie strony z django-dev-helpers trzyma stałe połączenie (SSE). #}
+            {# Kilkanaście podglądów wyczerpałoby limit 6 połączeń przeglądarki na host — #}
+            {# w podglądzie wyłączamy je (na produkcji tego skryptu nie ma). #}
+            (function () {
+                var Oryginalny = window.EventSource;
+                if (!Oryginalny) return;
+                window.EventSource = function (adres, opcje) {
+                    if (String(adres).indexOf("/__dev_reload__/") === 0) {
+                        return { close: function () {}, addEventListener: function () {} };
+                    }
+                    return new Oryginalny(adres, opcje);
+                };
+            })();
             try {
                 {# window.top — także strony w ramkach zagnieżdżonych (wyniki multiseek). #}
                 if (window.top !== window && window.top.BppKonfiguratorCss) {

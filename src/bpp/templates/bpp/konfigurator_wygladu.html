@@ -75,7 +75,8 @@
         .zakladki { display: flex; gap: 0; }
         .zakladki button { border-radius: 0; font-weight: 600; padding: 0.45rem 1.1rem; }
         .zakladki button:first-child { border-radius: 6px 0 0 6px; }
-        .zakladki button:last-child { border-radius: 0 6px 6px 0; margin-left: -1px; }
+        .zakladki button + button { margin-left: -1px; }
+        .zakladki button:last-child { border-radius: 0 6px 6px 0; }
         .zakladki button[aria-selected="true"] { background: var(--akcent); border-color: var(--akcent); color: #fff; }
         .wersje { display: grid; grid-template-columns: repeat(auto-fit, minmax(0, 1fr)); gap: 0.75rem; padding: 0.6rem; }
         .wersja { min-width: 0; }
@@ -168,6 +169,8 @@
         .powiekszenie.otwarte { display: flex; }
         .powiekszenie .ramka { background: #fff; border-radius: 8px; overflow: hidden; display: flex; flex-direction: column; width: min(1400px, 100%); height: 100%; }
         .powiekszenie .ramka.telefon { width: 420px; }
+        .powiekszenie .ramka.tablet { width: 860px; }
+        .powiekszenie .ramka.tablet-poziomo { width: 1220px; }
         .powiekszenie header { display: flex; justify-content: space-between; align-items: center; padding: 0.5rem 0.8rem; border-bottom: 1px solid var(--ramka); font-weight: 600; }
         .powiekszenie-tresc { position: relative; flex: 1; display: flex; }
         .powiekszenie iframe { flex: 1; border: 0; width: 100%; }
@@ -300,6 +303,11 @@
             <div class="zakladki" role="tablist" aria-label="Rodzaj ekranu">
                 <button type="button" role="tab" data-zakladka="komputer">Komputer</button>
                 <button type="button" role="tab" data-zakladka="telefon">Telefon</button>
+                <button type="button" role="tab" data-zakladka="tablet">Tablet</button>
+            </div>
+            <div class="zakladki" role="tablist" aria-label="Kto ogląda stronę">
+                <button type="button" role="tab" data-widok="gosc" title="Strona tak, jak widzi ją niezalogowany odwiedzający">Gość</button>
+                <button type="button" role="tab" data-widok="obsluga" title="Strona z przyciskami edycji, jak widzi ją zalogowana obsługa">Obsługa</button>
             </div>
             <div class="wersje-kolorow">
                 <span class="wersje-opis" id="wersje-opis"></span>

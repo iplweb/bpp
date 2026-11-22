@@ -1,9 +1,11 @@
 {% load user_in_group %}
 <nav role="navigation" aria-label="Główna nawigacja" class="sticky-header">
 <div class="title-bar" data-responsive-toggle="example-menu" data-hide-for="medium">
-    <button class="menu-icon" type="button" data-toggle="example-menu"
-            aria-label="Otwórz menu nawigacyjne"></button>
-    <div class="title-bar-title hide-for-print">Menu</div>
+    {# Ikona z trzech pasków (nie ::after + box-shadow Foundation) — kolor i kształt ustawia motyw. #}
+    <button class="menu-icon bpp-ikona-menu" type="button" data-toggle="example-menu"
+            aria-controls="example-menu" aria-expanded="false"
+            aria-label="Otwórz menu nawigacyjne"><span></span><span></span><span></span></button>
+    <div class="title-bar-title hide-for-print"><span class="bpp-napis-menu">Menu</span></div>
 </div>
 
 <div class="top-bar stacked-for-medium hide-for-print" id="example-menu">
