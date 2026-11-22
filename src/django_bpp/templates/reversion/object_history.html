@@ -9,14 +9,27 @@
 
 {% block content %}
     <div class="g-d-c bpp-historia">
+        {% if rekord_w_koszu %}
+            <div class="bpp-kosz-ramka">
+                <div>
+                    <strong>🗑️ Rekord jest w koszu</strong> (od {{ w_koszu_od|date:"j E Y, H:i" }}).
+                    Wcześniejsze wersje można przeglądać i porównywać, ale przywrócić dopiero po wyjęciu rekordu z kosza.
+                </div>
+                {% if kosz_przywroc_url %}
+                    <form method="post" action="{{ kosz_przywroc_url }}">{% csrf_token %}<button type="submit" class="grp-button grp-default">♻️ Przywróć z kosza</button></form>
+                {% else %}
+                    <span class="bpp-przygaszony">Nie masz uprawnień do przywracania z kosza.</span>
+                {% endif %}
+            </div>
+        {% endif %}
         {% if action_list %}
             {% if compare_view %}<form method="get" action="compare/">{% endif %}
             <div class="bpp-historia-pasek">
                 {% if compare_view and comparable %}
                     <button type="submit" class="grp-button grp-default">Porównaj zaznaczone wersje</button>
-                    <span class="bpp-historia-pomoc">Zaznacz wersję starszą (kolumna A) i nowszą (kolumna B), aby zobaczyć, co się zmieniło. Kliknij datę, aby obejrzeć wersję i ją przywrócić.</span>
+                    <span class="bpp-historia-pomoc">Zaznacz wersję starszą (kolumna A) i nowszą (kolumna B), aby zobaczyć, co się zmieniło.{% if not rekord_w_koszu %} Kliknij datę, aby obejrzeć wersję i ją przywrócić.{% endif %}</span>
                 {% else %}
-                    <span class="bpp-historia-pomoc">Kliknij datę, aby obejrzeć wersję i ją przywrócić. Porównanie będzie dostępne, gdy rekord będzie miał co najmniej dwie wersje.</span>
+                    <span class="bpp-historia-pomoc">{% if not rekord_w_koszu %}Kliknij datę, aby obejrzeć wersję i ją przywrócić. {% endif %}Porównanie będzie dostępne, gdy rekord będzie miał co najmniej dwie wersje.</span>
                 {% endif %}
             </div>
             <table id="grp-change-history" class="grp-table bpp-historia-tabela">
@@ -41,11 +54,12 @@
                                 </td>
                             {% endif %}
                             <td class="bpp-kol-data">
-                                {% if action.url %}
+                                {% if action.url and not rekord_w_koszu %}
                                     <a href="{{ action.url }}" title="Obejrzyj tę wersję i przywróć ją">{{ action.revision.date_created|date:"j E Y, H:i" }}</a>
                                 {% else %}
                                     {{ action.revision.date_created|date:"j E Y, H:i" }}
                                 {% endif %}
+                                {% if action.version.pk == aktualna_wersja_pk %}<br><span class="bpp-aktualna" title="Najnowsza zapisana wersja — obecny stan rekordu">wersja aktualna</span>{% endif %}
                             </td>
                             <td class="bpp-kol-user">
                                 {% if action.revision.user %}

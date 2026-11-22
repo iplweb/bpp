@@ -163,39 +163,107 @@ class HistoriaWersjiMixin:
         return tuple(wykluczone)
 
     def compare_view(self, request, object_id, extra_context=None):
-        # reversion-compare nie sprawdza uprawnień ani zakresu uczelni —
-        # sam ``admin_view`` wpuszcza każdego członka personelu.
+        """Porównanie dwóch wersji rekordu.
+
+        Własna implementacja zamiast ``BaseCompareVersionAdmin.compare_view``:
+        reversion-compare szuka rekordu zwykłym menedżerem modelu (bez
+        rekordów z kosza → 404) i nie sprawdza uprawnień ani zakresu uczelni
+        (``admin_view`` wpuszcza każdego członka personelu). Tu rekord bierze
+        ``get_object`` (dla modeli z koszem — także z kosza), więc wersje
+        rekordu z kosza da się przeglądać i porównywać (przywracać — nie)."""
+        from django.contrib.admin.utils import quote
+        from django.shortcuts import get_object_or_404, render
+        from django.urls import reverse
+        from reversion_compare.forms import SelectDiffForm
+
         obj = self.get_object(request, unquote(object_id))
         if obj is None:
             raise Http404("Brak takiego rekordu w zakresie Twojej uczelni.")
         if not self.has_view_or_change_permission(request, obj):
             raise PermissionDenied
-        return super().compare_view(
-            request,
-            object_id,
-            {**self._kontekst_porownania(request), **(extra_context or {})},
+        form = SelectDiffForm(request.GET)
+        if not form.is_valid():
+            raise Http404("Niepoprawne numery wersji do porównania.")
+        id1, id2 = sorted(
+            (form.cleaned_data["version_id1"], form.cleaned_data["version_id2"])
+        )
+        wersje = Version.objects.get_for_object(obj).select_related("revision__user")
+        wersja1 = get_object_or_404(wersje, pk=id1)
+        wersja2 = get_object_or_404(wersje, pk=id2)
+        nastepna = wersje.filter(pk__gt=id2).order_by("pk").first()
+        poprzednia = wersje.filter(pk__lt=id1).order_by("-pk").first()
+
+        opts = self.model._meta
+        nazwa = f"admin:{opts.app_label}_{opts.model_name}"
+        context = {
+            **self.admin_site.each_context(request),
+            "opts": opts,
+            "app_label": opts.app_label,
+            "title": f"Porównanie wersji: {obj}",
+            "original": obj,
+            "compare_data": self.compare(obj, wersja1, wersja2)[0],
+            "version1": wersja1,
+            "version2": wersja2,
+            "wersje_porownania": [
+                (wersja1, "A", "starsza", "bpp-wersja-a"),
+                (wersja2, "B", "nowsza", "bpp-wersja-b"),
+            ],
+            "aktualna_wersja_pk": self._aktualna_wersja_pk(str(obj.pk)),
+            "changelist_url": reverse(f"{nazwa}_changelist"),
+            "history_url": reverse(f"{nazwa}_history", args=(quote(obj.pk),)),
+            "save_url": reverse(
+                f"{nazwa}_revision", args=(quote(wersja1.object_id), wersja1.pk)
+            ),
+            **self._stan_kosza(request, obj),
+        }
+        if nastepna is not None:
+            context["next_url"] = f"?version_id1={wersja2.pk}&version_id2={nastepna.pk}"
+        if poprzednia is not None:
+            context["prev_url"] = (
+                f"?version_id1={poprzednia.pk}&version_id2={wersja1.pk}"
+            )
+        context.update(extra_context or {})
+        return render(request, "reversion-compare/compare.html", context)
+
+    def _aktualna_wersja_pk(self, object_id):
+        """Numer najnowszej zapisanej wersji rekordu — to jego stan obecny
+        (każdy zapis tworzy wersję). ``None``, gdy rekord nie ma wersji."""
+        return (
+            Version.objects.get_for_object_reference(self.model, object_id)
+            .order_by("-pk")
+            .values_list("pk", flat=True)
+            .first()
         )
 
-    @staticmethod
-    def _kontekst_porownania(request):
-        """Opis obu wersji do nagłówka porównania (A — starsza, B — nowsza;
-        reversion-compare zawsze układa je według numeru wersji)."""
-        try:
-            pks = sorted(int(request.GET[k]) for k in ("version_id1", "version_id2"))
-        except (KeyError, ValueError):
-            return {}  # reversion-compare sam odrzuci zły formularz (404)
-        wersje = {
-            v.pk: v
-            for v in Version.objects.filter(pk__in=pks).select_related("revision__user")
-        }
-        if len(wersje) != 2:
-            return {}
-        return {
-            "wersje_porownania": [
-                (wersje[pks[0]], "A", "starsza", "bpp-wersja-a"),
-                (wersje[pks[1]], "B", "nowsza", "bpp-wersja-b"),
-            ]
-        }
+    def _tresc_jak_aktualna(self, obj, wersja, aktualna_pk):
+        """Czy ``wersja`` ma tę samą treść co wersja aktualna (np. stan, do
+        którego rekord właśnie przywrócono — przywrócenie tworzy NOWĄ wersję
+        o identycznej treści). Wtedy formularz nie może udawać „wcześniejszej
+        wersji”, bo zapis niczego nie zmieni."""
+        if aktualna_pk is None:
+            return False
+        from .porownanie_wersji import porownaj_wersje
+
+        aktualna = Version.objects.select_related("revision").get(pk=aktualna_pk)
+        return not porownaj_wersje(
+            self.model, obj, wersja, aktualna, self.compare_exclude
+        )
+
+    def _stan_kosza(self, request, obj):
+        """Kontekst dla stron historii rekordu z kosza: czy jest w koszu,
+        od kiedy i — gdy użytkownik może przywracać — adres przycisku
+        „♻️ Przywróć z kosza” (``BppSoftDeleteAdminMixin``)."""
+        if obj is None or getattr(obj, "deleted_at", None) is None:
+            return {"rekord_w_koszu": False}
+        stan = {"rekord_w_koszu": True, "w_koszu_od": obj.deleted_at}
+        moze = getattr(self, "moze_przywracac", None)
+        if moze is not None and moze(request):
+            from django.urls import reverse
+
+            stan["kosz_przywroc_url"] = reverse(
+                f"admin:{self._nazwa_url_przywroc()}", args=[obj.pk]
+            )
+        return stan
 
     def compare(self, obj, version1, version2):
         """Czytelne porównanie (``porownanie_wersji``) zamiast diffu
@@ -206,6 +274,26 @@ class HistoriaWersjiMixin:
             porownaj_wersje(self.model, obj, version1, version2, self.compare_exclude),
             False,
         )
+
+    def response_change(self, request, obj):
+        # Przy przywracaniu wersji formularz jest wysyłany na adres wersji
+        # (``…/history/<nr>/``), a Django składa z ``request.path`` link
+        # w komunikacie „…pomyślnie zmieniony” i przekierowanie „Zapisz
+        # i kontynuuj” — prowadziłyby do podglądu starej wersji zamiast do
+        # aktualnego rekordu.
+        dopasowanie = getattr(request, "resolver_match", None)
+        if dopasowanie is not None and (dopasowanie.url_name or "").endswith(
+            "_revision"
+        ):
+            from django.contrib.admin.utils import quote
+            from django.urls import reverse
+
+            opts = self.model._meta
+            request.path = reverse(
+                f"admin:{opts.app_label}_{opts.model_name}_change",
+                args=(quote(obj.pk),),
+            )
+        return super().response_change(request, obj)
 
     def po_przywroceniu_wersji(self, request, obj):
         """Hook po udanym przywróceniu wersji ``obj`` (już zapisanej
@@ -226,9 +314,24 @@ class HistoriaWersjiMixin:
         # pominięciem ``restore()`` (guard, SoftDeleteLog, kolejka PBN).
         # Najpierw przywróć z kosza, potem cofaj wersje.
         if getattr(obj, "deleted_at", None) is not None:
-            raise PermissionDenied(
-                "Rekord jest w koszu — najpierw przywróć go z kosza, "
-                "potem przywracaj wcześniejsze wersje."
+            from django.contrib import messages
+            from django.contrib.admin.utils import quote
+            from django.http import HttpResponseRedirect
+            from django.urls import reverse
+
+            self.message_user(
+                request,
+                "🗑️ Rekord jest w koszu — wcześniejsze wersje można przeglądać "
+                "i porównywać, ale przywrócić dopiero po wyjęciu rekordu "
+                "z kosza („♻️ Przywróć z kosza”).",
+                level=messages.WARNING,
+            )
+            opts = self.model._meta
+            return HttpResponseRedirect(
+                reverse(
+                    f"admin:{opts.app_label}_{opts.model_name}_history",
+                    args=(quote(obj.pk),),
+                )
             )
         # reversion szuka wersji po pk i object_id, ale NIE po typie modelu —
         # bez tego przez URL autora dałoby się cofnąć rewizję innego modelu
@@ -240,8 +343,14 @@ class HistoriaWersjiMixin:
         ):
             raise Http404("Brak takiej wersji tego rekordu.")
         if request.method == "GET":
+            wersja = Version.objects.select_related("revision").get(pk=version_id)
+            aktualna_pk = self._aktualna_wersja_pk(unquote(object_id))
             extra_context = {
                 "zmiany_powiazanych": self._zmiany_powiazanych(obj, version_id),
+                "wersja_podgladu": wersja,
+                "wersja_aktualna": wersja.pk == aktualna_pk,
+                "wersja_jak_aktualna": wersja.pk != aktualna_pk
+                and self._tresc_jak_aktualna(obj, wersja, aktualna_pk),
                 **(extra_context or {}),
             }
         token = _przywracanie_wersji.set(True)
@@ -308,7 +417,9 @@ class HistoriaWersjiMixin:
         context = {
             "historia_sprzed_wersjonowania": self._historia_sprzed_wersjonowania(
                 unquote(object_id)
-            )
+            ),
+            **self._stan_kosza(request, self.get_object(request, unquote(object_id))),
+            "aktualna_wersja_pk": self._aktualna_wersja_pk(unquote(object_id)),
         }
         context.update(extra_context or {})
         return super().history_view(request, object_id, context)
