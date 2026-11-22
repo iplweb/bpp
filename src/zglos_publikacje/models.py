@@ -372,6 +372,32 @@ class Zgloszenie_Publikacji_Autor(
                 }
             )
 
+        if (
+            self.dyscyplina_naukowa is not None
+            and getattr(self, "dopusc_propozycje_dyscypliny", False)
+            and not przypisanie_na_rok_istnieje
+        ):
+            # FD#620: formularz zgłoszenia — autor bez przypisania na rok
+            # pracy; dyscyplina z podpowiadanej listy zostanie mu przypisana
+            # przy zapisie zgłoszenia (``zglos_publikacje.dyscypliny``).
+            from zglos_publikacje.dyscypliny import (
+                dyscyplina_z_propozycji,
+                ma_przypisanie_na_rok,
+            )
+
+            if not ma_przypisanie_na_rok(self.autor_id, self.rok):
+                if dyscyplina_z_propozycji(
+                    self.autor_id, self.rok, self.dyscyplina_naukowa
+                ):
+                    return
+                raise ValidationError(
+                    {
+                        "dyscyplina_naukowa": f"Autor {self.autor} nie ma "
+                        f"przypisanej dyscypliny na rok {self.rok}. Wybierz "
+                        "dyscyplinę z podpowiadanej listy."
+                    }
+                )
+
         if self.dyscyplina_naukowa is not None:
             try:
                 Autor_Dyscyplina.objects.get(
