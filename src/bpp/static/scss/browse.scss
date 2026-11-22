@@ -941,17 +941,58 @@ $wydzial-nav-gap: 8px;
 }
 
 #rotating-tips {
-  text-align: center;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
   font-size: 14px;
   line-height: 1.4;
 
   .tip-content {
-    display: none;
-    opacity: 0;
+    flex: 1;
+    text-align: center;
     transition: opacity 0.5s ease-in-out;
 
     .fi-lightbulb {
       margin-right: 5px;
+    }
+
+    a {
+      white-space: nowrap;
+    }
+  }
+
+  .tip-content--wygasza {
+    opacity: 0;
+  }
+
+  // Przycisk zamknięcia: kolor z tekstu paska (currentColor), żeby motywy
+  // i tryb ciemny nie musiały go osobno nadpisywać.
+  .tips-close {
+    flex: none;
+    margin: 0;
+    padding: 0 0.4rem;
+    border-radius: $global-radius;
+    background: transparent;
+    color: inherit;
+    font-size: 1.4rem;
+    line-height: 1;
+    opacity: 0.6;
+    cursor: pointer;
+
+    &:hover,
+    &:focus-visible {
+      opacity: 1;
+    }
+
+    &:focus-visible {
+      outline: 2px solid currentColor;
+      outline-offset: 2px;
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .tip-content {
+      transition: none;
     }
   }
 }
