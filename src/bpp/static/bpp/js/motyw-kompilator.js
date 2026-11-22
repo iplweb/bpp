@@ -2,8 +2,8 @@
  * Kompilacja motywu z konfiguracji — wspólna dla przeglądarki i serwera.
  *
  *   - przeglądarka: web worker konfiguratora (motyw-kompilator-worker.js),
- *   - serwer: bpp/motyw_kompilator.py uruchamia ten plik w V8 (mini-racer)
- *     przy „Zastosuj” i przy migracji wyglądu po aktualizacji BPP
+ *   - serwer: serwis motyw-kompilator (motyw-kompilator-serwer.js) przy
+ *     „Zastosuj dla wszystkich” i przy migracji wyglądu po aktualizacji BPP
  *     (manage.py odswiez_motywy).
  *
  * Wymaga globalnych BppSass (dist/sass-przegladarka.js) i BppMotywKonfig
@@ -59,6 +59,13 @@
     // opcje.trybPodgladu — wymuszony wariant trybu automatycznego (podgląd).
     function kompiluj(pliki, konfig, opcje) {
         opcje = opcje || {};
+        return kompilujWarianty(pliki, konfig, opcje, [["css", opcje.trybPodgladu]]).css;
+    }
+
+    // Podgląd obu wersji trybu automatycznego: Sass kompilowany RAZ, wersje
+    // różnią się tylko przetworzeniem CSS. warianty: [[klucz, trybPodgladu]].
+    function kompilujWarianty(pliki, konfig, opcje, warianty) {
+        opcje = opcje || {};
         var imp = importer(pliki);
         var wynik = BppSass.compileString(
             BppMotywKonfig.doScss(konfig, { czcionkiUrl: opcje.czcionkiUrl }),
@@ -73,12 +80,18 @@
                 logger: BppSass.Logger.silent,
             },
         );
-        // przetworzCss usuwa też BOM — w <style> psułby pierwszą regułę
-        // (@import czcionek z internetu).
-        return BppMotywKonfig.przetworzCss(wynik.css, konfig, {
-            trybPodgladu: opcje.trybPodgladu,
+        var css = {};
+        warianty.forEach(function (w) {
+            // przetworzCss usuwa też BOM — w <style> psułby pierwszą regułę
+            // (@import czcionek z internetu).
+            css[w[0]] = BppMotywKonfig.przetworzCss(wynik.css, konfig, { trybPodgladu: w[1] });
         });
+        return css;
     }
 
-    root.BppMotywKompilator = { importer: importer, kompiluj: kompiluj };
+    root.BppMotywKompilator = {
+        importer: importer,
+        kompiluj: kompiluj,
+        kompilujWarianty: kompilujWarianty,
+    };
 })(typeof self !== "undefined" ? self : this);

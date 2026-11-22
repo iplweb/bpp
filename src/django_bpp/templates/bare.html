@@ -68,7 +68,13 @@
             try {
                 {# window.top — także strony w ramkach zagnieżdżonych (wyniki multiseek). #}
                 if (window.top !== window && window.top.BppKonfiguratorCss) {
+                    {# Wersja (jasna/ciemna) z atrybutu ramki konfiguratora. #}
+                    var bppOkno = window;
+                    while (bppOkno.parent !== window.top) { bppOkno = bppOkno.parent; }
+                    var bppRamka = bppOkno.frameElement;
+                    var bppWarianty = window.top.BppKonfiguratorCssWarianty || {};
                     document.getElementById("bpp-motyw-podglad").textContent =
+                        (bppRamka && bppWarianty[bppRamka.getAttribute("data-wariant")]) ||
                         window.top.BppKonfiguratorCss;
                 }
             } catch (e) {

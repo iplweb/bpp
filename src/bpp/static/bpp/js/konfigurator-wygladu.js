@@ -27,7 +27,7 @@
         ".bpp-inspektor-cel { outline: 3px solid #2563eb !important; outline-offset: 2px !important; }";
 
     var stan = wczytajZPamieci();
-    var css = null;
+    var css = null; // {wariant: css} z ostatniej kompilacji
     var ostatnieZlecenie = 0;
     var odliczanie = null;
     var startKompilacji = 0;
@@ -62,7 +62,7 @@
     function ustaw(klucz, wartosc) {
         stan[klucz] = wartosc;
         zapiszWPamieci();
-        if (klucz === "tryb_kolorow") pokazPrzelacznikTrybu();
+        if (klucz === "tryb_kolorow") pokazWersje();
         odswiezWidocznosc();
         pokazBledy();
         zaplanujKompilacje();
@@ -527,12 +527,18 @@
             return;
         }
         css = e.data.css;
-        // Strony w ramkach czytają to synchronicznie przy starcie (bare.html).
-        window.BppKonfiguratorCss = css;
+        // Strony w ramkach czytają to synchronicznie przy starcie (bare.html):
+        // wersję wybierają po atrybucie data-wariant ramki.
+        window.BppKonfiguratorCssWarianty = css;
+        window.BppKonfiguratorCss = css[Object.keys(css)[0]];
+        // Zmienił się tryb kolorów (np. wczytany motyw) — inne ramki.
+        if (kluczWariantow() !== zbudowaneWarianty) zbudujPodglady();
         uruchomRamki();
         var sekundy = ((Date.now() - startKompilacji) / 1000).toFixed(1);
         ustawStatus("Podgląd aktualny (" + sekundy + " s).");
-        wszystkieRamki().forEach(zastosuj);
+        wszystkieRamki().forEach(function (ramka) {
+            zastosuj(ramka);
+        });
         kompilacjaZakonczona();
     };
 
@@ -566,44 +572,35 @@
             id: ostatnieZlecenie,
             konfig: stan,
             czcionkiUrl: adresy.czcionki.replace(/\/$/, ""),
-            trybPodgladu: stan.tryb_kolorow === "automatyczny" ? trybPodgladu : null,
+            warianty: warianty().map(function (w) {
+                return [w, stan.tryb_kolorow === "automatyczny" ? w : null];
+            }),
         });
     }
 
-    // Podgląd trybu automatycznego: który wariant pokazać.
-    var trybPodgladu = "jasny";
-    var elTrybPodgladu = document.getElementById("tryb-podgladu");
+    // Wersje kolorystyczne na podglądach: obie przy trybie automatycznym.
+    function warianty() {
+        return stan.tryb_kolorow === "automatyczny" ? ["jasny", "ciemny"] : [stan.tryb_kolorow];
+    }
+
+    function kluczWariantow() {
+        return warianty().join(",");
+    }
 
     var elWersjeOpis = document.getElementById("wersje-opis");
     var elWersjeObie = document.getElementById("wersje-obie");
 
-    // Obie wersje (tryb automatyczny): przełącznik podglądu jasna/ciemna.
-    // Jedna wersja: przyciski wyłączone, zaznaczona jedyna wersja i przycisk
-    // dodający drugą (przejście na tryb automatyczny).
-    function pokazPrzelacznikTrybu() {
+    function pokazWersje() {
         var obie = stan.tryb_kolorow === "automatyczny";
-        var widoczna = obie ? trybPodgladu : stan.tryb_kolorow;
-        elTrybPodgladu.querySelectorAll("button[data-tryb]").forEach(function (b) {
-            b.disabled = !obie;
-            b.setAttribute("aria-pressed", String(b.dataset.tryb === widoczna));
-        });
         elWersjeOpis.textContent = obie
-            ? "Strona ma obie wersje — odwiedzający dostaje tę z ustawień swojego systemu."
-            : "Strona ma tylko wersję " + (widoczna === "ciemny" ? "ciemną." : "jasną.");
+            ? "Strona ma obie wersje: po lewej jasna, po prawej ciemna. Odwiedzający dostaje tę z ustawień swojego systemu."
+            : "Strona ma tylko wersję " + (stan.tryb_kolorow === "ciemny" ? "ciemną." : "jasną.");
         elWersjeObie.hidden = obie;
     }
 
     elWersjeObie.addEventListener("click", function () {
         ustaw("tryb_kolorow", "automatyczny");
         zbudujFormularz();
-    });
-
-    elTrybPodgladu.querySelectorAll("button[data-tryb]").forEach(function (b) {
-        b.addEventListener("click", function () {
-            trybPodgladu = b.dataset.tryb;
-            pokazPrzelacznikTrybu();
-            kompiluj();
-        });
     });
 
     function ustawStatus(tekst, blad) {
@@ -626,7 +623,8 @@
     // Wstawia motyw do strony w ramce. Strona bez miejsca na motyw (np. po
     // kliknięciu linku — adres stracił ?podglad_motywu) jest przeładowywana
     // z parametrem.
-    function zastosuj(ramka) {
+    function zastosuj(ramka, wariant) {
+        wariant = wariant || ramka.getAttribute("data-wariant");
         var doc = ramka.contentDocument;
         if (!doc || !doc.head) return; // inna domena albo jeszcze się ładuje
         var miejsce = doc.getElementById("bpp-motyw-podglad");
@@ -644,7 +642,7 @@
             doc.head.appendChild(dodatki);
         }
         if (css === null) return;
-        miejsce.textContent = css;
+        miejsce.textContent = css[wariant] || css[Object.keys(css)[0]];
         pilnujLudzika(doc);
         podepnijInspektor(doc, ramka);
         // Ramki w ramce (np. wyniki multiseek) — ten sam motyw.
@@ -652,10 +650,10 @@
             if (!wewnetrzna.bppPodpieta) {
                 wewnetrzna.bppPodpieta = true;
                 wewnetrzna.addEventListener("load", function () {
-                    zastosuj(wewnetrzna);
+                    zastosuj(wewnetrzna, wariant);
                 });
             }
-            zastosuj(wewnetrzna);
+            zastosuj(wewnetrzna, wariant);
         });
         var zaslona = ramka.parentNode && ramka.parentNode.querySelector(".zaslona");
         if (zaslona) zaslona.classList.add("ukryta");
@@ -837,13 +835,16 @@
         }, true);
     }
 
-    function oknoPodgladu(p) {
+    var NAZWY_WARIANTOW = { jasny: "Wersja jasna", ciemny: "Wersja ciemna" };
+
+    function oknoPodgladu(p, wariant) {
         // Adres ustawiamy dopiero, gdy jest pierwszy CSS (uruchomRamki):
         // strona bez motywu przy starcie źle rozpoznałaby rozmiar ekranu.
         var ramka = el("iframe", {
             "data-src": adresPodgladu(p.adres),
-            title: "Podgląd: " + p.tytul,
+            title: "Podgląd: " + p.tytul + " (" + NAZWY_WARIANTOW[wariant] + ")",
             "data-podglad": p.urzadzenie,
+            "data-wariant": wariant,
             tabindex: "-1",
         });
         ramka.addEventListener("load", function () {
@@ -856,50 +857,101 @@
         ]);
     }
 
-    function przyciskPowieksz(p) {
+    function przyciskPowieksz(p, wariant) {
         var powieksz = el("button", { type: "button", tekst: "Powiększ" });
         powieksz.addEventListener("click", function () {
-            otworzPowiekszenie(p);
+            otworzPowiekszenie(p, wariant);
         });
         return powieksz;
     }
 
-    // Komputer: karta na stronę. Telefony: jedna karta z ekranami obok
-    // siebie — pojedynczy wąski ekran w szerokiej karcie zostawiał puste pasy.
+    // Zakładki „Komputer” / „Telefon” — w ramkach wczytujemy tylko strony
+    // aktywnej zakładki. Przy obu wersjach kolorów: jasna po lewej (telefony:
+    // na górze), ciemna po prawej (na dole).
+    var KLUCZ_ZAKLADKI = "bpp-konfigurator-wygladu-zakladka";
+    var zakladka = window.localStorage.getItem(KLUCZ_ZAKLADKI) === "telefon" ? "telefon" : "komputer";
+    var zbudowaneWarianty = null;
+
+    function kolumnaWersji(p, wariant, opisWersji) {
+        return el("div", { class: "wersja" }, [
+            el("div", { class: "wersja-naglowek" }, [
+                el("span", { tekst: opisWersji }),
+                przyciskPowieksz(p, wariant),
+            ]),
+            oknoPodgladu(p, wariant),
+        ]);
+    }
+
     function zbudujPodglady() {
         var siatka = document.getElementById("siatka");
-        var telefony = el("div", { class: "telefony" });
-        podglady.forEach(function (p) {
-            if (p.urzadzenie === "telefon") {
-                telefony.appendChild(
-                    el("div", { class: "telefon" }, [
-                        el("div", { class: "telefon-naglowek" }, [
-                            el("span", { tekst: p.tytul.replace(/^Telefon: /, "") }),
-                            przyciskPowieksz(p),
-                        ]),
-                        oknoPodgladu(p),
+        wstrzymajRamki();
+        siatka.textContent = "";
+        var w = warianty();
+        var obie = w.length > 1;
+        zbudowaneWarianty = kluczWariantow();
+        siatka.classList.toggle("obie-wersje", obie);
+        var strony = podglady.filter(function (p) {
+            return p.urzadzenie === zakladka;
+        });
+        if (zakladka === "komputer") {
+            strony.forEach(function (p) {
+                siatka.appendChild(
+                    el("section", { class: "karta komputer" }, [
+                        el("header", {}, [el("span", { tekst: p.tytul })]),
+                        el(
+                            "div",
+                            { class: "wersje" },
+                            w.map(function (wariant) {
+                                return kolumnaWersji(p, wariant, obie ? NAZWY_WARIANTOW[wariant] : "");
+                            }),
+                        ),
                     ]),
                 );
-                return;
-            }
-            siatka.appendChild(
-                el("section", { class: "karta komputer" }, [
-                    el("header", {}, [el("span", { tekst: p.tytul }), przyciskPowieksz(p)]),
-                    oknoPodgladu(p),
-                ]),
-            );
-        });
-        if (telefony.children.length) {
-            siatka.appendChild(
-                el("section", { class: "karta karta-telefony" }, [
-                    el("header", {}, [el("span", { tekst: "Telefon" })]),
-                    telefony,
-                ]),
-            );
+            });
+        } else {
+            w.forEach(function (wariant) {
+                siatka.appendChild(
+                    el("section", { class: "karta karta-telefony" }, [
+                        el("header", {}, [
+                            el("span", {
+                                tekst: obie ? "Telefon — " + NAZWY_WARIANTOW[wariant].toLowerCase() : "Telefon",
+                            }),
+                        ]),
+                        el(
+                            "div",
+                            { class: "telefony" },
+                            strony.map(function (p) {
+                                return el("div", { class: "telefon" }, [
+                                    el("div", { class: "telefon-naglowek" }, [
+                                        el("span", { tekst: p.tytul.replace(/^Telefon: /, "") }),
+                                        przyciskPowieksz(p, wariant),
+                                    ]),
+                                    oknoPodgladu(p, wariant),
+                                ]);
+                            }),
+                        ),
+                    ]),
+                );
+            });
         }
+        document.querySelectorAll("[data-zakladka]").forEach(function (b) {
+            b.setAttribute("aria-selected", String(b.dataset.zakladka === zakladka));
+        });
         przeskaluj();
-        new ResizeObserver(przeskaluj).observe(siatka);
+        if (css !== null) uruchomRamki();
     }
+
+    document.querySelectorAll("[data-zakladka]").forEach(function (b) {
+        b.addEventListener("click", function () {
+            if (zakladka === b.dataset.zakladka) return;
+            zakladka = b.dataset.zakladka;
+            window.localStorage.setItem(KLUCZ_ZAKLADKI, zakladka);
+            zbudujPodglady();
+        });
+    });
+    new ResizeObserver(function () {
+        przeskaluj();
+    }).observe(document.getElementById("siatka"));
 
     // Ramki ładujemy PO KOLEI (następna po załadowaniu poprzedniej), żeby nie
     // uderzać w serwer kilkunastoma stronami naraz.
@@ -957,8 +1009,8 @@
 
     // Ramki mają rozmiar prawdziwego ekranu i są pomniejszane transformacją.
     function przeskaluj() {
-        document.querySelectorAll(".karta.komputer").forEach(function (karta) {
-            ustawSkale(karta.querySelector(".okno"), "komputer", karta.clientWidth);
+        document.querySelectorAll(".karta.komputer .wersja").forEach(function (wersja) {
+            ustawSkale(wersja.querySelector(".okno"), "komputer", wersja.clientWidth);
         });
         document.querySelectorAll(".karta-telefony").forEach(function (karta) {
             var telefony = karta.querySelectorAll(".telefon");
@@ -984,10 +1036,12 @@
     // trzyma stałe połączenia (np. SSE autoprzeładowania w trybie dev),
     // a przy HTTP/1.1 przeglądarka ma tylko 6 połączeń na host — strona
     // w powiększeniu czekałaby w kolejce bez końca.
-    function otworzPowiekszenie(p) {
+    function otworzPowiekszenie(p, wariant) {
         wstrzymajRamki();
         document.getElementById("powiekszenie-ladowanie").hidden = false;
-        document.getElementById("powiekszenie-tytul").textContent = p.tytul;
+        document.getElementById("powiekszenie-tytul").textContent =
+            p.tytul + (warianty().length > 1 ? " — " + NAZWY_WARIANTOW[wariant].toLowerCase() : "");
+        elPowiekszenieRamka.setAttribute("data-wariant", wariant);
         elPowiekszenie.querySelector(".ramka").classList.toggle("telefon", p.urzadzenie === "telefon");
         elPowiekszenieRamka.src = adresPodgladu(p.adres);
         elPowiekszenie.classList.add("otwarte");
@@ -1441,35 +1495,13 @@
         }
     }
 
-    // --- Układ podglądów (1/2/3 kolumny albo automatycznie) ----------------------
-
-    var KLUCZ_UKLADU = "bpp-konfigurator-wygladu-uklad";
-
-    function ustawUklad(kolumny) {
-        var siatka = document.getElementById("siatka");
-        siatka.classList.remove("kolumny-1", "kolumny-2", "kolumny-3");
-        if (kolumny !== "auto") siatka.classList.add("kolumny-" + kolumny);
-        document.querySelectorAll(".uklad-podgladow button").forEach(function (b) {
-            b.setAttribute("aria-pressed", String(b.dataset.kolumny === kolumny));
-        });
-        window.localStorage.setItem(KLUCZ_UKLADU, kolumny);
-        przeskaluj();
-    }
-
-    document.querySelectorAll(".uklad-podgladow button").forEach(function (b) {
-        b.addEventListener("click", function () {
-            ustawUklad(b.dataset.kolumny);
-        });
-    });
-
     pokazUwageOWersji();
     pokazHistorie();
     ustawPrzyciski();
     pokazRoboczy();
     pokazFavicon();
-    pokazPrzelacznikTrybu();
+    pokazWersje();
     zbudujFormularz();
     zbudujPodglady();
-    ustawUklad(window.localStorage.getItem(KLUCZ_UKLADU) || "auto");
     kompiluj();
 })();

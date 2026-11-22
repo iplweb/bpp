@@ -66,18 +66,23 @@
         .obraz-wybor .obraz-opis { flex: 1; color: #555; }
         .kolor input:disabled { opacity: 0.4; }
         .uklad-podgladow[hidden] { display: none; }
-        .wersje-kolorow { display: flex; flex-wrap: wrap; gap: 0.4rem; align-items: center; flex-basis: 100%; padding: 0.5rem 0.75rem; background: #fff; border: 1px solid var(--ramka); border-radius: 8px; }
-        .wersje-kolorow .wersje-etykieta { font-weight: 600; }
-        .wersje-kolorow button[aria-pressed="true"] { border-color: var(--akcent); box-shadow: inset 0 0 0 1px var(--akcent); background: #eff6ff; font-weight: 600; }
-        .wersje-kolorow button[disabled] { opacity: 0.45; cursor: not-allowed; }
+        .wersje-kolorow { display: flex; flex-wrap: wrap; gap: 0.5rem; align-items: center; flex: 1; }
         .wersje-kolorow .wersje-opis { color: var(--szary); font-size: 0.85rem; }
+        .zakladki { display: flex; gap: 0; }
+        .zakladki button { border-radius: 0; font-weight: 600; padding: 0.45rem 1.1rem; }
+        .zakladki button:first-child { border-radius: 6px 0 0 6px; }
+        .zakladki button:last-child { border-radius: 0 6px 6px 0; margin-left: -1px; }
+        .zakladki button[aria-selected="true"] { background: var(--akcent); border-color: var(--akcent); color: #fff; }
+        .wersje { display: grid; grid-template-columns: repeat(auto-fit, minmax(0, 1fr)); gap: 0.75rem; padding: 0.6rem; }
+        .wersja { min-width: 0; }
+        .wersja-naglowek { display: flex; justify-content: space-between; align-items: center; font-size: 0.85rem; font-weight: 600; margin-bottom: 0.35rem; min-height: 1.8rem; }
+        .wersja-naglowek button { padding: 0.15rem 0.5rem; font-size: 0.8rem; }
+        .wersja .okno { border: 1px solid var(--ramka); border-radius: 6px; }
+        .siatka.obie-wersje { grid-template-columns: 1fr; }
         .wersje-kolorow [hidden] { display: none; }
         .uklad-podgladow { display: flex; gap: 0.3rem; align-items: center; font-size: 0.85rem; color: var(--szary); white-space: nowrap; }
         .uklad-podgladow button { padding: 0.25rem 0.6rem; font-size: 0.85rem; }
         .uklad-podgladow button[aria-pressed="true"] { border-color: var(--akcent); box-shadow: inset 0 0 0 1px var(--akcent); background: #eff6ff; font-weight: 600; }
-        .siatka.kolumny-1 { grid-template-columns: 1fr; }
-        .siatka.kolumny-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-        .siatka.kolumny-3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
         .blad { color: var(--blad); font-size: 0.85rem; margin-top: 0.35rem; }
         .blad button { margin-top: 0.3rem; }
         input[type=text].tekst { width: 100%; font: inherit; padding: 0.4rem 0.55rem; border: 1px solid var(--ramka); border-radius: 6px; }
@@ -132,7 +137,7 @@
         .status.blad { color: var(--blad); }
 
         .podglady { overflow-y: auto; padding: 1.25rem; }
-        .podglady-naglowek { display: flex; justify-content: space-between; align-items: center; gap: 1rem; margin-bottom: 0.75rem; }
+        .podglady-naglowek { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 0.75rem 1rem; margin-bottom: 0.75rem; }
         .podglady-naglowek p { margin: 0; color: var(--szary); font-size: 0.9rem; }
         .siatka { display: grid; grid-template-columns: repeat(auto-fill, minmax(420px, 1fr)); gap: 1rem; align-items: start; }
         .karta { background: var(--panel); border: 1px solid var(--ramka); border-radius: 8px; overflow: hidden; }
@@ -285,22 +290,16 @@
 
     <main class="podglady">
         <div class="podglady-naglowek">
-            <div class="wersje-kolorow" id="tryb-podgladu" role="group" aria-label="Wersja kolorystyczna na podglądach">
-                <span class="wersje-etykieta">Podgląd wersji:</span>
-                <button type="button" data-tryb="jasny">Jasna</button>
-                <button type="button" data-tryb="ciemny">Ciemna</button>
+            <div class="zakladki" role="tablist" aria-label="Rodzaj ekranu">
+                <button type="button" role="tab" data-zakladka="komputer">Komputer</button>
+                <button type="button" role="tab" data-zakladka="telefon">Telefon</button>
+            </div>
+            <div class="wersje-kolorow">
                 <span class="wersje-opis" id="wersje-opis"></span>
                 <button type="button" id="wersje-obie" hidden>Dodaj drugą wersję (jasna + ciemna)</button>
             </div>
             <button type="button" id="inspektor" aria-pressed="false" title="Kliknij element na podglądzie, a podświetlą się opcje, które go ustawiają">Inspektor</button>
             <p>Podglądy są „żywe” — można w nie klikać. Kliknij „Powiększ”, żeby obejrzeć stronę w pełnym rozmiarze.</p>
-            <div class="uklad-podgladow" role="group" aria-label="Układ podglądów">
-                Układ:
-                <button type="button" data-kolumny="1">1 kolumna</button>
-                <button type="button" data-kolumny="2">2 kolumny</button>
-                <button type="button" data-kolumny="3">3 kolumny</button>
-                <button type="button" data-kolumny="auto">Auto</button>
-            </div>
         </div>
         <div class="siatka" id="siatka"></div>
     </main>

@@ -49,10 +49,12 @@ self.onmessage = function (e) {
     var dane = e.data;
     pobierzZrodla()
         .then(function (pliki) {
-            var css = BppMotywKompilator.kompiluj(pliki, dane.konfig, {
-                czcionkiUrl: dane.czcionkiUrl,
-                trybPodgladu: dane.trybPodgladu,
-            });
+            var css = BppMotywKompilator.kompilujWarianty(
+                pliki,
+                dane.konfig,
+                { czcionkiUrl: dane.czcionkiUrl },
+                dane.warianty,
+            );
             self.postMessage({ id: dane.id, css: css });
         })
         .catch(function (blad) {

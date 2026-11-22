@@ -297,11 +297,15 @@ nav.sticky-header {
     color: $primary-color !important;
   }
 } @else if $cfg-kafle-styl == "obrys" {
-  .uczelnia__tile,
+  .uczelnia__tile {
+    background: transparent;
+    border: 2px solid $primary-color;
+  }
+
   .browse-tile:hover > .uczelnia__tile,
   .browse-tile:focus-visible > .uczelnia__tile {
-    background: $white;
-    border: 2px solid $primary-color;
+    background: rgba($primary-color, 0.08);
+    border-color: $primary-color;
   }
 
   .uczelnia__tile-icon {

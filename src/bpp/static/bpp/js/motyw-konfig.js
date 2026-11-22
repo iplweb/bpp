@@ -526,7 +526,7 @@
             opcje: [
                 ["kolorowe", "Jasne, kolorowe ikony"],
                 ["ikony_glowny", "Jasne, ikony w kolorze głównym"],
-                ["obrys", "Białe z obrysem w kolorze głównym"],
+                ["obrys", "Przezroczyste z obrysem w kolorze głównym"],
                 ["wypelnione", "Wypełnione kolorem głównym"],
             ],
             domyslnie: "kolorowe",
