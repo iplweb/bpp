@@ -28,6 +28,7 @@ from bpp.demo_data.themes.registry import get_theme
 from bpp.models import (
     Autor,
     Autor_Dyscyplina,
+    Charakter_Formalny,
     Dyscyplina_Zrodla,
     Punktacja_Zrodla,
     Uczelnia,
@@ -139,7 +140,34 @@ def _create_demo(tmp_path, *extra):
 
 
 @pytest.fixture
-def demo(db, tmp_path):
+def slowniki_demo(
+    standard_data,
+    rodzaj_autora_n,
+    rodzaj_autora_b,
+    rodzaj_autora_d,
+    rodzaj_autora_z,
+):
+    """Prawdziwe słowniki dla generatora demo.
+
+    Test transakcyjny (np. Playwright z live serverem) wcześniej na tym samym
+    workerze xdist czyści tabele (TRUNCATE) — znikają charaktery formalne,
+    typy KBN i rodzaje autora. Bez nich ``_zapewnij_slowniki`` wstawiał
+    losowe wiersze, demo nie liczyło punktacji (0 prac w cache) ani liczby N,
+    a testy padały zależnie od kolejności na CI.
+
+    ``standard_data`` daje wariant testowy charakterów (z JSON-a) — artykuł
+    nie ma tam ``charakter_ogolny``; w baseline ustawia go migracja danych,
+    a generator demo wybiera po nim charaktery prac ciągłych."""
+    from bpp import const
+
+    Charakter_Formalny.objects.filter(skrot="AC").update(
+        charakter_ogolny=const.CHARAKTER_OGOLNY_ARTYKUL,
+        rodzaj_pbn=const.RODZAJ_PBN_ARTYKUL,
+    )
+
+
+@pytest.fixture
+def demo(db, tmp_path, slowniki_demo):
     seed_default_dyscypliny()
     return _create_demo(tmp_path)
 
@@ -239,6 +267,7 @@ def test_sloty_liczba_n_i_metryki(demo):
 
 
 @pytest.mark.django_db
+@pytest.mark.usefixtures("slowniki_demo")
 def test_bez_ewaluacji(tmp_path):
     seed_default_dyscypliny()
     _create_demo(tmp_path, "--bez-ewaluacji")
@@ -271,6 +300,7 @@ def test_cleanup_usuwa_dane_ewaluacji(demo):
 
 
 @pytest.mark.django_db
+@pytest.mark.usefixtures("slowniki_demo")
 def test_cleanup_na_istniejacej_uczelni_przelicza_liczbe_n(tmp_path):
     """Uczelnia sprzed demo przezywa cleanup, a liczba N jest przeliczona
     bez autorow demo (nie zostaja wartosci z danymi demo)."""

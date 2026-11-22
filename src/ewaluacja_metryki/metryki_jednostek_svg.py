@@ -1,4 +1,4 @@
-"""Wykresy SVG zestawienia „Metryki jednostki” (FD#617).
+"""Wykresy SVG zestawień „Metryki jednostki” i „Metryki wydziału” (FD#617).
 
 Generowane po stronie serwera jako inline SVG: WeasyPrint renderuje je
 wektorowo do PDF-a, a podgląd HTML pokazuje to samo. Bez zależności od
@@ -135,10 +135,11 @@ def _ladny_krok(zakres, liczba=5):
     return 10 * potega
 
 
-def wykres_babelkowy(grupa, szerokosc=760, wysokosc=400):
+def wykres_babelkowy(grupa, szerokosc=760, wysokosc=400, dopelniacz="jednostki"):
     """Oś X: wypełnienie slotów (%), oś Y: średnia punktów za slot,
     pole bąbla: punkty nazbierane. Linie podziału: próg wypełnienia
-    i mediana jakości w jednostce (skala „do realiów jednostki”)."""
+    i mediana jakości w jednostce (skala „do realiów jednostki”).
+    ``dopelniacz`` — „jednostki” / „wydziału” w podpisie mediany."""
     wiersze = [w for w in grupa.wiersze if w.kwadrant != r.KWADRANT_BRAK]
     if not wiersze:
         return ""
@@ -214,7 +215,7 @@ def wykres_babelkowy(grupa, szerokosc=760, wysokosc=400):
             f'<text x="{x1 + 4}" y="{_f(y_podpisu)}" font-size="8.5" '
             f'fill="{TEKST_DRUGORZEDNY}">- - mediana</text>'
             f'<text x="{x1 + 4}" y="{_f(y_podpisu + 10)}" font-size="8.5" '
-            f'fill="{TEKST_DRUGORZEDNY}">jednostki: '
+            f'fill="{TEKST_DRUGORZEDNY}">{escape(dopelniacz)}: '
             f"{float(grupa.mediana_sredniej):.1f}</text>"
             f'<text x="{x1 + 4}" y="{_f(y_podpisu + 20)}" font-size="8.5" '
             f'fill="{TEKST_DRUGORZEDNY}">pkt/slot</text>'
@@ -244,7 +245,7 @@ def wykres_babelkowy(grupa, szerokosc=760, wysokosc=400):
             f'<circle cx="{x1 + 10}" cy="{ly}" r="5" '
             f'fill="{KOLOR_KWADRANTU[kwadrant]}" fill-opacity="0.55"/>'
         )
-        slowa = r.OPIS_KWADRANTU[kwadrant].split(", ")
+        slowa = r.opis_kwadrantu(kwadrant, grupa.slowa).split(", ")
         for i, slowo in enumerate(slowa):
             s.append(
                 f'<text x="{x1 + 19}" y="{ly + 3 + i * 10}" font-size="8.5" '
@@ -256,36 +257,87 @@ def wykres_babelkowy(grupa, szerokosc=760, wysokosc=400):
     return mark_safe("".join(s))
 
 
+WYSOKOSC_PODPISU = 9.0
+
+
+def _liczba_kolizji(prostokat, zajete, bable, wlasny):
+    """Ile podpisów i cudzych bąbli przecina prostokąt (x_od, x_do, g, d)."""
+    x_od, x_do, g, d = prostokat
+    n = sum(
+        1
+        for zo, zd, zg, zdl in zajete
+        if x_od < zd and zo < x_do and g < zdl and zg < d
+    )
+    for klucz, (cx, cy, promien) in bable.items():
+        if klucz == wlasny:
+            continue
+        # najbliższy punkt prostokąta do środka bąbla
+        nx, ny = min(max(cx, x_od), x_do), min(max(cy, g), d)
+        if (nx - cx) ** 2 + (ny - cy) ** 2 < promien * promien:
+            n += 1
+    return n
+
+
+def _kandydaci_podpisu(cx, cy, promien, szerokosc, x1, y_dol, y_gora):
+    """Pozycje podpisu od najlepszej: na prawo / na lewo od bąbla, z coraz
+    większym przesunięciem w pionie (na zmianę w górę i w dół)."""
+    prawa = (cx + promien + 2, cx + promien + 2 + szerokosc)
+    lewa = (cx - promien - 2 - szerokosc, cx - promien - 2)
+    strony = [prawa, lewa] if prawa[1] <= x1 else [lewa]
+    for krok in range(9):
+        y = cy + 3 + ((krok + 1) // 2) * WYSOKOSC_PODPISU * (1 if krok % 2 else -1)
+        if y_gora + WYSOKOSC_PODPISU <= y <= y_dol:
+            for x_od, x_do in strony:
+                yield (x_od, x_do, y - WYSOKOSC_PODPISU + 2, y + 2), y
+
+
 def _etykiety_babli(wiersze, px, py, max_pkt, x1, y_dol, y_gora):
-    """Podpisy nazwisk przy bąblach, bez nakładania się na siebie.
+    """Podpisy nazwisk przy bąblach, bez nakładania się na inne podpisy
+    ani na cudze bąble.
 
-    Osoby o identycznych lub bliskich wynikach lądują w tym samym miejscu
-    wykresu — ich podpisy układamy jeden pod drugim (prosty algorytm
-    zachłanny: kolejny podpis przesuwamy w dół, dopóki koliduje)."""
-    wysokosc_linii = 9.5
-    zajete = []  # (x_od, x_do, y)
-    wynik = []
-
-    def koliduje(x_od, x_do, y):
-        return any(
-            x_od < z_do and z_od < x_do and abs(y - z_y) < wysokosc_linii
-            for z_od, z_do, z_y in zajete
+    Osoby o podobnych wynikach lądują w jednym miejscu wykresu (typowo
+    skupisko przy 100% wypełnienia). Bierzemy pierwszą pozycję bez kolizji
+    (patrz ``_kandydaci_podpisu``), a gdy takiej nie ma — najmniej kolidującą."""
+    bable = {
+        id(w): (
+            px(w.wypelnienie),
+            py(w.srednia),
+            4 + 16 * math.sqrt(float(w.punkty) / max_pkt),
         )
-
-    for w in sorted(wiersze, key=lambda w: (-float(w.srednia), w.autor.nazwisko)):
-        promien = 4 + 16 * math.sqrt(float(w.punkty) / max_pkt)
-        cx, cy = px(w.wypelnienie), py(w.srednia)
+        for w in wiersze
+    }
+    # Przy dużych grupach (zestawienie wydziału) podpisujemy tylko osoby
+    # z największą liczbą punktów i tylko tam, gdzie podpis mieści się bez
+    # kolizji — reszta to bąble bez nazwiska (są w liście efektywności),
+    # inaczej podpisy w skupisku przy 100% zlewają się w nieczytelną plamę.
+    duza_grupa = len(wiersze) > r.MAX_PODPISOW_WYKRESU
+    do_podpisu = sorted(wiersze, key=lambda w: -float(w.punkty))[
+        : r.MAX_PODPISOW_WYKRESU
+    ]
+    zajete = []
+    wynik = []
+    for w in sorted(
+        do_podpisu, key=lambda w: (-float(w.srednia), w.autor.nazwisko or "")
+    ):
+        cx, cy, promien = bable[id(w)]
         nazwisko = w.autor.nazwisko or ""
-        szerokosc = 4.6 * len(nazwisko) + 2
-        na_lewo = cx + promien + 2 + szerokosc > x1
-        x_od = cx - promien - 2 - szerokosc if na_lewo else cx + promien + 2
-        x_do = x_od + szerokosc
-        y = cy + 3
-        while koliduje(x_od, x_do, y) and y < y_dol:
-            y += wysokosc_linii
-        zajete.append((x_od, x_do, y))
+        najlepsza = None
+        for prostokat, y in _kandydaci_podpisu(
+            cx, cy, promien, 4.6 * len(nazwisko) + 2, x1, y_dol, y_gora
+        ):
+            n = _liczba_kolizji(prostokat, zajete, bable, id(w))
+            if najlepsza is None or n < najlepsza[0]:
+                najlepsza = (n, prostokat, y)
+            if n == 0:
+                break
+        if duza_grupa and (najlepsza is None or najlepsza[0] > 0):
+            continue
+        if najlepsza is None:  # brak miejsca w pionie — zostaw przy bąblu
+            najlepsza = (0, (cx + promien + 2, cx + promien + 2, cy, cy), cy + 3)
+        _, prostokat, y = najlepsza
+        zajete.append(prostokat)
         wynik.append(
-            f'<text x="{_f(x_od)}" y="{_f(y)}" font-size="8" '
+            f'<text x="{_f(prostokat[0])}" y="{_f(y)}" font-size="8" '
             f'fill="{TEKST}">{escape(nazwisko)}</text>'
         )
     return wynik

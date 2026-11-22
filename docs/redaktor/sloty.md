@@ -122,6 +122,13 @@ Gdy system aktualizuje już istniejącego pracownika:
   - k: liczba autorów/redaktorów dla rekordu z danej dyscypliny, którzy mają w powiązaniu rekordu
     z autorem wybraną daną dyscyplinę oraz zaznaczone pole *Afiliuje* na *tak*,
   - m: liczba wszystkich autorów rekordu.
+- wartości √(k/m) i k/m są zaokrąglane do **czterech miejsc po przecinku** (połówki w górę)
+  **zanim** zostaną pomnożone przez punkty — zgodnie z § 13 ust. 6 rozporządzenia w sprawie
+  ewaluacji jakości działalności naukowej („Wartości liczb √k/m i k/m ustala się z dokładnością
+  do czterech miejsc po przecinku”). Przykład: redakcja monografii za 20 pkt, 6 redaktorów,
+  1 z danej dyscypliny: √(1/6) = 0,4082, więc PKd = 20 × 0,4082 = 8,1640 (a nie 8,1650,
+  co wyszłoby z niezaokrąglonego pierwiastka). Wyniki (punkty, sloty) zapisywane są
+  z dokładnością do czterech miejsc po przecinku.
 
 ### Próg nr 1
 
@@ -173,14 +180,20 @@ $$
 Slot dla autora:
 
 $$
-slot_{Aut} = \sqrt  { \frac{k}{m} } * \frac {1}{k}
+slot_{Aut} = \max \left( \sqrt  { \frac{k}{m} }, 0.1 \right) * \frac {1}{k}
 $$
 
 Slot dla dyscypliny:
 
 $$
-slot_{d} = \sqrt  { \frac{k}{m} }
+slot_{d} = \max \left( \sqrt  { \frac{k}{m} }, 0.1 \right)
 $$
+
+Slot (udział jednostkowy) wynika z punktów już podniesionych do minimum 10%, zgodnie
+z § 16 ust. 2 rozporządzenia (U = P/Pc × 1/k). Przykład: artykuł za 70 pkt, 150 autorów,
+1 z danej dyscypliny: √(1/150) = 0,0816 < 0,1, więc PKd = 7,0000, a slot dyscypliny
+i slot autora wynoszą 0,1000 (a nie 0,0816). Przy 2 autorach z dyscypliny slot
+każdego z nich to 0,0500.
 
 ### Próg nr 3
 
@@ -203,14 +216,17 @@ $$
 Slot dla autora:
 
 $$
-slot_{Aut} = { \frac{1}{m} }
+slot_{Aut} = \max \left( \frac{k}{m}, 0.1 \right) * \frac {1}{k}
 $$
 
 Slot dla dyscypliny:
 
 $$
-slot_{d} = { \frac{1}{m * k} }
+slot_{d} = \max \left( \frac{k}{m}, 0.1 \right)
 $$
+
+Tak jak w progu 2, slot wynika z punktów podniesionych do minimum 10%: np. 20 pkt,
+12 autorów, 1 z dyscypliny: k/m = 0,0833, więc PKd = 2,0000, a slot 0,1000.
 
 ## Wydawnictwa ciągłe
 

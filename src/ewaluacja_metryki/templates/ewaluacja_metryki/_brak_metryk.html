@@ -1,0 +1,41 @@
+{# Okres bez metryk na liście jednostek/wydziałów (zamiast dawnego 404). #}
+{# Parametr: brak_dostepu — tekst, gdy metryki w okresie są, ale nic tu nie widać. #}
+{% if not stan_metryk or stan_metryk.ma_metryki %}
+    <div class="callout warning">{{ brak_dostepu }}</div>
+{% elif stan_metryk.w_trakcie %}
+    <div class="callout primary" id="metryki-przeliczanie">
+        <p>
+            <span class="fi-refresh"></span>
+            {% if stan_metryk.uruchomiono_teraz %}
+                Metryki ewaluacyjne za okres <strong>{{ stan_metryk.okres }}</strong> nie były jeszcze policzone
+                — uruchomiono ich przeliczenie z ustawieniami domyślnymi.
+            {% else %}
+                Metryki ewaluacyjne za okres <strong>{{ stan_metryk.okres }}</strong> są właśnie przeliczane.
+            {% endif %}
+        </p>
+        <p class="margin-0">
+            {% if stan_metryk.status.liczba_do_przetworzenia %}
+                Przetworzono {{ stan_metryk.status.liczba_przetworzonych }} z {{ stan_metryk.status.liczba_do_przetworzenia }}.
+            {% endif %}
+            Strona odświeży się sama, gdy będą gotowe. Postęp widać też na stronie
+            <a href="{% url 'ewaluacja_metryki:lista' %}">metryk ewaluacyjnych</a>.
+        </p>
+    </div>
+    <script>
+        setTimeout(function () { window.location.reload(); }, 15000);
+    </script>
+{% elif stan_metryk.przeliczone_bez_wynikow %}
+    <div class="callout warning">
+        Przeliczenie metryk ewaluacyjnych za okres <strong>{{ stan_metryk.okres }}</strong> zakończyło się
+        ({{ stan_metryk.status.data_zakonczenia|date:"Y-m-d H:i" }}), ale nie dało żadnych metryk —
+        sprawdź liczbę N i dyscypliny autorów w tym okresie.
+        {% if stan_metryk.moze_przeliczac %}
+            Przeliczenie można powtórzyć na stronie <a href="{% url 'ewaluacja_metryki:lista' %}">metryk ewaluacyjnych</a>.
+        {% endif %}
+    </div>
+{% else %}
+    <div class="callout warning">
+        Metryki ewaluacyjne za okres <strong>{{ stan_metryk.okres }}</strong> nie zostały jeszcze policzone.
+        Poproś osobę odpowiedzialną za ewaluację w uczelni o ich przeliczenie.
+    </div>
+{% endif %}

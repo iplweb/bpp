@@ -149,8 +149,13 @@
                             <span class="fi-graph-bar"></span> Statystyki
                         </a>
                         <a href="{% url 'ewaluacja_metryki:metryki_jednostek' %}" class="button">
-                            <span class="fi-page-pdf"></span> Metryki jednostek (PDF)
+                            <span class="fi-page-pdf"></span> Metryki jednostek (PDF) <span class="label warning" title="Wersja testowa">beta</span>
                         </a>
+                        {% if uczelnia.uzywaj_wydzialow %}
+                        <a href="{% url 'ewaluacja_metryki:metryki_wydzialow' %}" class="button">
+                            <span class="fi-page-pdf"></span> Metryki wydziałów (PDF) <span class="label warning" title="Wersja testowa">beta</span>
+                        </a>
+                        {% endif %}
                         {% endif %}
                     </div>
                 </div>

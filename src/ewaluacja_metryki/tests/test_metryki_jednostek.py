@@ -165,13 +165,17 @@ def test_raport_html_i_pdf(client, klinika, okres_2022):
 
 
 @pytest.mark.django_db
-def test_raport_jednostki_bez_metryk_to_404(client, klinika, okres_2022):
+def test_raport_jednostki_bez_metryk_wraca_na_liste(client, klinika, okres_2022):
+    """Jednostka bez metryk w okresie: przekierowanie na listę z komunikatem,
+    nie 404."""
     jednostka, _, _ = klinika
-    pusta = baker.make(Jednostka, uczelnia=jednostka.uczelnia)
+    pusta = baker.make(Jednostka, nazwa="Pusta Jednostka", uczelnia=jednostka.uczelnia)
     _uzytkownik(client, is_superuser=True, is_staff=True)
     wybierz_okres(client, okres_2022)
     url = reverse("ewaluacja_metryki:metryki_jednostki", args=[pusta.pk])
-    assert client.get(url).status_code == 404
+    res = client.get(url, follow=True)
+    assert res.redirect_chain[0][0] == reverse("ewaluacja_metryki:metryki_jednostek")
+    assert "Pusta Jednostka” nie ma metryk" in res.content.decode()
 
 
 @pytest.mark.django_db
@@ -373,3 +377,76 @@ def test_byly_kierownik_nie_ma_wgladu(client, klinika, okres_2022):
         "Metryki jednostek"
         not in client.get(reverse("bpp:profil-uzytkownika")).content.decode()
     )
+
+
+# --- Wyszukiwanie na liście jednostek ---------------------------------------
+
+
+def test_do_wyszukiwania_bez_polskich_znakow():
+    from ewaluacja_metryki.views.metryki_jednostek import do_wyszukiwania
+
+    assert do_wyszukiwania("Klinika Łódzka ŻÓŁĆ") == "klinika lodzka zolc"
+
+
+def test_filtruj_jednostki_wszystkie_slowa_dowolna_kolejnosc():
+    from ewaluacja_metryki.views.metryki_jednostek import filtruj_jednostki
+
+    wiersze = [
+        {"jednostka_id": 1, "jednostka__nazwa": "II Klinika Ginekologii"},
+        {"jednostka_id": 2, "jednostka__nazwa": "Klinika Pediatrii"},
+        {
+            "jednostka_id": 3,
+            "jednostka__nazwa": "Zakład Biochemii",
+            "jednostka__wydzial__nazwa": "Wydział Lekarski",
+        },
+    ]
+
+    def ids(fraza):
+        return [w["jednostka_id"] for w in filtruj_jednostki(wiersze, fraza)]
+
+    assert ids("") == [1, 2, 3]
+    assert ids("klinika") == [1, 2]
+    assert ids("pediatrii klinika") == [2]
+    assert ids("zaklad") == [3]  # bez polskich znaków
+    assert ids("lekarski") == [3]  # po wydziale
+    assert ids("onkologii") == []
+
+
+@pytest.mark.django_db
+def test_lista_jednostek_wyszukiwanie_q(client, klinika, okres_2022):
+    jednostka, _, _ = klinika
+    inna = Jednostka.objects.get(nazwa="Inna Klinika")
+    _uzytkownik(client, is_superuser=True, is_staff=True)
+    wybierz_okres(client, okres_2022)
+
+    res = client.get(reverse("ewaluacja_metryki:metryki_jednostek"), {"q": "testowa"})
+    assert res.status_code == 200
+    assert res.context["liczba_pasujacych"] == 1
+    pasuje = {w["jednostka_id"]: w["pasuje"] for w in res.context["jednostki"]}
+    assert pasuje == {jednostka.pk: True, inna.pk: False}
+    assert "Znaleziono 1 z 2" in res.content.decode()
+
+
+@pytest.mark.django_db
+def test_jednostka_obca_poza_metrykami_jednostek(client, klinika, okres_2022):
+    """Jednostka obca (``skupia_pracownikow=False``) nie trafia na listę
+    „Metryki jednostek” i nie ma raportu."""
+    jednostka, dyscyplina, _ = klinika
+    obca = baker.make(
+        Jednostka,
+        nazwa="Jednostka Obca",
+        skupia_pracownikow=False,
+        uczelnia=jednostka.uczelnia,
+    )
+    _metryka(obca, dyscyplina, okres_2022, "Spoza", 4, 4, 400)
+    _uzytkownik(client, is_superuser=True, is_staff=True)
+    wybierz_okres(client, okres_2022)
+
+    res = client.get(reverse("ewaluacja_metryki:metryki_jednostek"))
+    assert res.status_code == 200
+    tresc = res.content.decode()
+    assert "Klinika Testowa" in tresc
+    assert "Jednostka Obca" not in tresc
+
+    url = reverse("ewaluacja_metryki:metryki_jednostki", args=[obca.pk])
+    assert client.get(url, {"format": "html"}).status_code == 404

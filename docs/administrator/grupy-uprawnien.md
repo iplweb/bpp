@@ -38,7 +38,8 @@ widzi wszystkie jednostki) dostęp do niego daje się **bez żadnej grupy**:
 - **kierownik jednostki** widzi swoją jednostkę automatycznie — wystarczy,
   że jego konto jest powiązane z autorem, a autor ma w jednostce funkcję
   „kierownik” w bieżących datach,
-- innym osobom administrator wskazuje jednostki w edycji użytkownika:
+- innym osobom administrator wskazuje jednostki w edycji użytkownika
+  (**Administracja → Użytkownicy**):
   sekcja **„Metryki jednostek”**, pole **„Metryki jednostek — jednostki do
   wglądu”** (z podjednostkami).
 

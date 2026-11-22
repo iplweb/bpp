@@ -48,6 +48,13 @@
    przed pełnym re-importem z PBN).
 7. **Akcje masowe admina** (`zmien_hurtowo_z_historia`) pomijają rekordy
    z kosza (są zamrożone).
+8. **Żywy rekord nigdy nie wskazuje na rekord z kosza.** Do kosza nie
+   trafia rekord wskazywany przez **żywy** rekord; powiązania od rekordów,
+   które same są w koszu, nie blokują (autor, którego jedyna praca jest
+   w koszu, trafia do kosza). Drugą stronę pilnuje przywracanie:
+   `restore()` odmawia, dopóki rekord albo jego dzieci wskazują na coś
+   z kosza — „Najpierw przywróć z kosza: autor …, źródło …". Bez
+   kaskadowego przywracania (patrz „Powiązania z rekordami w koszu").
 
 ## Mechanizm w jednym akapicie
 
@@ -77,8 +84,9 @@ historia): `src/bpp/receivers/soft_delete.py`; audyt:
 i może chcieć odzyskać. Rekordy pomocnicze, które żyją i umierają z
 rodzicem, **nie mają własnego kosza** — znikają razem z rodzicem (domyślny
 menedżer je ukrywa) i wracają przy jego przywróceniu. Słowniki i struktura
-trafiają do kosza **tylko jako rekordy nieużywane** (guard), więc żaden żywy
-rekord nie wskazuje na coś z kosza.
+trafiają do kosza **tylko jako rekordy nieużywane przez żywe rekordy**
+(guard), a przywrócenie rekordu wskazującego na kosz jest odmawiane — więc
+żaden żywy rekord nie wskazuje na coś z kosza.
 
 ## Tabela: model → kosz?
 
@@ -90,11 +98,12 @@ rekord nie wskazuje na coś z kosza.
 
 Guardy (`sprawdz_czy_mozna_do_kosza`):
 
-- rekord, na który wskazuje inny rekord (żywy albo z kosza), nie trafia do
-  kosza — np. książka z rozdziałami, książka wskazana w zgłoszeniu jako
-  nadrzędna. Lista relacji jest wyprowadzana **generycznie** z `_meta`
-  (`relacje_przychodzace`) — pomijane są wyłącznie jawnie wymienione dzieci
-  publikacji (`POMIJANE_RELACJE_KOSZA`);
+- rekord, na który wskazuje inny **żywy** rekord, nie trafia do kosza —
+  np. książka z rozdziałami, książka wskazana w zgłoszeniu jako nadrzędna.
+  Rozdział czy zgłoszenie z kosza nie blokuje (jego przywrócenie odmówi,
+  dopóki książka jest w koszu). Lista relacji jest wyprowadzana
+  **generycznie** z `_meta` (`relacje_przychodzace`) — pomijane są
+  wyłącznie jawnie wymienione dzieci publikacji (`POMIJANE_RELACJE_KOSZA`);
 - **praca z autorami z kilku uczelni nie trafia do kosza** — kosz jest per
   instalacja, więc jedna uczelnia wyrzuciłaby rekord drugiej (i wycofała go
   z jej PBN). Komunikat każe usunąć z rekordu autorów swojej uczelni
@@ -137,14 +146,16 @@ daje.
 
 | Model | Zasady |
 |---|---|
-| `Autor` | Liczba N: autor w koszu nie liczy się do N przy **przeliczeniu** — kosz/przywrócenie autora wymaga ręcznego przeliczenia N (jak ewaluacji). Guard: wskazuje na niego jakikolwiek rekord — autorstwo (także publikacji z kosza), doktorat (także jako **promotor**), habilitacja, projekt, **redakcja źródła**, **autor zgłoszenia**, konto użytkownika — → `ProtectedError`. Lista generyczna z `_meta`; pomijane jawnie (`POMIJANE_RELACJE_KOSZA_AUTORA`) tylko dane kadrowe, dane wyliczane, logi i wiersze importów/deduplikacji. Do kosza trafiają duplikaty, literówki, puste rekordy po scaleniu.  |
+| `Autor` | Liczba N: autor w koszu nie liczy się do N przy **przeliczeniu** — kosz/przywrócenie autora wymaga ręcznego przeliczenia N (jak ewaluacji). Guard: wskazuje na niego jakikolwiek **żywy** rekord — autorstwo żywej publikacji, doktorat (także jako **promotor**), habilitacja, projekt, **redakcja** żywego źródła, **autor** żywego zgłoszenia, konto użytkownika — → `ProtectedError`. Powiązania od rekordów z kosza (praca w koszu, zgłoszenie w koszu) nie blokują — zostają przy autorze, a ich przywrócenie odmówi, dopóki autor jest w koszu. Lista generyczna z `_meta`; pomijane jawnie (`POMIJANE_RELACJE_KOSZA_AUTORA`) tylko dane kadrowe, dane wyliczane, logi i wiersze importów/deduplikacji. Do kosza trafiają duplikaty, literówki, puste rekordy po scaleniu, autorzy, których prace są już w koszu. Autor z kosza nie występuje w `bpp_autorzy_mat` (migracja `0525`). |
 | `Autor_Jednostka`, `Autor_Dyscyplina`, `Autor_Absencja`, `Projekt_Autor` | **NIE** — dane kadrowe żyją z autorem: zostają przy nim w koszu i wracają z nim. Domyślny menedżer `Autor_Dyscyplina.objects` ukrywa wiersze autorów z kosza (raport zerowy, dwudyscyplinowcy, liczba N, optymalizacja, metryki — autor z kosza w nich nie występuje); `all_objects` widzi wszystko. Metryki pomijają też wiersze udziałów autora z kosza do czasu przeliczenia N. |
 
 ### Uczelnia i słowniki — TAK, tylko rekord nieużywany
 
 `BppSoftDeleteSlownikMixin`. Guard bierze **wszystkie** przychodzące FK
 (`relacje_przychodzace`) poza jawnie pominiętymi (`pomijane_relacje_kosza`)
-i liczy powiązania przez `_base_manager` (czyli także te w koszu).
+i liczy powiązania od **żywych** rekordów (publikacja z kosza nie blokuje
+kosza źródła, wydawcy, konferencji ani serii; jej przywrócenie odmówi,
+dopóki słownik jest w koszu).
 
 **`Jednostka` — NIE ma kosza i nie kasuje się jej wcale** (decyzja
 właściciela): zamrożony rekord w drzewie MPTT blokowałby przeliczanie
@@ -154,11 +165,11 @@ nie ma uprawnienia ani akcji usuwania.
 
 | Model | Blokuje kosz | Zostaje przy rekordzie w koszu |
 |---|---|---|
-| `Uczelnia` | jednostki (także w koszu), użytkownicy z dostępem do uczelni | konfiguracja; **`site` (domena)** — uczelnia w koszu nie obsługuje domeny (`get_for_site`), ale trzyma `Site` (OneToOne NOT NULL); żeby podpiąć domenę pod inną uczelnię, usuń ją trwale z kosza |
-| `Zrodlo` | wydawnictwa ciągłe | punktacja, dyscypliny, redakcja |
-| `Wydawca` | wydawnictwa zwarte, doktoraty, habilitacje, aliasy, zgłoszenia | poziomy wydawcy |
-| `Konferencja` | wydawnictwa ciągłe i zwarte | — |
-| `Seria_Wydawnicza` | wydawnictwa zwarte | — |
+| `Uczelnia` | jednostki, użytkownicy z dostępem do uczelni | konfiguracja; **`site` (domena)** — uczelnia w koszu nie obsługuje domeny (`get_for_site`), ale trzyma `Site` (OneToOne NOT NULL); żeby podpiąć domenę pod inną uczelnię, usuń ją trwale z kosza |
+| `Zrodlo` | żywe wydawnictwa ciągłe | punktacja, dyscypliny, redakcja |
+| `Wydawca` | żywe wydawnictwa zwarte, doktoraty, habilitacje, aliasy, zgłoszenia | poziomy wydawcy |
+| `Konferencja` | żywe wydawnictwa ciągłe i zwarte | — |
+| `Seria_Wydawnicza` | żywe wydawnictwa zwarte | — |
 
 `Wydzial` nie istnieje (usunięty w #438 — wydział to korzeń drzewa
 `Jednostka`). FK publikacji do `Konferencja` i `Seria_Wydawnicza` zmieniły
@@ -200,6 +211,53 @@ przywrócone takie zgłoszenie wraca bez nich.
 | `PBN_Export_Queue`, `SentData`, `pbn_api.*` | kolejka i lustro PBN |
 | `SoftDeleteLog` | audyt kosza |
 | `Element_Repozytorium` | ma własny, starszy soft-delete |
+
+## Powiązania z rekordami w koszu
+
+Reguła: **żywy rekord nigdy nie wskazuje na rekord z kosza** — pilnowana
+z dwóch stron, bez kaskad.
+
+**Kosz.** Guard (`raise_if_has_protected_children`, `grupa_blokady(...,
+zakres=ZAKRES_ZYWE)`) liczy tylko powiązania od rekordów **żywych**.
+Wiersz jest „w koszu", gdy sam ma `deleted_at` albo jest w koszu jego
+rodzic (`_pole_rodzica`): dzieci publikacji i zgłoszeń
+(`BppZywyRodzicManager` — `*_Autor`, autorzy zgłoszenia) oraz modele
+z atrybutem `POLE_RODZICA_KOSZA` (`Redakcja_Zrodla` → `zrodlo`,
+`Publikacja_Habilitacyjna` → `praca_habilitacyjna`). Wiersz modelu bez kosza
+i bez takiego rodzica (konto użytkownika, projekt, jednostka, wpis kolejki
+PBN) jest zawsze żywy i blokuje jak dotąd.
+
+**Przywracanie.** `restore()` każdego modelu z koszem (publikacje, autor,
+słowniki, uczelnia, zgłoszenie) woła `sprawdz_wskazania_przed_przywroceniem`:
+zbiera wskazania wychodzące na modele z koszem (`wskazania_wychodzace`) —
+FK samego rekordu (źródło, wydawca, konferencja, seria, książka nadrzędna,
+autor i promotor pracy dyplomowej, alias wydawcy…) i FK/GenericFK jego
+dzieci (autorzy w `*_Autor`, autorzy zgłoszenia, redaktorzy źródła,
+publikacje habilitacji). Jeśli któryś jest w koszu → `WskazaniaWKoszu`
+(podklasa `KonfliktPrzywracania`): „Nie można przywrócić „X” — wskazuje na
+rekordy, które są w koszu. Najpierw przywróć z kosza: autor „Jan Kowalski”,
+źródło „Y”." Admin (akcja „♻️ Przywróć zaznaczone" i przycisk „♻️ Przywróć")
+pokazuje ten komunikat z linkami do rekordów (`komunikat_html()`), nie 500.
+
+**Wyścig.** Sprawdzenie leci w transakcji przywrócenia i blokuje wskazywane
+wiersze `FOR SHARE` (w stałej kolejności) do commitu. Kosz bierze na swoim
+wierszu `FOR UPDATE` (`sprawdz_stan_kosza`) i DOPIERO POTEM woła guard —
+więc równoległy kosz autora czeka na przywrócenie publikacji i widzi ją już
+żywą, a przywrócenie czekające na kosz autora czyta już jego `deleted_at`.
+
+**Strona potwierdzenia kosza** (i strona blokady) pokazuje osobno
+„🗑️ Powiązane rekordy w koszu: N" z listą (`powiazania_w_koszu()`, zakres
+`ZAKRES_KOSZ`) — nie blokują, ale ich przywrócenie będzie wymagało najpierw
+przywrócenia tego rekordu.
+
+**`bpp_autorzy_mat` (siatka w SQL, migracja `0525`).** Niezależnie od
+warstwy Pythona: `BEFORE INSERT` na `bpp_autorzy_mat` nie wstawia wiersza
+autora z kosza (każda ścieżka — triggery odświeżające i pełna przebudowa;
+istniejący wiersz o tym samym `id`, np. autorstwo przepięte na autora
+z kosza, jest kasowany), a `AFTER UPDATE OF deleted_at` na `bpp_autor`
+kasuje wiersze autora przy koszu i odtwarza je z widoku `bpp_autorzy` przy
+przywróceniu. `bpp_rekord_mat` nie trzyma identyfikatorów autorów (tylko
+tekstowy opis bibliograficzny), więc nie wymaga siatki.
 
 ## Unikalne pola w koszu (slug, nazwa, ORCID, PBN UID, …)
 
@@ -301,13 +359,14 @@ wersję" jest zablokowane (najpierw „Przywróć" z kosza).
   zawsze **ostatnim** w panelu filtrów.
 - „Usuń" na rekordzie → strona potwierdzenia kosza (powód, PBN, pytanie
   o kolejkę); guard daje komunikat zamiast 500.
-- Strona „Nie można przenieść do kosza" **wylicza blokujące rekordy**:
-  guard rzuca `BlokadaKosza` (podklasa `ProtectedError`) z listą
+- Strona „Nie można przenieść do kosza" **wylicza blokujące (żywe)
+  rekordy**: guard rzuca `BlokadaKosza` (podklasa `ProtectedError`) z listą
   `GrupaBlokady` per relacja (`grupa_blokady` — jedno zapytanie na relację:
-  próbka `LIMIT_POZYCJI_BLOKADY` = 15 wierszy, najpierw te w koszu, plus
-  `COUNT(*) OVER ()` całości i rekordów w koszu). Pozycje linkują do strony
-  rekordu w adminie (wiersze `*_Autor` — do publikacji), rekordy z kosza są
-  oznaczone „🗑️ w koszu"; reszta to „…i jeszcze N". Etykiety grup:
+  próbka `LIMIT_POZYCJI_BLOKADY` = 15 wierszy plus `COUNT(*) OVER ()`
+  całości). Pozycje linkują do strony rekordu w adminie (wiersze `*_Autor`
+  — do publikacji, redakcja — do źródła); reszta to „…i jeszcze N".
+  Powiązania od rekordów z kosza są pokazane osobno (nie blokują — patrz
+  „Powiązania z rekordami w koszu"). Etykiety grup:
   `ETYKIETY_RELACJI_KOSZA`, poza nimi — z `_meta`. Tak samo pokazywane są
   autorzy per uczelnia (praca wielouczelniana), habilitacje wskazujące
   publikację i wpis kolejki PBN (`grupa_blokady_kolejki`).
@@ -315,7 +374,8 @@ wersję" jest zablokowane (najpierw „Przywróć" z kosza).
   Grappelli (`grp-module`, `grp-row`, `grp-submit-row`), bez własnego CSS.
 - Rekord z kosza ma na dole przycisk „♻️ Przywróć" (`<pk>/przywroc/`,
   tylko POST; te same uprawnienia `delete` + `change` i reguły co akcja
-  „Przywróć zaznaczone", w tym blokada kolejki PBN).
+  „Przywróć zaznaczone", w tym blokada kolejki PBN i odmowa, gdy rekord
+  wskazuje na rekordy w koszu — komunikat z linkami do nich).
 - Akcje: „🗑️ Usuń do kosza (z powodem)" (uprawnienie `delete`),
   „♻️ Przywróć zaznaczone" (`delete` + `change`). Uprawnienie sprawdzane
   per rekord. Trwałego usuwania z kosza w adminie nie ma.
@@ -421,12 +481,19 @@ nie cały graf — „`migrate pbn_api 0077`" pociągnęłoby za sobą ten łań
    dla sluga; `BppUnikalnoscZKoszemMixin` daje walidację pól unikalnych;
    nowa relacja do modelu z koszem jest chroniona przez guard domyślnie —
    jeśli to dane „przy rekordzie", dopisz ją do listy pomijanych.
+7. Nowy model BEZ kosza, który żyje z rodzicem Z KOSZEM i wskazuje na inne
+   modele z koszem (jak `Redakcja_Zrodla`): ustaw `POLE_RODZICA_KOSZA =
+   "<pole FK do rodzica>"` (albo użyj `BppDzieckoPublikacjiMixin`) — wtedy
+   jego wiersze są „w koszu" razem z rodzicem (nie blokują), a przywrócenie
+   rodzica sprawdza ich wskazania.
 
 ## Świadomie zaakceptowane
 
-- **Wyścig guard ↔ zapis**: między sprawdzeniem „nic nie wskazuje na ten
-  słownik/publikację" a zapisem kosza równoległy zapis może dodać
-  odwołanie (milisekundy). Nie blokujemy tego dodatkowo.
+- **Wyścig guard ↔ zapis**: między sprawdzeniem „nic żywego nie wskazuje
+  na ten słownik/publikację" a zapisem kosza równoległy zapis może dodać
+  NOWE odwołanie (milisekundy). Nie blokujemy tego dodatkowo. (Wyścig
+  z PRZYWRÓCENIEM rekordu wskazującego jest zamknięty blokadami — patrz
+  „Powiązania z rekordami w koszu".)
 - **Migracje nieodwracalne**: zamiast utrzymywać kroki wstecz (widoki,
   funkcje triggerów, sidecar `bpp_kronika_*`), których nikt nie użyje
   produkcyjnie — powrót wyłącznie z kopii bazy (patrz „Wdrożenie").

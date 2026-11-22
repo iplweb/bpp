@@ -1,0 +1,24 @@
+{# Informacja na stronach kosza: powiązania od rekordów, które SAME są w koszu. #}
+{# Nie blokują kosza, ale ich przywrócenie wymaga najpierw przywrócenia tego rekordu. #}
+{# kosz_powiazania_w_koszu — GrupaBlokady per relacja (bpp.models.soft_delete). #}
+{% if kosz_powiazania_w_koszu %}
+  <div class="grp-module kosz-powiazania-w-koszu">
+    <h2>🗑️ Powiązane rekordy w koszu: {{ kosz_powiazania_w_koszu_liczba }}</h2>
+    <div class="grp-row">
+      <p class="grp-description">Na „{{ object }}” wskazują rekordy, które są w koszu. Nie blokują przeniesienia do kosza, ale <strong>ich przywrócenie będzie wymagało najpierw przywrócenia „{{ object }}”</strong>.</p>
+    </div>
+  </div>
+  {% for grupa in kosz_powiazania_w_koszu %}
+    <div class="grp-module kosz-powiazania-w-koszu-grupa">
+      <h2>{{ grupa.etykieta }} (w koszu): {{ grupa.liczba }}</h2>
+      {% for pozycja in grupa.pozycje %}
+        <div class="grp-row">
+          {% if pozycja.url %}<a href="{{ pozycja.url }}">{{ pozycja.tekst }}</a>{% else %}{{ pozycja.tekst }}{% endif %}
+        </div>
+      {% endfor %}
+      {% if grupa.reszta %}
+        <div class="grp-row"><em>…i jeszcze {{ grupa.reszta }}</em></div>
+      {% endif %}
+    </div>
+  {% endfor %}
+{% endif %}

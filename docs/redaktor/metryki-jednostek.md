@@ -15,6 +15,13 @@ Zestawienie liczy się z [metryk ewaluacyjnych autorów](metryki-ewaluacyjne.md)
 Jest tak dobre, jak dane w BPP i ostatnie przeliczenie metryk — patrz
 [Zanim zaczniesz](#zanim-zaczniesz).
 
+!!! note "Wersja testowa (beta)"
+    Metryki jednostek to nowe zestawienie, oznaczone w BPP znaczkiem
+    **„beta”**. Liczby pochodzą z metryk ewaluacyjnych, ale układ, wnioski
+    i progi ocen mogą się jeszcze zmienić. Zanim oprzesz na nim decyzje,
+    porównaj kluczowe wartości z [metrykami autorów](metryki-ewaluacyjne.md).
+    Uwagi zgłaszaj przez pomoc techniczną.
+
 !!! warning "Dane poufne"
     Zestawienie zawiera **imienne oceny pracowników**. Przekazuj je tylko
     osobom, które mają je oglądać, i nadawaj dostęp świadomie — patrz
@@ -45,8 +52,8 @@ Kierownik widzi swoją jednostkę bez żadnej dodatkowej konfiguracji, jeśli:
    [Mój profil autora](../uzytkownik/moj-profil-autora.md) (powiązanie
    ustawia administrator albo BPP dopasowuje je przy logowaniu),
 2. ten autor ma w jednostce przypisanie z **funkcją „kierownik”**
-   (panel administracyjny → **Autorzy** → autor → jednostki autora, kolumna
-   „Funkcja”),
+   (moduł redagowania → **Autorzy** → autor → sekcja „Powiązania
+   autor-jednostka”, kolumna „Funkcja”),
 3. przypisanie **trwa dziś** — data „rozpoczął pracę” jest pusta albo
    w przeszłości, a „zakończył pracę” pusta albo w przyszłości.
 
@@ -59,7 +66,7 @@ przypisana daje wgląd w oceny całej jednostki.
 Zastępca kierownika, pełnomocnik ds. ewaluacji wydziału, dziekan — każdej
 z tych osób administrator może wskazać jednostki ręcznie:
 
-1. Panel administracyjny → **Użytkownicy** → wybierz konto.
+1. Moduł redagowania → **Administracja → Użytkownicy** → wybierz konto.
 2. Sekcja **„Metryki jednostek”**, pole **„Metryki jednostek — jednostki
    do wglądu”** — wpisz początek nazwy i wybierz jednostki.
 3. **Zapisz**.
@@ -79,7 +86,42 @@ Na liście są tylko jednostki, które **mają metryki w wybranym okresie
 ewaluacji** (pasek „Okres ewaluacji” u góry strony). Przy każdej:
 
 - **„PDF”** — pobiera plik,
-- **„podgląd”** — otwiera to samo w przeglądarce, bez pobierania.
+- **„podgląd”** — pokazuje to samo zestawienie jako zwykłą stronę BPP
+  (z menu i ścieżką nawigacji u góry), z przyciskiem **„Pobierz PDF”**.
+
+## Metryki wydziałów {#metryki-wydzialow}
+
+Gdy uczelnia ma strukturę **uczelnia → wydział → jednostka** (ustawienie
+**„Używaj wydziałów”** w ustawieniach uczelni), to samo zestawienie da się
+pobrać dla **całego wydziału**: menu **ewaluacja → metryki wydziałów (PDF)**
+albo przycisk **„Metryki wydziałów”** na liście jednostek.
+
+Czym różni się od zestawienia jednostki:
+
+- obejmuje **wszystkie osoby ze wszystkich jednostek wydziału** (także
+  przypisane wprost do wydziału),
+- grupy osób, mediany i potencjał liczone są **na tle wydziału** —
+  „Filar wydziału”, „poniżej mediany wydziału”,
+- pierwsza strona ma tabelę **„Jednostki wydziału”**: osoby, wypełnienie
+  slotów, punkty, średnia za slot i potencjał każdej jednostki;
+  w podglądzie nazwa jednostki prowadzi do jej zestawienia,
+- w liście efektywności i w tabeli potencjału pod nazwiskiem widać
+  **jednostkę osoby**,
+- karty osób (kółka) są tylko w małych dyscyplinach — przy setkach osób
+  zajęłyby dziesiątki stron; każdą osobę pokazuje lista efektywności,
+- na wykresie bąbelkowym przy dużej liczbie osób podpisane są tylko osoby
+  z największą liczbą punktów, o ile podpis się mieści.
+
+**Kto widzi metryki wydziału:** ten, kto ma wgląd w **jednostkę główną
+wydziału** — osoby z pełnymi uprawnieniami, kierownik jednostki głównej
+wydziału (np. dziekan, jeśli ma przypisanie z funkcją „kierownik”) oraz
+osoby, którym administrator wskazał wydział w polu „Metryki jednostek —
+jednostki do wglądu” ([Nadanie dostępu](#nadanie-dostepu)). Wgląd w jedną
+klinikę **nie daje** wglądu w cały wydział. Takie osoby znajdą wydział
+także w bloku „Metryki jednostek” na stronie **Mój profil**.
+
+Gdy uczelnia nie używa wydziałów, „Metryki wydziałów” nie pojawiają się
+w menu.
 
 ## Zanim zaczniesz {#zanim-zaczniesz}
 

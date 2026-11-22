@@ -95,7 +95,8 @@
         {% endif %}
 
         {% if metryki_jednostek_dostep or metryki_jednostek_wszystkie %}
-            <h3><span class="fi-page-pdf"></span> Metryki jednostek</h3>
+            <h3><span class="fi-page-pdf"></span> Metryki jednostek <span class="label warning" title="Wersja testowa">beta</span></h3>
+            {% include "ewaluacja_metryki/_metryki_jednostek_beta.html" %}
             {% if metryki_jednostek_wszystkie %}
                 <p>
                     Zestawienia PDF dla kierowników jednostek — wypełnienie slotów,
@@ -104,7 +105,24 @@
                 <a href="{% url 'ewaluacja_metryki:metryki_jednostek' %}" class="button">
                     <span class="fi-page-pdf"></span> Metryki wszystkich jednostek
                 </a>
+                {% if metryki_wydzialow_wszystkie %}
+                    <a href="{% url 'ewaluacja_metryki:metryki_wydzialow' %}" class="button">
+                        <span class="fi-page-pdf"></span> Metryki wydziałów
+                    </a>
+                {% endif %}
             {% elif metryki_jednostek %}
+                {% if metryki_wydzialow %}
+                    <p>Zestawienie dla całego wydziału:</p>
+                    <ul class="no-bullet">
+                        {% for w in metryki_wydzialow %}
+                            <li>
+                                <strong>{{ w.wydzial.nazwa }}</strong>
+                                <a class="button small margin-0" href="{% url 'ewaluacja_metryki:metryki_wydzialu' w.wydzial.pk %}"><span class="fi-download"></span> PDF</a>
+                                <a class="button small secondary margin-0" href="{% url 'ewaluacja_metryki:metryki_wydzialu' w.wydzial.pk %}?format=html"><span class="fi-eye"></span> podgląd</a>
+                            </li>
+                        {% endfor %}
+                    </ul>
+                {% endif %}
                 <p>
                     Zestawienia PDF jednostek, do których masz wgląd — wypełnienie slotów,
                     punkty i wnioski dla każdej osoby. Zawierają imienne oceny pracowników.
@@ -122,7 +140,7 @@
                                     <a class="button small margin-0" href="{% url 'ewaluacja_metryki:metryki_jednostki' j.jednostka_id %}">
                                         <span class="fi-download"></span> PDF
                                     </a>
-                                    <a class="button small secondary margin-0" target="_blank" href="{% url 'ewaluacja_metryki:metryki_jednostki' j.jednostka_id %}?format=html">
+                                    <a class="button small secondary margin-0" href="{% url 'ewaluacja_metryki:metryki_jednostki' j.jednostka_id %}?format=html">
                                         <span class="fi-eye"></span> podgląd
                                     </a>
                                 </td>

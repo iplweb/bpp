@@ -7,7 +7,7 @@ from bpp.models.soft_delete import BppSoftDeleteSlownikMixin
 
 
 class Konferencja(BppSoftDeleteSlownikMixin, ModelZNazwa, ModelZAdnotacjami):
-    """Konferencja. Kosz: tylko konferencja bez publikacji (także w koszu).
+    """Konferencja. Kosz: tylko konferencja bez żywych publikacji.
 
     Do soft-delete skasowanie konferencji kaskadowało TWARDO na publikacje
     (FK ``CASCADE``) — dziś FK jest ``PROTECT``, a guard pilnuje kosza.
