@@ -84,3 +84,27 @@ def test_migracja_0010_deduplikuje_istniejace_nulle():
                 f"CREATE UNIQUE INDEX {INDEKS} ON ewaluacja_metryki_statusgenerowania "
                 "((uczelnia_id IS NULL)) WHERE uczelnia_id IS NULL"
             )
+
+
+@pytest.mark.django_db
+def test_migracja_0015_wyrownuje_sekwencje_po_singletonie(uczelnia):
+    """Dawny singleton wstawiał ``pk=1`` bez przesunięcia sekwencji —
+    status dla kolejnego okresu dostawał ``id=1`` → ``IntegrityError``."""
+    from ewaluacja_common.models import OkresEwaluacji
+
+    StatusGenerowania.objects.create(pk=1, uczelnia=uczelnia, okres=None)
+    with connection.cursor() as cur:
+        cur.execute(
+            "SELECT setval(pg_get_serial_sequence("
+            "'ewaluacja_metryki_statusgenerowania', 'id'), 1, false)"
+        )
+
+    migracja = import_module(
+        "ewaluacja_metryki.migrations.0015_statusgenerowania_reset_sekwencji"
+    )
+    with connection.cursor() as cur:
+        cur.execute(migracja.SQL)
+
+    okres = OkresEwaluacji.objects.order_by("rok_od").last()
+    nowy = StatusGenerowania.get_or_create(uczelnia=uczelnia, okres=okres)
+    assert nowy.pk > 1

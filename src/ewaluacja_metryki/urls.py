@@ -1,6 +1,23 @@
-from django.urls import path
+from django.urls import path, register_converter
 
 from . import views
+
+
+class LiczbaCalkowitaZeZnakiem:
+    """Jak ``<int:…>``, ale przyjmuje też liczby ujemne — część baz ma
+    jednostki z ujemnym pk (np. ``-1``), a ``<int:…>`` ich nie dopasuje
+    i ``{% url %}`` w liście jednostek kończy się ``NoReverseMatch``."""
+
+    regex = "-?[0-9]+"
+
+    def to_python(self, value):
+        return int(value)
+
+    def to_url(self, value):
+        return str(value)
+
+
+register_converter(LiczbaCalkowitaZeZnakiem, "signed_int")
 
 app_name = "ewaluacja_metryki"
 
@@ -28,7 +45,7 @@ urlpatterns = [
         name="metryki_jednostek",
     ),
     path(
-        "jednostki/<int:jednostka_pk>/",
+        "jednostki/<signed_int:jednostka_pk>/",
         views.MetrykiJednostkiView.as_view(),
         name="metryki_jednostki",
     ),

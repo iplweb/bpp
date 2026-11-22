@@ -1,0 +1,1 @@
+Metryki ewaluacyjne: naprawiono błąd serwera przy wejściu na metryki okresu 2026–2030 (status generowania nowego okresu nie mógł zostać zapisany przez rozjechaną sekwencję identyfikatorów) oraz błąd serwera na liście „Metryki jednostek”, gdy uczelnia ma jednostkę o ujemnym identyfikatorze.
