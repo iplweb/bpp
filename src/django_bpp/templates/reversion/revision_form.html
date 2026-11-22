@@ -48,7 +48,7 @@
 
 {% block object-tools %}
     <ul class="grp-object-tools">
-        <li><a href="{% url opts|admin_urlname:'change' object_id %}">Edytuj rekord</a></li>
+        <li><a href="{% url opts|admin_urlname:'change' object_id %}">Edytuj aktualny rekord</a></li>
         <li><a href="{% url opts|admin_urlname:'history' object_id %}">Historia</a></li>
     </ul>
 {% endblock %}
@@ -88,7 +88,7 @@
     <footer class="grp-module grp-submit-row grp-fixed-footer">
         <div>
             <div class="grp-float-left"><a href="{% url opts|admin_urlname:'history' object_id %}" class="grp-button">📜 Historia</a></div>
-            <div class="grp-float-left"><a href="{% url opts|admin_urlname:'change' object_id %}" class="grp-button">✏️ Edytuj rekord</a></div>
+            <div class="grp-float-left"><a href="{% url opts|admin_urlname:'change' object_id %}" class="grp-button">✏️ Edytuj aktualny rekord</a></div>
             {% if pokaz_przywroc %}
                 <div><input type="submit" value="♻️ Przywróć tę wersję" class="grp-button grp-default" name="_przywroc_wersje"></div>
             {% endif %}

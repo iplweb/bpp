@@ -201,6 +201,18 @@
     .bpp-nawigacja-srodek { justify-self: center; display: flex; gap: 8px; }
     .bpp-nawigacja-prawa { justify-self: end; }
     table.bpp-porownanie tr.bpp-wiersz-przywroc td { vertical-align: middle; padding-top: 8px; padding-bottom: 8px; white-space: normal; }
+    table.bpp-porownanie tr.bpp-wiersz-przywroc td.bpp-komorka-przywroc { text-align: center; }
+    /* Dolna belka porównania: tekst przycisków wyśrodkowany w pionie, a treść
+       strony z zapasem na dole, żeby belka nie zasłaniała ostatniego wiersza. */
+    .bpp-belka-porownania .grp-button {
+        display: inline-flex;
+        align-items: center;
+        height: 30px;
+        line-height: normal;
+        padding: 0 14px;
+        width: auto;
+    }
+    .bpp-historia { padding-bottom: 60px; }
     table.bpp-porownanie tr.bpp-wiersz-przywroc .grp-button {
         display: inline-flex;
         align-items: center;

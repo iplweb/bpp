@@ -22,7 +22,7 @@
 
 {% block object-tools %}
     <ul class="grp-object-tools">
-        <li><a href="{% url opts|admin_urlname:'change' original.pk|admin_urlquote %}">Edytuj rekord</a></li>
+        <li><a href="{% url opts|admin_urlname:'change' original.pk|admin_urlquote %}">Edytuj aktualny rekord</a></li>
         <li><a href="{{ history_url }}">Historia</a></li>
     </ul>
 {% endblock %}
@@ -102,15 +102,15 @@
                         <td class="bpp-kol-pole"></td>
                         {% for wersja, nazwa, klasa in wersje_porownania %}
                             {% if forloop.last %}<td class="bpp-kol-zmiana-diff"></td>{% endif %}
-                            <td>
+                            <td class="bpp-komorka-przywroc">
                                 {% if wersja.pk == aktualna_wersja_pk %}
                                     <span class="bpp-przygaszony">To jest wersja aktualna — nie ma czego przywracać.</span>
                                 {% elif rekord_w_koszu %}
-                                    <button type="button" class="grp-button bpp-przycisk-nieaktywny" disabled title="Rekord jest w koszu — najpierw przywróć go z kosza (przycisk na górze strony), potem przywracaj wersje">♻️ Przywróć…</button>
+                                    <button type="button" class="grp-button bpp-przycisk-nieaktywny" disabled title="Rekord jest w koszu — najpierw przywróć go z kosza (przycisk na górze strony), potem przywracaj wersje">♻️ Przywróć tę wersję</button>
                                 {% elif forloop.first %}
-                                    <a class="grp-button grp-default" href="{{ save_url }}" title="Podgląd tej wersji z przyciskiem „Przywróć tę wersję”">♻️ Przywróć…</a>
+                                    <a class="grp-button grp-default" href="{{ save_url }}" title="Podgląd tej wersji z przyciskiem „Przywróć tę wersję”">♻️ Przywróć tę wersję</a>
                                 {% else %}
-                                    <a class="grp-button grp-default" href="{{ przywroc_nowsza_url }}" title="Podgląd tej wersji z przyciskiem „Przywróć tę wersję”">♻️ Przywróć…</a>
+                                    <a class="grp-button grp-default" href="{{ przywroc_nowsza_url }}" title="Podgląd tej wersji z przyciskiem „Przywróć tę wersję”">♻️ Przywróć tę wersję</a>
                                 {% endif %}
                             </td>
                         {% endfor %}
@@ -121,17 +121,14 @@
             <div class="bpp-historia-pasek"><span class="bpp-historia-pomoc">Między tymi wersjami nie ma różnic w danych rekordu (zmieniły się tylko pola techniczne, np. data ostatniej zmiany).</span></div>
         {% endif %}
 
-        <div class="bpp-porownanie-nawigacja">
-            <div class="bpp-nawigacja-lewa">
-                {% if prev_url %}<a class="grp-button" href="{{ prev_url }}">← Poprzednia zmiana</a>{% endif %}
-            </div>
-            <div class="bpp-nawigacja-srodek">
-                <a class="grp-button" href="{% url opts|admin_urlname:'change' original.pk|admin_urlquote %}">✏️ Edytuj rekord</a>
-                <a class="grp-button" href="{{ history_url }}">📜 Historia</a>
-            </div>
-            <div class="bpp-nawigacja-prawa">
-                {% if next_url %}<a class="grp-button" href="{{ next_url }}">Następna zmiana →</a>{% endif %}
-            </div>
-        </div>
     </div>
+    {# Dolna belka przyklejona do ekranu (jak „Zapisz” w formularzach). #}
+    <footer class="grp-module grp-submit-row grp-fixed-footer bpp-belka-porownania">
+        <div>
+            {% if prev_url %}<div class="grp-float-left"><a class="grp-button" href="{{ prev_url }}">← Poprzednia zmiana</a></div>{% endif %}
+            <div><a class="grp-button grp-default" href="{% url opts|admin_urlname:'change' original.pk|admin_urlquote %}">✏️ Edytuj aktualny rekord</a></div>
+            <div><a class="grp-button" href="{{ history_url }}">📜 Historia</a></div>
+            {% if next_url %}<div><a class="grp-button" href="{{ next_url }}">Następna zmiana →</a></div>{% endif %}
+        </div>
+    </footer>
 {% endblock %}
