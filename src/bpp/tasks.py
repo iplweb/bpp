@@ -387,3 +387,12 @@ def usun_stare_eksporty_autora():
         field_name="created_at",
         days=7,
     )
+
+
+@app.task(ignore_result=True)
+def zlec_zalegle_przeliczenia():
+    """Zleca w tle przeliczenia, których wersja w kodzie jest wyższa niż
+    zapisana w bazie (``bpp.przeliczenia``). Wołane po starcie workera."""
+    from bpp.przeliczenia import zlec_zalegle_przeliczenia as zlec
+
+    zlec()

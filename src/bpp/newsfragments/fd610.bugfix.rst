@@ -25,9 +25,13 @@ z danej dyscypliny — √(1/150) = 0,0816, punkty 7,0000 (bez zmian), slot
 **0,1000** (wcześniej 0,0816); przy 2 autorach z dyscypliny na 500 ogółem
 slot każdego z nich to 0,0500. Dotyczy prac z bardzo dużą liczbą autorów;
 może to zmienić wybór prac w optymalizacji ewaluacji i sumy slotów autorów.
-**Po aktualizacji** administrator powinien przeliczyć zapisane wartości
-poleceniem ``python src/manage.py przelicz_punktacje_dyscyplin`` (przelicza
-tylko rekordy ze slotem mniejszym niż 1; strona działa normalnie w trakcie,
-w dużej bazie trwa to kilkanaście–kilkadziesiąt minut), a następnie ponownie
-wygenerować metryki ewaluacyjne i wyniki optymalizacji, jeśli były już liczone.
-Rekordy zapisywane po aktualizacji są liczone nowym sposobem od razu.
+**Po aktualizacji** BPP sam przelicza w tle zapisaną punktację dyscyplin
+i sloty wszystkich prac z autorami przypisanymi do dyscyplin — nie trzeba
+uruchamiać żadnego polecenia. Przeliczenie rusza kilka chwil po starcie
+nowej wersji, odbywa się raz (po kolejnych restartach już się nie powtarza),
+strona działa normalnie w trakcie, a w dużej bazie trwa ono od kilkunastu
+minut do około godziny; w tym czasie raporty slotów mogą pokazywać dla części
+prac jeszcze stare wartości. Data zlecenia i liczba prac są widoczne w panelu
+administracyjnym („Wersje przeliczeń”). Po zakończeniu warto ponownie
+wygenerować metryki ewaluacyjne i wyniki optymalizacji, jeśli były już
+liczone. Rekordy zapisywane po aktualizacji są liczone nowym sposobem od razu.

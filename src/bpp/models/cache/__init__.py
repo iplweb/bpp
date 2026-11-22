@@ -14,6 +14,7 @@ Cache'ujemy za pomocą tabeli Rekord:
 
 from .autorzy import *  # noqa
 from .liczba_n import *  # noqa
+from .przeliczenia import *  # noqa
 from .punktacja import *  # noqa
 from .rekord import *  # noqa
 from .views import *  # noqa

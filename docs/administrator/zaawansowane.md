@@ -149,9 +149,26 @@ w panelu administracyjnym („Enforced password changes").
 
 Punkty dla dyscyplin i sloty (PKd, PKdAut, slot) są liczone przy zapisie rekordu
 i przechowywane w bazie — z nich korzystają raporty slotów, metryki ewaluacyjne
-i optymalizacja. Gdy zmieni się sposób liczenia (np. w wersji z poprawką FD#618:
-zaokrąglanie √(k/m) i k/m do czterech miejsc przed mnożeniem), zapisane wartości
-trzeba przeliczyć:
+i optymalizacja.
+
+Gdy nowa wersja BPP zmienia sposób liczenia (np. poprawka FD#618: zaokrąglanie
+√(k/m) i k/m do czterech miejsc i minimum 10% także dla slotów), **BPP sam
+przelicza zapisane wartości w tle** — nie trzeba niczego uruchamiać. Przeliczenie
+zleca worker Celery kilka chwil po starcie nowej wersji, raz na zmianę (kolejne
+restarty go nie powtarzają). Obejmuje wszystkie prace z autorami przypisanymi do
+dyscyplin. Strona działa normalnie w trakcie; w dużej bazie trwa to od
+kilkunastu minut do około godziny.
+
+- Kiedy i ile prac zlecono: panel administracyjny → **Wersje przeliczeń**.
+- Ile jeszcze zostało: `python src/manage.py denorm_show_dirtyinstances_count`
+  (liczba rekordów w kolejce przeliczeń, łącznie z bieżącymi zmianami).
+- Wymagane: działające kontenery `workerserver` (kolejka `denorm`)
+  i `denorm-queue` — w standardowej instalacji (bpp-deploy) są zawsze.
+
+Po przeliczeniu warto ponownie wygenerować metryki ewaluacyjne i wyniki
+optymalizacji, jeśli były liczone wcześniej.
+
+Przeliczenie można też uruchomić ręcznie (np. bez działającego Celery):
 
 ```bash
 python src/manage.py przelicz_punktacje_dyscyplin --dry-run   # ile rekordów
@@ -159,13 +176,10 @@ python src/manage.py przelicz_punktacje_dyscyplin
 ```
 
 Domyślnie komenda przelicza tylko artykuły, monografie i rozdziały, które mają
-slot mniejszy niż 1 (liczone z √(k/m) albo k/m) — tylko na nie wpływa zmiana
-zaokrąglania. `--wszystkie` przelicza wszystkie rekordy, `--od-roku`/`--do-roku`
-zawężają lata. Każdy rekord jest przeliczany w osobnej transakcji: strona działa
-normalnie w trakcie, komendę można przerwać i uruchomić ponownie. Orientacyjnie
-trwa to 25–60 ms na rekord (dla dużej bazy z kilkunastoma tysiącami rekordów
-od 2017 r. — kilkanaście do kilkudziesięciu minut). Po przeliczeniu warto ponownie
-wygenerować metryki ewaluacyjne i wyniki optymalizacji, jeśli były liczone wcześniej.
+slot mniejszy niż 1 (liczone z √(k/m) albo k/m). `--wszystkie` przelicza
+wszystkie rekordy, `--od-roku`/`--do-roku` zawężają lata. Każdy rekord jest
+przeliczany w osobnej transakcji: komendę można przerwać i uruchomić ponownie.
+Orientacyjnie 25–60 ms na rekord.
 
 ## Limity eksportu publikacji autora dla niezalogowanych
 
