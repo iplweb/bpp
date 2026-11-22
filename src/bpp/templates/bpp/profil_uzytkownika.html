@@ -95,7 +95,8 @@
         {% endif %}
 
         {% if metryki_jednostek_dostep or metryki_jednostek_wszystkie %}
-            <h3><span class="fi-page-pdf"></span> Metryki jednostek</h3>
+            <h3><span class="fi-page-pdf"></span> Metryki jednostek <span class="label warning" title="Wersja testowa">beta</span></h3>
+            {% include "ewaluacja_metryki/_metryki_jednostek_beta.html" %}
             {% if metryki_jednostek_wszystkie %}
                 <p>
                     Zestawienia PDF dla kierowników jednostek — wypełnienie slotów,

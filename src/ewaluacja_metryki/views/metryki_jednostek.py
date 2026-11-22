@@ -1,6 +1,7 @@
 """Metryki jednostek — zestawienie PDF dla kierownika jednostki (FD#617)."""
 
 import ssl
+import unicodedata
 
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.contrib.staticfiles import finders
@@ -60,13 +61,59 @@ def jednostki_z_metrykami(request):
     if dozwolone is not None:
         qs = qs.filter(jednostka__in=dozwolone)
     return (
-        qs.values("jednostka_id", "jednostka__nazwa")
+        qs.values(
+            "jednostka_id",
+            "jednostka__nazwa",
+            "jednostka__skrot",
+            "jednostka__wydzial__nazwa",
+        )
         .annotate(
             liczba_autorow=Count("autor", distinct=True),
             punkty=Sum("punkty_nazbierane"),
         )
         .order_by("jednostka__nazwa")
     )
+
+
+# Polskie litery, których NFD nie rozkłada na literę + znak diakrytyczny.
+_BEZ_DIAKRYTYKOW = str.maketrans({"ł": "l", "Ł": "l"})
+
+
+def do_wyszukiwania(tekst):
+    """Tekst do porównań w wyszukiwarce: małe litery, bez polskich znaków
+    („Łódź” → „lodz”). Ta sama normalizacja jest w skrypcie listy."""
+    tekst = (tekst or "").translate(_BEZ_DIAKRYTYKOW).lower()
+    return "".join(
+        z for z in unicodedata.normalize("NFD", tekst) if not unicodedata.combining(z)
+    )
+
+
+def tekst_wyszukiwania_jednostki(wiersz):
+    return do_wyszukiwania(
+        " ".join(
+            filter(
+                None,
+                (
+                    wiersz.get("jednostka__nazwa"),
+                    wiersz.get("jednostka__skrot"),
+                    wiersz.get("jednostka__wydzial__nazwa"),
+                ),
+            )
+        )
+    )
+
+
+def filtruj_jednostki(wiersze, fraza):
+    """Wiersze, których nazwa/skrót/wydział zawierają WSZYSTKIE słowa frazy
+    (kolejność dowolna, bez polskich znaków i wielkości liter)."""
+    slowa = do_wyszukiwania(fraza).split()
+    if not slowa:
+        return list(wiersze)
+    return [
+        w
+        for w in wiersze
+        if all(slowo in tekst_wyszukiwania_jednostki(w) for slowo in slowa)
+    ]
 
 
 class DostepDoMetrykJednostekMixin(LoginRequiredMixin):
@@ -90,7 +137,22 @@ class MetrykiJednostekListaView(DostepDoMetrykJednostekMixin, TemplateView):
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         context["okres"] = okres_dla_request(self.request)
-        context["jednostki"] = jednostki_z_metrykami(self.request)
+        wszystkie = list(jednostki_z_metrykami(self.request))
+        for wiersz in wszystkie:
+            wiersz["szukaj"] = tekst_wyszukiwania_jednostki(wiersz)
+        fraza = self.request.GET.get("q", "").strip()
+        context["q"] = fraza
+        pasujace = {w["jednostka_id"] for w in filtruj_jednostki(wszystkie, fraza)}
+        for wiersz in wszystkie:
+            wiersz["pasuje"] = wiersz["jednostka_id"] in pasujace
+        # Wszystkie wiersze idą do szablonu (niepasujące ukryte), żeby
+        # filtrowanie na żywo działało też po wejściu z linku ``?q=``.
+        context["jednostki"] = wszystkie
+        context["liczba_wszystkich"] = len(wszystkie)
+        context["liczba_pasujacych"] = len(pasujace)
+        context["pokaz_wydzial"] = any(
+            w.get("jednostka__wydzial__nazwa") for w in wszystkie
+        )
         return context
 
 

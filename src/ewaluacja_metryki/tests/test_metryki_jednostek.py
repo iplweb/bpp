@@ -373,3 +373,51 @@ def test_byly_kierownik_nie_ma_wgladu(client, klinika, okres_2022):
         "Metryki jednostek"
         not in client.get(reverse("bpp:profil-uzytkownika")).content.decode()
     )
+
+
+# --- Wyszukiwanie na liście jednostek ---------------------------------------
+
+
+def test_do_wyszukiwania_bez_polskich_znakow():
+    from ewaluacja_metryki.views.metryki_jednostek import do_wyszukiwania
+
+    assert do_wyszukiwania("Klinika Łódzka ŻÓŁĆ") == "klinika lodzka zolc"
+
+
+def test_filtruj_jednostki_wszystkie_slowa_dowolna_kolejnosc():
+    from ewaluacja_metryki.views.metryki_jednostek import filtruj_jednostki
+
+    wiersze = [
+        {"jednostka_id": 1, "jednostka__nazwa": "II Klinika Ginekologii"},
+        {"jednostka_id": 2, "jednostka__nazwa": "Klinika Pediatrii"},
+        {
+            "jednostka_id": 3,
+            "jednostka__nazwa": "Zakład Biochemii",
+            "jednostka__wydzial__nazwa": "Wydział Lekarski",
+        },
+    ]
+
+    def ids(fraza):
+        return [w["jednostka_id"] for w in filtruj_jednostki(wiersze, fraza)]
+
+    assert ids("") == [1, 2, 3]
+    assert ids("klinika") == [1, 2]
+    assert ids("pediatrii klinika") == [2]
+    assert ids("zaklad") == [3]  # bez polskich znaków
+    assert ids("lekarski") == [3]  # po wydziale
+    assert ids("onkologii") == []
+
+
+@pytest.mark.django_db
+def test_lista_jednostek_wyszukiwanie_q(client, klinika, okres_2022):
+    jednostka, _, _ = klinika
+    inna = Jednostka.objects.get(nazwa="Inna Klinika")
+    _uzytkownik(client, is_superuser=True, is_staff=True)
+    wybierz_okres(client, okres_2022)
+
+    res = client.get(reverse("ewaluacja_metryki:metryki_jednostek"), {"q": "testowa"})
+    assert res.status_code == 200
+    assert res.context["liczba_pasujacych"] == 1
+    pasuje = {w["jednostka_id"]: w["pasuje"] for w in res.context["jednostki"]}
+    assert pasuje == {jednostka.pk: True, inna.pk: False}
+    assert "Znaleziono 1 z 2" in res.content.decode()

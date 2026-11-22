@@ -55,6 +55,11 @@
             font-size: 7.5pt; font-weight: 700; letter-spacing: .14em;
             text-transform: uppercase; color: #2a78d6;
         }
+        .naglowek .beta {
+            display: inline-block; margin-left: 2.5mm; padding: .4mm 2mm;
+            border-radius: 1.2mm; background: #fdf0d2; color: #7a5300;
+            letter-spacing: .06em; font-size: 6.6pt; vertical-align: .3mm;
+        }
         .naglowek h1 {
             font-size: 22pt; line-height: 1.15; font-weight: 700;
             margin: 2mm 0 2.5mm; string-set: jednostka content();
@@ -107,7 +112,9 @@
         /* --- Karty osób ------------------------------------------------------ */
         /* inline-block, nie flex: WeasyPrint nie dzieli kontenera flex między */
         /* strony i cała siatka przeskakiwała na kolejną stronę */
-        .karty { font-size: 0; }
+        /* orphans/widows 1: siatka może zacząć się już jednym rzędem na dole */
+        /* strony, zamiast przeskakiwać w całości i zostawiać pół pustej strony */
+        .karty { font-size: 0; orphans: 1; widows: 1; }
         .karta {
             display: inline-block; vertical-align: top; box-sizing: border-box;
             width: 32.4%; margin: 0 1.4% 2mm 0; padding: 2.5mm 2.5mm 2mm;
@@ -175,7 +182,7 @@
 
 {# ===== Strona tytułowa ===== #}
 <div class="naglowek">
-    <div class="etykieta">Metryki ewaluacyjne jednostki</div>
+    <div class="etykieta">Metryki ewaluacyjne jednostki <span class="beta">beta · wersja testowa</span></div>
     <h1>{{ raport.jednostka.nazwa }}</h1>
     <div class="meta">
         <span>okres ewaluacji {{ raport.okres }}</span>
@@ -225,6 +232,8 @@
 {% endif %}
 
 <div class="poufne">
+    <strong>Wersja testowa.</strong> To nowe zestawienie — układ, wnioski i progi ocen mogą
+    się jeszcze zmienić; kluczowe wartości warto porównać z metrykami autorów w BPP.<br>
     <strong>Dokument poufny.</strong> Zawiera imienne oceny pracowników — przeznaczony dla
     kierownika jednostki i osób odpowiedzialnych za ewaluację. Liczby pochodzą z ostatniego
     przeliczenia metryk ewaluacyjnych w BPP i są tak dokładne, jak dane wprowadzone do systemu.
@@ -232,7 +241,7 @@
 
 {# ===== Dyscypliny ===== #}
 {% for grupa in raport.grupy %}
-<section class="sekcja{% if forloop.first and raport.wiele_dyscyplin or not forloop.first and grupa.duza %} nowa-strona{% endif %}">
+<section class="sekcja{% if not forloop.first and grupa.duza %} nowa-strona{% endif %}">
     <h2>{{ grupa.dyscyplina.nazwa }}</h2>
     <div class="podtytul">
         {{ grupa.liczba_autorow }} os. w dyscyplinie, {{ grupa.osoby_z_pracami }} z pracami zaliczonymi do ewaluacji{% if grupa.mala %}
@@ -284,7 +293,7 @@
                     <td class="pod">{{ w|pierscien_wypelnienia }}sloty</td>
                     <td class="pod">{{ w|pierscien_punktow }}punkty</td>
                     <td class="dane">
-                        sloty {{ w.metryka.slot_nazbierany|floatformat:2 }} / {{ w.metryka.slot_maksymalny|floatformat:2 }}<br>
+                        sloty {{ w.metryka.slot_nazbierany|floatformat:"-2" }} / {{ w.metryka.slot_maksymalny|floatformat:"-2" }}<br>
                         {{ w.srednia|floatformat:1 }} pkt / slot<br>
                         <span class="status status-{{ w.status_jakosci }}">{% if w.status_jakosci == "dobry" %}▲ jakość wysoka{% elif w.status_jakosci == "sredni" %}■ jakość typowa{% elif w.status_jakosci == "slaby" %}▼ jakość niska{% else %}brak prac{% endif %}</span>
                     </td>
