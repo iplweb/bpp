@@ -1,1 +1,0 @@
-Tytuł wyników wyszukiwania zaawansowanego („Rezultat wyszukiwania”) nie siedzi już w osobnej ramce z szarym paskiem pod spodem. Po najechaniu wygląda jak pole tekstowe; kliknięcie w tytuł (lub w ikonę ołówka) otwiera pole na całą szerokość z przyciskami „Zapisz” i „Anuluj”, a Esc anuluje zmianę.

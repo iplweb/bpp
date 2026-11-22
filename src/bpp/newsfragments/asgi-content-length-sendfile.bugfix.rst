@@ -1,1 +1,0 @@
-Pliki wysyłane przez nginx (``X-Accel-Redirect``), m.in. ``/favicon.ico`` i chronione pobrania, nie powodują już w logach serwera aplikacji błędu „Exception in ASGI application … Response content shorter than Content-Length”.

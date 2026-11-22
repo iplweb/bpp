@@ -1,1 +1,0 @@
-Rozwijane menu w górnym pasku strony (np. „ewaluacja", „PBN", „operacje") nie zmienia już szerokości po najechaniu myszą na pozycję. Wcześniej przy przesunięciu najdłuższej pozycji w bok cała ramka menu poszerzała się o kilka pikseli i „skakała"; teraz pozycja nadal płynnie przesuwa się w prawo, ale ramka menu stoi w miejscu.

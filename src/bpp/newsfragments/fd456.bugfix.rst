@@ -1,1 +1,0 @@
-W panelu administracyjnym zgłoszeń publikacji link z pola „Dostępna w sieci pod adresem” otwiera się w nowej karcie, więc oglądane zgłoszenie pozostaje otwarte.

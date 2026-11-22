@@ -1,1 +1,0 @@
-Przemapowanie prac autora: komunikaty nie wyświetlają się podwójnie, podgląd nie twierdzi już, że operacja jest nieodwracalna, link „Szczegóły” i przycisk „Przemapuj prace” widzą tylko uprawnieni, a jednostka domyślna z dopiskiem skrótu uczelni jest rozpoznawana.

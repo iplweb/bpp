@@ -1,1 +1,0 @@
-Nowa strona w dokumentacji redaktora: „Autorzy z dwiema dyscyplinami (dwudyscyplinowcy)” — jak czytać listę, co znaczą kolumny „Status” i „Sloty” oraz jak przez „Optymalizuj” przenieść pracę do drugiej dyscypliny autora, ze zrzutami ekranu na danych demo.

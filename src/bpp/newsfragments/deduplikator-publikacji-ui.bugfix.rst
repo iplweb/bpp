@@ -1,1 +1,0 @@
-Deduplikator publikacji pokazuje teraz prawdziwy procent podobieństwa (np. „92%” zamiast „1%”) i czytelne rodzaje rekordów („Wydawnictwo ciągłe”/„Wydawnictwo zwarte”), pierwsze skanowanie nie wyświetla już pustego okna potwierdzenia, a po uruchomieniu skanowania znika nieaktualny komunikat „0/0 publikacji”.

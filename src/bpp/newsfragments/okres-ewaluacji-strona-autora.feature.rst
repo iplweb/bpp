@@ -1,1 +1,0 @@
-Strona autora pokazuje metryki ewaluacyjne ze wszystkich okresów ewaluacji, pogrupowane wg okresu; przycisk metryki otwiera ją zawsze we właściwym okresie, a szczegóły metryki mają odnośniki „Ten autor w innych okresach ewaluacji” do porównania wyników.

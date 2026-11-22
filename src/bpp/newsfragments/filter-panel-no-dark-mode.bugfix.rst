@@ -1,1 +1,0 @@
-Panel filtrów w adminie nie przełącza się już na ciemne kolory, gdy system lub przeglądarka ma tryb ciemny — reszta admina jest jasna, a mieszanka dawała jasnoszare przyciski z nieczytelnym tekstem na ciemnym tle (Firefox).

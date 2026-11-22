@@ -1,1 +1,0 @@
-Liczba N, udziały za cały okres, dyscypliny nieraportowane, weryfikacja bazy i eksporty liczone są teraz dla okresu ewaluacji wybranego na pasku okresu u góry strony (np. 2026–2030), a dane i ręcznie wpisane sankcje poszczególnych okresów nie nadpisują się nawzajem.

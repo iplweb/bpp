@@ -1,1 +1,0 @@
-Nieudane logowanie przez SSO (Keycloak/OIDC) pokazuje teraz komunikat z przyczyną odmowy — np. że konto z tym adresem e-mail już istnieje i trzeba je połączyć z SSO w profilu — zamiast bez słowa wracać na stronę główną.

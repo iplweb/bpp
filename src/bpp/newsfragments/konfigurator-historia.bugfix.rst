@@ -1,1 +1,0 @@
-Konfigurator wyglądu: po „Zastosuj dla wszystkich” historia od razu pokazuje nowy wpis z przyciskiem „Wczytaj” (wcześniej dopiero po przeładowaniu strony); wpisy mają próbki kolorów i tryb kolorów, żeby łatwo je rozróżnić.
