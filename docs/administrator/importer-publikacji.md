@@ -153,8 +153,11 @@ W tym kroku użytkownik weryfikuje i ewentualnie koryguje:
   pole jest wstępnie wypełnione.
 - **Typ KBN** -- klasyfikacja MNiSW.
 - **Język** -- język publikacji.
-- **Typ wydawnictwa** -- czy jest to wydawnictwo zwarte (książka/rozdział)
-  czy ciągłe (artykuł w czasopiśmie).
+- **Rodzaj rekordu** -- czy jest to wydawnictwo zwarte (książka/rozdział),
+  ciągłe (artykuł w czasopiśmie) czy patent. Podpowiadany z typu publikacji
+  według pola „Jest wydawnictwem zwartym” w mapowaniu typów CrossRef na BPP
+  -- także wtedy, gdy typ nie ma tam przypisanego charakteru formalnego
+  (wtedy charakter formalny wybiera redaktor).
 
 System automatycznie wykrywa **duplikaty** -- szuka istniejących rekordów
 po DOI (z normalizacją) oraz po tytule (dokładne porównanie). Jeśli znaleziono

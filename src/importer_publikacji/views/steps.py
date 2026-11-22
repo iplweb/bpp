@@ -153,9 +153,13 @@ def _verify_context(request, session, form=None):
             if session.charakter_formalny_id:
                 initial["charakter_formalny"] = session.charakter_formalny_id
                 zwarte = session.jest_wydawnictwem_zwartym
-            elif mapper and mapper.charakter_formalny_bpp_id:
-                initial["charakter_formalny"] = mapper.charakter_formalny_bpp_id
+            elif mapper:
+                # Rodzaj rekordu podpowiadamy z typu publikacji także wtedy,
+                # gdy typ nie ma zamapowanego charakteru formalnego (FD#624:
+                # ``@book`` domyślnie zaznaczał „Wydawnictwo ciągłe").
                 zwarte = mapper.jest_wydawnictwem_zwartym
+                if mapper.charakter_formalny_bpp_id:
+                    initial["charakter_formalny"] = mapper.charakter_formalny_bpp_id
             initial["rodzaj_rekordu"] = (
                 ImportSession.RodzajRekordu.ZWARTE
                 if zwarte
@@ -195,6 +199,11 @@ def _verify_context(request, session, form=None):
             else None
         ),
         "auto_zwarte": (mapper.jest_wydawnictwem_zwartym if mapper else None),
+        # Typ rozpoznany, ale bez zamapowanego charakteru formalnego: rodzaj
+        # rekordu i tak jest podpowiedziany, charakter wybiera operator.
+        "auto_tylko_rodzaj": bool(
+            mapper and not mapper.charakter_formalny_bpp_id and not is_patent
+        ),
         "suggest_crossref": suggest_crossref,
         "crossref_doi": doi if suggest_crossref else None,
         "field_categories": field_categories,
