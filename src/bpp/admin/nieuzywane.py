@@ -34,6 +34,8 @@ from bpp.admin.actions import (
 )
 
 KOMUNIKAT_UKRYTO_NIEUZYWANE = "Ukryto nieużywaną pozycję słownika (akcja masowa)"
+KOMUNIKAT_UKRYTO = "Ukryto pozycję słownika (akcja masowa)"
+KOMUNIKAT_POKAZANO = "Pokazano pozycję słownika (akcja masowa)"
 
 
 def relacje_wskazujace(model):
@@ -133,14 +135,64 @@ def ukryj_nieuzywane(modeladmin, request, queryset):
     modeladmin.message_user(request, komunikat, messages.SUCCESS)
 
 
-ukryj_nieuzywane.short_description = (
-    "Ukryj na listach wyboru zaznaczone pozycje, których nie używa żaden rekord"
-)
+ukryj_nieuzywane.short_description = "Ukryj nieużywane"
 ukryj_nieuzywane.allowed_permissions = ("change",)
 
 
+def _ustaw_ukrycie(modeladmin, request, queryset, ukryj, komentarz):
+    model = queryset.model
+    pole, wartosc_ukryty = pole_ukrycia(model)
+    wartosc = wartosc_ukryty if ukryj else not wartosc_ukryty
+    updated = zmien_hurtowo_z_historia(request, queryset, {pole: wartosc}, komentarz)
+    if updated is None:
+        komunikat_limitu(modeladmin, request, model)
+    return updated
+
+
+@zapisuje_historie
+def ukryj_zaznaczone(modeladmin, request, queryset):
+    updated = _ustaw_ukrycie(modeladmin, request, queryset, True, KOMUNIKAT_UKRYTO)
+    if updated is None:
+        return
+    komunikat = f"Ukryto {updated} {ngettext('pozycję', 'pozycji', updated)}."
+    uzywanych = uzywane(queryset).count()
+    if uzywanych:
+        # Rekord z ukrytą wartością słownika może nie dać się zapisać
+        # w formularzu (``limit_choices_to``) — warto o tym wiedzieć.
+        komunikat += (
+            f" Uwaga: {uzywanych} z zaznaczonych "
+            f"{ngettext('jest używana', 'jest używanych', uzywanych)} "
+            f"w istniejących rekordach."
+        )
+        poziom = messages.WARNING
+    else:
+        poziom = messages.SUCCESS
+    modeladmin.message_user(request, komunikat, poziom)
+
+
+ukryj_zaznaczone.short_description = "Ukryj zaznaczone"
+ukryj_zaznaczone.allowed_permissions = ("change",)
+
+
+@zapisuje_historie
+def pokaz_zaznaczone(modeladmin, request, queryset):
+    updated = _ustaw_ukrycie(modeladmin, request, queryset, False, KOMUNIKAT_POKAZANO)
+    if updated is None:
+        return
+    modeladmin.message_user(
+        request,
+        f"Pokazano {updated} {ngettext('pozycję', 'pozycji', updated)}.",
+        messages.SUCCESS,
+    )
+
+
+pokaz_zaznaczone.short_description = "Pokaż zaznaczone"
+pokaz_zaznaczone.allowed_permissions = ("change",)
+
+
 class UkryjNieuzywaneMixin:
-    """Dokłada do admina słownika filtr „używane” i akcję „Ukryj nieużywane”.
+    """Dokłada do admina słownika filtr „używane” i akcje „Ukryj nieużywane”,
+    „Ukryj zaznaczone”, „Pokaż zaznaczone”.
 
     Model musi mieć pole ``widoczny`` albo ``ukryty``.
     """
@@ -160,5 +212,6 @@ class UkryjNieuzywaneMixin:
     def get_actions(self, request):
         actions = super().get_actions(request)
         if self.has_change_permission(request):
-            actions["ukryj_nieuzywane"] = self.get_action(ukryj_nieuzywane)
+            for akcja in (ukryj_nieuzywane, ukryj_zaznaczone, pokaz_zaznaczone):
+                actions[akcja.__name__] = self.get_action(akcja)
         return actions

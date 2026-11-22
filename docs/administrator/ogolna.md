@@ -246,17 +246,28 @@ alternatywny” czy „Język oryginalny”), patent, praca dyplomowa, rekord
 w koszu, konfiguracja itp. Podrzędne pozycje w drzewie charakterów
 formalnych nie czynią nadrzędnej „używaną”.
 
-Akcja **„Ukryj na listach wyboru zaznaczone pozycje, których nie używa
-żaden rekord”** odznacza „Widoczny” (języki) albo zaznacza „Ukryj na
-listach wyboru” (pozostałe słowniki) — ale **tylko dla nieużywanych**
-spośród zaznaczonych. Można więc bezpiecznie zaznaczyć całą listę;
-używane pozycje zostaną pominięte, a komunikat poda, ile ich było.
-Najwygodniej: wybierz filtr „nieużywane”, zaznacz wszystko, uruchom akcję.
+Na tych listach są trzy akcje:
+
+- **„Ukryj nieużywane”** — chowa z list wyboru **tylko nieużywane**
+  spośród zaznaczonych: odznacza „Widoczny” (języki) albo zaznacza „Ukryj
+  na listach wyboru” (pozostałe słowniki). Można bezpiecznie zaznaczyć
+  całą listę; używane pozycje zostaną pominięte, a komunikat poda, ile ich
+  było. Najwygodniej: wybierz filtr „nieużywane”, zaznacz wszystko,
+  uruchom akcję,
+- **„Ukryj zaznaczone”** — chowa wszystkie zaznaczone, także używane.
+  Jeśli wśród nich są używane, komunikat to zaznaczy: rekord z ukrytym
+  językiem może nie dać się zapisać w formularzu, dopóki nie wybierze się
+  w nim innego języka,
+- **„Pokaż zaznaczone”** — z powrotem pokazuje zaznaczone pozycje na
+  listach wyboru.
 
 Ukryta pozycja znika z list wyboru przy wprowadzaniu nowych rekordów,
-ale zostaje w bazie i można ją w każdej chwili pokazać z powrotem
-w formularzu słownika. Każda zmiana trafia do „Historii” pozycji z wpisem
-„Ukryto nieużywaną pozycję słownika (akcja masowa)”. Akcja wymaga
+ale zostaje w bazie. Każda zmiana trafia do „Historii” pozycji (przycisk
+„Historia” w formularzu słownika) z wpisem „Ukryto nieużywaną pozycję
+słownika (akcja masowa)”, „Ukryto pozycję słownika (akcja masowa)” albo
+„Pokazano pozycję słownika (akcja masowa)” — z nazwą użytkownika i datą.
+Słowniki nie mają zapisywanych wersji, więc pomyłkę cofa się akcją
+„Pokaż zaznaczone”, nie przyciskiem przywracania. Akcje wymagają
 uprawnienia do edycji danego słownika.
 
 ## Sposób kalkulacji dyscyplin

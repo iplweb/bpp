@@ -126,6 +126,45 @@ def test_akcja_ustawia_ukryty_dla_charakteru_formalnego(admin_client):
 def test_changelist_z_filtrem_nieuzywane_dziala(admin_client, nazwa):
     res = admin_client.get(reverse(f"admin:{nazwa}_changelist"), {"uzywane": "nie"})
     assert res.status_code == 200
-    assert b'value="ukryj_nieuzywane"' in res.content
+    for akcja in (b"ukryj_nieuzywane", b"ukryj_zaznaczone", b"pokaz_zaznaczone"):
+        assert b'value="' + akcja + b'"' in res.content
     # Usuwanie dalej tylko dla grupy „administracja”.
     assert b'value="delete_selected"' not in res.content
+
+
+def _post_akcji(client, akcja, pks):
+    return client.post(
+        reverse("admin:bpp_jezyk_changelist"),
+        {"action": akcja, "_selected_action": pks},
+        follow=True,
+    )
+
+
+@pytest.mark.django_db
+def test_ukryj_i_pokaz_zaznaczone(admin_client):
+    uzywany = _jezyk("t-uz")
+    wolny = _jezyk("t-wo")
+    baker.make(Wydawnictwo_Ciagle, jezyk=uzywany)
+
+    res = _post_akcji(admin_client, "ukryj_zaznaczone", [uzywany.pk, wolny.pk])
+    uzywany.refresh_from_db()
+    wolny.refresh_from_db()
+    assert (uzywany.widoczny, wolny.widoczny) == (False, False)
+    tresc = " ".join(str(m) for m in res.context["messages"])
+    assert "Ukryto 2" in tresc and "1 z zaznaczonych jest używana" in tresc
+
+    _post_akcji(admin_client, "pokaz_zaznaczone", [uzywany.pk, wolny.pk])
+    uzywany.refresh_from_db()
+    wolny.refresh_from_db()
+    assert (uzywany.widoczny, wolny.widoczny) == (True, True)
+
+
+@pytest.mark.django_db
+def test_pokaz_zaznaczone_charakter_formalny(admin_client):
+    ch = baker.make(Charakter_Formalny, skrot="t-ch", nazwa="t-ch", ukryty=True)
+    admin_client.post(
+        reverse("admin:bpp_charakter_formalny_changelist"),
+        {"action": "pokaz_zaznaczone", "_selected_action": [ch.pk]},
+    )
+    ch.refresh_from_db()
+    assert ch.ukryty is False
