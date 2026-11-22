@@ -1,0 +1,30 @@
+// =============================================================================
+// Przełącznik trybu kolorów na pasku menu (top_bar.html, bpp/js/tryb-kolorow.js)
+// =============================================================================
+//
+// Ikony jak pozostałe pozycje paska (top_bar.scss trzyma listę ikon — tu
+// osobno, bo przełącznik pojawia się tylko przy motywach z dwiema wersjami).
+
+.top-bar .dropdown.menu {
+    .bpp-tryb-kolorow__ikona {
+        font-size: 1.6rem;
+        margin-right: 0.4rem;
+        vertical-align: middle;
+    }
+
+    .bpp-tryb-kolorow .menu.vertical {
+        .fi-monitor,
+        .fi-lightbulb,
+        .fi-contrast {
+            font-size: 1.6rem;
+            margin-right: 0.8rem;
+            vertical-align: middle;
+        }
+
+        // Wybrana pozycja: pogrubiona i z paskiem z lewej — nie tylko kolorem.
+        [aria-checked="true"] {
+            font-weight: 700;
+            box-shadow: inset 3px 0 0 currentColor;
+        }
+    }
+}

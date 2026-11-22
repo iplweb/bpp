@@ -163,6 +163,13 @@ tła zamieniają się w ciemne (z zachowaniem odcienia), ciemny tekst w jasny,
 a kolory przycisków, paska menu i wykresów zostają. Nie ma osobnych
 ustawień dla wersji ciemnej.
 
+W trybie „Automatyczny” na pasku menu pojawia się przełącznik **kolory**
+(Automatyczny / Jasny / Ciemny): odwiedzający może wybrać wersję niezależnie
+od ustawień systemu. Wybór pamięta przeglądarka (bez logowania). Ten sam
+przełącznik mają motywy wbudowane z dopiskiem „jasny lub ciemny wg ustawień
+systemu” (np. „Niebieski (jasny lub ciemny wg ustawień systemu)”). Przy
+motywach tylko jasnych albo tylko ciemnych przełącznika nie ma.
+
 ## Zapis do pliku
 
 Sekcja **Zapisz do pliku / wczytaj z pliku** zapisuje bieżące ustawienia jako

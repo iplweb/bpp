@@ -259,3 +259,30 @@ mechanizmów trybu ciemnego bez znajomości palety.
 Audyt (`bin/tryb-ciemny-audyt.py`) sprawdza też wiersze tabel w stanie
 `:hover` (wpisy `HOVER`), tekst SVG (`fill`) i jasne tło wykresów SVG.
 Zawartości `<canvas>` nie ocenia.
+
+### Przełącznik jasny/ciemny na pasku menu
+
+Przy motywach z obiema wersjami (`*-auto` z `BPP_THEMES` i motyw
+z konfiguratora w trybie „automatyczny”) `top_bar.html` pokazuje
+przełącznik **kolory** (Automatyczny / Jasny / Ciemny). Flagę
+`TRYB_KOLOROW_PRZELACZNIK` liczy `przelacznik_trybu_kolorow()`
+w `bpp/context_processors/config.py` (w podglądzie konfiguratora i przy
+przymiarce — ukryty).
+
+- Wybór trzyma `localStorage` (`bpp-tryb-kolorow`); krótki skrypt w `<head>`
+  `bare.html` (przed CSS — bez mignięcia) ustawia
+  `<html data-tryb-kolorow="jasny|ciemny">`; brak atrybutu = jak system.
+  Kliknięcia obsługuje `bpp/js/tryb-kolorow.js`.
+- CSS: ciemne reguły pod dwoma korzeniami —
+  `@media screen and (prefers-color-scheme: dark)` +
+  `html:where(:not([data-tryb-kolorow="jasny"]))` oraz `@media screen` +
+  `html:where([data-tryb-kolorow="ciemny"])`. W SCSS to parametr
+  `$korzen` mixinu `bpp-tryb-ciemny` (patrz `app-blue-auto.scss`),
+  w konfiguratorze — `KORZEN_AUTO`/`KORZEN_CIEMNY` w `przetworzCss`.
+  `:where()` nie dodaje specyficzności, więc reguły zachowują się jak pod
+  zwykłym `html`. Wydruk zawsze jasny.
+- Koszt: ciemne reguły są w CSS dwa razy. `app-blue-auto.css`: 382 KB →
+  577 KB (gzip 61 KB → 76 KB); motyw z konfiguratora w trybie
+  automatycznym ok. 412 KB → 605 KB (gzip 67 KB → 85 KB).
+- Audyt z wymuszonym wyborem: `bin/tryb-ciemny-audyt.py --jasny
+  --przelacznik ciemny` (system jasny, wybrany „Ciemny”).

@@ -3,6 +3,25 @@ from django.urls import reverse
 from django.utils.functional import SimpleLazyObject
 
 
+def przelacznik_trybu_kolorow(theme, uczelnia, podglad_motywu, przymiarka):
+    """Czy pokazać przełącznik jasny/ciemny na pasku menu.
+
+    Tylko gdy CSS motywu ma obie wersje: ręczne `*-auto` (z BPP_THEMES)
+    i motyw z konfiguratora w trybie „automatyczny”. W podglądzie
+    konfiguratora i przy przymiarce motywu — ukryty (tam tryb wybiera
+    konfigurator).
+    """
+    from bpp.models.motyw_wlasny import MOTYW_WLASNY, MotywWlasny
+
+    if podglad_motywu or przymiarka:
+        return False
+    if theme == MOTYW_WLASNY:
+        return bool(uczelnia) and (
+            MotywWlasny.tryb_kolorow_dla(uczelnia.pk) == "automatyczny"
+        )
+    return theme.endswith("-auto") and theme in dict(settings.BPP_THEMES)
+
+
 def bpp_configuration(request):
     from bpp.favicon_wersja import wersja as favicon_wersja
     from bpp.konfigurator_dostep import moze_konfigurowac_wyglad
@@ -44,6 +63,9 @@ def bpp_configuration(request):
         motyw_wlasny_url = reverse("bpp:motyw_przymiarka_css", args=(przymiarka,))
 
     return {
+        "TRYB_KOLOROW_PRZELACZNIK": przelacznik_trybu_kolorow(
+            theme, uczelnia, podglad_motywu, przymiarka
+        ),
         "PODGLAD_MOTYWU": podglad_motywu,
         # Link „Konfigurator wyglądu” w menu „redagowanie” (top_bar.html).
         "MOZE_KONFIGUROWAC_WYGLAD": SimpleLazyObject(

@@ -91,6 +91,8 @@
 /// @param $ramka      obramowania i linie
 /// @param $tekst      tekst podstawowy
 /// @param $przygaszony tekst drugoplanowy
+/// @param $korzen     selektor <html>, pod którym działają reguły — np.
+///                    `html[data-tryb-kolorow="ciemny"]` (przełącznik trybu)
 @mixin bpp-tryb-ciemny(
   $glowny,
   $tlo: #15181d,
@@ -98,14 +100,15 @@
   $pow-2: #272c34,
   $ramka: #3b424d,
   $tekst: #e3e6ea,
-  $przygaszony: #a9b2bd
+  $przygaszony: #a9b2bd,
+  $korzen: "html"
 ) {
   // Akcent liczony względem tła hover (najjaśniejszej powierzchni).
   $akcent: tc-czytelny-na($glowny, color.mix(#fff, $pow-2, 8%));
   $akcent-tlo: tc-tlo-pod-bialy($glowny);
   $akcent-hover: color.mix(#fff, $akcent, 20%);
 
-  html {
+  #{$korzen} {
     color-scheme: dark;
     --tc-tlo: #{$tlo};
     --tc-pow: #{$pow};
@@ -160,14 +163,14 @@
 
   // Najpierw lista komponentów (półautomatyczna), potem ręczne reguły —
   // przy równej specyficzności wygrywają te drugie.
-  @include bpp-tryb-ciemny-komponenty;
-  @include bpp-tryb-ciemny-reguly;
+  @include bpp-tryb-ciemny-komponenty($korzen);
+  @include bpp-tryb-ciemny-reguly($korzen);
 }
 
 // Reguły — osobny mixin, żeby dało się je czytać bez szumu palety.
-// Wszystkie selektory są zagnieżdżone w `html` (patrz komentarz na górze).
-@mixin bpp-tryb-ciemny-reguly {
-  html {
+// Wszystkie selektory są zagnieżdżone w `$korzen` (domyślnie `html`).
+@mixin bpp-tryb-ciemny-reguly($korzen: "html") {
+  #{$korzen} {
     // ---------------------------------------------------------------------
     // Podstawa: tło, tekst, nagłówki, linki
     // ---------------------------------------------------------------------
