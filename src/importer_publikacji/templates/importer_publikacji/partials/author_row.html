@@ -1,3 +1,4 @@
+{% load importer_tags %}
 <tr id="author-row-{{ author.pk }}"
     class="author-row-clickable"
     style="cursor:pointer"
@@ -60,6 +61,14 @@
     <td>
         {% if author.matched_dyscyplina %}
             <small>{{ author.matched_dyscyplina }}</small>
+            {# FD#620: autor nie ma dyscypliny na rok pracy #}
+            {% if author|dyscyplina_do_przypisania:session %}
+                <br>
+                <span class="label warning"
+                      title="Autor nie ma przypisanej dyscypliny na rok {{ session.normalized_data.year }}. Przy tworzeniu rekordu ta dyscyplina zostanie mu przypisana na ten rok (wpis w historii autora).">
+                    przypiszę na rok {{ session.normalized_data.year }}
+                </span>
+            {% endif %}
         {% else %}
             <em>-</em>
         {% endif %}

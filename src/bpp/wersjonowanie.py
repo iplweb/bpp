@@ -251,6 +251,14 @@ def konto_systemowe():
         return konto
 
 
+def opis_uzytkownika(user):
+    """„Imię Nazwisko (login)” albo sam login — do treści wpisów historii."""
+    if user is None:
+        return "system"
+    pelne = (user.get_full_name() or "").strip()
+    return f"{pelne} ({user.username})" if pelne else user.username
+
+
 def uzytkownik_historii():
     """Operator ustawiony przez ``jako_uzytkownik`` albo konto systemowe."""
     return _uzytkownik_historii.get() or konto_systemowe()

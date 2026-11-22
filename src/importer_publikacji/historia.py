@@ -18,6 +18,7 @@ from django.contrib.admin.models import ADDITION, CHANGE, LogEntry
 # Rejestracja modeli w reversion (``Autor``) — jawnie, żeby nie zależeć od
 # tego, czy w procesie (np. worker Celery) załadował się już moduł admina.
 import bpp.wersjonowanie  # noqa: F401
+from bpp.wersjonowanie import opis_uzytkownika
 
 
 def _szczegoly_sesji(session):
@@ -45,6 +46,19 @@ def komunikat_orcid(session, orcid):
     return (
         f"Ustawiono ORCID {orcid} przez importer publikacji "
         f"({_szczegoly_sesji(session)})"
+    )
+
+
+def komunikat_dyscypliny(session, record, dyscyplina, rok, user):
+    """Treść wpisu historii, gdy importer przypisał autorowi dyscyplinę na
+    rok pracy, bo autor nie miał żadnej (FD#620)."""
+    tytul = (getattr(record, "tytul_oryginalny", "") or "").strip()
+    if len(tytul) > 120:
+        tytul = tytul[:119] + "…"
+    return (
+        f"Przypisano dyscyplinę „{dyscyplina}” na rok {rok} przez użytkownika "
+        f"{opis_uzytkownika(user)} podczas importu pracy „{tytul}” "
+        f"(sesja importu #{session.pk}, rekord #{record.pk})"
     )
 
 

@@ -396,3 +396,12 @@ def zlec_zalegle_przeliczenia():
     from bpp.przeliczenia import zlec_zalegle_przeliczenia as zlec
 
     zlec()
+
+
+@app.task(ignore_result=True)
+def odswiez_typowe_dyscypliny():
+    """Przelicz „typowe dyscypliny uczelni" (podpowiedź, gdy autor nie ma
+    dyscypliny na rok pracy — FD#620) i zapisz je w cache na dobę."""
+    from bpp.util.typowe_dyscypliny import odswiez_typowe_dyscypliny as odswiez
+
+    odswiez()
