@@ -1,0 +1,1 @@
+Indeksy autorów, jednostek, źródeł i wydawców same dobierają liczbę kolumn do szerokości okna (do trzech) — wcześniej trzy kolumny były dopiero od 1024 px, a przy nieco węższym oknie tylko dwie mimo wolnego miejsca.
