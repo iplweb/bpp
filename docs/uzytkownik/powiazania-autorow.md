@@ -75,7 +75,7 @@ Pozostałe elementy:
 - **Najechanie na linię** pokazuje, kogo łączy i ile mają wspólnych
   publikacji.
 
-    ![Dymek nad linią: „Yennefer Merigold ↔ Regis van der Eretein, 15 wspólnych publikacji”](../images/uzytkownik/powiazania-autorow/05-linia-wspolne-prace.png)
+    ![Dymek nad linią: „Yennefer Merigold ↔ Triss z Aedirn, 12 wspólnych publikacji”](../images/uzytkownik/powiazania-autorow/05-linia-wspolne-prace.png)
 
 - **Kliknięcie kółka** dorysowuje wokół niego dalszych współautorów tej
   osoby i otwiera w lewym górnym rogu **menu akcji**:
@@ -192,7 +192,7 @@ dwie osoby — albo ten sam człowiek wprowadzony do bazy dwa razy (duplikat).
    nazwisko.
 2. Obie pasujące osoby podświetlą się na żółto.
 
-    ![Wyszukiwanie „Cahir z Vengerbergu”: dwa podświetlone kółka z tym samym nazwiskiem](../images/uzytkownik/powiazania-autorow/08-szukaj-autora.png)
+    ![Wyszukiwanie „Eskel Hofmeier”: dwa podświetlone kółka z tym samym nazwiskiem](../images/uzytkownik/powiazania-autorow/08-szukaj-autora.png)
 
 3. Kliknij każde z kółek i wybierz **„Pokaż prace”** — porównaj jednostki,
    lata i tematy prac.

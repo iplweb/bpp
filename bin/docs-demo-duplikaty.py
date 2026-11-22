@@ -21,7 +21,9 @@ What it does:
 Autora i źródło wybieramy z bazy, a nie po pk/nazwie (nazwy losuje generator
 danych demo, a pk zależą od tego, czy baza była już zapełniana): autor to
 pierwsza alfabetycznie osoba z aktualną jednostką i co najmniej 3 pracami
-w czasopismach, źródło — to z największą liczbą prac. Skrypt wypisuje wybór.
+w czasopismach, źródło — to z największą liczbą prac (poza czasopismami
+z wykazu ministerialnego). Reguły w bpp.demo_data.zrzuty, wspólne ze
+scenariuszem ``duplikaty``. Skrypt wypisuje wybór.
 
 The scenario changes the data (merges, remaps), so take screenshots on a
 fresh copy of the DB each time.
@@ -29,13 +31,17 @@ fresh copy of the DB each time.
 
 from django.contrib.auth.models import Group
 from django.db import transaction
-from django.db.models import Count, F
 from password_policies.models import PasswordHistory
 
+from bpp.demo_data.zrzuty import (
+    MONGO_ID_ZDUBLOWANEGO_ZRODLA,
+    autor_do_zdublowania,
+    bledna_jednostka_geralta,
+    zrodlo_do_zdublowania,
+)
 from bpp.models import (
     Autor,
     BppUser,
-    Jednostka,
     Tytul,
     Wydawnictwo_Ciagle,
     Wydawnictwo_Ciagle_Autor,
@@ -43,13 +49,6 @@ from bpp.models import (
     Zrodlo,
 )
 from pbn_api.models import Journal
-
-
-def brak(co):
-    raise SystemExit(
-        f"Brak w bazie demo: {co} — wygeneruj dane wg docs/deweloper/zrzuty-ekranu.md."
-    )
-
 
 with transaction.atomic():
     u, _ = BppUser.objects.get_or_create(
@@ -67,15 +66,7 @@ with transaction.atomic():
     PasswordHistory.objects.create(user=u, password=u.password)
 
     # demo author -> "Geralt z Rivii"
-    g = (
-        Autor.objects.filter(aktualna_jednostka__isnull=False)
-        .annotate(prac=Count("wydawnictwo_ciagle_autor"))
-        .filter(prac__gte=3)
-        .order_by("nazwisko", "imiona", "pk")
-        .first()
-    )
-    if g is None:
-        brak("autor z aktualną jednostką i co najmniej 3 pracami")
+    g = autor_do_zdublowania()
     print(f"Geralt z Rivii: dawniej {g} (pk {g.pk})")
     g.nazwisko, g.imiona = "z Rivii", "Geralt"
     g.orcid = "0000-0002-1825-0097"  # ORCID's own fictional example record
@@ -85,14 +76,7 @@ with transaction.atomic():
         klass.objects.filter(autor=g).update(zapisany_jako="Geralt z Rivii")
     jedn = g.aktualna_jednostka
     # a wrong unit: first other unit without subunits, alphabetically
-    inna = (
-        Jednostka.objects.filter(rght=F("lft") + 1)
-        .exclude(pk=jedn.pk)
-        .order_by("nazwa")
-        .first()
-    )
-    if inna is None:
-        brak("druga jednostka bez podjednostek")
+    inna = bledna_jednostka_geralta(g)
 
     jego = Wydawnictwo_Ciagle.objects.filter(autorzy_set__autor=g)
     wolne = list(
@@ -107,18 +91,10 @@ with transaction.atomic():
         for p in prace:
             p.dodaj_autora(d, jednostka)
 
-    main = (
-        Zrodlo.objects.exclude(issn=None)
-        .exclude(issn="")
-        .annotate(prac=Count("wydawnictwo_ciagle"))
-        .order_by("-prac", "nazwa", "pk")
-        .first()
-    )
-    if main is None:
-        brak("źródło z ISSN")
+    main = zrodlo_do_zdublowania()
     print(f"źródło: {main.nazwa} (ISSN {main.issn}), duplikat: {main.nazwa.upper()}")
     main.pbn_uid = Journal.objects.create(
-        mongoId="5e709189878c28a04737dc6f",
+        mongoId=MONGO_ID_ZDUBLOWANEGO_ZRODLA,
         status="ACTIVE",
         versions=[
             {

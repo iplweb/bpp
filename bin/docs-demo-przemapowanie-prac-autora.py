@@ -17,8 +17,9 @@ What it does:
 - files the 6 newest journal articles and 2 newest books of one demo author
   under "Jednostka Domyślna", as an import would. Autora wybieramy z bazy
   (nie po pk ani nazwisku — te zależą od danych demo): pierwsze alfabetycznie
-  imię i nazwisko noszone przez co najmniej dwie osoby; z nich ta z największą
-  liczbą prac. Druga osoba o tym samym nazwisku pokazuje się obok w
+  imię i nazwisko noszone przez co najmniej dwie osoby (bez Geralta z Rivii
+  z bin/docs-demo-duplikaty.py); z nich ta z największą liczbą prac — reguła
+  w bpp.demo_data.zrzuty, wspólna ze scenariuszem. Druga osoba o tym samym nazwisku pokazuje się obok w
   wyszukiwarce autorów. Skrypt wypisuje wybranego autora i jego pk.
 
 The scenario remaps and undoes, so take screenshots on a fresh copy of the DB.
@@ -26,43 +27,16 @@ The scenario remaps and undoes, so take screenshots on a fresh copy of the DB.
 
 from django.contrib.auth.models import Group
 from django.db import transaction
-from django.db.models import Count
 from password_policies.models import PasswordHistory
 
+from bpp.demo_data.zrzuty import autor_z_imiennikiem
 from bpp.models import (
-    Autor,
     BppUser,
     Jednostka,
     Uczelnia,
     Wydawnictwo_Ciagle_Autor,
     Wydawnictwo_Zwarte_Autor,
 )
-
-
-def autor_z_imiennikiem():
-    """Autor, który ma w bazie imiennika (to samo imię i nazwisko).
-
-    Pierwsze alfabetycznie takie imię i nazwisko; spośród osób, które je
-    noszą, ta z największą liczbą prac w czasopismach (przy remisie: niższe pk).
-    """
-    imiennicy = (
-        Autor.objects.values("nazwisko", "imiona")
-        .annotate(ile=Count("pk"))
-        .filter(ile__gte=2)
-        .order_by("nazwisko", "imiona")
-        .first()
-    )
-    if imiennicy is None:
-        raise SystemExit(
-            "W bazie demo nie ma dwóch autorów o tym samym imieniu i nazwisku "
-            "— wygeneruj dane wg docs/deweloper/zrzuty-ekranu.md."
-        )
-    return (
-        Autor.objects.filter(nazwisko=imiennicy["nazwisko"], imiona=imiennicy["imiona"])
-        .annotate(prac=Count("wydawnictwo_ciagle_autor"))
-        .order_by("-prac", "pk")
-        .first()
-    )
 
 
 def konto(username, first_name, last_name, superuser=False):

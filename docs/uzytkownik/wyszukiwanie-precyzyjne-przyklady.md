@@ -34,7 +34,7 @@ wszystkie prace autora z tych lat.
 
 | Spójnik | Pole | Operator | Wartość |
 |---|---|---|---|
-| | Jednostka | równa | Klinika Eliksirologii |
+| | Jednostka | równa | Katedra i Zakład Smoków i Draconidów |
 | i | Punkty MNiSW/MEiN | większy lub równy | 100 |
 
 Dla całego wydziału z katedrami wybierz wydział i operator
@@ -56,7 +56,7 @@ dyscypliny, nie pojawią się w wynikach.
 
 | Spójnik | Pole | Operator | Wartość |
 |---|---|---|---|
-| | Jednostka | równa+podrzędne | Wydział Magii i Eliksirów |
+| | Jednostka | równa+podrzędne | Wydział Alchemii |
 | i | OpenAccess: wersja tekstu | równy | Ostateczna wersja opublikowana |
 
 Zamiast wersji tekstu możesz użyć **„OpenAccess: licencja”** (np. CC-BY).
@@ -79,13 +79,13 @@ kolumnie, a na ostatniej stronie wyników wiersz **„Suma:”**.
 | Spójnik | Pole | Operator | Wartość |
 |---|---|---|---|
 | | Nazwisko i imię | równe | Merigold Yennefer |
-| i | Nazwisko i imię | **równe+wspólne** | van der Eretein Regis |
+| i | Nazwisko i imię | **równe+wspólne** | z Aedirn Triss |
 
-![Dwa warunki „Nazwisko i imię”: drugi z operatorem „równe+wspólne”; podgląd pokazuje 7 wspólnych prac](../images/uzytkownik/wyszukiwanie-precyzyjne-przyklady/01-dwoch-wspolautorow.png)
+![Dwa warunki „Nazwisko i imię”: drugi z operatorem „równe+wspólne”; podgląd pokazuje 12 wspólnych prac](../images/uzytkownik/wyszukiwanie-precyzyjne-przyklady/01-dwoch-wspolautorow.png)
 
 !!! warning "Dlaczego nie dwa razy „równe”?"
     Dwa warunki „równe” na autorach odnoszą się do **tej samej** osoby
-    w pracy — nikt nie jest jednocześnie Merigold i van der Eretein, więc
+    w pracy — nikt nie jest jednocześnie Merigold i z Aedirn, więc
     wynik byłby pusty. Operator **„równe+wspólne”** sprawdza drugiego
     autora niezależnie. Dla trzeciej osoby dodaj kolejny warunek
     „równe+wspólne”.
@@ -97,7 +97,7 @@ w sekcji najczęstszych współautorów.
 
 | Spójnik | Pole | Operator | Wartość |
 |---|---|---|---|
-| | Jednostka | równa | Klinika Eliksirologii |
+| | Jednostka | równa | Katedra i Zakład Smoków i Draconidów |
 | **i nie** | Typ rekordu | równy | streszczenia |
 
 ![Warunek „Typ rekordu równy streszczenia” połączony spójnikiem „i nie” z warunkiem jednostki](../images/uzytkownik/wyszukiwanie-precyzyjne-przyklady/02-bez-streszczen.png)
