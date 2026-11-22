@@ -9,6 +9,12 @@
             aria-label="Otwórz menu nawigacyjne"><span></span><span></span><span></span></button>
     {# djlint:on #}
     <div class="title-bar-title hide-for-print"><span class="bpp-napis-menu">Menu</span></div>
+    {% if TRYB_KOLOROW_PRZELACZNIK %}
+        {# Telefon: pigułka obok ikony menu — widoczna bez otwierania menu. #}
+        <div class="bpp-pigulka-miejsce hide-for-print">
+            {% include "tryb_kolorow_pigulka.html" %}
+        </div>
+    {% endif %}
 </div>
 
 <div class="top-bar stacked-for-medium hide-for-print" id="example-menu">
@@ -483,36 +489,14 @@
 
             {% endif %}
 
-            {% if TRYB_KOLOROW_PRZELACZNIK %}
-                {# Przełącznik jasny/ciemny (bpp/js/tryb-kolorow.js). Tylko przy motywach z obiema wersjami. #}
-                <li class="bpp-tryb-kolorow">
-                    <a href="#" aria-haspopup="menu" class="bpp-tryb-kolorow__przycisk"
-                       aria-label="Tryb kolorów: automatyczny (jak w systemie)">
-                        <i class="bpp-tryb-kolorow__ikona fi-monitor" aria-hidden="true"></i>
-                        <span class="bpp-tryb-kolorow__napis">kolory</span>
-                    </a>
-                    <ul class="menu vertical" role="menu" aria-label="Tryb kolorów">
-                        <li role="none">
-                            <a href="#" role="menuitemradio" aria-checked="true" data-ustaw-tryb-kolorow="auto">
-                                <i class="fi-monitor" aria-hidden="true"></i> automatyczny (jak w systemie)
-                            </a>
-                        </li>
-                        <li role="none">
-                            <a href="#" role="menuitemradio" aria-checked="false" data-ustaw-tryb-kolorow="jasny">
-                                <i class="fi-lightbulb" aria-hidden="true"></i> jasny
-                            </a>
-                        </li>
-                        <li role="none">
-                            <a href="#" role="menuitemradio" aria-checked="false" data-ustaw-tryb-kolorow="ciemny">
-                                <i class="fi-contrast" aria-hidden="true"></i> ciemny
-                            </a>
-                        </li>
-                    </ul>
-                </li>
-            {% endif %}
-
         </ul>
     </div>
+    {% if TRYB_KOLOROW_PRZELACZNIK %}
+        {# Komputer: pigułka trybu kolorów po prawej (na telefonie jest na pasku tytułowym). #}
+        <div class="bpp-pigulka-miejsce show-for-medium">
+            {% include "tryb_kolorow_pigulka.html" %}
+        </div>
+    {% endif %}
 </div>
 </nav>
 

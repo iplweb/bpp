@@ -329,14 +329,18 @@ się w ciemne (z zachowaniem odcienia), ciemny tekst w jasny, a kolory
 przycisków, paska menu i wykresów zostają. Nie ma osobnych ustawień dla
 wersji ciemnej. Wysoki kontrast zapewnia przycisk dostępności UserWay.
 
-W trybie „Automatyczny” na pasku menu pojawia się przełącznik **kolory**
-(automatyczny / jasny / ciemny): odwiedzający może wybrać wersję niezależnie
-od ustawień systemu. Wybór pamięta przeglądarka (bez logowania). Ten sam
+W trybie „Automatyczny” na pasku menu pojawia się przełącznik ze słońcem
+i księżycem (☀ | ☾) — na komputerze po prawej stronie paska, na telefonie
+na pasku obok ikony menu (widoczny bez otwierania menu). Podświetlona
+połowa pokazuje wersję widoczną teraz. Kliknięcie drugiej połowy wybiera tę
+wersję na stałe, niezależnie od ustawień systemu (podświetlenie dostaje
+wtedy obwódkę); ponowne kliknięcie wybranej połowy wraca do ustawień
+systemu. Wybór pamięta przeglądarka (bez logowania). Ten sam
 przełącznik ma wbudowany motyw „Niebieski (jasny lub ciemny wg ustawień
 systemu)”. Przy motywach tylko jasnych albo tylko ciemnych (np. „Niebieski
 ciemny”) przełącznika nie ma.
 
-![Strona po zastosowaniu motywu w trybie automatycznym: rozwinięty przełącznik „kolory” na pasku menu](../images/administrator/konfigurator-wygladu/13-strona-po-zmianie.png)
+![Strona po zastosowaniu motywu w trybie automatycznym: przełącznik jasny/ciemny na pasku menu](../images/administrator/konfigurator-wygladu/13-strona-po-zmianie.png)
 
 ## Eksport i import (plik)
 
