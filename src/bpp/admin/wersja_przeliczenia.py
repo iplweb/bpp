@@ -8,7 +8,7 @@ class Wersja_PrzeliczeniaAdmin(admin.ModelAdmin):
     """Tylko podgląd: które przeliczenie i kiedy BPP zlecił po aktualizacji
     (``bpp.przeliczenia``). Wpisy zakłada i zmienia worker Celery."""
 
-    list_display = ["nazwa", "wersja", "zlecono", "oznaczono_rekordow"]
+    list_display = ("nazwa", "wersja", "zlecono", "oznaczono_rekordow")
     readonly_fields = list_display
 
     def has_add_permission(self, request):

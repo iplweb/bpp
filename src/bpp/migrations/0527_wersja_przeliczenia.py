@@ -6,7 +6,7 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('bpp', '0525_autorzy_mat_bez_autora_z_kosza'),
+        ('bpp', '0526_openaccess_miesiac_i_rok_udostepnienia'),
     ]
 
     operations = [

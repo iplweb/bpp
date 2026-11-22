@@ -19,9 +19,10 @@ workery ze STAREJ wersji obrazu. Znaczniki dodane przez migrację mogłyby
 zostać przeliczone starym kodem i skasowane. Nowy worker startuje dopiero po
 zatrzymaniu starego, więc przeliczenie zawsze liczy nowy kod.
 
-Oznaczenie rekordów i zapis nowej wersji idą w jednej transakcji, pod blokadą
-wiersza wersji — kilka workerów startujących naraz zleci przeliczenie raz.
-Błąd wycofuje całość; kolejny start workera spróbuje ponownie.
+Znaczniki są wstawiane partiami (każda we własnej transakcji), a nowa wersja
+jest zapisywana dopiero na końcu, pod blokadą wiersza wersji. Błąd w trakcie
+zostawia wersję starą — kolejny start workera ponowi oznaczanie; powtórne
+oznaczenie jest nieszkodliwe (istniejące znaczniki są pomijane).
 """
 
 import logging
@@ -59,7 +60,7 @@ def oznacz_do_przeliczenia_w_denorm(model, pole, qs=None):
     if qs is None:
         qs = model.objects.all()
     content_type = ContentType.objects.get_for_model(model)
-    pks = list(qs.order_by().values_list("pk", flat=True).distinct())
+    pks = list(qs.order_by("pk").values_list("pk", flat=True).distinct())
 
     for start in range(0, len(pks), ROZMIAR_PARTII):
         DirtyInstance.objects.bulk_create(
@@ -110,23 +111,28 @@ def zlec_przeliczenie(przeliczenie):
     Zwraca liczbę oznaczonych rekordów albo ``None``, gdy nie było potrzeby."""
     from bpp.models import Wersja_Przeliczenia
 
-    with transaction.atomic():
-        Wersja_Przeliczenia.objects.get_or_create(nazwa=przeliczenie.nazwa)
-        # Blokada wiersza: drugi worker poczeka, a potem zobaczy nową wersję.
-        stan = Wersja_Przeliczenia.objects.select_for_update().get(
-            nazwa=przeliczenie.nazwa
-        )
-        if stan.wersja >= przeliczenie.wersja:
-            return None
+    stan, _ = Wersja_Przeliczenia.objects.get_or_create(nazwa=przeliczenie.nazwa)
+    if stan.wersja >= przeliczenie.wersja:
+        return None
 
-        logger.warning(
-            "Zlecam przeliczenie %s (%s): wersja w bazie %s, w kodzie %s",
-            przeliczenie.nazwa,
-            przeliczenie.opis,
-            stan.wersja,
-            przeliczenie.wersja,
-        )
-        oznaczono = przeliczenie.oznacz()
+    logger.warning(
+        "Zlecam przeliczenie %s (%s): wersja w bazie %s, w kodzie %s",
+        przeliczenie.nazwa,
+        przeliczenie.opis,
+        stan.wersja,
+        przeliczenie.wersja,
+    )
+    # Znaczniki wstawiamy partiami, każda partia w osobnej transakcji —
+    # bez jednej długiej transakcji, która trzymałaby klucze unikalnego
+    # indeksu znaczników i blokowała triggery przy edycjach redaktorów.
+    # Powtórzenie (drugi worker, ponowienie po błędzie) niczego nie psuje:
+    # istniejące znaczniki są pomijane.
+    oznaczono = przeliczenie.oznacz()
+
+    with transaction.atomic():
+        stan = Wersja_Przeliczenia.objects.select_for_update().get(pk=stan.pk)
+        if stan.wersja >= przeliczenie.wersja:
+            return None  # inny worker zdążył zapisać wersję
         stan.wersja = przeliczenie.wersja
         stan.zlecono = timezone.now()
         stan.oznaczono_rekordow = oznaczono

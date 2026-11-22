@@ -23,12 +23,14 @@ Nie pisz do tego migracji danych.
    wysyła zadanie `bpp.tasks.zlec_zalegle_przeliczenia` — start workera na nic
    nie czeka.
 2. Zadanie porównuje wersje z rejestru z tabelą `bpp_wersja_przeliczenia`
-   (admin: „Wersje przeliczeń”). Dla zaległego przeliczenia, w jednej
-   transakcji i pod blokadą wiersza (`SELECT … FOR UPDATE`): dodaje znaczniki
-   denorm (`DirtyInstance` z `func_name` = nazwa pola) i zapisuje nową wersję.
-   Kilka workerów naraz zleci przeliczenie raz; błąd wycofuje całość
-   i przeliczenie zostanie zlecone przy następnym starcie workera (wyjątek idzie
-   do Rollbara przez `task_failure`). Starszy kod nie cofa zapisanej wersji.
+   (admin: „Wersje przeliczeń”). Dla zaległego przeliczenia dodaje znaczniki
+   denorm (`DirtyInstance` z `func_name` = nazwa pola) partiami, każda partia
+   we własnej transakcji (bez długiej transakcji blokującej triggery przy
+   edycjach), a na końcu, pod blokadą wiersza (`SELECT … FOR UPDATE`), zapisuje
+   nową wersję. Błąd w trakcie zostawia starą wersję — przeliczenie zostanie
+   zlecone przy następnym starcie workera (wyjątek idzie do Rollbara przez
+   `task_failure`); ponowne oznaczenie jest nieszkodliwe, bo istniejące
+   znaczniki są pomijane. Starszy kod nie cofa zapisanej wersji.
 3. Resztę robi kolejka denorm (`denorm-queue` → `flush_via_queue` →
    `flush_batch`, kolejka Celery `denorm`): partie po
    `DENORM_QUEUE_CHUNK_SIZE` rekordów, równolegle na wszystkich procesach
@@ -59,6 +61,7 @@ przeliczenie nie rusza. Testy mechanizmu:
 
 Przez czas przeliczenia (duża baza: kilkanaście minut – godzina) kolejka denorm
 ma zaległości, więc przeliczenie pól denorm po zmianach redaktorów (np. opis
-bibliograficzny w wynikach wyszukiwania) może się spóźniać. Nocny
+bibliograficzny w wynikach wyszukiwania) może się spóźniać, a zadania z kolejki
+`celery` (raporty, eksporty) dzielą ten sam worker i mogą działać wolniej. Nocny
 `denorm_rebuild --no-flush` (bpp-deploy, 22:00) i tak oznacza codziennie
 wszystkie rekordy, więc obciążenie jest mniejsze niż co noc.

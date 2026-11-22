@@ -69,10 +69,10 @@ def test_zlecenie_raz_na_wersje(ciagle_z_dyscyplinami):
 
     wynik = zlec_zalegle_przeliczenia()
 
-    assert wynik == {"punktacja_dyscyplin": 1}
+    assert set(wynik) == {"punktacja_dyscyplin"}
     stan = Wersja_Przeliczenia.objects.get(nazwa="punktacja_dyscyplin")
     assert stan.wersja == PRZELICZENIA[0].wersja
-    assert stan.oznaczono_rekordow == 1
+    assert stan.oznaczono_rekordow == wynik["punktacja_dyscyplin"] >= 1
     assert stan.zlecono is not None
     assert _znaczniki_punktacji(ciagle_z_dyscyplinami).count() == 1
 
@@ -100,7 +100,7 @@ def test_podbicie_wersji_zleca_ponownie():
 
 
 @pytest.mark.django_db
-def test_blad_wycofuje_zlecenie_i_nie_podbija_wersji(ciagle_z_dyscyplinami):
+def test_blad_nie_podbija_wersji_i_ponowienie_dziala(ciagle_z_dyscyplinami):
     DirtyInstance.objects.all().delete()
 
     def oznacz_i_wybuchnij():
@@ -111,11 +111,13 @@ def test_blad_wycofuje_zlecenie_i_nie_podbija_wersji(ciagle_z_dyscyplinami):
     with pytest.raises(RuntimeError):
         zlec_przeliczenie(p)
 
-    # Znaczniki i wersja wycofane razem — następny start workera ponowi.
-    assert not _znaczniki_punktacji(ciagle_z_dyscyplinami).exists()
-    assert not Wersja_Przeliczenia.objects.filter(
-        nazwa="punktacja_dyscyplin", wersja__gte=1
-    ).exists()
+    # Wersja nie podbita — następny start workera ponowi zlecenie.
+    assert Wersja_Przeliczenia.objects.get(nazwa="punktacja_dyscyplin").wersja == 0
+
+    # Ponowienie przy istniejących już znacznikach nie dubluje ich.
+    assert zlec_zalegle_przeliczenia()["punktacja_dyscyplin"] >= 1
+    assert _znaczniki_punktacji(ciagle_z_dyscyplinami).count() == 1
+    assert Wersja_Przeliczenia.objects.get(nazwa="punktacja_dyscyplin").wersja == 1
 
 
 @pytest.mark.django_db
