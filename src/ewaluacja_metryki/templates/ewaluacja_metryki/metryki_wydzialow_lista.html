@@ -61,10 +61,7 @@
                 </tbody>
             </table>
         {% else %}
-            <div class="callout warning">
-                Brak wydziałów z metrykami ewaluacyjnymi w okresie {{ okres }}, do których masz dostęp.
-                Metryki generuje się na stronie <a href="{% url 'ewaluacja_metryki:lista' %}">metryk ewaluacyjnych</a>.
-            </div>
+            {% include "ewaluacja_metryki/_brak_metryk.html" with brak_dostepu="Brak wydziałów z metrykami ewaluacyjnymi w tym okresie, do których masz dostęp." %}
         {% endif %}
     </div>
 </div>
