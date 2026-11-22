@@ -7,7 +7,7 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('bpp', '0524_bppuser_jednostki_metryk'),
+        ('bpp', '0525_autorzy_mat_bez_autora_z_kosza'),
     ]
 
     operations = [
