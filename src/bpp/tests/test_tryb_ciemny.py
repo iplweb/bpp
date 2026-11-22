@@ -3,7 +3,6 @@
 Patrz docs/deweloper/budowanie-css.md, sekcja „Tryb ciemny”.
 """
 
-import importlib.util
 import re
 from pathlib import Path
 
@@ -44,7 +43,10 @@ def test_motywy_reczne_obejmuja_ciemne_warianty():
 @pytest.mark.parametrize("motyw", _motywy_reczne())
 def test_kazdy_motyw_ma_zrodlo_scss_i_cel_w_gruntfile(motyw):
     assert (SCSS / f"{motyw}.scss").exists()
-    gruntfile = (KORZEN / "Gruntfile.js").read_text()
+    sciezka = KORZEN / "Gruntfile.js"
+    if not sciezka.exists():
+        pytest.skip("Brak Gruntfile.js (obraz testowy w CI) — sprawdzane lokalnie.")
+    gruntfile = sciezka.read_text()
     assert f"'src/bpp/static/scss/{motyw}.css'" in gruntfile
 
 
@@ -90,11 +92,9 @@ def test_kafle_strony_glownej_bez_bialego_hover_w_szablonie():
 
 
 def _js_audytu():
-    sciezka = KORZEN / "bin" / "tryb-ciemny-audyt.py"
-    spec = importlib.util.spec_from_file_location("tryb_ciemny_audyt", sciezka)
-    modul = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(modul)
-    return modul.JS_AUDYT
+    from bpp.tests.tryb_ciemny_audyt_js import JS_AUDYT
+
+    return JS_AUDYT
 
 
 @pytest.mark.django_db(transaction=True)
