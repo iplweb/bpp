@@ -1,13 +1,16 @@
 Importer publikacji pobiera redaktorów książek. Wcześniej przy imporcie po
 DOI monografii redagowanej (CrossRef podaje wtedy tylko redaktorów, bez
 autorów) krok „Autorzy” był pusty i redaktorów trzeba było dopisywać ręcznie
-w module redagowania. Teraz redaktorzy z CrossRef, PBN, BibTeX-a
-(pole ``editor`` w ``@book``/``@proceedings``) i DSpace
+w module redagowania. Teraz redaktorzy z CrossRef, PBN, BibTeX-a (pole
+``editor`` w ``@book``, ``@collection`` i ``@proceedings``; ``@collection``
+jest teraz rozpoznawany jako książka redagowana) i DSpace
 (``dc.contributor.editor``) pojawiają się w kroku „Autorzy” z typem
 „redaktor” (kolumna „Typ”), przed autorami, i są dopasowywani do osób w BPP
-tak jak autorzy; w utworzonym rekordzie mają typ odpowiedzialności „red.”,
-a sugestia punktacji uwzględnia redakcję. Dotyczy tylko książek
-(monografii, książek redagowanych, materiałów konferencyjnych) — przy
-rozdziałach i referatach redaktorzy książki nadrzędnej nadal nie są
-dodawani. Sesje pobrane przed aktualizacją się nie zmieniają: aby pobrać
-redaktorów, trzeba zaimportować DOI ponownie.
+tak jak autorzy. Osoba będąca jednocześnie redaktorem i autorem dostaje
+jeden nowy rekord autora po kliknięciu „Utwórz N niedopasowanych autorów”.
+W utworzonym rekordzie redaktorzy mają typ odpowiedzialności „red.”, a
+sugestia punktacji uwzględnia redakcję. Dotyczy tylko książek (monografii,
+książek redagowanych, materiałów konferencyjnych) — przy rozdziałach
+i referatach redaktorzy książki nadrzędnej nadal nie są dodawani. Sesje
+pobrane przed aktualizacją się nie zmieniają: aby pobrać redaktorów, trzeba
+zaimportować DOI ponownie.

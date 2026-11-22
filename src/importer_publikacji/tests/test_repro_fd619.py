@@ -177,6 +177,13 @@ def test_bibtex_book_z_editor():
     ]
 
 
+def test_bibtex_collection_z_editor():
+    """biblatex ``@collection`` = książka redagowana."""
+    result = BibTeXProvider().fetch(BIBTEX_KSIAZKA.replace("@book", "@collection"))
+    assert result.publication_type == "edited-book"
+    assert [a["typ_ogolny"] for a in result.authors] == [const.TO_REDAKTOR] * 2
+
+
 def test_bibtex_incollection_pomija_redaktorow_ksiazki():
     result = BibTeXProvider().fetch(BIBTEX_ROZDZIAL)
     assert [a["family"] for a in result.authors] == ["Autorski"]
@@ -210,3 +217,76 @@ def test_dspace_contributor_editor():
     assert [a["family"] for a in _autorzy_i_redaktorzy(meta, "book-chapter")] == [
         "Autorski"
     ]
+
+
+# --- ta sama osoba jako redaktor i autor ------------------------------------
+
+
+@pytest.mark.django_db
+def test_utworz_niedopasowanych_jeden_autor_dla_redaktora_i_autora():
+    """Osoba, która jest i redaktorem, i autorem (bez ORCID), nie może dać
+    dwóch rekordów ``Autor`` przy „Utwórz niedopasowanych autorów"."""
+    from bpp.models import Autor, Jednostka
+    from importer_publikacji.models import ImportedAuthor
+    from importer_publikacji.views.authors import _create_unmatched_authors
+
+    session = baker.make(ImportSession)
+    for order, typ in enumerate((const.TO_REDAKTOR, const.TO_AUTOR)):
+        baker.make(
+            ImportedAuthor,
+            session=session,
+            order=order,
+            family_name="Zupełnienowa",
+            given_name="Ewa",
+            orcid="",
+            typ_ogolny=typ,
+        )
+    obca = baker.make(Jednostka)
+
+    _create_unmatched_authors(session, obca)
+
+    assert Autor.objects.filter(nazwisko="Zupełnienowa").count() == 1
+    assert session.authors.values("matched_autor").distinct().count() == 1
+
+
+@pytest.mark.django_db
+def test_orcid_do_ustawienia_dla_redaktora_i_autora_z_tym_samym_orcid():
+    from bpp.models import Autor
+    from importer_publikacji.models import ImportedAuthor
+    from importer_publikacji.views.authors import _orcid_settable_qs
+
+    autor = baker.make(Autor, orcid=None)
+    session = baker.make(ImportSession)
+    for order, typ in enumerate((const.TO_REDAKTOR, const.TO_AUTOR)):
+        baker.make(
+            ImportedAuthor,
+            session=session,
+            order=order,
+            orcid="0000-0003-1829-568X",
+            matched_autor=autor,
+            typ_ogolny=typ,
+        )
+
+    assert _orcid_settable_qs(session).count() == 2
+
+
+@pytest.mark.django_db
+def test_orcid_konflikt_roznych_orcid_nadal_wykluczony():
+    """Strażnik: ten sam autor BPP dopasowany do dwóch różnych ORCID-ów to
+    konflikt — ORCID nie jest proponowany."""
+    from bpp.models import Autor
+    from importer_publikacji.models import ImportedAuthor
+    from importer_publikacji.views.authors import _orcid_settable_qs
+
+    autor = baker.make(Autor, orcid=None)
+    session = baker.make(ImportSession)
+    for order, orcid in enumerate(("0000-0003-1829-568X", "0000-0001-9527-3391")):
+        baker.make(
+            ImportedAuthor,
+            session=session,
+            order=order,
+            orcid=orcid,
+            matched_autor=autor,
+        )
+
+    assert _orcid_settable_qs(session).count() == 0

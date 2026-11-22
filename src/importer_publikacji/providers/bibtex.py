@@ -30,6 +30,8 @@ BIBTEX_TYPE_MAP = {
     "phdthesis": "dissertation",
     "mastersthesis": "dissertation",
     "proceedings": "proceedings",
+    # biblatex: książka redagowana (redaktorzy w ``editor``) — FD#619.
+    "collection": "edited-book",
     "techreport": "report",
     "manual": "monograph",
     "misc": "other",
