@@ -152,3 +152,61 @@ def test_liczby_prac_autora_bez_ukrytych_statusow_dla_anonima(
 
     zalogowany = liczby_prac_autora(autor_jan_kowalski, uczelnia, zalogowany=True)
     assert zalogowany["wszystkie"] == 3
+
+
+def test_skroty_na_stronie_autora_prowadza_do_listy_prac(
+    client,
+    okresy,
+    autor_jan_kowalski,
+    autor_jan_nowak,
+    jednostka,
+    statusy_korekt,
+    typy_odpowiedzialnosci,
+):
+    """Każdy formularz do BuildSearch na stronie autora (wszystkie prace,
+    zakresy lat, rok na wykresie, statystyki wg charakteru, współautorzy)
+    niesie ``cel=wyniki`` — klik prowadzi prosto do listy prac. Wyjątek:
+    formularz z filtrami „Wyszukaj publikacje autora”."""
+    for rok in (2022, 2023, 2027):
+        praca = _wydawnictwo_ciagle_maker(rok=rok, tytul_oryginalny=f"Praca {rok}")
+        praca.dodaj_autora(autor_jan_kowalski, jednostka)
+        praca.dodaj_autora(autor_jan_nowak, jednostka)
+    # Sekcja współautorów czyta przeliczone powiązania (powiazania_autorow).
+    from powiazania_autorow.models import AuthorConnection
+
+    baker.make(
+        AuthorConnection,
+        primary_author=autor_jan_kowalski,
+        secondary_author=autor_jan_nowak,
+        shared_publications_count=3,
+    )
+
+    tresc = client.get(autor_jan_kowalski.get_absolute_url()).content.decode()
+    akcja = reverse("bpp:browse_build_search")
+    formularze = [
+        f
+        for f in re.findall(r"<form\b.*?</form>", tresc, re.S)
+        if f'action="{akcja}"' in f and "autor-page__search-form" not in f
+    ]
+    # Sprawdź, że są wszystkie rodzaje skrótów (inaczej test nic nie mówi).
+    klasy = " ".join(re.match(r"<form\b[^>]*>", f).group(0) for f in formularze)
+    assert "autor-page__quick-actions-form" in klasy
+    assert "autor-page__wykres-form" in klasy
+    assert any('name="charakter_formalny"' in f for f in formularze)
+    assert any('name="wspolautor"' in f for f in formularze)
+    for f in formularze:
+        assert 'name="cel" value="wyniki"' in f, f[:300]
+
+
+def test_klik_w_wspolautora_prowadzi_do_wspolnych_prac(
+    client, autor_jan_kowalski, autor_jan_nowak
+):
+    res = client.post(
+        reverse("bpp:browse_build_search"),
+        {
+            "autor": autor_jan_kowalski.pk,
+            "wspolautor": autor_jan_nowak.pk,
+            "cel": "wyniki",
+        },
+    )
+    assert res["Location"].endswith(reverse("multiseek:results"))

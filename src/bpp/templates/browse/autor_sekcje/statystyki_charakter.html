@@ -1,5 +1,5 @@
 {# Liczba prac wg charakteru formalnego — klik w wiersz buduje wyszukiwanie #}
-{# (autor + charakter formalny) w multiseek. Oczekuje: dane.wiersze (lista #}
+{# (autor + charakter formalny) → od razu lista prac. Oczekuje: dane.wiersze (lista #}
 {# (nazwa, liczba)), dane.suma oraz `autor` (z kontekstu strony). #}
 <div class="author-info-section autor-page__sekcja">
     <h3><i class="fi-graph-pie autor-page__icon--mr-sm"></i>{{ nazwa }}</h3>
@@ -32,6 +32,8 @@
                             <input type="hidden"
                                    name="suggested-title"
                                    value="{{ autor }} — {{ nazwa_charakteru }}"/>
+                            {# Od razu lista prac (cel=wyniki), bez formularza multiseek. #}
+                            <input type="hidden" name="cel" value="wyniki"/>
                             <button type="submit"
                                     class="autor-page__staty-link"
                                     title="Pokaż prace: {{ nazwa_charakteru }}">{{ nazwa_charakteru }}</button>
