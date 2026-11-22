@@ -47,6 +47,17 @@ punktacji ani opisu bibliograficznego: wystarczy tytuł, rok i link albo plik.
    dyscypliny przypisane autorowi w danym roku. Współautorów z uczelni
    dodasz przyciskiem **„Dodaj kolejnego autora”**.
 
+    Jeśli autor **nie ma przypisanej dyscypliny na rok publikacji**, lista
+    **Dyscyplina** ma nagłówek *„Autor nie ma dyscypliny na rok …”*
+    i podpowiada jego dyscypliny z ubiegłego roku (albo z najbliższego
+    wcześniejszego roku, w którym je miał — rok jest podany w nagłówku),
+    a gdy autor nie miał dyscypliny nigdy — dyscypliny **typowe dla
+    uczelni** (najczęściej przypisywane w pracach z ostatnich trzech lat).
+    Wybrana dyscyplina zostanie po wysłaniu zgłoszenia **przypisana
+    autorowi na rok publikacji** — w historii autora zostaje wpis, kto ją
+    wybrał (login albo — bez logowania — e-mail zgłaszającego), z tytułem
+    i numerem zgłoszenia. Można wybrać tylko dyscyplinę z podpowiedzi.
+
     ![Krok „Autorzy”: autor, jednostka, dyscyplina i przycisk „Dodaj kolejnego autora”](../images/uzytkownik/zgloszenie-publikacji/05-autorzy.png)
 
 6. **Płatności** (tylko przy niektórych rodzajach prac) — zaznacz, czy

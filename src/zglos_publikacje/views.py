@@ -29,6 +29,7 @@ from pbn_api.models.publication import (
 )
 from pbn_api.models.publisher import Publisher as PBN_Publisher
 from zglos_publikacje import const
+from zglos_publikacje.dyscypliny import przypisz_dyscypline_jesli_brak
 from zglos_publikacje.forms import (
     FORMA_DOSTEPU_FORM_TO_MODEL,
     RODZAJ_FORM_TO_MODEL,
@@ -138,9 +139,12 @@ def _resolve_qss_value(value_str):
 
 
 def _process_autorzy_formset(
-    autorzy_formset, publication_object, typ_odpowiedzialnosci
+    autorzy_formset, publication_object, typ_odpowiedzialnosci, user=None
 ):
-    """Process the authors formset and save author records."""
+    """Process the authors formset and save author records.
+
+    FD#620: autorowi bez przypisania dyscypliny na rok pracy zakłada
+    przypisanie wybranej dyscypliny (z historią w imieniu ``user``)."""
     if not autorzy_formset.is_valid():
         return
 
@@ -161,6 +165,7 @@ def _process_autorzy_formset(
         instance.kolejnosc = no
         instance.typ_odpowiedzialnosci = typ_odpowiedzialnosci
         instance.save()
+        przypisz_dyscypline_jesli_brak(instance, user)
 
 
 def _send_notification_email(publication_object, request):
@@ -751,6 +756,7 @@ class Zgloszenie_PublikacjiWizard(UczelniaSettingRequiredMixin, SessionWizardVie
             autorzy_formset,
             self.object,
             typ_odpowiedzialnosci,
+            self.request.user,
         )
 
         transaction.on_commit(

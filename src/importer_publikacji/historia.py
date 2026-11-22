@@ -18,6 +18,7 @@ from django.contrib.admin.models import ADDITION, CHANGE, LogEntry
 # Rejestracja modeli w reversion (``Autor``) — jawnie, żeby nie zależeć od
 # tego, czy w procesie (np. worker Celery) załadował się już moduł admina.
 import bpp.wersjonowanie  # noqa: F401
+from bpp.wersjonowanie import opis_uzytkownika
 
 
 def _szczegoly_sesji(session):
@@ -46,14 +47,6 @@ def komunikat_orcid(session, orcid):
         f"Ustawiono ORCID {orcid} przez importer publikacji "
         f"({_szczegoly_sesji(session)})"
     )
-
-
-def opis_uzytkownika(user):
-    """„Imię Nazwisko (login)” albo sam login — do treści wpisów historii."""
-    if user is None:
-        return "system"
-    pelne = (user.get_full_name() or "").strip()
-    return f"{pelne} ({user.username})" if pelne else user.username
 
 
 def komunikat_dyscypliny(session, record, dyscyplina, rok, user):

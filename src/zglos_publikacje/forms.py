@@ -1,6 +1,6 @@
 from crispy_forms.helper import FormHelper
 from crispy_forms_foundation.layout import Fieldset, Layout
-from dal import autocomplete
+from dal import autocomplete, forward
 from dal_select2_queryset_sequence.widgets import (
     QuerySetSequenceSelect2,
 )
@@ -545,9 +545,18 @@ class Zgloszenie_Publikacji_AutorForm(forms.ModelForm):
         queryset=Dyscyplina_Naukowa.objects.all(),
         widget=autocomplete.ModelSelect2(
             url="bpp:dyscyplina-naukowa-przypisanie-autocomplete",
-            forward=["autor", "rok"],
+            # FD#620: ``typowe`` — autor bez dyscypliny na rok pracy dostaje
+            # podpowiedź (jego dyscypliny z wcześniejszego roku albo typowe
+            # dla uczelni).
+            forward=["autor", "rok", forward.Const(True, "typowe")],
         ),
         required=False,
+        help_text=(
+            "Jeśli autor nie ma przypisanej dyscypliny na rok publikacji, "
+            "lista podpowiada jego dyscypliny z wcześniejszego roku (a gdy "
+            "nie miał ich nigdy — dyscypliny typowe dla uczelni). Wybrana "
+            "dyscyplina zostanie przypisana autorowi na rok publikacji."
+        ),
     )
 
     rok = forms.IntegerField(widget=HiddenInput)
@@ -567,6 +576,10 @@ class Zgloszenie_Publikacji_AutorForm(forms.ModelForm):
             )
         )
         super().__init__(*args, **kw)
+        # FD#620: zgoda na dyscyplinę z podpowiedzi dla autora bez
+        # przypisania na rok pracy (sprawdza ``Zgloszenie_Publikacji_Autor
+        # .clean``); w module redagowania walidacja zostaje ścisła.
+        self.instance.dopusc_propozycje_dyscypliny = True
 
     def clean_jednostka(self):
         # #438: zgłoszony autor zawsze dostaje ``afiliuje=True`` (formularz nie
