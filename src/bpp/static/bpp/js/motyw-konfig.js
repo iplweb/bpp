@@ -471,7 +471,7 @@
             etykieta: "Pasek ścieżki (okruszki) pod menu",
             opis: "Np. „Uczelnia / Autorzy / Jan Kowalski”. Kolor tekstu i linków dobiera się sam.",
             opcje: [
-                ["jasne", "Jasnoszary (jak dotąd)"],
+                ["jasne", "Jasnoszary"],
                 ["jak_pasek", "W kolorze paska menu"],
                 ["wlasny", "Własny kolor"],
             ],
@@ -493,7 +493,7 @@
             grupa: "Okruszki i stopka",
             etykieta: "Stopka",
             opcje: [
-                ["jasna", "Jasnoszara (jak dotąd)"],
+                ["jasna", "Jasnoszara"],
                 ["jak_pasek", "W kolorze paska menu"],
                 ["wlasny", "Własny kolor"],
             ],

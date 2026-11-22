@@ -20,7 +20,11 @@
         komputer: { szerokosc: 1280, wysokosc: 800 },
         telefon: { szerokosc: 390, wysokosc: 780 },
     };
-    var UKRYJ_W_PODGLADZIE = "#CookielawBanner, .cookie-pasek { display: none !important; }";
+    var UKRYJ_W_PODGLADZIE =
+        "#CookielawBanner, .cookie-pasek { display: none !important; }" +
+        // Inspektor: celownik i obrys elementu pod kursorem.
+        "html.bpp-inspektor, html.bpp-inspektor * { cursor: crosshair !important; }" +
+        ".bpp-inspektor-cel { outline: 3px solid #2563eb !important; outline-offset: 2px !important; }";
 
     var stan = wczytajZPamieci();
     var css = null;
@@ -642,6 +646,7 @@
         if (css === null) return;
         miejsce.textContent = css;
         pilnujLudzika(doc);
+        podepnijInspektor(doc, ramka);
         // Ramki w ramce (np. wyniki multiseek) — ten sam motyw.
         doc.querySelectorAll("iframe").forEach(function (wewnetrzna) {
             if (!wewnetrzna.bppPodpieta) {
@@ -688,6 +693,148 @@
             attributes: true,
             attributeFilter: ["style"],
         });
+    }
+
+    // --- Inspektor -------------------------------------------------------------
+    // Kliknięcie elementu na podglądzie podświetla opcje, które go ustawiają.
+    // Reguły: najbliższy przodek pasujący do selektora → klucze z SCHEMAT.
+    var REGULY_INSPEKTORA = [
+        ["#breadcrumbs-wrapper", ["okruszki_tlo", "okruszki_kolor"]],
+        [".footer-container", ["stopka_tlo", "stopka_kolor"]],
+        [".bpp-strona-glowna, .bpp-logo, .bpp-napis", ["logo_bpp", "napis_w_pasku", "napis_wlasny", "logo_uczelni"]],
+        [".top-bar .menu.vertical, .top-bar .menu-columns-wrapper", ["menu_zaokraglone", "cien_menu", "ikony_w_menu"]],
+        ["nav.sticky-header, .top-bar, .title-bar", ["kolor_naglowka", "ikony_w_menu", "menu_zaokraglone", "cien_menu"]],
+        [".uczelnia__tile, .browse-tile", ["kafle_styl", "kolor_glowny"]],
+        [".autor-page__slupek, .autor-page__wykres-linia, .autor-page__wykres-punkt", ["kolor_wykresow"]],
+        ["h1, h2, h3, h4, h5, h6", ["czcionka_naglowkow", "naglowki", "czcionka_wlasna"]],
+        ["[id^=userway], .uwy", ["kolor_userway", "cien_userway"]],
+        [".card, table, input, select, textarea", ["tlo_tresci", "zaokraglenia"]],
+    ];
+    var KLASY_KOLOROW = [
+        ["success", "sukces"],
+        ["warning", "ostrzezenie"],
+        ["alert", "alert"],
+    ];
+
+    function kluczeElementu(cel) {
+        var klucze = [];
+        function dodaj(lista) {
+            lista.forEach(function (k) {
+                if (klucze.indexOf(k) === -1) klucze.push(k);
+            });
+        }
+        var przycisk = cel.closest("button, .button, input[type=submit], input[type=button]");
+        if (przycisk) {
+            var kp = ["przyciski_styl", "przyciski_kolory", "zaokraglenia"];
+            var typ = KLASY_KOLOROW.filter(function (t) {
+                return przycisk.classList.contains(t[0]);
+            })[0];
+            if (typ) kp.push("kolor_przycisku_" + typ[1]);
+            else kp.push(przycisk.classList.contains("secondary") ? "kolor_dodatkowy" : "kolor_glowny");
+            dodaj(kp);
+        }
+        var komunikat = cel.closest(".callout");
+        if (komunikat) {
+            var tk = KLASY_KOLOROW.filter(function (t) {
+                return komunikat.classList.contains(t[0]);
+            })[0];
+            var nazwa = tk ? (tk[1] === "alert" ? "blad" : tk[1]) : "info";
+            dodaj(["kolor_komunikatu_" + nazwa, "zaokraglenia"]);
+        }
+        REGULY_INSPEKTORA.forEach(function (r) {
+            if (cel.closest(r[0])) dodaj(r[1]);
+        });
+        if (!przycisk && cel.closest("a")) dodaj(["kolor_glowny"]);
+        if (!klucze.length) {
+            // Tło strony, puste miejsca.
+            dodaj(["tryb_kolorow", "tlo_strony", "kolor_tla_strony", "tlo_tresci", "tlo_obraz"]);
+        }
+        if ((cel.textContent || "").trim()) dodaj(["czcionka", "czcionka_wlasna", "rozmiar_tekstu"]);
+        return klucze;
+    }
+
+    var inspektorWlaczony = false;
+    var elInspektor = document.getElementById("inspektor");
+
+    function dokumentyPodgladow() {
+        var docs = [];
+        function zbierz(ramka) {
+            var d = ramka.contentDocument;
+            if (!d || !d.documentElement) return;
+            docs.push(d);
+            d.querySelectorAll("iframe").forEach(zbierz);
+        }
+        document.querySelectorAll("#siatka iframe, #powiekszenie-ramka").forEach(zbierz);
+        return docs;
+    }
+
+    function ustawInspektor(wlaczony) {
+        inspektorWlaczony = wlaczony;
+        elInspektor.setAttribute("aria-pressed", String(wlaczony));
+        dokumentyPodgladow().forEach(function (d) {
+            d.documentElement.classList.toggle("bpp-inspektor", wlaczony);
+            if (!wlaczony) {
+                d.querySelectorAll(".bpp-inspektor-cel").forEach(function (e) {
+                    e.classList.remove("bpp-inspektor-cel");
+                });
+            }
+        });
+        if (!wlaczony) {
+            elPola.querySelectorAll(".pole.inspektor").forEach(function (e) {
+                e.classList.remove("inspektor");
+            });
+        }
+        ustawStatus(wlaczony ? "Inspektor: kliknij element na podglądzie." : "");
+    }
+
+    elInspektor.addEventListener("click", function () {
+        ustawInspektor(!inspektorWlaczony);
+    });
+
+    function pokazOpcje(klucze) {
+        elPola.querySelectorAll(".pole.inspektor").forEach(function (e) {
+            e.classList.remove("inspektor");
+        });
+        var etykiety = [];
+        var pierwsze = null;
+        klucze.forEach(function (k) {
+            var pole = elPola.querySelector('.pole[data-klucz="' + k + '"]');
+            if (!pole || pole.hidden) return; // opcja nieaktywna przy obecnych ustawieniach
+            pole.classList.add("inspektor");
+            var sekcja = pole.closest("details");
+            if (sekcja) sekcja.open = true;
+            if (!pierwsze) pierwsze = pole;
+            var p = M.SCHEMAT.filter(function (x) {
+                return x.klucz === k;
+            })[0];
+            etykiety.push(p.etykieta);
+        });
+        if (pierwsze) pierwsze.scrollIntoView({ block: "center", behavior: "smooth" });
+        ustawStatus(
+            etykiety.length
+                ? "Ten element ustawiają: " + etykiety.join(", ") + "."
+                : "Tego elementu konfigurator nie zmienia.",
+        );
+    }
+
+    function podepnijInspektor(doc, ramka) {
+        doc.documentElement.classList.toggle("bpp-inspektor", inspektorWlaczony);
+        if (doc.bppInspektor) return;
+        doc.bppInspektor = true;
+        var ostatni = null;
+        doc.addEventListener("mouseover", function (e) {
+            if (!inspektorWlaczony) return;
+            if (ostatni) ostatni.classList.remove("bpp-inspektor-cel");
+            ostatni = e.target;
+            ostatni.classList.add("bpp-inspektor-cel");
+        }, true);
+        doc.addEventListener("click", function (e) {
+            if (!inspektorWlaczony) return;
+            e.preventDefault();
+            e.stopImmediatePropagation();
+            if (ramka === elPowiekszenieRamka || ramka.closest("#powiekszenie")) zamknijPowiekszenie();
+            pokazOpcje(kluczeElementu(e.target));
+        }, true);
     }
 
     function oknoPodgladu(p) {
