@@ -231,6 +231,9 @@ def test_bledny_formularz_nie_nadpisuje_zapamietanego(importer_client, sesje):
 def test_nieznane_sortowanie_ignorowane(importer_client, sesje):
     response = _get(importer_client, {"sort": "password"})
     assert response.context["sort"] == "-created"
+    # Brak kolumny „Data modyfikacji” — sortowanie po niej jest niedozwolone.
+    response = _get(importer_client, {"sort": "-modified"})
+    assert response.context["sort"] == "-created"
     assert SESSIONS_SAVED_VIEW_KEY not in importer_client.session
 
 
@@ -261,3 +264,33 @@ def test_htmx_wejscie_z_paska_przywraca_i_dodaje_wpis_historii(importer_client, 
     assert _widoczne(response) == {"blad_pobierania"}
     assert response["HX-Push-Url"] == reverse(URL) + "?etap_bledu=fetch"
     assert "Etap błędu: Pobieranie danych" in response.content.decode()
+
+
+@pytest.mark.django_db
+def test_bledne_pole_nie_wylacza_pozostalych_filtrow(importer_client, sesje):
+    """Stara zakładka z nieznanym statusem: pozostałe filtry nadal działają,
+    a lista mówi, które pole pominięto."""
+    response = _get(importer_client, {"status": "nie-ma-takiego", "rekord": "jest"})
+    assert _widoczne(response) == {"ok"}
+    assert "Pominięto nieprawidłowe filtry" in response.content.decode()
+
+
+@pytest.mark.django_db
+def test_niepoprawny_zapamietany_widok_jest_zapominany(importer_client, sesje):
+    session = importer_client.session
+    session[SESSIONS_SAVED_VIEW_KEY] = "created_by=999999"
+    session.save()
+
+    response = _get(importer_client)
+
+    assert "Pokazuję zapamiętane" not in response.content.decode()
+    assert SESSIONS_SAVED_VIEW_KEY not in importer_client.session
+
+
+@pytest.mark.django_db
+def test_samo_sortowanie_to_nie_filtr(importer_client, importer_user):
+    """Pusta lista z samym sortowaniem: komunikat „Brak sesji importu.”,
+    nie „…spełniających wybrane filtry”."""
+    content = _get(importer_client, {"sort": "status"}).content.decode()
+    assert "Brak sesji importu." in content
+    assert "spełniających wybrane filtry" not in content

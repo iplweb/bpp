@@ -66,3 +66,18 @@ def test_tylko_bledy_zapamietane_po_powrocie(
     expect(page.locator("#session-list-przywrocone")).to_have_count(0)
     expect(wiersze).to_have_count(3)
     expect(page).to_have_url(re.compile(re.escape(LISTA) + r"$"))
+
+    # Wybór wielokrotny: lista statusów zostaje otwarta między kliknięciami,
+    # filtr działa po jej zamknięciu.
+    page.wait_for_load_state("networkidle")
+    page.locator("#session-filter-form .select2-selection--multiple").click()
+    expect(page.locator(".select2-container--open")).not_to_have_count(0)
+    page.locator(".select2-results__option", has_text="Zakończono").click()
+    page.locator(".select2-results__option", has_text="Pobrano dane").click()
+    expect(wiersze).to_have_count(3)
+    # Zamknięcie listy kliknięciem obok.
+    page.locator("h5", has_text="Sesje importu").click()
+    expect(page).to_have_url(re.compile(r"status=completed"))
+    expect(page).to_have_url(re.compile(r"status=fetched"))
+    expect(wiersze).to_have_count(2)
+    expect(page.locator(".select2-container--open")).to_have_count(0)

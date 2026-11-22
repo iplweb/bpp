@@ -44,7 +44,10 @@
         </div>
     {% endif %}
 
-    {# hx-trigger="change": zdarzenie z każdego pola bąbelkuje do formularza. #}
+    {# hx-trigger: natywne „change” z nazwanych pól bąbelkuje do formularza #}
+    {# (bez pola wyszukiwania select2, które nie ma name); select2, przyciski #}
+    {# i sortowanie wysyłają własne zdarzenie „filtry”. hx-sync: Enter w polu #}
+    {# daje change+submit — liczy się tylko ostatnie żądanie. #}
     {# Adres URL ustawia serwer (HX-Replace-Url / HX-Push-Url), patrz #}
     {# SessionListView — dzięki temu odświeżenie i „Wstecz” pokazują ten sam widok. #}
     <form id="session-filter-form"
@@ -53,9 +56,21 @@
           hx-get="{% url 'importer_publikacji:sessions' %}"
           hx-target="#session-list-container"
           hx-swap="outerHTML"
-          hx-trigger="change, submit">
+          hx-trigger="change[target.name], submit, filtry"
+          hx-sync="this:replace">
 
         <input type="hidden" name="sort" value="{{ sort }}">
+
+        {% if filter_form.errors %}
+            <div class="callout warning" role="alert" id="session-filter-bledy">
+                Pominięto nieprawidłowe filtry:
+                {% for pole in filter_form %}
+                    {% if pole.errors %}
+                        <strong>{{ pole.label }}</strong> ({{ pole.errors|join:" " }})
+                    {% endif %}
+                {% endfor %}
+            </div>
+        {% endif %}
 
         <div class="grid-x grid-margin-x align-bottom">
             <div class="cell shrink">
@@ -178,7 +193,7 @@
                         <td class="session-rekord">
                             {% if s.created_record %}
                                 <a href="{{ s.created_record.get_absolute_url }}"
-                                   aria-label="Pokaż rekord w BPP: {{ s.created_record|truncatechars:80 }}">Pokaż</a>
+                                   aria-label="Pokaż rekord w BPP: {{ s.created_record|striptags|truncatechars:80 }}">Pokaż</a>
                                 {% if s.created_record_admin_url %}
                                     | <a href="{{ s.created_record_admin_url }}"
                                          aria-label="Edytuj rekord w module redagowania">Edytuj</a>
@@ -209,7 +224,7 @@
             </tbody>
         </table>
     {% else %}
-        <p>{% if sessions_querystring %}Brak sesji importu spełniających wybrane filtry.{% else %}Brak sesji importu.{% endif %}</p>
+        <p>{% if aktywne_filtry %}Brak sesji importu spełniających wybrane filtry.{% else %}Brak sesji importu.{% endif %}</p>
     {% endif %}
 
 </div>
@@ -286,7 +301,7 @@
                     width: '150px'
                 })
                 .on('change', function() {
-                    htmx.trigger($form[0], 'change');
+                    htmx.trigger($form[0], 'filtry');
                 });
 
             $('#session-list-container .importer-multi-select2')
@@ -299,9 +314,32 @@
                         language: 'pl',
                         width: '100%'
                     });
+                    $(this).data('wartoscPrzyOtwarciu',
+                                 JSON.stringify($(this).val() || []));
                 })
-                .on('change', function() {
-                    htmx.trigger($form[0], 'change');
+                // Wiele statusów wybiera się przy otwartej liście; żądanie
+                // (i podmiana listy) dopiero po jej zamknięciu, gdy wybór
+                // się zmienił — inaczej każde kliknięcie zamykałoby listę.
+                .on('select2:open', function() {
+                    $(this).data('wartoscPrzyOtwarciu',
+                                 JSON.stringify($(this).val() || []));
+                })
+                .on('select2:close', function() {
+                    var $sel = $(this);
+                    if (JSON.stringify($sel.val() || [])
+                            !== $sel.data('wartoscPrzyOtwarciu')) {
+                        htmx.trigger($form[0], 'filtry');
+                    }
+                })
+                // Usunięcie wyboru „x” bez otwierania listy.
+                .on('select2:unselect select2:clear', function() {
+                    var $sel = $(this);
+                    setTimeout(function() {
+                        if (!$sel.data('select2')
+                                || !$sel.data('select2').isOpen()) {
+                            $sel.trigger('select2:close');
+                        }
+                    }, 0);
                 });
 
             // Szybki przełącznik „Tylko błędy importu” (FD#615): ustawia
@@ -314,7 +352,7 @@
                     $form.find('select[name="status"]')
                         .val(wlaczony ? [] : [$btn.data('status')])
                         .trigger('change.select2');
-                    htmx.trigger($form[0], 'change');
+                    htmx.trigger($form[0], 'filtry');
                 });
 
             // .off przed .on — żeby powtórny init nie dublował handlera.
@@ -332,37 +370,17 @@
                             $sel.val('');
                         }
                     });
-                    htmx.trigger($form[0], 'change');
+                    htmx.trigger($form[0], 'filtry');
                 });
 
             var table = $('#sessions-table');
             if (table.length && $.fn.DataTable
                     && !$.fn.dataTable.isDataTable(table[0])) {
-                // Kolumna startowego sortowania z parametru „sort” (FD#615).
-                var sortKolumna = table.find('thead th').index(
-                    table.find('thead th[data-sort-key="{{ sort_key|escapejs }}"]')
-                );
-                if (sortKolumna < 0) {
-                    sortKolumna = 0;
-                }
-                var dt = table.DataTable({
-                    paging: true,
-                    pageLength: 25,
-                    ordering: true,
-                    order: [[sortKolumna, '{% if sort_desc %}desc{% else %}asc{% endif %}']],
-                    info: true,
-                    searching: false,
-                    language: {
-                        url: "{% static 'bpp/js/Polish.json' %}"
-                    },
-                    columnDefs: [
-                        {orderable: false, targets: [5, 8]}
-                    ]
-                });
                 // Zmiana sortowania klikiem w nagłówek → do pola „sort”
                 // i do serwera (URL + zapamiętany widok). Porównanie z
                 // bieżącą wartością chroni przed pętlą po ponownym renderze.
-                table.on('order.dt', function() {
+                var dt;
+                var wyslijSortowanie = function() {
                     var order = dt.order();
                     if (!order.length) {
                         return;
@@ -378,7 +396,34 @@
                         return;
                     }
                     $sort.val(wartosc);
-                    htmx.trigger($form[0], 'change');
+                    htmx.trigger($form[0], 'filtry');
+                };
+                // Kolumna startowego sortowania z parametru „sort” (FD#615).
+                var sortKolumna = table.find('thead th').index(
+                    table.find('thead th[data-sort-key="{{ sort_key|escapejs }}"]')
+                );
+                if (sortKolumna < 0) {
+                    sortKolumna = 0;
+                }
+                dt = table.DataTable({
+                    paging: true,
+                    pageLength: 25,
+                    ordering: true,
+                    order: [[sortKolumna, '{% if sort_desc %}desc{% else %}asc{% endif %}']],
+                    info: true,
+                    searching: false,
+                    language: {
+                        url: "{% static 'bpp/js/Polish.json' %}"
+                    },
+                    columnDefs: [
+                        {orderable: false, targets: [5, 8]}
+                    ],
+                    // Nasłuch sortowania dopiero po inicjalizacji (ładowanie
+                    // tłumaczeń jest asynchroniczne) — startowe sortowanie
+                    // nie może wysyłać żądania.
+                    initComplete: function() {
+                        table.on('order.dt', wyslijSortowanie);
+                    }
                 });
             }
         } catch (e) {

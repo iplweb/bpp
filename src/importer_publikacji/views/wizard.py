@@ -90,35 +90,49 @@ class SessionListView(ImporterPermissionMixin, View):
     # „Wstecz” nie przechodził po kolejnych zmianach filtrów.
     _ZMIANA_W_MIEJSCU = ("session-filter-form", "session-filter-wyczysc")
 
-    def get(self, request):
+    @staticmethod
+    def _parametry_widoku(request):
+        """Parametry listy i informacja, czy pochodzą z zapamiętanego widoku."""
         params = request.GET
-        przywrocono = False
         if "wyczysc" in params:
             request.session.pop(SESSIONS_SAVED_VIEW_KEY, None)
-            params = QueryDict()
-        elif not params:
+            return QueryDict(), False
+        if not params:
             zapamietane = request.session.get(SESSIONS_SAVED_VIEW_KEY)
             if zapamietane:
-                params = QueryDict(zapamietane)
-                przywrocono = True
+                return QueryDict(zapamietane), True
+        return params, False
 
-        ctx = _sessions_list_context(request, params)
-        querystring = ctx["sessions_querystring"]
-        if not przywrocono and ctx["filter_form"].is_valid():
-            if querystring:
-                request.session[SESSIONS_SAVED_VIEW_KEY] = querystring
+    @staticmethod
+    def _zapamietaj_widok(request, ctx, przywrocono):
+        """Zapisz bieżący widok w sesji albo — przy przywróceniu — przygotuj
+        komunikat; niepoprawny zapamiętany zestaw usuń."""
+        form = ctx["filter_form"]
+        if przywrocono:
+            opis = _sessions_filters_description(form, ctx["sort"])
+            if opis and form.is_valid():
+                ctx["przywrocone_filtry"] = opis
+            else:
+                # Zapamiętany zestaw przestał być poprawny (np. usunięty
+                # użytkownik w filtrze „Utworzył”) — nie trzymamy go dalej.
+                request.session.pop(SESSIONS_SAVED_VIEW_KEY, None)
+        elif form.is_valid():
+            if ctx["sessions_querystring"]:
+                request.session[SESSIONS_SAVED_VIEW_KEY] = ctx["sessions_querystring"]
             else:
                 request.session.pop(SESSIONS_SAVED_VIEW_KEY, None)
+
+    def get(self, request):
+        params, przywrocono = self._parametry_widoku(request)
+        ctx = _sessions_list_context(request, params)
+        self._zapamietaj_widok(request, ctx, przywrocono)
+        querystring = ctx["sessions_querystring"]
 
         url = reverse("importer_publikacji:sessions")
         if querystring:
             url = f"{url}?{querystring}"
         ctx["standalone"] = True
         ctx["sessions_url"] = url
-        if przywrocono:
-            ctx["przywrocone_filtry"] = _sessions_filters_description(
-                ctx["filter_form"], ctx["sort"]
-            )
 
         if _is_htmx_partial(request):
             response = render(request, SESSIONS_PARTIAL, ctx)

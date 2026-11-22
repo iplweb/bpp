@@ -231,7 +231,9 @@ Nad tabelą są filtry: **„Data od”**, **„Data do”**, **„Tytuł”**, 
   błędu);
 - **„Rekord wynikowy”** — „Z rekordem” (import utworzył publikację)
   albo „Bez rekordu”. W kolumnie **„Rekord”** są odnośniki **„Pokaż”**
-  (strona publikacji w BPP) i **„Edytuj”** (moduł redagowania).
+  (strona publikacji w BPP) i **„Edytuj”** (moduł redagowania). Jeśli
+  utworzoną publikację później usunięto, w kolumnie widać „usunięty”,
+  a import nadal liczy się jako „Z rekordem”.
 
 Przycisk **„Reset”** czyści filtry (sortowanie zostaje). Kliknięcie
 nagłówka kolumny zmienia sortowanie.

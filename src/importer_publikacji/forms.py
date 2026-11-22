@@ -404,10 +404,12 @@ class SessionFilterForm(forms.Form):
     title = forms.CharField(
         label="Tytuł",
         required=False,
+        max_length=500,
     )
     doi = forms.CharField(
         label="DOI",
         required=False,
+        max_length=500,
     )
     provider_name = forms.ChoiceField(
         label="Źródło",

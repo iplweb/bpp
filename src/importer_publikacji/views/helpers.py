@@ -45,7 +45,6 @@ BREADCRUMBS_OOB = "importer_publikacji/partials/_breadcrumbs_oob.html"
 # z tymi samymi kluczami — klik w nagłówek odsyła je w parametrze ``sort``.
 SESSIONS_SORT_LABELS = {
     "created": "Data",
-    "modified": "Data modyfikacji",
     "normalized_data__title": "Tytuł",
     "normalized_data__doi": "DOI / Identyfikator",
     "provider_name": "Źródło",
@@ -274,11 +273,12 @@ def _sessions_queryset(request, params=None):
     qs = scope_import_do_uczelni(qs, request)
 
     form = SessionFilterForm(params)
-    statusy = []
-    if form.is_valid():
-        statusy = form.cleaned_data.get("status") or []
-        qs = _apply_session_filters(qs, form.cleaned_data)
-    qs = _apply_status_filter(qs, statusy)
+    # Nieprawidłowe pole (np. stara zakładka z nieistniejącym statusem) nie
+    # wyłącza pozostałych filtrów: ``cleaned_data`` zawiera wtedy tylko pola
+    # poprawne, a błędy pokazuje szablon.
+    form.is_valid()
+    qs = _apply_session_filters(qs, form.cleaned_data)
+    qs = _apply_status_filter(qs, form.cleaned_data.get("status") or [])
 
     sort = params.get("sort", SESSIONS_DEFAULT_SORT)
     if sort not in SESSIONS_ALLOWED_SORTS:
@@ -306,7 +306,8 @@ def _sessions_filters_description(form, sort):
     """Czytelny opis aktywnych filtrów i sortowania (komunikat o
     przywróconym widoku, FD#615), np. ``["Status: Błąd importu"]``."""
     opis = []
-    if form.is_valid():
+    if form.is_bound:
+        form.is_valid()
         for nazwa, pole in form.fields.items():
             wartosc = form.cleaned_data.get(nazwa)
             if wartosc in (None, "", []):
@@ -335,14 +336,16 @@ def _sessions_list_context(request, params=None):
     if params is None:
         params = request.GET
     qs, form, sort = _sessions_queryset(request, params)
-    statusy = form.cleaned_data.get("status", []) if form.is_valid() else []
+    statusy = form.cleaned_data.get("status") or []
+    querystring = _sessions_querystring(params, sort)
     return {
         "sessions": qs,
         "filter_form": form,
         "sort": sort,
         "sort_key": sort.lstrip("-"),
         "sort_desc": sort.startswith("-"),
-        "sessions_querystring": _sessions_querystring(params, sort),
+        "sessions_querystring": querystring,
+        "aktywne_filtry": bool(_sessions_querystring(params, SESSIONS_DEFAULT_SORT)),
         "tylko_bledy": statusy == [ImportSession.Status.IMPORT_FAILED],
         "status_import_failed": ImportSession.Status.IMPORT_FAILED,
     }
