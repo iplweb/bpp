@@ -165,13 +165,17 @@ def test_raport_html_i_pdf(client, klinika, okres_2022):
 
 
 @pytest.mark.django_db
-def test_raport_jednostki_bez_metryk_to_404(client, klinika, okres_2022):
+def test_raport_jednostki_bez_metryk_wraca_na_liste(client, klinika, okres_2022):
+    """Jednostka bez metryk w okresie: przekierowanie na listę z komunikatem,
+    nie 404."""
     jednostka, _, _ = klinika
-    pusta = baker.make(Jednostka, uczelnia=jednostka.uczelnia)
+    pusta = baker.make(Jednostka, nazwa="Pusta Jednostka", uczelnia=jednostka.uczelnia)
     _uzytkownik(client, is_superuser=True, is_staff=True)
     wybierz_okres(client, okres_2022)
     url = reverse("ewaluacja_metryki:metryki_jednostki", args=[pusta.pk])
-    assert client.get(url).status_code == 404
+    res = client.get(url, follow=True)
+    assert res.redirect_chain[0][0] == reverse("ewaluacja_metryki:metryki_jednostek")
+    assert "Pusta Jednostka” nie ma metryk" in res.content.decode()
 
 
 @pytest.mark.django_db

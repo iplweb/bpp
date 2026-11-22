@@ -5,12 +5,11 @@ from django.shortcuts import redirect
 from django.utils.decorators import method_decorator
 from django.views import View
 
-from ewaluacja_common.models import Rodzaj_Autora
 from ewaluacja_common.okres import okres_dla_request
 from raport_slotow.uczelnia_helper import uczelnia_dla_odczytu
 
+from ..brak_metryk import uruchom_generowanie_metryk
 from ..models import StatusGenerowania
-from ..tasks import generuj_metryki_task_parallel
 from .mixins import ma_pelne_uprawnienia_ewaluacji, ma_uprawnienia_ewaluacji
 
 
@@ -66,43 +65,15 @@ class UruchomGenerowanieView(View):
         # Pobierz parametry z formularza (jeśli są)
         minimalny_pk = float(request.POST.get("minimalny_pk", 0.01))
         nadpisz = request.POST.get("nadpisz", "on") == "on"
-
-        # Pobierz zaznaczone rodzaje autorów
+        # Puste = wszystkie rodzaje z licz_sloty=True (domyślne w helperze).
         rodzaje_autora = request.POST.getlist("rodzaj_autora")
-        if not rodzaje_autora:
-            # Domyślnie wszystkie rodzaje z licz_sloty=True jeśli nic nie zaznaczono
-            rodzaje_autora = list(
-                Rodzaj_Autora.objects.filter(licz_sloty=True).values_list(
-                    "skrot", flat=True
-                )
-            )
 
-        # Oblicz liczbę autorów do przetworzenia (aby ustawić status od razu)
-        from ewaluacja_liczba_n.models import IloscUdzialowDlaAutoraZaCalosc
-
-        udzialy = IloscUdzialowDlaAutoraZaCalosc.objects.filter(okres=okres)
-        if uczelnia:
-            udzialy = udzialy.filter(uczelnia=uczelnia)
-        total_count = udzialy.count()
-
-        # Uruchom równoległy task (z domyślnym przeliczaniem liczby N)
-        result = generuj_metryki_task_parallel.delay(
-            rok_min=okres.rok_od,
-            rok_max=okres.rok_do,
-            okres_pk=okres.pk,
+        status, result = uruchom_generowanie_metryk(
+            uczelnia,
+            okres,
             minimalny_pk=minimalny_pk,
             nadpisz=nadpisz,
-            przelicz_liczbe_n=True,  # Zawsze przeliczaj liczbę N przy generowaniu metryk
             rodzaje_autora=rodzaje_autora,
-            uczelnia_id=uczelnia.pk if uczelnia else None,
-        )
-
-        # KLUCZOWE: Ustaw status w_trakcie=True OD RAZU w widoku
-        # (task będzie tylko aktualizował postęp, nie rozpoczynał od nowa)
-        status.rozpocznij_generowanie(
-            task_id=str(result.id),
-            liczba_do_przetworzenia=total_count,
-            okres=okres,
         )
 
         # Jeśli to żądanie HTMX, zwróć fragment HTML ze statusem

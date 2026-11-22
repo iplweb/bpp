@@ -3,13 +3,14 @@
 import ssl
 import unicodedata
 
+from django.contrib import messages
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.contrib.staticfiles import finders
 from django.contrib.staticfiles.storage import staticfiles_storage
 from django.core.exceptions import PermissionDenied
 from django.db.models import Count, Sum
 from django.http import Http404, HttpResponse
-from django.shortcuts import get_object_or_404, render
+from django.shortcuts import get_object_or_404, redirect, render
 from django.template.loader import render_to_string
 from django.urls import reverse
 from django.utils import timezone
@@ -22,6 +23,7 @@ from django_bpp.version import VERSION
 from ewaluacja_common.okres import okres_dla_request
 from raport_slotow.uczelnia_helper import uczelnia_dla_odczytu
 
+from ..brak_metryk import stan_metryk_okresu
 from ..dostep_jednostek import (
     jednostki_do_wgladu,
     ma_dostep_do_metryk_jednostek,
@@ -208,6 +210,10 @@ class MetrykiJednostekListaView(DostepDoMetrykJednostekMixin, TemplateView):
         context["pokaz_metryki_wydzialow"] = uzywa_wydzialow(self.request) and bool(
             wydzialy_z_metrykami(self.request)
         )
+        if not wszystkie:
+            context["stan_metryk"] = stan_metryk_okresu(
+                self.request, uczelnia_dla_odczytu(self.request), context["okres"]
+            )
         return context
 
 
@@ -225,6 +231,10 @@ class MetrykiWydzialowListaView(DostepDoMetrykJednostekMixin, TemplateView):
         context = super().get_context_data(**kwargs)
         context["okres"] = okres_dla_request(self.request)
         context["wydzialy"] = wydzialy_z_metrykami(self.request)
+        if not context["wydzialy"]:
+            context["stan_metryk"] = stan_metryk_okresu(
+                self.request, uczelnia_dla_odczytu(self.request), context["okres"]
+            )
         return context
 
 
@@ -235,6 +245,7 @@ class ZestawienieMetrykView(DostepDoMetrykJednostekMixin, View):
     template_pdf = "ewaluacja_metryki/metryki_jednostki_pdf.html"
     template_podglad = "ewaluacja_metryki/metryki_podglad.html"
     nazwa_url = None
+    nazwa_url_listy = None
     przedrostek_pliku = None
 
     def pobierz_obiekt(self, request, pk):
@@ -253,7 +264,14 @@ class ZestawienieMetrykView(DostepDoMetrykJednostekMixin, View):
         okres = okres_dla_request(request)
         raport = self.zbuduj(obiekt, uczelnia_dla_odczytu(request), okres)
         if raport.pusty:
-            raise Http404("Brak metryk ewaluacyjnych w wybranym okresie.")
+            # Np. przełączenie paska okresu na okres bez policzonych metryk —
+            # zamiast 404 wracamy na listę, która powie, co z metrykami
+            # (i w razie potrzeby uruchomi ich przeliczenie).
+            messages.info(
+                request,
+                f"„{obiekt.nazwa}” nie ma metryk ewaluacyjnych w okresie {okres}.",
+            )
+            return redirect(self.nazwa_url_listy)
 
         kontekst = {
             "raport": raport,
@@ -304,6 +322,7 @@ class ZestawienieMetrykView(DostepDoMetrykJednostekMixin, View):
 
 class MetrykiJednostkiView(ZestawienieMetrykView):
     nazwa_url = "ewaluacja_metryki:metryki_jednostki"
+    nazwa_url_listy = "ewaluacja_metryki:metryki_jednostek"
     przedrostek_pliku = "metryki_jednostki"
 
     def pobierz_obiekt(self, request, pk):
@@ -316,6 +335,7 @@ class MetrykiJednostkiView(ZestawienieMetrykView):
 
 class MetrykiWydzialuView(ZestawienieMetrykView):
     nazwa_url = "ewaluacja_metryki:metryki_wydzialu"
+    nazwa_url_listy = "ewaluacja_metryki:metryki_wydzialow"
     przedrostek_pliku = "metryki_wydzialu"
 
     def pobierz_obiekt(self, request, pk):
