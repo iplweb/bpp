@@ -16970,6 +16970,40 @@ COPY public.django_countdown_sitecountdown (id, countdown_time, message, long_de
 
 COPY public.django_migrations (id, app, name, applied) FROM stdin;
 869	powiazania_autorow	0001_initial	2000-01-01 00:00:00+00
+421	bpp	0327_uczelnia_pokazuj_formularz_zglaszania_publikacji	2000-01-01 00:00:00+00
+422	bpp	0328_charakter_formalny_charakter_crossref	2000-01-01 00:00:00+00
+424	bpp	0328_alter_uczelnia_wymagaj_informacji_o_oplatach	2000-01-01 00:00:00+00
+425	bpp	0330_merge_20220921_2152	2000-01-01 00:00:00+00
+426	bpp	0331_kierunek_studiow	2000-01-01 00:00:00+00
+427	bpp	0332_pbn_zawsze_uid_uczelni	2000-01-01 00:00:00+00
+428	bpp	0333_autorzy_kierunek_studiow	2000-01-01 00:00:00+00
+429	bpp	0334_oswiadczenie_ken_modele	2000-01-01 00:00:00+00
+431	bpp	0336_jednostka_opis_html	2000-01-01 00:00:00+00
+432	bpp	0337_oswiadczenie_ken_cleanup	2000-01-01 00:00:00+00
+433	bpp	0338_wydzial_pokazuj_opis	2000-01-01 00:00:00+00
+435	bpp	0340_skasuj_anonimowe_zdarzenia	2000-01-01 00:00:00+00
+436	bpp	0341_dyscyplina_naukowa_pbn_uid	2000-01-01 00:00:00+00
+437	pbn_api	0040_tlumaczdyscyplinmanager	2000-01-01 00:00:00+00
+438	pbn_api	0041_alter_publisher_options	2000-01-01 00:00:00+00
+439	pbn_api	0042_delete_tlumaczdyscyplinmanager_and_more	2000-01-01 00:00:00+00
+440	pbn_api	0043_remove_oswiadczenieinstytucji_id_and_more	2000-01-01 00:00:00+00
+441	pbn_api	0044_oswiadczenieinstytucji_id_and_more	2000-01-01 00:00:00+00
+443	pbn_api	0046_alter_pbn_export_queue_options_and_more	2000-01-01 00:00:00+00
+444	pbn_api	0047_alter_pbn_export_queue_options_and_more	2000-01-01 00:00:00+00
+445	pbn_api	0048_remove_pbn_export_queue_retry_politics_and_more	2000-01-01 00:00:00+00
+446	taggit	0004_alter_taggeditem_content_type_alter_taggeditem_tag	2000-01-01 00:00:00+00
+449	bpp	0342_remove_dyscyplina_naukowa_pbn_uid	2000-01-01 00:00:00+00
+450	bpp	0343_alter_typ_kbn_options_alter_patent_kc_punkty_kbn_and_more	2000-01-01 00:00:00+00
+451	bpp	0344_uczelnia_pbn_wysylaj_bez_oswiadczen	2000-01-01 00:00:00+00
+454	bpp	0347_uczelnia_deklaracja_dostepnosci_tekst_and_more	2000-01-01 00:00:00+00
+455	bpp	0348_remove_uczelnia_pokazuj_raport_dla_komisji_centralnej_and_more	2000-01-01 00:00:00+00
+456	bpp	0349_uczelnia_ranking_autorow_bez_kol_naukowych	2000-01-01 00:00:00+00
+457	bpp	0350_uczelnia_pokazuj_autorow_obcych_w_przegladaniu_danych	2000-01-01 00:00:00+00
+458	bpp	0351_uczelnia_pokazuj_autorow_bez_prac_w_przegladaniu_danych	2000-01-01 00:00:00+00
+459	bpp	0352_dyscyplina_zrodla_rok	2000-01-01 00:00:00+00
+460	bpp	0353_rekord_mat_kwartyle	2000-01-01 00:00:00+00
+461	bpp	0354_alter_dyscyplina_zrodla_options_and_more	2000-01-01 00:00:00+00
+1221	bpp	0529_motyw_zapisany	2000-01-01 00:00:00+00
 1184	zglos_publikacje	0029_autor_slowniki_protect	2000-01-01 00:00:00+00
 262	bpp	0176_auto_20190903_0108	2000-01-01 00:00:00+00
 462	bpp	0355_uczelnia_drukuj_oswiadczenia_and_more	2000-01-01 00:00:00+00
@@ -17065,6 +17099,7 @@ COPY public.django_migrations (id, app, name, applied) FROM stdin;
 567	pbn_api	0056_delete_osobazinstytucji	2000-01-01 00:00:00+00
 568	pbn_api	0057_osobazinstytucji	2000-01-01 00:00:00+00
 569	pbn_api	0058_alter_osobazinstytucji_title	2000-01-01 00:00:00+00
+372	bpp	0279_usun_ost_akt_pbn	2000-01-01 00:00:00+00
 570	pbn_api	0059_alter_osobazinstytucji__from	2000-01-01 00:00:00+00
 571	pbn_api	0060_alter_osobazinstytucji_personid	2000-01-01 00:00:00+00
 572	pbn_api	0061_remove_pbn_export_queue	2000-01-01 00:00:00+00
@@ -17339,6 +17374,7 @@ COPY public.django_migrations (id, app, name, applied) FROM stdin;
 830	miniblog	0004_migrate_to_siteblog_and_delete	2000-01-01 00:00:00+00
 832	oswiadczenia	0001_add_export_task_model	2000-01-01 00:00:00+00
 833	oswiadczenia	0002_add_offset_limit	2000-01-01 00:00:00+00
+74	sites	0001_initial	2000-01-01 00:00:00+00
 834	oswiadczenia	0003_fix_export_format_max_length	2000-01-01 00:00:00+00
 835	oswiadczenia	0004_add_przypieta_filter	2000-01-01 00:00:00+00
 1122	bpp	0480_cerif_mapowania_slownikow	2000-01-01 00:00:00+00
@@ -17530,8 +17566,6 @@ COPY public.django_migrations (id, app, name, applied) FROM stdin;
 885	raport_slotow	0006_auto_20210125_2330	2000-01-01 00:00:00+00
 886	raport_slotow	0007_auto_20210130_1407	2000-01-01 00:00:00+00
 1001	bpp	0458_faza_b_ii1_views	2000-01-01 00:00:00+00
-372	bpp	0279_usun_ost_akt_pbn	2000-01-01 00:00:00+00
-74	sites	0001_initial	2000-01-01 00:00:00+00
 1137	bpp	0489_uczelnia_mcp_wlaczone	2000-01-01 00:00:00+00
 76	taggit	0001_initial	2000-01-01 00:00:00+00
 814	komparator_pbn	0001_initial	2000-01-01 00:00:00+00
@@ -17626,6 +17660,7 @@ COPY public.django_migrations (id, app, name, applied) FROM stdin;
 1103	import_list_if	0005_liveops	2000-01-01 00:00:00+00
 978	bpp	0425_per_uczelnia_cache_view	2000-01-01 00:00:00+00
 979	bpp	0426_cache_punktacja_autora_view_uczelnia	2000-01-01 00:00:00+00
+824	menu	0001_initial	2000-01-01 00:00:00+00
 980	bpp	0427_cpd_index_rekord_uczelnia_dyscyplina	2000-01-01 00:00:00+00
 981	bpp	0428_cpd_uczelnia_not_null	2000-01-01 00:00:00+00
 982	bpp	0429_merge_20260604_1952	2000-01-01 00:00:00+00
@@ -17819,7 +17854,6 @@ COPY public.django_migrations (id, app, name, applied) FROM stdin;
 38	pbn_api	0004_journal	2000-01-01 00:00:00+00
 264	bpp	0178_auto_20190905_2020	2000-01-01 00:00:00+00
 39	pbn_api	0005_auto_20210406_0436	2000-01-01 00:00:00+00
-824	menu	0001_initial	2000-01-01 00:00:00+00
 986	bpp	0444_merge_20260616_1920	2000-01-01 00:00:00+00
 434	bpp	0339_autor_opis	2000-01-01 00:00:00+00
 43	pbn_api	0009_sentdata	2000-01-01 00:00:00+00
@@ -18151,40 +18185,6 @@ COPY public.django_migrations (id, app, name, applied) FROM stdin;
 417	bpp	0323_jednostka_pokazuj_opis	2000-01-01 00:00:00+00
 419	bpp	0325_nullbooleanfield	2000-01-01 00:00:00+00
 420	bpp	0326_auto_20220818_0012	2000-01-01 00:00:00+00
-421	bpp	0327_uczelnia_pokazuj_formularz_zglaszania_publikacji	2000-01-01 00:00:00+00
-422	bpp	0328_charakter_formalny_charakter_crossref	2000-01-01 00:00:00+00
-424	bpp	0328_alter_uczelnia_wymagaj_informacji_o_oplatach	2000-01-01 00:00:00+00
-425	bpp	0330_merge_20220921_2152	2000-01-01 00:00:00+00
-426	bpp	0331_kierunek_studiow	2000-01-01 00:00:00+00
-427	bpp	0332_pbn_zawsze_uid_uczelni	2000-01-01 00:00:00+00
-428	bpp	0333_autorzy_kierunek_studiow	2000-01-01 00:00:00+00
-429	bpp	0334_oswiadczenie_ken_modele	2000-01-01 00:00:00+00
-431	bpp	0336_jednostka_opis_html	2000-01-01 00:00:00+00
-432	bpp	0337_oswiadczenie_ken_cleanup	2000-01-01 00:00:00+00
-433	bpp	0338_wydzial_pokazuj_opis	2000-01-01 00:00:00+00
-435	bpp	0340_skasuj_anonimowe_zdarzenia	2000-01-01 00:00:00+00
-436	bpp	0341_dyscyplina_naukowa_pbn_uid	2000-01-01 00:00:00+00
-437	pbn_api	0040_tlumaczdyscyplinmanager	2000-01-01 00:00:00+00
-438	pbn_api	0041_alter_publisher_options	2000-01-01 00:00:00+00
-439	pbn_api	0042_delete_tlumaczdyscyplinmanager_and_more	2000-01-01 00:00:00+00
-440	pbn_api	0043_remove_oswiadczenieinstytucji_id_and_more	2000-01-01 00:00:00+00
-441	pbn_api	0044_oswiadczenieinstytucji_id_and_more	2000-01-01 00:00:00+00
-443	pbn_api	0046_alter_pbn_export_queue_options_and_more	2000-01-01 00:00:00+00
-444	pbn_api	0047_alter_pbn_export_queue_options_and_more	2000-01-01 00:00:00+00
-445	pbn_api	0048_remove_pbn_export_queue_retry_politics_and_more	2000-01-01 00:00:00+00
-446	taggit	0004_alter_taggeditem_content_type_alter_taggeditem_tag	2000-01-01 00:00:00+00
-449	bpp	0342_remove_dyscyplina_naukowa_pbn_uid	2000-01-01 00:00:00+00
-450	bpp	0343_alter_typ_kbn_options_alter_patent_kc_punkty_kbn_and_more	2000-01-01 00:00:00+00
-451	bpp	0344_uczelnia_pbn_wysylaj_bez_oswiadczen	2000-01-01 00:00:00+00
-454	bpp	0347_uczelnia_deklaracja_dostepnosci_tekst_and_more	2000-01-01 00:00:00+00
-455	bpp	0348_remove_uczelnia_pokazuj_raport_dla_komisji_centralnej_and_more	2000-01-01 00:00:00+00
-456	bpp	0349_uczelnia_ranking_autorow_bez_kol_naukowych	2000-01-01 00:00:00+00
-457	bpp	0350_uczelnia_pokazuj_autorow_obcych_w_przegladaniu_danych	2000-01-01 00:00:00+00
-458	bpp	0351_uczelnia_pokazuj_autorow_bez_prac_w_przegladaniu_danych	2000-01-01 00:00:00+00
-459	bpp	0352_dyscyplina_zrodla_rok	2000-01-01 00:00:00+00
-460	bpp	0353_rekord_mat_kwartyle	2000-01-01 00:00:00+00
-461	bpp	0354_alter_dyscyplina_zrodla_options_and_more	2000-01-01 00:00:00+00
-1221	bpp	0529_motyw_zapisany	2000-01-01 00:00:00+00
 \.
 
 
