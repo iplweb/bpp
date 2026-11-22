@@ -24,7 +24,8 @@ Użycie::
 
     uv run python bin/tryb-ciemny-zmienne.py PLIK [PLIK ...]
 
-Pliki ``.html`` — tylko zawartość bloków ``<style>``.
+Pliki ``.html`` — bloki ``<style>`` i atrybuty ``style="…"`` (bez
+wartości z szablonu; ``--bez-inline`` pomija atrybuty).
 """
 
 import argparse
@@ -36,9 +37,10 @@ import tinycss2
 import tinycss2.color4
 
 RE_KOLOR = re.compile(
-    r"#[0-9a-fA-F]{3,8}\b|rgba?\([^)]*\)|\b(?:white|black|gray|grey|whitesmoke)\b"
+    r"#[0-9a-fA-F]{3,8}\b|rgba?\([^)]*\)|\b(?:white|black|gray|grey|whitesmoke|green|red|blue|darkgreen|darkred|navy)\b"
 )
 RE_STYLE = re.compile(r"(<style[^>]*>)(.*?)(</style>)", re.S)
+RE_INLINE = re.compile(r'(\sstyle=")([^"]*)(")')
 RE_KOMENTARZ = re.compile(r"/\*.*?\*/|(?<![:\w])//[^\n]*", re.S)
 # Tagi Django w szablonach (mają klamry) — maskujemy na czas przetwarzania.
 RE_DJANGO = re.compile(r"\{%.*?%\}|\{\{.*?\}\}|\{#.*?#\}")
@@ -287,12 +289,22 @@ def przepisz_css(css):
     return css
 
 
-def przepisz_plik(sciezka):
+def przepisz_inline(m):
+    """Atrybut style="…" — deklaracje bez selektora (jak jedna reguła)."""
+    css = m.group(2)
+    if "{%" in css or "{{" in css:
+        return m.group(0)  # wartości z szablonu — nie ruszamy
+    return m.group(1) + przetworz_cialo(css, "[style]") + m.group(3)
+
+
+def przepisz_plik(sciezka, inline=True):
     tekst = sciezka.read_text()
     if sciezka.suffix == ".html":
         nowy = RE_STYLE.sub(
             lambda m: m.group(1) + przepisz_css(m.group(2)) + m.group(3), tekst
         )
+        if inline:
+            nowy = RE_INLINE.sub(przepisz_inline, nowy)
     else:
         nowy = przepisz_css(tekst)
     if nowy != tekst:
@@ -304,9 +316,13 @@ def przepisz_plik(sciezka):
 def main():
     parser = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
     parser.add_argument("pliki", nargs="+", type=Path)
+    parser.add_argument(
+        "--bez-inline", action="store_true", help='pomiń atrybuty style="…"'
+    )
     args = parser.parse_args()
     for plik in args.pliki:
-        print(("zmieniony  " if przepisz_plik(plik) else "bez zmian ") + str(plik))
+        zmieniony = przepisz_plik(plik, inline=not args.bez_inline)
+        print(("zmieniony  " if zmieniony else "bez zmian ") + str(plik))
 
 
 if __name__ == "__main__":

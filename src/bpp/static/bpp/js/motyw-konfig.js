@@ -2037,7 +2037,45 @@
                  zmienione: wynik.filter(function (w) { return w !== null; }) };
     }
 
-    function przetworzWezly(wezly, ciemny, tloTresci, tylkoZmiany) {
+    // Przełącznik trybu kolorów (top_bar.html) ustawia na <html>
+    // data-tryb-kolorow="jasny|ciemny". W trybie automatycznym ciemne reguły
+    // działają pod jednym z tych korzeni (patrz przetworzCss).
+    // `:where()` — warunek bez wpływu na specyficzność (jak samo `html`).
+    var KORZEN_AUTO = 'html:where(:not([data-tryb-kolorow="jasny"]))';
+    var KORZEN_CIEMNY = 'html:where([data-tryb-kolorow="ciemny"])';
+
+    // Selektor reguły pod korzeniem: `html…`/`:root…` → korzeń…, reszta →
+    // potomek korzenia.
+    // Podział listy selektorów po przecinkach spoza nawiasów (:not(a, b)).
+    function czesciSelektora(selektor) {
+        var czesci = [];
+        var glebokosc = 0;
+        var poczatek = 0;
+        for (var i = 0; i < selektor.length; i++) {
+            var z = selektor.charAt(i);
+            if (z === "(") glebokosc++;
+            else if (z === ")") glebokosc--;
+            else if (z === "," && glebokosc === 0) {
+                czesci.push(selektor.slice(poczatek, i));
+                poczatek = i + 1;
+            }
+        }
+        czesci.push(selektor.slice(poczatek));
+        return czesci;
+    }
+
+    function podKorzeniem(selektor, korzen) {
+        return czesciSelektora(selektor)
+            .map(function (s) {
+                s = s.trim();
+                var m = /^(html|:root)(?![\w-])/.exec(s);
+                if (m) return korzen + s.slice(m[0].length);
+                return korzen + " " + s;
+            })
+            .join(",");
+    }
+
+    function przetworzWezly(wezly, ciemny, tloTresci, tylkoZmiany, korzen) {
         var wyjscie = [];
         wezly.forEach(function (w) {
             if (w.surowy !== undefined) {
@@ -2050,13 +2088,16 @@
                     if (!tylkoZmiany) wyjscie.push(w.at + "{" + przetworzWezly(w.dzieci, false, "pelne", false) + "}");
                     return;
                 }
-                var srodek = przetworzWezly(w.dzieci, ciemny, tloTresci, tylkoZmiany);
+                // Klatek animacji nie przenosimy pod korzeń (to nie selektory).
+                var korzenDzieci = /keyframes/i.test(w.at) ? undefined : korzen;
+                var srodek = przetworzWezly(w.dzieci, ciemny, tloTresci, tylkoZmiany, korzenDzieci);
                 if (srodek || !tylkoZmiany) wyjscie.push(w.at + "{" + srodek + "}");
                 return;
             }
             var p = przetworzRegule(w.selektor, w.deklaracje, ciemny, tloTresci);
             if (tylkoZmiany) {
-                if (p) wyjscie.push(w.selektor + "{" + p.zmienione.join(";") + "}");
+                var selektor = korzen ? podKorzeniem(w.selektor, korzen) : w.selektor;
+                if (p) wyjscie.push(selektor + "{" + p.zmienione.join(";") + "}");
             } else {
                 wyjscie.push(w.selektor + "{" + (p ? p.pelne.join(";") : w.deklaracje) + "}");
             }
@@ -2085,7 +2126,7 @@
         ["--bpp-tekst-blad", "tekst", "#c0392b"],
     ];
 
-    function zmienneCiemne(k) {
+    function zmienneCiemne(k, korzen) {
         var pary = ZMIENNE_KOLOROW.map(function (z) {
             var kolor = czytajKolor(z[2]);
             return z[0] + ":" + piszKolor(naCiemny(kolor, z[1]) || kolor);
@@ -2093,7 +2134,7 @@
         // Akcent (linki w stylach modułów) z koloru głównego motywu.
         var glowny = czytajKolor(k.kolor_glowny);
         if (glowny) pary.push("--bpp-akcent:" + piszKolor(naCiemny(glowny, "tekst") || glowny));
-        return ":root{" + pary.join(";") + "}";
+        return (korzen || ":root") + "{" + pary.join(";") + "}";
     }
 
     // Skompilowany CSS motywu → CSS z trybem kolorów i tłem treści z konfiga.
@@ -2107,8 +2148,19 @@
         var wezly = parsujCss(css);
         if (tryb === "automatyczny") {
             var jasnyCss = przetworzWezly(wezly, false, k.tlo_tresci, false);
-            var ciemnyCss = przetworzWezly(wezly, true, k.tlo_tresci, true) + zmienneCiemne(k);
-            return jasnyCss + "@media (prefers-color-scheme: dark){" + ciemnyCss + "}";
+            // Ciemny wg systemu, chyba że odwiedzający wybrał „Jasny”;
+            // wymuszony „Ciemny” także przy jasnym systemie. Wydruk jasny.
+            var wgSystemu =
+                przetworzWezly(wezly, true, k.tlo_tresci, true, KORZEN_AUTO) +
+                zmienneCiemne(k, KORZEN_AUTO);
+            var wymuszony =
+                przetworzWezly(wezly, true, k.tlo_tresci, true, KORZEN_CIEMNY) +
+                zmienneCiemne(k, KORZEN_CIEMNY);
+            return (
+                jasnyCss +
+                "@media screen and (prefers-color-scheme: dark){" + wgSystemu + "}" +
+                "@media screen{" + wymuszony + "}"
+            );
         }
         var wynik = przetworzWezly(wezly, tryb === "ciemny", k.tlo_tresci, false);
         return tryb === "ciemny" ? wynik + zmienneCiemne(k) : wynik;

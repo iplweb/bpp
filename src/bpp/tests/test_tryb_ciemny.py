@@ -57,10 +57,18 @@ def _skompilowany(motyw):
     return Path(sciezka).read_text()
 
 
-def test_auto_wlacza_ciemny_tylko_przy_preferencji_systemu():
+def test_auto_ciemny_wg_systemu_albo_przelacznika():
+    """app-blue-auto: ciemny wg systemu, chyba że wybrano „Jasny”
+    (przełącznik na pasku), oraz wymuszony „Ciemny” bez warunku na system."""
     css = _skompilowany("app-blue-auto")
     assert re.search(
-        r"@media screen and \(prefers-color-scheme:\s*dark\)\s*\{\s*html\s*\{"
+        r"@media screen and \(prefers-color-scheme:\s*dark\)\s*\{\s*"
+        r'html:where\(:not\(\[data-tryb-kolorow="?jasny"?\]\)\)\s*\{'
+        r"\s*color-scheme:\s*dark",
+        css,
+    )
+    assert re.search(
+        r'@media screen\s*\{\s*html:where\(\[data-tryb-kolorow="?ciemny"?\]\)\s*\{'
         r"\s*color-scheme:\s*dark",
         css,
     )
@@ -177,3 +185,81 @@ def test_tryb_ciemny_bez_bialych_plam(channels_live_server, page, uczelnia, scie
     page.wait_for_load_state("networkidle")
     wynik = page.evaluate(_js_audytu(), [0.8, 40])
     assert wynik["plamy"] == []
+
+
+# --- Przełącznik trybu kolorów (top_bar.html) ------------------------------
+
+
+@pytest.mark.parametrize(
+    "motyw,oczekiwany",
+    [("app-blue-auto", True), ("app-blue", False), ("app-blue-ciemny", False)],
+)
+def test_przelacznik_tylko_przy_motywie_z_dwiema_wersjami(motyw, oczekiwany):
+    from bpp.context_processors.config import przelacznik_trybu_kolorow
+
+    assert przelacznik_trybu_kolorow(motyw, None, False, None) is oczekiwany
+
+
+def test_przelacznik_ukryty_w_podgladzie_i_przymiarce():
+    from bpp.context_processors.config import przelacznik_trybu_kolorow
+
+    assert not przelacznik_trybu_kolorow("app-blue-auto", None, True, None)
+    assert not przelacznik_trybu_kolorow("app-blue-auto", None, False, "abc")
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize(
+    "tryb,oczekiwany", [("automatyczny", True), ("ciemny", False), ("jasny", False)]
+)
+def test_przelacznik_przy_motywie_z_konfiguratora(uczelnia, tryb, oczekiwany):
+    from bpp.context_processors.config import przelacznik_trybu_kolorow
+    from bpp.models import MOTYW_WLASNY, MotywWlasny
+
+    MotywWlasny.objects.create(
+        uczelnia=uczelnia, konfig={"wersja": 1, "tryb_kolorow": tryb}, css="a{}"
+    )
+    assert przelacznik_trybu_kolorow(MOTYW_WLASNY, uczelnia, False, None) is oczekiwany
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize("motyw,jest", [("app-blue-auto", True), ("app-blue", False)])
+def test_przycisk_i_skrypt_w_head_tylko_z_flaga(client, uczelnia, motyw, jest):
+    uczelnia.theme_name = motyw
+    uczelnia.save()
+    tresc = client.get("/").content.decode()
+    assert ('data-ustaw-tryb-kolorow="ciemny"' in tresc) is jest
+    assert ('localStorage.getItem("bpp-tryb-kolorow")' in tresc) is jest
+    if jest:
+        # Skrypt ustawiający atrybut stoi PRZED arkuszami stylów.
+        assert tresc.index("bpp-tryb-kolorow") < tresc.index('rel="stylesheet"')
+
+
+@pytest.mark.django_db(transaction=True)
+def test_przelacznik_wybor_przezywa_przeladowanie(channels_live_server, page, uczelnia):
+    """Jasny system + „Ciemny” → ciemno, także po przeładowaniu; ciemny system
+    + „Jasny” → jasno."""
+    uczelnia.theme_name = "app-blue-auto"
+    uczelnia.save()
+
+    def tlo_strony():
+        return page.evaluate(
+            "getComputedStyle(document.documentElement).backgroundColor"
+        )
+
+    page.emulate_media(color_scheme="light")
+    page.goto(channels_live_server.url + "/")
+    page.wait_for_load_state("networkidle")
+    jasne = tlo_strony()
+    page.evaluate("window.bppTrybKolorow.ustaw('ciemny')")
+    assert tlo_strony() != jasne
+    page.reload()
+    page.wait_for_load_state("networkidle")
+    assert page.evaluate("document.documentElement.dataset.trybKolorow") == "ciemny"
+    assert tlo_strony() != jasne
+    wynik = page.evaluate(_js_audytu(), [0.8, 40])
+    assert wynik["plamy"] == []
+
+    page.emulate_media(color_scheme="dark")
+    page.locator('[data-ustaw-tryb-kolorow="jasny"]').dispatch_event("click")
+    assert page.evaluate("localStorage.getItem('bpp-tryb-kolorow')") == "jasny"
+    assert tlo_strony() == jasne

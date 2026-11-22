@@ -87,6 +87,59 @@ STRONY_ODKRYWANE = [
     ("publikacja", "/multiseek/results/", r"^/bpp/rekord/"),
 ]
 
+# Moduły spoza menu (osobne arkusze CSS, panele obsługi) — dla --moduly.
+MODULY_DODATKOWE = [
+    "/ewaluacja_dwudyscyplinowcy/",
+    "/pbn_export_queue/",
+    "/pbn_import/",
+    "/pbn_downloader_app/",
+    "/pbn-wysylka-oswiadczen/",
+    "/komparator_pbn/",
+    "/komparator-pbn-udzialy/",
+    "/komparator-publikacji-pbn/",
+    "/komparator-zrodel-pbn/",
+    "/rozbieznosci_dyscyplin/",
+    "/przemapuj-zrodla-pbn/",
+    "/importer_autorow_pbn/",
+    "/stan_systemu/",
+    "/live/",
+]
+
+JS_LINKI_MENU = """() => [...document.querySelectorAll('#example-menu a[href]')]
+  .map((a) => a.getAttribute('href'))"""
+
+
+def wczytaj(page, adres):
+    """goto z czekaniem na ciszę w sieci; strony z ciągłym połączeniem
+    (SSE, odświeżanie postępu) nigdy jej nie osiągają — wtedy wystarczy
+    `load`."""
+    try:
+        page.goto(adres, wait_until="networkidle", timeout=15000)
+    except PlaywrightError as e:
+        if "Download is starting" in str(e):
+            return False  # link do pliku (np. XLSX), nie strona
+        try:
+            page.goto(adres, wait_until="load", timeout=30000)
+        except PlaywrightError as e2:
+            print(f"!! {adres}: {str(e2).splitlines()[0]}")
+            return False
+    page.wait_for_timeout(400)
+    return True
+
+
+def strony_modulow(page, baza):
+    """Linki z menu (zalogowany admin) + MODULY_DODATKOWE: (nazwa, ścieżka)."""
+    page.goto(baza + "/", wait_until="networkidle")
+    sciezki = []
+    for h in page.evaluate(JS_LINKI_MENU) + MODULY_DODATKOWE:
+        h = re.sub(r"^https?://[^/]+", "", h or "").split("#")[0].split("?")[0]
+        if not h.startswith("/") or h.startswith("/admin") or "logout" in h:
+            continue
+        if h not in sciezki:
+            sciezki.append(h)
+    return [("m:" + (h.strip("/").replace("/", "_") or "glowna"), h) for h in sciezki]
+
+
 # Strony odkrywane z dodatkowym warunkiem: (nazwa, lista, regex, selektor,
 # który musi być na stronie docelowej). Szczegóły metryki — autor z pracami
 # wybranymi (wiersze tr.success); optymalizacja — link ze szczegółów.
@@ -227,10 +280,23 @@ def argumenty():
     p.add_argument("--wyjscie", default=None, help="katalog na zrzuty i raport")
     p.add_argument("--mobile", action="store_true", help="wąski ekran 390×844")
     p.add_argument("--jasny", action="store_true", help="color_scheme=light")
+    p.add_argument(
+        "--przelacznik",
+        choices=["jasny", "ciemny"],
+        help="wybór przełącznika trybu kolorów (localStorage) przed wczytaniem",
+    )
     p.add_argument("--prog", type=float, default=0.8)
     p.add_argument("--min-rozmiar", type=int, default=40)
     p.add_argument("--strony", help="lista nazw stron po przecinku")
     p.add_argument("--scisle", action="store_true")
+    p.add_argument(
+        "--moduly",
+        action="store_true",
+        help="także strony z menu i moduły obsługi (MODULY_DODATKOWE)",
+    )
+    p.add_argument(
+        "--tylko-moduly", action="store_true", help="tylko strony z --moduly"
+    )
     p.add_argument("--szczegoly", action="store_true", help="wypisz elementy")
     return p.parse_args()
 
@@ -288,7 +354,15 @@ class Przebieg:
         return wynik
 
     def strony(self, page):
+        if self.a.tylko_moduly:
+            for nazwa, sciezka in strony_modulow(page, self.baza):
+                if wczytaj(page, self.baza + sciezka):
+                    self.zbadaj(page, nazwa, sciezka)
+            return
         strony = list(STRONY_STALE)
+        if self.a.moduly:
+            znane = {sc for _n, sc in strony}
+            strony += [x for x in strony_modulow(page, self.baza) if x[1] not in znane]
         for nazwa, lista, wzorzec in STRONY_ODKRYWANE:
             if not self.chce(nazwa):
                 continue
@@ -299,9 +373,7 @@ class Przebieg:
                 print(f"!! nie znalazłem strony {nazwa} na {lista}")
         strony += self.strony_z_warunkiem(page)
         for nazwa, sciezka in strony:
-            if self.chce(nazwa):
-                page.goto(self.baza + sciezka, wait_until="networkidle")
-                page.wait_for_timeout(400)
+            if self.chce(nazwa) and wczytaj(page, self.baza + sciezka):
                 self.zbadaj(page, nazwa, sciezka)
 
     def interakcje(self, page):
@@ -334,11 +406,20 @@ class Przebieg:
         page.wait_for_timeout(500)
         self.zbadaj(page, "menu", "/ (menu)", full_page=False, hover=False)
 
+    def nowy_kontekst(self, przegladarka):
+        kontekst = przegladarka.new_context(**self.opcje)
+        if self.a.przelacznik:
+            kontekst.add_init_script(
+                f"window.localStorage.setItem('bpp-tryb-kolorow', "
+                f"'{self.a.przelacznik}')"
+            )
+        return kontekst
+
     def logowanie(self, przegladarka):
         # Strona logowania — bez sesji.
         if not self.chce("logowanie"):
             return
-        kontekst = przegladarka.new_context(**self.opcje)
+        kontekst = self.nowy_kontekst(przegladarka)
         page = kontekst.new_page()
         page.goto(self.baza + "/accounts/login/", wait_until="networkidle")
         self.zbadaj(page, "logowanie", "/accounts/login/")
@@ -355,13 +436,14 @@ def main():
     przebieg = Przebieg(a, baza, wyjscie)
     with sync_playwright() as pw:
         przegladarka = pw.chromium.launch()
-        page = przegladarka.new_context(**przebieg.opcje).new_page()
+        page = przebieg.nowy_kontekst(przegladarka).new_page()
         if token:
             page.goto(f"{baza}/__autologin__/?token={token}")
         przebieg.strony(page)
-        przebieg.interakcje(page)
-        przebieg.menu(page)
-        przebieg.logowanie(przegladarka)
+        if not a.tylko_moduly:
+            przebieg.interakcje(page)
+            przebieg.menu(page)
+            przebieg.logowanie(przegladarka)
         przegladarka.close()
 
     raport = przebieg.raport

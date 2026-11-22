@@ -43,10 +43,10 @@
                 list-style: none;
                 cursor: pointer;
                 padding: 0.5rem;
-                background-color: #f4f4f4;
-                border: 1px solid #ddd;
+                background-color: var(--bpp-tlo-pow-2, #f4f4f4);
+                border: 1px solid var(--bpp-ramka, #ddd);
                 border-radius: 3px;
-                color: #333;
+                color: var(--bpp-tekst, #333);
                 font-weight: 600;
                 transition: background-color 0.3s;
             }
@@ -67,7 +67,7 @@
             }
 
             details.opcje-zaawansowane > summary:hover {
-                background-color: #e8e8e8;
+                background-color: var(--bpp-tlo-hover, #e8e8e8);
             }
 
             details.opcje-zaawansowane[open] > summary {
@@ -76,9 +76,9 @@
 
             .opcje-zaawansowane__body {
                 padding: 1rem;
-                border: 1px solid #ddd;
+                border: 1px solid var(--bpp-ramka, #ddd);
                 border-top: none;
-                background-color: #fafafa;
+                background-color: var(--bpp-tlo-pow-2, #fafafa);
             }
 
             /* Poza fieldsetem Foundation nie wymusza border-box na float-gridzie,

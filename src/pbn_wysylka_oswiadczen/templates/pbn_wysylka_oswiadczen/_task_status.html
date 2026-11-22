@@ -29,7 +29,7 @@
     animation: fadeInScale 0.4s ease-out;
 }
 .status-completed .fi-check {
-    color: green;
+    color: var(--bpp-tekst-sukces, green);
     font-size: 1.5rem;
 }
 .progress-meter {
@@ -62,19 +62,19 @@
 
             <table class="small">
                 <tr>
-                    <td><span class="fi-check" style="color: green;"></span> Sukces:</td>
+                    <td><span class="fi-check" style="color: var(--bpp-tekst-sukces, green);"></span> Sukces:</td>
                     <td><strong>{{ latest_task.success_count }}</strong></td>
                 </tr>
                 <tr>
-                    <td><span class="fi-x" style="color: red;"></span> Błędy:</td>
+                    <td><span class="fi-x" style="color: var(--bpp-tekst-blad, red);"></span> Błędy:</td>
                     <td><strong>{{ latest_task.error_count }}</strong></td>
                 </tr>
                 <tr>
-                    <td><span class="fi-refresh" style="color: blue;"></span> Zsynchronizowane:</td>
+                    <td><span class="fi-refresh" style="color: var(--bpp-akcent, blue);"></span> Zsynchronizowane:</td>
                     <td><strong>{{ latest_task.synchronized_count }}</strong></td>
                 </tr>
                 <tr>
-                    <td><span class="fi-minus" style="color: gray;"></span> Pominięte:</td>
+                    <td><span class="fi-minus" style="color: var(--bpp-tekst-przygaszony, gray);"></span> Pominięte:</td>
                     <td><strong>{{ latest_task.skipped_count }}</strong></td>
                 </tr>
             </table>
@@ -115,19 +115,19 @@
 
         <table class="small">
             <tr>
-                <td><span class="fi-check" style="color: green;"></span> Sukces:</td>
+                <td><span class="fi-check" style="color: var(--bpp-tekst-sukces, green);"></span> Sukces:</td>
                 <td><strong>{{ latest_task.success_count }}</strong></td>
             </tr>
             <tr>
-                <td><span class="fi-x" style="color: red;"></span> Błędy:</td>
+                <td><span class="fi-x" style="color: var(--bpp-tekst-blad, red);"></span> Błędy:</td>
                 <td><strong>{{ latest_task.error_count }}</strong></td>
             </tr>
             <tr>
-                <td><span class="fi-refresh" style="color: blue;"></span> Zsynchronizowane:</td>
+                <td><span class="fi-refresh" style="color: var(--bpp-akcent, blue);"></span> Zsynchronizowane:</td>
                 <td><strong>{{ latest_task.synchronized_count }}</strong></td>
             </tr>
             <tr>
-                <td><span class="fi-minus" style="color: gray;"></span> Pominięte:</td>
+                <td><span class="fi-minus" style="color: var(--bpp-tekst-przygaszony, gray);"></span> Pominięte:</td>
                 <td><strong>{{ latest_task.skipped_count }}</strong></td>
             </tr>
         </table>

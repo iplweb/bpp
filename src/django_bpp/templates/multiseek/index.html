@@ -400,17 +400,17 @@
         }
         .djangoql-pretty {
             font-family: monospace; white-space: pre; overflow-x: auto;
-            background: #f6f6f6; padding: .6rem; border-radius: 3px;
+            background: var(--bpp-tlo-pow-2, #f6f6f6); padding: .6rem; border-radius: 3px;
             line-height: 1.5; margin-bottom: 1rem;
         }
-        .dql-keyword { color: #8959a8; font-weight: bold; }
-        .dql-op { color: #3e999f; }
-        .dql-name { color: #4271ae; }
+        .dql-keyword { color: var(--bpp-tekst-przygaszony, #8959a8); font-weight: bold; }
+        .dql-op { color: var(--bpp-akcent, #3e999f); }
+        .dql-name { color: var(--bpp-akcent, #4271ae); }
         .dql-dot { color: #999; }
-        .dql-str { color: #718c00; }
+        .dql-str { color: var(--bpp-tekst-sukces, #718c00); }
         .dql-num { color: #f5871f; }
-        .dql-bool, .dql-none { color: #c82829; }
-        .dql-paren { color: #555; }
+        .dql-bool, .dql-none { color: var(--bpp-tekst-blad, #c82829); }
+        .dql-paren { color: var(--bpp-tekst-przygaszony, #555); }
     </style>
     <iframe src="./live-results/" width="100%" id="if"
             name="list_frame" scrolling="no"

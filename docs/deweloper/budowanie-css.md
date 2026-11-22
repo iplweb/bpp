@@ -246,9 +246,17 @@ zmian), w ciemnym definiują je oba mechanizmy: `_tryb-ciemny.scss` (blok
 `test_zmienne_kolorow_zdefiniowane_w_obu_trybach_ciemnych` pilnuje, żeby
 każda użyta zmienna była zdefiniowana w obu miejscach.
 
-Zamianę robi `bin/tryb-ciemny-zmienne.py PLIK…` (pliki `.html` — tylko
-bloki `<style>`; obsługuje zagnieżdżenia SCSS; plakietki i barwne gradienty
-skal zostawia). Wynik przejrzyj w `git diff`.
+Zamianę robi `bin/tryb-ciemny-zmienne.py PLIK…` (pliki `.html` — bloki
+`<style>` i atrybuty `style="…"`; obsługuje zagnieżdżenia SCSS; plakietki
+i barwne gradienty skal zostawia). Wynik przejrzyj w `git diff`. Przepuszczone
+są nim arkusze modułów (`src/*/static/*/scss/*.scss` poza motywem i adminem,
+`deduplikator_publikacji.css`) oraz szablony z kolorami (bez admina, wydruków
+i PDF-ów oraz samodzielnych stron bez motywu). **Nowy kolor w stylu modułu
+albo szablonu** — pisz od razu `var(--bpp-…, kolor)` albo przepuść plik przez
+narzędzie.
+
+Audyt modułów: `bin/tryb-ciemny-audyt.py --moduly` (strony z menu + lista
+`MODULY_DODATKOWE`) albo `--tylko-moduly`.
 
 Wykresy JS (Plotly, circle-progress) w metrykach biorą kolory z wyliczonego
 stylu strony: `ewaluacja_metryki/js/wykresy-motyw.js` owija
@@ -259,3 +267,30 @@ mechanizmów trybu ciemnego bez znajomości palety.
 Audyt (`bin/tryb-ciemny-audyt.py`) sprawdza też wiersze tabel w stanie
 `:hover` (wpisy `HOVER`), tekst SVG (`fill`) i jasne tło wykresów SVG.
 Zawartości `<canvas>` nie ocenia.
+
+### Przełącznik jasny/ciemny na pasku menu
+
+Przy motywach z obiema wersjami (`*-auto` z `BPP_THEMES` i motyw
+z konfiguratora w trybie „automatyczny”) `top_bar.html` pokazuje
+przełącznik **kolory** (Automatyczny / Jasny / Ciemny). Flagę
+`TRYB_KOLOROW_PRZELACZNIK` liczy `przelacznik_trybu_kolorow()`
+w `bpp/context_processors/config.py` (w podglądzie konfiguratora i przy
+przymiarce — ukryty).
+
+- Wybór trzyma `localStorage` (`bpp-tryb-kolorow`); krótki skrypt w `<head>`
+  `bare.html` (przed CSS — bez mignięcia) ustawia
+  `<html data-tryb-kolorow="jasny|ciemny">`; brak atrybutu = jak system.
+  Kliknięcia obsługuje `bpp/js/tryb-kolorow.js`.
+- CSS: ciemne reguły pod dwoma korzeniami —
+  `@media screen and (prefers-color-scheme: dark)` +
+  `html:where(:not([data-tryb-kolorow="jasny"]))` oraz `@media screen` +
+  `html:where([data-tryb-kolorow="ciemny"])`. W SCSS to parametr
+  `$korzen` mixinu `bpp-tryb-ciemny` (patrz `app-blue-auto.scss`),
+  w konfiguratorze — `KORZEN_AUTO`/`KORZEN_CIEMNY` w `przetworzCss`.
+  `:where()` nie dodaje specyficzności, więc reguły zachowują się jak pod
+  zwykłym `html`. Wydruk zawsze jasny.
+- Koszt: ciemne reguły są w CSS dwa razy. `app-blue-auto.css`: 382 KB →
+  577 KB (gzip 61 KB → 76 KB); motyw z konfiguratora w trybie
+  automatycznym ok. 412 KB → 605 KB (gzip 67 KB → 85 KB).
+- Audyt z wymuszonym wyborem: `bin/tryb-ciemny-audyt.py --jasny
+  --przelacznik ciemny` (system jasny, wybrany „Ciemny”).

@@ -225,10 +225,10 @@
                         {% endif %}
                     </td>
                     <td>{{ elem.rok }}</td>
-                    <td{% if elem.ma_rozbieznosc_punktow %} style="background-color: #fff3cd;"{% endif %}>
+                    <td{% if elem.ma_rozbieznosc_punktow %} style="background-color: var(--bpp-tlo-ostrzezenie, #fff3cd);"{% endif %}>
                         {{ elem.punkty_bpp|default:"-" }}
                     </td>
-                    <td{% if elem.ma_rozbieznosc_punktow %} style="background-color: #d4edda;"{% endif %}>
+                    <td{% if elem.ma_rozbieznosc_punktow %} style="background-color: var(--bpp-tlo-sukces, #d4edda);"{% endif %}>
                         {{ elem.punkty_pbn|default:"-" }}
                     </td>
                     <td>

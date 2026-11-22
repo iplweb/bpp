@@ -22,8 +22,8 @@
 
         /* Modern pagination styling */
         .pagination {
-            background: #f8f9fa;
-            border: 1px solid #dee2e6;
+            background: var(--bpp-tlo-pow-2, #f8f9fa);
+            border: 1px solid var(--bpp-ramka, #dee2e6);
             border-radius: 8px;
             padding: 0.75rem 1rem;
             margin: 1.5rem 0;
@@ -40,15 +40,15 @@
 
         .pagination li a,
         .pagination li span {
-            background: #fff;
-            border: 1px solid #dee2e6;
+            background: var(--bpp-tlo-pow, #fff);
+            border: 1px solid var(--bpp-ramka, #dee2e6);
             border-radius: 6px;
             padding: 0.5rem 0.75rem;
             margin: 0 0.25rem;
             font-weight: 500;
             transition: all 0.2s ease;
             text-decoration: none;
-            color: #007bff;
+            color: var(--bpp-akcent, #007bff);
         }
 
         .pagination li a:hover {
@@ -69,16 +69,16 @@
 
         .pagination li.disabled a,
         .pagination li.disabled span {
-            background: #e9ecef;
-            color: #6c757d;
-            border-color: #dee2e6;
+            background: var(--bpp-tlo-pow-2, #e9ecef);
+            color: var(--bpp-tekst-przygaszony, #6c757d);
+            border-color: var(--bpp-ramka, #dee2e6);
             cursor: not-allowed;
         }
 
         .pagination li.ellipsis span {
             background: transparent;
             border: none;
-            color: #6c757d;
+            color: var(--bpp-tekst-przygaszony, #6c757d);
             padding: 0 0.5rem;
         }
 
@@ -98,9 +98,9 @@
 
         .pagination .pagination-previous.disabled a,
         .pagination .pagination-next.disabled a {
-            background: #e9ecef;
-            color: #6c757d;
-            border-color: #dee2e6;
+            background: var(--bpp-tlo-pow-2, #e9ecef);
+            color: var(--bpp-tekst-przygaszony, #6c757d);
+            border-color: var(--bpp-ramka, #dee2e6);
         }
     </style>
 

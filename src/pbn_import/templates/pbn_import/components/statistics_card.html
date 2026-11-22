@@ -66,11 +66,11 @@
 }
 
 .stat-card {
-    background: white;
+    background: var(--bpp-tlo-pow, white);
     border-radius: 10px;
     padding: 15px;
     text-align: center;
-    border: 2px solid #e0e0e0;
+    border: 2px solid var(--bpp-ramka, #e0e0e0);
     transition: all 0.3s;
     position: relative;
     overflow: hidden;
@@ -101,14 +101,14 @@
 
 .stat-icon {
     font-size: 2rem;
-    color: #667eea;
+    color: var(--bpp-tekst-przygaszony, #667eea);
     margin-bottom: 10px;
 }
 
 .stat-value {
     font-size: 1.8rem;
     font-weight: bold;
-    color: #333;
+    color: var(--bpp-tekst, #333);
     margin-bottom: 5px;
     animation: countUp 1s ease-out;
 }
@@ -125,7 +125,7 @@
 }
 
 .stat-label {
-    color: #666;
+    color: var(--bpp-tekst-przygaszony, #666);
     font-size: 0.9rem;
 }
 
@@ -136,7 +136,7 @@
 }
 
 .coffee-card {
-    background: linear-gradient(135deg, #fff5e6 0%, #ffe6cc 100%);
+    background: linear-gradient(135deg, var(--bpp-tlo-ostrzezenie, #fff5e6) 0%, var(--bpp-tlo-ostrzezenie, #ffe6cc) 100%);
     border-color: #d4a574;
 }
 
@@ -156,11 +156,11 @@
 }
 
 .error-card .stat-icon {
-    color: #dc3545;
+    color: var(--bpp-tekst-blad, #dc3545);
 }
 
 .api-card .stat-icon {
-    color: #17a2b8;
+    color: var(--bpp-akcent, #17a2b8);
     animation: pulse 2s infinite;
 }
 

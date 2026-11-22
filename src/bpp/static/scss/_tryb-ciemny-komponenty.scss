@@ -14,18 +14,13 @@
 // (bin/tryb-ciemny-audyt.py pokaże, czego brakuje).
 // =============================================================================
 
-@mixin bpp-tryb-ciemny-komponenty {
-  html {
+@mixin bpp-tryb-ciemny-komponenty($korzen: "html") {
+  #{$korzen} {
     // ramka: border-bottom-color
     #breadcrumbs-wrapper,
-    .bpp-historia-tabela tbody tr,
-    .bpp-historia-tabela thead th,
     .breadcrumbs-tips-wrapper,
     .ewaluacja-optymalizacja__publication-item,
     .global-search-help li,
-    .grp-description,
-    .grp-module .grp-row,
-    .grp-module h2,
     .lata__decade-heading,
     .mcp-strona__klient[open] > .mcp-strona__klient-nazwa,
     .multiseek-bibtex-container .bibtex-actions,
@@ -39,15 +34,12 @@
     .recent-abstract-item,
     .recent-publication-item,
     .section-title,
-    .select-all-container,
     .single-article-container .article-body h2,
     .single-article-container .article-body table td,
     .single-article-container .article-body table th,
     .single-article-container .article-header,
     .slots-section table tbody tr,
     .slots-section table thead th,
-    .statements-list td,
-    .statements-list th,
     :last-child > .accordion-content:last-child,
     :last-child:not(.is-active) > .accordion-title,
     hr,
@@ -56,13 +48,9 @@
     }
 
     // ramka: border-color
-    #bibtex-content,
     .accordion-content,
     .accordion-title,
-    .active-session-item,
     .admin-buttons-centered .button,
-    .alert-box.alert,
-    .alert-box.secondary,
     .author-ids-panel,
     .autor-page__chip span,
     .autor-page__id-card,
@@ -78,8 +66,6 @@
     .autorzy-modern .autorzy-search-wrapper .autorzy-search-form .autorzy-search-group,
     .code-block,
     .code-inline,
-    .collapsible-content,
-    .collapsible-trigger,
     .discipline-discrepancy-card,
     .edit-button,
     .edit-panel .edit-buttons .button,
@@ -95,11 +81,8 @@
     .external-links-grid .external-link-item,
     .fd-edit-btn,
     .fieldset,
-    .form-inline .input-group-label,
     .global-search-input,
-    .grp-module,
     .import-filtr-roznic .import-filtr-pole,
-    .import-progress-compact,
     .info-card,
     .jednostka-add-button,
     .jednostka-card,
@@ -129,8 +112,6 @@
     .main-page-button-secondary,
     .mcp-strona__klient,
     .mcp-strona__kod,
-    .modal-author-links a,
-    .modal-candidate-row,
     .modern-header .text-center .input-group,
     .modern-pagination ul.pagination li .page-btn,
     .modern-pagination ul.pagination li a,
@@ -150,14 +131,11 @@
     .multiseek-report-title,
     .multiseek-report-title .title-edit-btn,
     .news-article-card,
-    .opcje-zaawansowane__body,
     .pagination-btn,
     .praca-mono__bibtex-textarea,
     .praca-mono__card,
     .praca-mono__related-search,
-    .prettyprint,
     .print-button,
-    .progress-bar,
     .ranking-results-container .export-section .dropdown-button,
     .ranking-results-container .export-section .dropdown-button:hover,
     .ranking-results-container .export-section .dropdown-content,
@@ -171,9 +149,7 @@
     .source-sidebar .external-ids-panel,
     .source-sidebar .external-ids-panel .id-badge,
     .stat-box,
-    .stat-card,
     .stats-navigation,
-    .subtask-bar,
     .tabs-content,
     .tabs-content.vertical,
     .tile-card,
@@ -182,16 +158,10 @@
     .wizard-nav-btn,
     .wydzial-card,
     .wydzial-stats .stat-item,
-    .zapytanie-help-card,
-    .zapytanie-help-card kbd,
-    .zapytanie-help-sublevel ul.examples code,
-    .zapytanie-history-card .history-remove,
-    .zapytanie-model-group .button,
     .zrodla__page-btn,
     .zrodla__pagination-nav,
     .zrodla__search-group,
     .zrodlo-card,
-    details.opcje-zaawansowane > summary,
     table.multiseek-pivot td,
     table.multiseek-pivot th {
       border-color: var(--tc-ramka);
@@ -201,21 +171,6 @@
     .mcp-strona__uwaga,
     blockquote {
       border-left-color: var(--tc-ramka);
-    }
-
-    // ramka: border-left-color !important
-    .importy-table .grupa-lewa {
-      border-left-color: var(--tc-ramka) !important;
-    }
-
-    // ramka: border-right-color
-    .bpp-historia-tabela thead th {
-      border-right-color: var(--tc-ramka);
-    }
-
-    // ramka: border-right-color !important
-    .compact-table .table-border-right {
-      border-right-color: var(--tc-ramka) !important;
     }
 
     // ramka: border-top-color
@@ -242,10 +197,6 @@
     .accordion-title,
     .admin-buttons-centered .button.btn-add:hover,
     .admin-buttons-centered .button.btn-add:hover .fi,
-    .alert-box.info,
-    .alert-info,
-    .alert-info h4,
-    .api-card .stat-icon,
     .author-checkbox-item a.author-profile-link,
     .author-ids .id-item a,
     .author-info-section a,
@@ -266,7 +217,6 @@
     .autorzy-modern .autorzy-letter-index .autorzy-letter-pills .autorzy-letter-pill:hover:not(.active):not(.disabled),
     .banner-close,
     .banner-icon,
-    .bpp-historia-tabela tbody th a,
     .breadcrumbs a,
     .button-group.clear .button,
     .button-group.clear .button.disabled,
@@ -322,8 +272,6 @@
     .button-group.hollow.primary .button[disabled],
     .button-group.hollow.primary .button[disabled]:focus,
     .button-group.hollow.primary .button[disabled]:hover,
-    .dql-name,
-    .dql-op,
     .dropdown.menu .submenu li a:hover,
     .dropdown.menu > li.is-active > a,
     .edit-panel .edit-buttons .button.btn-add:hover,
@@ -347,7 +295,6 @@
     .jednostka-card-main a:hover,
     .jednostka__author-link,
     .letter-index .letter-pills .letter-pill:hover:not(.active):not(.disabled),
-    .log-info .log-level,
     .metrics-grid > div .metric-value.impact,
     .modern-header h1 .fi-foundation,
     .modern-header h2 .fi-foundation,
@@ -377,9 +324,7 @@
     .single-article-container .article-header .article-breadcrumb .back-link:hover,
     .single-article-container .article-header .article-metadata .metadata-item i,
     .single-article-container .article-header .article-metadata .metadata-item.admin-link a:hover,
-    .sort-link:hover,
     .source-sidebar .external-ids-panel .id-badge a,
-    .status-label.status-running,
     .tabs-title > a,
     .tabs-title > a:focus,
     .tabs-title > a:hover,
@@ -396,8 +341,6 @@
     .unit-hierarchy .hierarchy-card.hierarchy-parent a:hover,
     .wizard-wybor-info .wizard-wybor-label,
     .wydzial-card a:hover,
-    .zapytanie-help-card summary,
-    .zapytanie-help-sublevel ul.examples code,
     .zrodlo-card .zrodlo-name a:hover {
       color: var(--tc-akcent);
     }
@@ -413,8 +356,6 @@
     .admin-status--danger,
     .admin-status--error,
     .admin-status--red,
-    .alert-box.alert,
-    .alert-text,
     .button-group.clear .button.alert,
     .button-group.clear .button.alert.disabled,
     .button-group.clear .button.alert.disabled:focus,
@@ -455,9 +396,6 @@
     .discipline-discrepancy-card.different-disciplines h5,
     .discipline-discrepancy-card.different-disciplines h5 i,
     .discipline-discrepancy-card.different-disciplines small,
-    .dql-bool,
-    .dql-none,
-    .error-card .stat-icon,
     .ewaluacja-optymalizacja__diff--negative,
     .ewaluacja-optymalizacja__slot-error,
     .ewaluacja-optymalizacja__value-negative,
@@ -469,22 +407,16 @@
     .komparator-pbn__status-details--error,
     .komparator-pbn__status-icon--error,
     .komparator-pbn__status-title--error,
-    .log-critical .log-level,
-    .log-error .log-level,
     .mcp-strona__komunikat--blad,
     .metrics-grid > div .metric-value.points,
     .multiseek-table-report .multiseek-remove-from-results a,
     .pbn-error-header,
     .pbn-error-text,
     .praca-mono__metric-value--points,
-    .przemapuj-mismatch,
     .source-sidebar .external-ids-panel .id-badge .deleted-notice,
-    .status-label.status-failed,
     .top-bar li > a[href*=logout]:hover,
     .top-bar li > a[href*=microsoftonline]:hover,
     .uczelnia__tile-icon--red,
-    .zapytanie-explain-tree .node-count.zero,
-    .zapytanie-history-card .history-remove:hover,
     .zrodla__deleted-warning {
       color: var(--tc-blad-tekst);
     }
@@ -501,7 +433,6 @@
     }
 
     // tekst: --tc-ostrzezenie-tekst
-    .alert-box.warning,
     .autorzy-modern .autorzy-no-results h4,
     .autorzy-modern .autorzy-no-results p,
     .button-group.clear .button.warning:focus,
@@ -530,7 +461,6 @@
     .stat-box-deleted-journals small,
     .stat-box-deleted-pbn small,
     .stat-box-deleted-scientists small,
-    .zapytanie-explain-tree .node-count.dead,
     .zrodla__empty-text,
     .zrodla__empty-title {
       color: var(--tc-ostrzezenie-tekst);
@@ -566,7 +496,6 @@
     .autorzy-modern .autorzy-header .autorzy-subtitle,
     .autorzy-modern .autorzy-pagination .autorzy-pagination-info,
     .autorzy-modern .autorzy-search-wrapper .autorzy-search-form .autorzy-search-group .autorzy-search-label,
-    .bpp-historia-tabela thead th,
     .button-group.clear .button.secondary,
     .button-group.clear .button.secondary.disabled,
     .button-group.clear .button.secondary.disabled:focus,
@@ -603,8 +532,6 @@
     .discipline-discrepancy-card.empty-pbn h5,
     .discipline-discrepancy-card.empty-pbn h5 i,
     .discipline-discrepancy-card.empty-pbn small,
-    .dql-keyword,
-    .dql-paren,
     .edit-button,
     .edit-panel .edit-info,
     .ewaluacja-optymalizacja__author-discipline,
@@ -625,16 +552,11 @@
     .global-search-help,
     .global-search-help .example,
     .global-search-loading,
-    .grp-description,
-    .grp-module h2,
     .holder.checkbox .help-text,
     .id-item small,
     .import-filtr-licznik,
     .import-filtr-pager .import-filtr-pager-info,
     .import-orcid,
-    .importy-legenda,
-    .importy-table .brak,
-    .importy-table .meta,
     .jednostka-card .jednostka-details,
     .jednostka-card .jednostka-stats,
     .jednostka__function-text,
@@ -650,13 +572,9 @@
     .lata__seo-text,
     .lata__subtitle,
     .lata__year-count,
-    .liveop-scan #op-log,
-    .log-debug .log-level,
-    .log-timestamp,
     .main-page-button-secondary .fi-magnifying-glass,
     .mcp-strona__komunikat,
     .mcp-strona__podpowiedz,
-    .menu-click-item:hover .menu-label,
     .metrics-grid > div .metric-label,
     .metrics-grid > div .metric-value.wos,
     .modern-header .subheader,
@@ -672,7 +590,6 @@
     .news-article-card .article-content .article-meta,
     .op-controls-cancel,
     .op-stage,
-    .page-header h2,
     .pasek-okresu__opis,
     .praca-mono__abstract-label,
     .praca-mono__author-pozycja,
@@ -685,10 +602,6 @@
     .praca-mono__related-count,
     .praca-mono__title-translation,
     .print-button.print-button-alt,
-    .progress-meta,
-    .progress-percent,
-    .progress-step,
-    .progress-text,
     .publication-title-section h2 span,
     .punkty-ewaluacji__lata,
     .punkty-ewaluacji__naglowek,
@@ -699,7 +612,6 @@
     .ranking-results-container .title-section .subtitle,
     .recent-abstract-item .abstract-meta,
     .recent-publication-item .publication-meta,
-    .rekord-id-cell,
     .rok__metadata,
     .rok__pagination-info,
     .rok__subtitle,
@@ -711,21 +623,13 @@
     .single-article-container .article-header .article-metadata .metadata-item,
     .single-article-container .article-header .article-metadata .metadata-item.admin-link a,
     .stat-box small,
-    .stat-icon,
-    .stat-label,
     .subheader,
-    .subtask-meta,
-    .subtask-name,
-    .subtask-percent,
     .tile-card .tile-desc,
     .uczelnia__tile-description,
     .unit-hierarchy .hierarchy-card.hierarchy-children ul.no-bullet li a,
-    .user-badge,
     .wydawca__podsumowanie,
     .wydzial-stats .stat-item,
     .wydzial-stats .stat-item div:first-child,
-    .zapytanie-explain-legend,
-    .zapytanie-help-sublevel ul.examples > li > em,
     .zglos-captcha .zglos-captcha-hint,
     .zrodla__search-icon,
     .zrodla__summary,
@@ -738,7 +642,6 @@
     }
 
     // tekst: --tc-sukces-tekst
-    #bibtex-copy-feedback,
     .admin-status--completed,
     .admin-status--green,
     .admin-status--success,
@@ -752,7 +655,6 @@
     .button-group.hollow .button.success:hover,
     .button-group.hollow.success .button:focus,
     .button-group.hollow.success .button:hover,
-    .dql-str,
     .edit-panel .edit-buttons .button.btn-edit:hover,
     .edit-panel .edit-buttons .button.btn-edit:hover .fi,
     .ewaluacja-optymalizacja__diff--positive,
@@ -764,15 +666,11 @@
     .komparator-pbn__status-details--success,
     .komparator-pbn__status-icon--success,
     .komparator-pbn__status-title--success,
-    .log-success .log-level,
     .metrics-grid > div .metric-value.snip,
     .multiseek-bibtex-container .bibtex-actions .copy-feedback,
     .multiseek-pagination-wrapper ul.menu li a[href*=print]:hover,
     .multiseek-report-container > ul.menu li a[href*=print]:hover,
     .praca-mono__metric-value--snip,
-    .przemapuj-match,
-    .status-completed .fi-check,
-    .status-label.status-completed,
     .uczelnia__tile-icon--green {
       color: var(--tc-sukces-tekst);
     }
@@ -781,7 +679,6 @@
     #bibliographic-description .biblio-text,
     .accordion-content,
     .admin-buttons-centered .button,
-    .alert-box.secondary,
     .author-header h1,
     .author-ids .id-item strong,
     .author-ids-panel h3,
@@ -801,7 +698,6 @@
     .autorzy-modern .autorzy-letter-index .autorzy-letter-pills .autorzy-letter-pill,
     .autorzy-modern .autorzy-pagination ul.pagination li .autorzy-nav-btn,
     .autorzy-modern .autorzy-pagination ul.pagination li .autorzy-page-btn,
-    .bpp-historia-tabela tbody th a:hover,
     .breadcrumbs li,
     .button-group.clear .button.secondary:focus,
     .button-group.clear .button.secondary:hover,
@@ -813,8 +709,6 @@
     .button-group.hollow.secondary .button:hover,
     .code-block,
     .code-inline,
-    .collapsible-trigger,
-    .collapsible-trigger:hover,
     .cookie-pasek__btn--nie,
     .cookie-pasek__btn--nie:focus,
     .cookie-pasek__btn--nie:hover,
@@ -886,7 +780,6 @@
     .news-article-card .article-content .article-excerpt,
     .news-article-card .article-content .article-title a,
     .op-controls-cancel:hover,
-    .page-header h1,
     .pagination-btn,
     .panel.callout.secondary h3,
     .panel.callout.secondary h4,
@@ -932,7 +825,6 @@
     .source-sidebar .disciplines-panel h6,
     .source-sidebar .external-ids-panel .id-badge .id-label,
     .source-sidebar .external-ids-panel h6,
-    .stat-value,
     .tabs-content,
     .top-bar .dropdown.menu .menu.vertical li a,
     .top-bar .dropdown.menu > li > a,
@@ -946,15 +838,12 @@
     .unit-header h1,
     .unit-hierarchy .hierarchy-card.hierarchy-children h6,
     .unit-hierarchy .hierarchy-card.hierarchy-parent h6,
-    .well h3,
     .wydzial-card a,
     .wydzial-nav__bar ul.menu a,
     .wydzial-stats .stat-item div:last-child,
-    .zapytanie-model-group .button,
     .zrodla__page-btn,
     .zrodla__pagination-nav,
-    .zrodlo-card .zrodlo-name a,
-    details.opcje-zaawansowane > summary {
+    .zrodlo-card .zrodlo-name a {
       color: var(--tc-tekst);
     }
 
@@ -968,16 +857,13 @@
     }
 
     // tlo: --tc-blad-tlo
-    .alert-box.alert,
     .detached-disciplines .detached-card thead,
     .discipline-discrepancy-card.different-disciplines,
     .komparator-pbn__status-alert--error,
     .praca-mono__slot-badge--discipline-slot,
     .praca-mono__slots-thead--detached,
     .print-button.print-button-alt:hover,
-    .slots-section table tbody tr td .slot-badge.discipline-slot,
-    .stat-box.stat-autor,
-    .status-label.status-failed {
+    .slots-section table tbody tr td .slot-badge.discipline-slot {
       background-color: var(--tc-blad-tlo);
     }
 
@@ -988,18 +874,12 @@
     }
 
     // tlo: --tc-info-tlo
-    .alert-box.info,
-    .alert-info,
-    .modal-candidate-selected,
     .praca-mono__slot-badge--pkdaut,
-    .slots-section table tbody tr td .slot-badge.pkd,
-    .status-label.status-running,
-    .zapytanie-help-sublevel ul.examples code:hover {
+    .slots-section table tbody tr td .slot-badge.pkd {
       background-color: var(--tc-info-tlo);
     }
 
     // tlo: --tc-ostrzezenie-tlo
-    .alert-box.warning,
     .bpp-highlight,
     .dyscypliny .dziedzina-6,
     .fd-edit-btn-system,
@@ -1011,14 +891,7 @@
     .praca-mono__slot-badge--slot,
     .search-highlight-1,
     .slots-section table tbody tr td .slot-badge.slot,
-    .stat-box.stat-publikacja,
     table tbody tr.warning {
-      background-color: var(--tc-ostrzezenie-tlo);
-    }
-
-    // tlo: --tc-ostrzezenie-tlo (gradient)
-    .coffee-card {
-      background-image: none;
       background-color: var(--tc-ostrzezenie-tlo);
     }
 
@@ -1028,7 +901,6 @@
     #publication-table.htmx-request::before,
     #tabela-autorow > tbody > tr,
     .accordion-content,
-    .active-session-item,
     .admin-buttons-centered .button,
     .author-ids .id-item,
     .autor-page__chip span,
@@ -1038,7 +910,6 @@
     .autorzy-modern .autorzy-header,
     .autorzy-modern .autorzy-letter-index,
     .autorzy-modern .autorzy-pagination,
-    .bpp-historia-tabela,
     .dropdown.menu > li > a,
     .edit-panel .edit-buttons .button,
     .ewaluacja-metryki__discipline-btn,
@@ -1047,8 +918,6 @@
     .funkcja-dnia-container #daily-feature-content .feature-button,
     .global-search-container,
     .grid-container-fluid[data-sticky-container],
-    .grp-module,
-    .import-progress-compact,
     .info-card,
     .jednostka-add-button,
     .jednostka-card,
@@ -1095,7 +964,6 @@
     .single-article-container,
     .single-article-container .article-header .article-metadata .metadata-item.admin-link a,
     .source-sidebar .external-ids-panel .id-badge,
-    .stat-card,
     .tabs-content,
     .tile-card,
     .tile-card.tile-back,
@@ -1106,8 +974,6 @@
     .wizard-nav-btn,
     .wydzial-card,
     .wydzial-nav__bar,
-    .zapytanie-help-card kbd,
-    .zapytanie-model-group .button,
     .zrodlo-card,
     fieldset {
       background-color: var(--tc-pow);
@@ -1135,11 +1001,9 @@
 
     // tlo: --tc-pow-2
     #bibliographic-description,
-    #bibtex-content,
     #breadcrumbs-wrapper,
     #op-log,
     #tabela-autorow > tbody:nth-of-type(odd) > tr,
-    .alert-box.secondary,
     .api-root-info-box,
     .author-ids-panel,
     .authors-section,
@@ -1151,19 +1015,15 @@
     .autorzy-modern .autorzy-pagination ul.pagination li .autorzy-nav-btn,
     .autorzy-modern .autorzy-pagination ul.pagination li .autorzy-page-btn,
     .autorzy-modern .autorzy-search-wrapper .autorzy-search-form .autorzy-search-group,
-    .bpp-historia-tabela tbody tr:nth-child(even),
     .breadcrumbs-tips-wrapper,
     .card-divider,
     .code-block,
     .code-inline,
-    .collapsible-content,
-    .collapsible-trigger,
     .cookie-pasek__btn--nie,
     .cookie-pasek__btn--tak,
     .detached-disciplines .detached-card,
     .discipline-discrepancy-card.empty-bpp,
     .discipline-discrepancy-card.empty-pbn,
-    .djangoql-pretty,
     .dyscypliny .dyscyplina,
     .edit-button,
     .ewaluacja-metryki__disciplines-callout,
@@ -1180,11 +1040,9 @@
     .external-links-grid .external-link-item,
     .fd-edit-btn,
     .footer-container,
-    .form-inline .input-group-label,
     .global-search-help code,
     .global-search-input,
     .global-search-results::-webkit-scrollbar-track,
-    .grp-description,
     .jednostka__accordion-title,
     .jednostka__description,
     .jednostki__letter-pill,
@@ -1196,11 +1054,9 @@
     .letter-index .letter-pill.disabled,
     .letter-index .letter-pills .letter-pill,
     .letter-index .letter-pills .letter-pill.disabled,
-    .liveop-scan .progress-bar,
     .main-page-button-search-field:active,
     .mcp-strona__kod,
     .metrics-grid > div,
-    .mini-progress,
     .modern-header .text-center .input-group,
     .modern-pagination ul.pagination li .page-btn,
     .modern-pagination ul.pagination li a,
@@ -1213,9 +1069,7 @@
     .multiseek-report-title .title-edit-btn,
     .multiseek-table-report tfoot,
     .op-stage,
-    .opcje-zaawansowane__body,
     .openaccess-card,
-    .page-links a,
     .pagination-btn,
     .panel.callout.info,
     .panel.callout.secondary,
@@ -1230,7 +1084,6 @@
     .praca-mono__reference-info,
     .praca-mono__slot-badge--pkd,
     .praca-mono__slots-thead,
-    .prettyprint,
     .print-button,
     .print-button.print-button-alt,
     .progress-bar,
@@ -1247,25 +1100,17 @@
     .source-sidebar .disciplines-panel .accordion .accordion-item .accordion-title,
     .source-sidebar .external-ids-panel,
     .stat-box,
-    .stat-box-secondary,
-    .stat-box.stat-powiazanie,
-    .statements-list th,
     .stats-navigation,
     .sub-nav,
-    .subtask-bar,
     .tabs-title > a[aria-selected=true],
     .top-bar,
     .top-bar ul,
     .uczelnia__tile,
-    .user-badge,
     .wydzial-description,
     .wydzial-stats .stat-item,
-    .zapytanie-help-card,
-    .zapytanie-help-sublevel ul.examples code,
     .zrodla__page-btn,
     .zrodla__pagination-nav,
     .zrodla__search-group,
-    details.opcje-zaawansowane > summary,
     table tbody tr.alert,
     table.multiseek-pivot .pivot-total,
     table.multiseek-pivot tbody th,
@@ -1280,8 +1125,6 @@
     }
 
     // tlo: --tc-pow-2 (gradient)
-    .bpp-historia-tabela thead th,
-    .grp-module h2,
     .keyboard-shortcut,
     .multiseek-table-report th,
     .pasek-okresu,
@@ -1304,8 +1147,6 @@
     .autorzy-modern .autorzy-author-card:hover,
     .autorzy-modern .autorzy-pagination ul.pagination li .autorzy-nav-btn:hover,
     .autorzy-modern .autorzy-pagination ul.pagination li .autorzy-page-btn:hover,
-    .bpp-historia-tabela tbody tr:hover,
-    .collapsible-trigger:hover,
     .cookie-pasek__btn--nie:focus,
     .cookie-pasek__btn--nie:hover,
     .edit-button:hover,
@@ -1330,8 +1171,6 @@
     .main-page-button-search-field:hover,
     .mcp-strona__kopiowalny:focus .mcp-strona__kod,
     .mcp-strona__kopiowalny:hover .mcp-strona__kod,
-    .modal-author-links a:hover,
-    .modal-candidate-row:hover,
     .modern-pagination ul.pagination li .page-btn:hover,
     .modern-pagination ul.pagination li a:hover,
     .modern-pagination ul.pagination li a[href*=next_page_number]:hover,
@@ -1341,7 +1180,6 @@
     .multiseek-report-title .title-edit-btn:hover,
     .multiseek-table-report tr:hover,
     .op-controls-cancel:hover,
-    .page-links a:hover,
     .pagination-btn:hover,
     .print-button:hover,
     .ranking-results-container .export-section .dropdown-button:hover,
@@ -1351,13 +1189,9 @@
     .tabs-title > a:focus,
     .tabs-title > a:hover,
     .wydzial-nav__bar ul.menu a:hover,
-    .zapytanie-history-card .history-remove:hover,
-    .zapytanie-model-group .button:hover,
     .zrodla__page-btn:hover,
     .zrodla__pagination-nav:hover,
-    .zrodlo-card:hover,
-    details.opcje-zaawansowane > summary:hover,
-    tr[data-href]:hover {
+    .zrodlo-card:hover {
       background-color: var(--tc-pow-hover);
     }
 
@@ -1372,7 +1206,6 @@
     .cookie-pasek__btn--tak:hover,
     .external-link-item .link-actions .button.copy-button.copied,
     .komparator-pbn__status-alert--success,
-    .status-label.status-completed,
     table tbody tr.success {
       background-color: var(--tc-sukces-tlo);
     }
