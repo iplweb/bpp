@@ -52,8 +52,8 @@ Kierownik widzi swoją jednostkę bez żadnej dodatkowej konfiguracji, jeśli:
    [Mój profil autora](../uzytkownik/moj-profil-autora.md) (powiązanie
    ustawia administrator albo BPP dopasowuje je przy logowaniu),
 2. ten autor ma w jednostce przypisanie z **funkcją „kierownik”**
-   (panel administracyjny → **Autorzy** → autor → jednostki autora, kolumna
-   „Funkcja”),
+   (moduł redagowania → **Autorzy** → autor → sekcja „Powiązania
+   autor-jednostka”, kolumna „Funkcja”),
 3. przypisanie **trwa dziś** — data „rozpoczął pracę” jest pusta albo
    w przeszłości, a „zakończył pracę” pusta albo w przyszłości.
 
@@ -66,7 +66,7 @@ przypisana daje wgląd w oceny całej jednostki.
 Zastępca kierownika, pełnomocnik ds. ewaluacji wydziału, dziekan — każdej
 z tych osób administrator może wskazać jednostki ręcznie:
 
-1. Panel administracyjny → **Użytkownicy** → wybierz konto.
+1. Moduł redagowania → **Administracja → Użytkownicy** → wybierz konto.
 2. Sekcja **„Metryki jednostek”**, pole **„Metryki jednostek — jednostki
    do wglądu”** — wpisz początek nazwy i wybierz jednostki.
 3. **Zapisz**.
