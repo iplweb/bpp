@@ -1,0 +1,1 @@
+Strona autora i źródła na telefonie: przyciski obsługi („Przemapuj prace”, „Otwórz do edycji”) są pod nazwą zamiast ściskać nagłówek; na telefonach i tabletach nie pokazuje się już podpowiedź „Wciśnij klawisz /”, a wyniki wyszukiwarki nie mają na sztywno białego tła (poprawnie wyglądają w motywach ciemnych).
