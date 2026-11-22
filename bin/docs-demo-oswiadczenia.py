@@ -37,6 +37,7 @@ from bpp.models import (
     Wydawnictwo_Ciagle,
     Wydawnictwo_Ciagle_Autor,
 )
+from ewaluacja_common.models import Rodzaj_Autora
 from pbn_api.exceptions import HttpException
 from pbn_api.models import Publication
 from pbn_wysylka_oswiadczen.models import PbnWysylkaLog, PbnWysylkaOswiadczenTask
@@ -70,7 +71,21 @@ regis = Autor.objects.get(nazwisko="z Cintry", imiona="Regis")
 regis.orcid = "0000-0002-1825-0097"  # the ORCID documentation example iD
 regis.save()
 filozofia = Dyscyplina_Naukowa.objects.get(nazwa="filozofia")
-ad = Autor_Dyscyplina.objects.get(autor=regis, rok=2023)
+ad = Autor_Dyscyplina.objects.filter(autor=regis, rok=2023).first()
+if ad is None:
+    # Generator danych demo nie każdemu autorowi przypisuje dyscyplinę (zależy
+    # to od puli nazw i --seed), więc w razie potrzeby nadajemy ją tutaj —
+    # razem z dyscypliną przy jego pracach z 2023 r.
+    teologia = Dyscyplina_Naukowa.objects.get(nazwa="nauki teologiczne")
+    ad = Autor_Dyscyplina.objects.create(
+        autor=regis,
+        rok=2023,
+        dyscyplina_naukowa=teologia,
+        rodzaj_autora=Rodzaj_Autora.objects.get(skrot="N"),
+    )
+    Wydawnictwo_Ciagle_Autor.objects.filter(autor=regis, rekord__rok=2023).update(
+        dyscyplina_naukowa=teologia, przypieta=True
+    )
 if ad.dyscyplina_naukowa_id != filozofia.pk:
     ad.subdyscyplina_naukowa = filozofia
     ad.save()

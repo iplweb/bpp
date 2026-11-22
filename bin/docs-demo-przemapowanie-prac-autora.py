@@ -14,17 +14,19 @@ What it does:
   remap history in the editing module, which only a superuser can open),
 - creates "Jednostka Domyślna <skrót uczelni>" - the catch-all unit an
   import puts works in when it cannot tell the author's unit,
-- files the 6 newest journal articles and 2 newest books of the demo author
-  "Eskel z Cintry" (pk 136, unit "Katedra i Zakład Mutacji") under
-  "Jednostka Domyślna", as an import would. The demo DB already has a second,
-  unrelated author with the same name (pk 240, "Klinika Mutacji"), which the
-  author search shows next to him.
+- files the 6 newest journal articles and 2 newest books of one demo author
+  under "Jednostka Domyślna", as an import would. Autora wybieramy z bazy
+  (nie po pk ani nazwisku — te zależą od danych demo): pierwsze alfabetycznie
+  imię i nazwisko noszone przez co najmniej dwie osoby; z nich ta z największą
+  liczbą prac. Druga osoba o tym samym nazwisku pokazuje się obok w
+  wyszukiwarce autorów. Skrypt wypisuje wybranego autora i jego pk.
 
 The scenario remaps and undoes, so take screenshots on a fresh copy of the DB.
 """
 
 from django.contrib.auth.models import Group
 from django.db import transaction
+from django.db.models import Count
 from password_policies.models import PasswordHistory
 
 from bpp.models import (
@@ -36,7 +38,31 @@ from bpp.models import (
     Wydawnictwo_Zwarte_Autor,
 )
 
-ESKEL = 136  # "Eskel z Cintry", Katedra i Zakład Mutacji
+
+def autor_z_imiennikiem():
+    """Autor, który ma w bazie imiennika (to samo imię i nazwisko).
+
+    Pierwsze alfabetycznie takie imię i nazwisko; spośród osób, które je
+    noszą, ta z największą liczbą prac w czasopismach (przy remisie: niższe pk).
+    """
+    imiennicy = (
+        Autor.objects.values("nazwisko", "imiona")
+        .annotate(ile=Count("pk"))
+        .filter(ile__gte=2)
+        .order_by("nazwisko", "imiona")
+        .first()
+    )
+    if imiennicy is None:
+        raise SystemExit(
+            "W bazie demo nie ma dwóch autorów o tym samym imieniu i nazwisku "
+            "— wygeneruj dane wg docs/deweloper/zrzuty-ekranu.md."
+        )
+    return (
+        Autor.objects.filter(nazwisko=imiennicy["nazwisko"], imiona=imiennicy["imiona"])
+        .annotate(prac=Count("wydawnictwo_ciagle_autor"))
+        .order_by("-prac", "pk")
+        .first()
+    )
 
 
 def konto(username, first_name, last_name, superuser=False):
@@ -68,7 +94,7 @@ with transaction.atomic():
         defaults=dict(skrot=f"JD-{uczelnia.skrot}", uczelnia=uczelnia),
     )
 
-    eskel = Autor.objects.get(pk=ESKEL)
+    eskel = autor_z_imiennikiem()
     for model, ile in (
         (Wydawnictwo_Ciagle_Autor, 6),
         (Wydawnictwo_Zwarte_Autor, 2),
@@ -81,4 +107,4 @@ with transaction.atomic():
         # queryset update, like an import: no Autor_Jednostka side effects
         model.objects.filter(pk__in=pks).update(jednostka=jd)
 
-print("przemapowanie-prac-autora: demo data ready")
+print(f"przemapowanie-prac-autora: demo data ready — autor {eskel} (pk {eskel.pk})")
