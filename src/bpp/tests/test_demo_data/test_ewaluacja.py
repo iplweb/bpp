@@ -277,7 +277,11 @@ def test_cleanup_na_istniejacej_uczelni_przelicza_liczbe_n(tmp_path):
     from django.contrib.sites.models import Site
 
     seed_default_dyscypliny()
-    uczelnia = Uczelnia.objects.create(
+    # Demo bierze PIERWSZĄ uczelnię w bazie (``ensure_uczelnia``). Jeśli coś
+    # wcześniej na tym workerze xdist zostawiło uczelnię, to ona jest „sprzed
+    # demo" — sprawdzamy tę, której demo faktycznie użyje, a nie świeżo
+    # utworzoną (test padał zależnie od kolejności testów na CI).
+    uczelnia = Uczelnia.objects.order_by("pk").first() or Uczelnia.objects.create(
         nazwa="Istniejąca",
         skrot="IST",
         site=Site.objects.get_or_create(domain="ist.local", defaults={"name": "IST"})[
