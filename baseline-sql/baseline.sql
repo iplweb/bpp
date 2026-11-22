@@ -17001,6 +17001,55 @@ COPY public.django_countdown_sitecountdown (id, countdown_time, message, long_de
 --
 
 COPY public.django_migrations (id, app, name, applied) FROM stdin;
+234	bpp	0152_merge	2000-01-01 00:00:00+00
+163	bpp	0082_konferencja_opcjonalne	2000-01-01 00:00:00+00
+865	pbn_wysylka_oswiadczen	0001_initial	2000-01-01 00:00:00+00
+250	bpp	0167_auto_20190707_2029	2000-01-01 00:00:00+00
+265	bpp	0179_auto_20190910_2147	2000-01-01 00:00:00+00
+267	bpp	0180_merge_20190910_2236	2000-01-01 00:00:00+00
+393	bpp	0300_patent_denorm	2000-01-01 00:00:00+00
+268	bpp	0181_cache_punktacja_autora_sum_cache_punktacja_autora_sum_gruop	2000-01-01 00:00:00+00
+270	bpp	0183_auto_20191020_1535	2000-01-01 00:00:00+00
+271	bpp	0184_autor_expertus_id	2000-01-01 00:00:00+00
+272	bpp	0185_auto_20191021_2008	2000-01-01 00:00:00+00
+275	bpp	0188_auto_20191027_1737	2000-01-01 00:00:00+00
+276	bpp	0189_auto_20191027_2158	2000-01-01 00:00:00+00
+277	bpp	0190_auto_20191030_0532	2000-01-01 00:00:00+00
+278	bpp	0191_wydawnictwo_zwarte_zewnetrzna_baza_danych	2000-01-01 00:00:00+00
+279	bpp	0192_auto_20191107_0853	2000-01-01 00:00:00+00
+280	bpp	0193_jednostka_dla_punktacji_dyscyplin	2000-01-01 00:00:00+00
+281	bpp	0194_auto_20200213_2148	2000-01-01 00:00:00+00
+283	bpp	0196_uczelnia_pokazuj_raport_slotow_zerowy	2000-01-01 00:00:00+00
+284	bpp	0197_auto_20200223_2142	2000-01-01 00:00:00+00
+285	bpp	0198_auto_20200229_1644	2000-01-01 00:00:00+00
+286	bpp	0199_alias_wydawcy_trigger	2000-01-01 00:00:00+00
+287	bpp	0200_auto_20200304_2253	2000-01-01 00:00:00+00
+289	bpp	0202_auto_20200308_2204	2000-01-01 00:00:00+00
+290	bpp	0203_auto_20200315_2021	2000-01-01 00:00:00+00
+291	bpp	0204_cache_punktacja_autora_query_view	2000-01-01 00:00:00+00
+292	bpp	0202_fix_autorzy_bez_nazwisk	2000-01-01 00:00:00+00
+293	bpp	0205_merge_20200315_2208	2000-01-01 00:00:00+00
+294	bpp	0206_auto_20200315_2212	2000-01-01 00:00:00+00
+295	bpp	0207_uczelnia_analiza_view	2000-01-01 00:00:00+00
+296	bpp	0208_auto_20200329_1719	2000-01-01 00:00:00+00
+297	bpp	0209_auto_20200421_0013	2000-01-01 00:00:00+00
+298	bpp	0210_uczelnia_sortuj_jednostki_alfabetycznie	2000-01-01 00:00:00+00
+300	bpp	0212_upowaznienie_pbn	2000-01-01 00:00:00+00
+301	bpp	0212_charakter_formalny_charakter_ogolny	2000-01-01 00:00:00+00
+302	bpp	0213_merge_20200607_2047	2000-01-01 00:00:00+00
+303	bpp	0214_auto_20200628_2344	2000-01-01 00:00:00+00
+304	bpp	0215_auto_20200727_1407	2000-01-01 00:00:00+00
+305	bpp	0216_element_repozytorium	2000-01-01 00:00:00+00
+307	bpp	0218_auto_20200727_2307	2000-01-01 00:00:00+00
+309	bpp	0220_auto_20200728_0011	2000-01-01 00:00:00+00
+310	bpp	0215_auto_20200806_0146	2000-01-01 00:00:00+00
+311	bpp	0221_merge_20200806_0851	2000-01-01 00:00:00+00
+313	bpp	0223_auto_20200812_1930	2000-01-01 00:00:00+00
+315	bpp	0225_auto_20201007_1002	2000-01-01 00:00:00+00
+316	bpp	0226_rekord_mat_status	2000-01-01 00:00:00+00
+317	bpp	0227_auto_20201011_0010	2000-01-01 00:00:00+00
+233	bpp	0151_snip	2000-01-01 00:00:00+00
+282	bpp	0195_cc0	2000-01-01 00:00:00+00
 496	bpp	0389_alter_uczelnia_uzywaj_wydzialow	2000-01-01 00:00:00+00
 180	bpp	0099_nagrody	2000-01-01 00:00:00+00
 469	bpp	0362_rzeczownik	2000-01-01 00:00:00+00
@@ -17201,6 +17250,7 @@ COPY public.django_migrations (id, app, name, applied) FROM stdin;
 452	bpp	0345_alter_wydzial_opis	2000-01-01 00:00:00+00
 546	bpp	0430_rekord_mat_slug_idx	2000-01-01 00:00:00+00
 548	bpp	0440_port_plpython_to_plpgsql	2000-01-01 00:00:00+00
+161	bpp	0080_auto_20170708_2147	2000-01-01 00:00:00+00
 549	bpp	0441_drop_trigger_tytul_sort	2000-01-01 00:00:00+00
 550	bpp	0432_cache_trigger_plpgsql	2000-01-01 00:00:00+00
 551	bpp	0433_cache_trigger_when_gate	2000-01-01 00:00:00+00
@@ -17234,7 +17284,6 @@ COPY public.django_migrations (id, app, name, applied) FROM stdin;
 581	deduplikator_autorow	0004_alter_notaduplicate_unique_together_and_more	2000-01-01 00:00:00+00
 582	deduplikator_autorow	0005_replace_log_model	2000-01-01 00:00:00+00
 1218	bpp	0526_openaccess_miesiac_i_rok_udostepnienia	2000-01-01 00:00:00+00
-234	bpp	0152_merge	2000-01-01 00:00:00+00
 418	bpp	0324_django32	2000-01-01 00:00:00+00
 583	deduplikator_autorow	0006_add_ignored_author	2000-01-01 00:00:00+00
 584	deduplikator_autorow	0007_add_duplicate_scan_models	2000-01-01 00:00:00+00
@@ -17296,6 +17345,7 @@ COPY public.django_migrations (id, app, name, applied) FROM stdin;
 648	easyaudit	0015_auto_20201019_1217	2000-01-01 00:00:00+00
 649	easyaudit	0016_alter_crudevent_event_type	2000-01-01 00:00:00+00
 650	easyaudit	0017_alter_requestevent_datetime	2000-01-01 00:00:00+00
+162	bpp	0081_konferencje	2000-01-01 00:00:00+00
 651	easyaudit	0018_rename_crudevent_object_id_content_type_index	2000-01-01 00:00:00+00
 652	easyaudit	0019_alter_crudevent_changed_fields_and_more	2000-01-01 00:00:00+00
 654	ewaluacja2021	0002_auto_20211026_1137	2000-01-01 00:00:00+00
@@ -17385,6 +17435,7 @@ COPY public.django_migrations (id, app, name, applied) FROM stdin;
 726	formdefaults	0004_unique_field_user	2000-01-01 00:00:00+00
 727	formdefaults	0005_unique_field_system	2000-01-01 00:00:00+00
 728	formdefaults	0006_formfielddefaultvalue_is_auto_snapshot	2000-01-01 00:00:00+00
+266	bpp	0179_auto_20190910_1416	2000-01-01 00:00:00+00
 729	formdefaults	0007_backfill_is_auto_snapshot	2000-01-01 00:00:00+00
 730	import_dyscyplin	0001_initial	2000-01-01 00:00:00+00
 731	import_dyscyplin	0002_import_dyscyplin_web_page_uid	2000-01-01 00:00:00+00
@@ -17571,9 +17622,6 @@ COPY public.django_migrations (id, app, name, applied) FROM stdin;
 615	django_celery_results	0006_taskresult_date_created	2000-01-01 00:00:00+00
 709	flexible_reports	0001_initial	2000-01-01 00:00:00+00
 160	bpp	0079_wydzial_skrot_nazwy	2000-01-01 00:00:00+00
-161	bpp	0080_auto_20170708_2147	2000-01-01 00:00:00+00
-162	bpp	0081_konferencje	2000-01-01 00:00:00+00
-163	bpp	0082_konferencja_opcjonalne	2000-01-01 00:00:00+00
 164	bpp	0083_afiliuje_zatrudniony	2000-01-01 00:00:00+00
 165	bpp	0084_strona_tom_nr_zeszytu	2000-01-01 00:00:00+00
 166	bpp	0085_strony_help_text	2000-01-01 00:00:00+00
@@ -17670,8 +17718,6 @@ COPY public.django_migrations (id, app, name, applied) FROM stdin;
 598	denorm	0006_auto_20211003_0346	2000-01-01 00:00:00+00
 863	pbn_komparator_zrodel	0002_add_brakujaca_dyscyplina_pbn	2000-01-01 00:00:00+00
 864	pbn_komparator_zrodel	0003_remove_rozbieznosczrodlapbn_pbn_kompara_zrodlo__8665da_idx_and_more	2000-01-01 00:00:00+00
-865	pbn_wysylka_oswiadczen	0001_initial	2000-01-01 00:00:00+00
-266	bpp	0179_auto_20190910_1416	2000-01-01 00:00:00+00
 875	przemapuj_zrodla_pbn	0001_initial	2000-01-01 00:00:00+00
 876	przemapuj_zrodla_pbn	0002_przemapowaniezrodla_typ_operacji_and_more	2000-01-01 00:00:00+00
 877	przemapuj_zrodla_pbn	0003_alter_przemapowaniezrodla_zrodlo_nowe_and_more	2000-01-01 00:00:00+00
@@ -17953,7 +17999,6 @@ COPY public.django_migrations (id, app, name, applied) FROM stdin;
 17	auth	0010_alter_group_name_max_length	2000-01-01 00:00:00+00
 18	auth	0011_update_proxy_permissions	2000-01-01 00:00:00+00
 19	auth	0012_alter_user_first_name_max_length	2000-01-01 00:00:00+00
-250	bpp	0167_auto_20190707_2029	2000-01-01 00:00:00+00
 21	axes	0002_auto_20151217_2044	2000-01-01 00:00:00+00
 22	axes	0003_auto_20160322_0929	2000-01-01 00:00:00+00
 23	axes	0004_auto_20181024_1538	2000-01-01 00:00:00+00
@@ -18173,51 +18218,7 @@ COPY public.django_migrations (id, app, name, applied) FROM stdin;
 547	bpp	0431_search_index_gin	2000-01-01 00:00:00+00
 811	integrator2	0004_django32	2000-01-01 00:00:00+00
 263	bpp	0177_cache_punktacja_autora_query	2000-01-01 00:00:00+00
-265	bpp	0179_auto_20190910_2147	2000-01-01 00:00:00+00
-267	bpp	0180_merge_20190910_2236	2000-01-01 00:00:00+00
-393	bpp	0300_patent_denorm	2000-01-01 00:00:00+00
-268	bpp	0181_cache_punktacja_autora_sum_cache_punktacja_autora_sum_gruop	2000-01-01 00:00:00+00
-270	bpp	0183_auto_20191020_1535	2000-01-01 00:00:00+00
-271	bpp	0184_autor_expertus_id	2000-01-01 00:00:00+00
-272	bpp	0185_auto_20191021_2008	2000-01-01 00:00:00+00
-275	bpp	0188_auto_20191027_1737	2000-01-01 00:00:00+00
-276	bpp	0189_auto_20191027_2158	2000-01-01 00:00:00+00
-277	bpp	0190_auto_20191030_0532	2000-01-01 00:00:00+00
-278	bpp	0191_wydawnictwo_zwarte_zewnetrzna_baza_danych	2000-01-01 00:00:00+00
-279	bpp	0192_auto_20191107_0853	2000-01-01 00:00:00+00
-280	bpp	0193_jednostka_dla_punktacji_dyscyplin	2000-01-01 00:00:00+00
-281	bpp	0194_auto_20200213_2148	2000-01-01 00:00:00+00
-283	bpp	0196_uczelnia_pokazuj_raport_slotow_zerowy	2000-01-01 00:00:00+00
-284	bpp	0197_auto_20200223_2142	2000-01-01 00:00:00+00
-285	bpp	0198_auto_20200229_1644	2000-01-01 00:00:00+00
-286	bpp	0199_alias_wydawcy_trigger	2000-01-01 00:00:00+00
-287	bpp	0200_auto_20200304_2253	2000-01-01 00:00:00+00
-289	bpp	0202_auto_20200308_2204	2000-01-01 00:00:00+00
-290	bpp	0203_auto_20200315_2021	2000-01-01 00:00:00+00
-291	bpp	0204_cache_punktacja_autora_query_view	2000-01-01 00:00:00+00
-292	bpp	0202_fix_autorzy_bez_nazwisk	2000-01-01 00:00:00+00
-293	bpp	0205_merge_20200315_2208	2000-01-01 00:00:00+00
-294	bpp	0206_auto_20200315_2212	2000-01-01 00:00:00+00
-295	bpp	0207_uczelnia_analiza_view	2000-01-01 00:00:00+00
-296	bpp	0208_auto_20200329_1719	2000-01-01 00:00:00+00
-297	bpp	0209_auto_20200421_0013	2000-01-01 00:00:00+00
-298	bpp	0210_uczelnia_sortuj_jednostki_alfabetycznie	2000-01-01 00:00:00+00
-300	bpp	0212_upowaznienie_pbn	2000-01-01 00:00:00+00
-301	bpp	0212_charakter_formalny_charakter_ogolny	2000-01-01 00:00:00+00
-302	bpp	0213_merge_20200607_2047	2000-01-01 00:00:00+00
-303	bpp	0214_auto_20200628_2344	2000-01-01 00:00:00+00
-304	bpp	0215_auto_20200727_1407	2000-01-01 00:00:00+00
-305	bpp	0216_element_repozytorium	2000-01-01 00:00:00+00
-307	bpp	0218_auto_20200727_2307	2000-01-01 00:00:00+00
-309	bpp	0220_auto_20200728_0011	2000-01-01 00:00:00+00
-310	bpp	0215_auto_20200806_0146	2000-01-01 00:00:00+00
-311	bpp	0221_merge_20200806_0851	2000-01-01 00:00:00+00
-313	bpp	0223_auto_20200812_1930	2000-01-01 00:00:00+00
-315	bpp	0225_auto_20201007_1002	2000-01-01 00:00:00+00
-316	bpp	0226_rekord_mat_status	2000-01-01 00:00:00+00
-317	bpp	0227_auto_20201011_0010	2000-01-01 00:00:00+00
-233	bpp	0151_snip	2000-01-01 00:00:00+00
-282	bpp	0195_cc0	2000-01-01 00:00:00+00
+1223	historia_zmian	0002_zrodlo_system_etykieta	2000-01-01 00:00:00+00
 \.
 
 
@@ -20340,7 +20341,7 @@ SELECT pg_catalog.setval('public.django_countdown_sitecountdown_id_seq', 1, fals
 -- Name: django_migrations_id_seq; Type: SEQUENCE SET; Schema: public; Owner: -
 --
 
-SELECT pg_catalog.setval('public.django_migrations_id_seq', 1222, true);
+SELECT pg_catalog.setval('public.django_migrations_id_seq', 1223, true);
 
 
 --

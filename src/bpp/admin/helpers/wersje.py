@@ -413,7 +413,10 @@ class HistoriaWersjiMixin:
                 reverse(f"{nazwa}_history", args=(quote(obj.pk),))
             )
 
-        komentarz = f"Przywrócono wersję z {data}"
+        zmienione = self._zmienione_przy_przywroceniu(obj, wersja)
+        komentarz = f"Przywrócono wersję z {data}."
+        if zmienione:
+            komentarz += f" Zmieniono: {', '.join(zmienione)}."
         do_przywrocenia = self._wersje_rekordu_w_rewizji(obj, wersja)
         token = _przywracanie_wersji.set(True)
         try:
@@ -449,14 +452,32 @@ class HistoriaWersjiMixin:
         self.message_user(
             request,
             format_html(
-                '♻️ Przywrócono wersję z {} rekordu „<a href="{}">{}</a>”.',
+                '♻️ Przywrócono wersję z {} rekordu „<a href="{}">{}</a>”.{}',
                 data,
                 url,
                 swiezy,
+                f" Zmieniono: {', '.join(zmienione)}." if zmienione else "",
             ),
             level=messages.SUCCESS,
         )
         return HttpResponseRedirect(url)
+
+    def _zmienione_przy_przywroceniu(self, obj, wersja):
+        """Etykiety pól i list, które przywrócenie ``wersja`` zmieni względem
+        wersji aktualnej — to samo porównanie co na stronie „Porównanie
+        wersji”, żeby wpis w historii mówił, CO wróciło, a nie tylko skąd."""
+        from .porownanie_wersji import porownaj_wersje
+
+        aktualna_pk = self._aktualna_wersja_pk(str(obj.pk))
+        if aktualna_pk is None:
+            return []
+        aktualna = Version.objects.select_related("revision").get(pk=aktualna_pk)
+        return [
+            wiersz["etykieta"]
+            for wiersz in porownaj_wersje(
+                self.model, obj, aktualna, wersja, self.compare_exclude
+            )
+        ]
 
     # --- podgląd wersji tylko do odczytu --------------------------------
 

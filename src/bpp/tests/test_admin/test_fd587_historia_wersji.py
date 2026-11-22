@@ -525,6 +525,8 @@ def test_podglad_wersji_tylko_do_odczytu(admin_client, wydawnictwo_ciagle):
     assert wydawnictwo_ciagle.tytul_oryginalny == starsza.field_dict["tytul_oryginalny"]
     najnowsza = Version.objects.get_for_object(wydawnictwo_ciagle).first()
     assert najnowsza.revision.comment.startswith("Przywrócono wersję z ")
+    # Wpis w historii mówi, CO wróciło — jak przy zwykłej edycji.
+    assert "Zmieniono: Tytuł oryginalny" in najnowsza.revision.comment
 
     # Wersja aktualna: nie ma czego przywracać — brak przycisku.
     aktualna = admin_client.get(
