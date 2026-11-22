@@ -431,6 +431,16 @@ nav.sticky-header {
     color: map-get($cfg-okruszki, link);
     text-decoration: underline;
   }
+
+  // Pasek „Porady BPP” na stronie głównej stoi w miejscu okruszków.
+  #breadcrumbs-wrapper #rotating-tips {
+    color: map-get($cfg-okruszki, tekst);
+  }
+
+  #breadcrumbs-wrapper #rotating-tips a {
+    color: map-get($cfg-okruszki, link);
+    text-decoration: underline;
+  }
 }
 
 @if $cfg-stopka {
