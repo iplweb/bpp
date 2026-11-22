@@ -27,6 +27,38 @@ Działania te również prezentuje film [Zmiana kolejności autorów](https://ww
 
 <iframe width="560" height="315" src="https://www.youtube.com/embed/oruEX3CykH8" frameborder="0" allow="autoplay; encrypted-media" allowfullscreen></iframe>
 
+## Data udostępnienia w otwartym dostępie {#data-udostepnienia-oa}
+
+W formularzu artykułu (wydawnictwa ciągłego) oraz książki i rozdziału
+(wydawnictwa zwartego), w zwijanej sekcji **OpenAccess**, jest pole
+**OpenAccess: data udostępnienia (dzień lub miesiąc i rok)**. Wpisz w nim:
+
+- **pełną datę**, gdy znasz dzień udostępnienia — np. `30.12.2025`,
+  `2025-12-30` albo `2025.12.30`,
+- **sam miesiąc i rok**, gdy dnia nie znasz — np. `12.2025`, `2025-12`
+  albo `2025.12`.
+
+**Sam rok (np. `2025`) nie wystarczy** — formularz go nie przyjmie, bo PBN
+wymaga co najmniej miesiąca i roku udostępnienia. Po zapisie pole pokazuje
+wartość w jednym formacie: `30.12.2025` albo `12.2025`. Rok musi mieścić się
+w zakresie od 1900 do bieżącego roku powiększonego o 10 lat.
+
+Przy wysyłce do PBN:
+
+- pełna data trafia do PBN jako data udostępnienia,
+- miesiąc i rok trafiają do PBN jako miesiąc i rok udostępnienia — BPP
+  **nie dopisuje** żadnego dnia,
+- gdy pole jest puste, BPP użyje daty dostępu do strony WWW
+  („Dostęp dnia (wolny dostęp)”, a potem „Dostęp dnia (płatny dostęp)”),
+  o ile ją podano; inaczej data udostępnienia nie jest wysyłana.
+  Data wpisana w sekcji OpenAccess ma zawsze pierwszeństwo przed tymi
+  datami.
+
+Prace pobierane z PBN, dla których PBN podaje miesiąc i rok udostępnienia,
+mają w tym polu wpisany miesiąc i rok (bez zmyślonego dnia). Jeśli PBN
+podaje sam rok, BPP nie wpisuje daty — uzupełnij ją ręcznie przed wysyłką
+do PBN (raport kompletności danych POL-on pokaże taki brak).
+
 ## Dlaczego nie można usunąć pracy z wpisanym „Odpowiednikiem w PBN"
 
 Przy próbie skasowania wydawnictwa ciągłego lub zwartego może się okazać, że

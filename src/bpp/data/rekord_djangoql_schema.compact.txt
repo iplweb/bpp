@@ -304,6 +304,8 @@ bpp.wydawnictwo_zwarte:
   openaccess_data_opublikowania                date?  "OpenAccess: data publikacji"
   openaccess_ilosc_miesiecy                    int?  "OpenAccess: ilość miesięcy" — Ilość miesięcy jakie upłynęły od momentu opublikowania do momentu udostępnienia
   openaccess_licencja                          -> bpp.licencja_openaccess?  "OpenAccess: licencja"
+  openaccess_miesiac_udostepnienia             int?  "OpenAccess: miesiąc udostępnienia" — Miesiąc (1–12) udostępnienia w otwartym dostępie — razem z rokiem, gdy nie jest znana pełna data udostępnienia.
+  openaccess_rok_udostepnienia                 int?  "OpenAccess: rok udostępnienia" — Rok udostępnienia w otwartym dostępie — razem z miesiącem, gdy nie jest znana pełna data udostępnienia.
   openaccess_tryb_dostepu                      -> bpp.tryb_openaccess_wydawnictwo_zwarte?
   openaccess_wersja_tekstu                     -> bpp.wersja_tekstu_openaccess?  "OpenAccess: wersja tekstu"
   opis_bibliograficzny_autorzy_cache           unknown?
@@ -593,6 +595,8 @@ bpp.wydawnictwo_ciagle:
   openaccess_data_opublikowania                date?  "OpenAccess: data publikacji"
   openaccess_ilosc_miesiecy                    int?  "OpenAccess: ilość miesięcy" — Ilość miesięcy jakie upłynęły od momentu opublikowania do momentu udostępnienia
   openaccess_licencja                          -> bpp.licencja_openaccess?  "OpenAccess: licencja"
+  openaccess_miesiac_udostepnienia             int?  "OpenAccess: miesiąc udostępnienia" — Miesiąc (1–12) udostępnienia w otwartym dostępie — razem z rokiem, gdy nie jest znana pełna data udostępnienia.
+  openaccess_rok_udostepnienia                 int?  "OpenAccess: rok udostępnienia" — Rok udostępnienia w otwartym dostępie — razem z miesiącem, gdy nie jest znana pełna data udostępnienia.
   openaccess_tryb_dostepu                      -> bpp.tryb_openaccess_wydawnictwo_ciagle?  "OpenAccess: tryb dostępu"
   openaccess_wersja_tekstu                     -> bpp.wersja_tekstu_openaccess?  "OpenAccess: wersja tekstu"
   opis_bibliograficzny_autorzy_cache           unknown?
