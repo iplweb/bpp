@@ -346,6 +346,53 @@
             domyslnie: "",
         },
         {
+            klucz: "ikona_menu",
+            typ: "wybor",
+            grupa: "Menu",
+            etykieta: "Ikona menu na telefonie",
+            opcje: [
+                ["trzy", "Trzy paski"],
+                ["dwa", "Dwa paski"],
+                ["rozne", "Trzy paski różnej długości"],
+                ["kropki", "Trzy kropki"],
+            ],
+            domyslnie: "trzy",
+        },
+        {
+            klucz: "ikona_menu_animacja",
+            typ: "wybor",
+            grupa: "Menu",
+            etykieta: "Po otwarciu menu",
+            opcje: [
+                ["x", "Ikona zmienia się w „X”"],
+                ["brak", "Ikona bez zmian"],
+            ],
+            domyslnie: "x",
+        },
+        {
+            klucz: "napis_menu",
+            typ: "wybor",
+            grupa: "Menu",
+            etykieta: "Napis przy ikonie menu",
+            opcje: [
+                ["menu", "„Menu”"],
+                ["wlasny", "Własny"],
+                ["brak", "Bez napisu"],
+            ],
+            domyslnie: "menu",
+        },
+        {
+            klucz: "napis_menu_wlasny",
+            typ: "tekst",
+            grupa: "Menu",
+            etykieta: "Własny napis przy ikonie menu",
+            opis: "Do 20 znaków, np. „Nawigacja” albo skrót uczelni.",
+            pokaz: function (k) {
+                return k.napis_menu === "wlasny";
+            },
+            domyslnie: "",
+        },
+        {
             klucz: "logo_uczelni",
             typ: "obraz",
             grupa: "Menu",
@@ -890,6 +937,15 @@
             });
         }
 
+        if (k.napis_menu === "wlasny" && !RE_NAPIS.test(k.napis_menu_wlasny || "")) {
+            bledy.push({
+                pole: "napis_menu_wlasny",
+                komunikat:
+                    "Napis przy ikonie menu: 1–20 znaków — litery, cyfry, spacje, " +
+                    "kropka, myślnik albo „&”.",
+            });
+        }
+
         var wlasnaUzywana = k.czcionka === WLASNA || k.czcionka_naglowkow === WLASNA;
         if (wlasnaUzywana && !RE_WLASNA_CZCIONKA.test(k.czcionka_wlasna || "")) {
             bledy.push({
@@ -1234,6 +1290,10 @@
             "$cfg-tlo-widocznosc: " + Number(k.tlo_widocznosc) / 100 + ";",
             '$cfg-logo-bpp: "' + k.logo_bpp + '";',
             '$cfg-napis: "' + k.napis_w_pasku + '";',
+            '$cfg-ikona-menu: "' + k.ikona_menu + '";',
+            '$cfg-ikona-menu-animacja: "' + k.ikona_menu_animacja + '";',
+            '$cfg-napis-menu: "' + k.napis_menu + '";',
+            "$cfg-napis-menu-wlasny: " + str(k.napis_menu === "wlasny" ? k.napis_menu_wlasny : "") + ";",
             "$cfg-napis-wlasny: " + str(k.napis_w_pasku === "wlasny" ? k.napis_wlasny : "") + ";",
             "$cfg-logo-uczelni: " + (k.logo_uczelni ? str(k.logo_uczelni) : "null") + ";",
             "$cfg-logo-uczelni-szerokosc: " + Math.round(k.logo_uczelni_szerokosc || 28) + "px;",

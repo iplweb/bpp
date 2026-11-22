@@ -185,6 +185,85 @@ nav.sticky-header {
   }
 }
 
+// Ikona menu na telefonie (paski: top_bar.scss) i napis obok niej.
+.title-bar .bpp-ikona-menu {
+  @if $cfg-ikona-menu == "dwa" {
+    span:nth-child(1) {
+      top: 3px;
+    }
+
+    span:nth-child(2) {
+      opacity: 0;
+    }
+
+    span:nth-child(3) {
+      top: 11px;
+    }
+  } @else if $cfg-ikona-menu == "rozne" {
+    span:nth-child(2) {
+      width: 75%;
+    }
+
+    span:nth-child(3) {
+      width: 50%;
+    }
+  } @else if $cfg-ikona-menu == "kropki" {
+    span {
+      left: 8px;
+      width: 4px;
+      height: 4px;
+      border-radius: 50%;
+    }
+
+    span:nth-child(1) {
+      top: 0;
+    }
+
+    span:nth-child(2) {
+      top: 6px;
+    }
+
+    span:nth-child(3) {
+      top: 12px;
+    }
+  }
+
+  @if $cfg-ikona-menu-animacja == "x" {
+    &[aria-expanded="true"] span {
+      left: 0;
+      width: 100%;
+      height: 2px;
+      border-radius: 1px;
+    }
+
+    &[aria-expanded="true"] span:nth-child(1) {
+      top: 7px;
+      transform: rotate(45deg);
+    }
+
+    &[aria-expanded="true"] span:nth-child(2) {
+      opacity: 0;
+    }
+
+    &[aria-expanded="true"] span:nth-child(3) {
+      top: 7px;
+      transform: rotate(-45deg);
+    }
+  }
+}
+
+@if $cfg-napis-menu == "brak" or $cfg-napis-menu == "wlasny" {
+  .title-bar .bpp-napis-menu {
+    display: none;
+  }
+}
+
+@if $cfg-napis-menu == "wlasny" {
+  .title-bar .title-bar-title::after {
+    content: "#{$cfg-napis-menu-wlasny}";
+  }
+}
+
 // Logo uczelni przed napisem; szerokość wylicza konfigurator przy wgraniu
 // (proporcje obrazka przy wysokości 28 px).
 @if $cfg-logo-uczelni {
