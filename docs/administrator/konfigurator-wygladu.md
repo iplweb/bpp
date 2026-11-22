@@ -90,7 +90,7 @@ ustawiają: …”). Gdy elementu nie da się zmienić konfiguratorem, pojawi si
 „Tego elementu konfigurator nie zmienia.”. Ponowne kliknięcie
 **Inspektor** wyłącza ten tryb.
 
-![Inspektor: po kliknięciu paska menu na podglądzie podświetlone są opcje z sekcji „Menu”](../images/administrator/konfigurator-wygladu/09-inspektor.png)
+![Inspektor: po kliknięciu paska menu na podglądzie podświetlona jest opcja „Kolor paska menu”, a pasek stanu wymienia wszystkie opcje paska](../images/administrator/konfigurator-wygladu/09-inspektor.png)
 
 ### Powrót do wartości domyślnej
 

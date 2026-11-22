@@ -9333,8 +9333,11 @@ def konfigurator_wygladu(page: Page, base: str, out: Path) -> None:
     adm.click("#zwin-wszystkie")
     adm.click("#inspektor")
     ramka = adm.frame_locator("#siatka iframe").first
-    ramka.locator(".top-bar").first.click(position={"x": 600, "y": 10})
-    adm.wait_for_timeout(1200)
+    # a synthetic click on the bar itself: a real mouse click would hover a
+    # menu item and leave its dropdown open on the screenshot
+    ramka.locator(".top-bar").first.dispatch_event("click")
+    adm.mouse.move(150, 780)  # away from the previews: no hovered dropdowns
+    adm.wait_for_timeout(1500)  # dropdown close animation
     mark(
         adm,
         [
