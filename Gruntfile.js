@@ -38,6 +38,20 @@ module.exports = function (grunt) {
                         'src/bpp/static/scss/app-blue.scss'
                 }
             },
+            // Warianty z trybem ciemnym (_tryb-ciemny.scss): -auto = wg
+            // ustawień systemu odwiedzającego, -ciemny = zawsze ciemny.
+            blue_auto: {
+                files: {
+                    'src/bpp/static/scss/app-blue-auto.css':
+                        'src/bpp/static/scss/app-blue-auto.scss'
+                }
+            },
+            blue_ciemny: {
+                files: {
+                    'src/bpp/static/scss/app-blue-ciemny.css':
+                        'src/bpp/static/scss/app-blue-ciemny.scss'
+                }
+            },
             green: {
                 files: {
                     'src/bpp/static/scss/app-green.css':
@@ -176,6 +190,8 @@ module.exports = function (grunt) {
             themes: {
                 tasks: [
                     'sass:blue',
+                    'sass:blue_auto',
+                    'sass:blue_ciemny',
                     'sass:green',
                     'sass:orange',
                     'sass:vizja',

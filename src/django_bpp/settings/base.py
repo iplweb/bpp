@@ -709,6 +709,8 @@ COMPRESS_ROOT = STATIC_ROOT
 BPP_THEMES = [
     ("app-green", "Zielony"),
     ("app-blue", "Niebieski"),
+    ("app-blue-auto", "Niebieski (jasny lub ciemny wg ustawień systemu)"),
+    ("app-blue-ciemny", "Niebieski ciemny"),
     ("app-orange", "Pomarańczowy"),
     ("app-vizja", "Bursztynowo-granatowy (VIZJA)"),
     ("app-mwsl", "Pomarańczowo-granatowy (MWSL)"),
