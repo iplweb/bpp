@@ -52,7 +52,7 @@
 
             {% if bez_rodzaju_zatrudnienia > 0 %}
             <div class="callout alert" style="margin-top: 1rem;">
-                <h5 style="color: #cc4b37;">
+                <h5 style="color: var(--bpp-tekst-blad, #cc4b37);">
                     <span class="fi-alert"></span> Ostrzeżenie: Autor_Dyscyplina bez rodzaju zatrudnienia
                 </h5>
                 <div class="grid-x grid-margin-x">
@@ -167,7 +167,7 @@
                                 <i class="fi-wrench"></i> Ustaw procent dyscypliny 100%
                             </button>
                         </form>
-                        <p><small style="color: #666;">Dotyczy tylko autorów z jedną
+                        <p><small style="color: var(--bpp-tekst-przygaszony, #666);">Dotyczy tylko autorów z jedną
                             dyscypliną ({{ bez_procent_n_sloty_do_naprawy }} rek.)</small></p>
                         {% endif %}
                     {% else %}
@@ -210,7 +210,7 @@
                                 <i class="fi-wrench"></i> Ustaw procent dyscypliny 100%
                             </button>
                         </form>
-                        <p><small style="color: #666;">Dotyczy tylko autorów z jedną
+                        <p><small style="color: var(--bpp-tekst-przygaszony, #666);">Dotyczy tylko autorów z jedną
                             dyscypliną ({{ bez_procent_dowolny_do_naprawy }} rek.)</small></p>
                         {% endif %}
                     {% else %}
@@ -339,7 +339,7 @@
 
 <style>
     .alert-text {
-        color: #cc4b37;
+        color: var(--bpp-tekst-blad, #cc4b37);
         font-weight: bold;
     }
     .success-text {

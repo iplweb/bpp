@@ -15,8 +15,8 @@
 
     // Table inside alert callout
     &__alert-table {
-        background: white;
-        color: black;
+        background: var(--bpp-tlo-pow, white);
+        color: var(--bpp-tekst, black);
         margin-top: 1rem;
     }
 
@@ -47,11 +47,11 @@
 
     // Cell highlighting for discrepancies - BPP values (warning)
     &__cell--bpp-warning {
-        background-color: #fff3cd;
+        background-color: var(--bpp-tlo-ostrzezenie, #fff3cd);
     }
 
     // Cell highlighting for discrepancies - PBN values (success)
     &__cell--pbn-success {
-        background-color: #d4edda;
+        background-color: var(--bpp-tlo-sukces, #d4edda);
     }
 }

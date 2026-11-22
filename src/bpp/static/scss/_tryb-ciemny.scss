@@ -328,25 +328,30 @@
       color: var(--tc-tekst);
 
       &.primary {
+        color: var(--tc-tekst);
         background-color: var(--tc-info-tlo);
         border-color: var(--tc-akcent);
       }
 
       &.secondary {
+        color: var(--tc-tekst);
         background-color: var(--tc-pow-2);
       }
 
       &.success {
+        color: var(--tc-tekst);
         background-color: var(--tc-sukces-tlo);
         border-color: var(--tc-sukces-ramka);
       }
 
       &.warning {
+        color: var(--tc-tekst);
         background-color: var(--tc-ostrzezenie-tlo);
         border-color: var(--tc-ostrzezenie-ramka);
       }
 
       &.alert {
+        color: var(--tc-tekst);
         background-color: var(--tc-blad-tlo);
         border-color: var(--tc-blad-ramka);
       }
@@ -1092,7 +1097,8 @@
 
     // Komunikat z tłem ustawionym inline (np. statystyki metryk: niebieski
     // callout) — tło zostaje jasne/nasycone, więc tekst ciemny jak w jasnym.
-    .callout[style*="background"] {
+    // (Tło z `var(--bpp-…)` jest już ciemne — tych nie ruszamy.)
+    .callout[style*="background"]:not([style*="var(--bpp"]) {
       > h1, > h2, > h3, > h4, > h5, > h6, > p {
         color: #0a0a0a;
       }

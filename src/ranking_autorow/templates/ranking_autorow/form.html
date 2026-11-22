@@ -86,17 +86,17 @@ $(document).ready(function() {
     .collapsible-trigger {
         display: block;
         padding: 0.5rem;
-        background-color: #f4f4f4;
-        border: 1px solid #ddd;
+        background-color: var(--bpp-tlo-pow-2, #f4f4f4);
+        border: 1px solid var(--bpp-ramka, #ddd);
         border-radius: 3px;
-        color: #333;
+        color: var(--bpp-tekst, #333);
         text-decoration: none;
         transition: background-color 0.3s;
     }
 
     .collapsible-trigger:hover {
-        background-color: #e8e8e8;
-        color: #333;
+        background-color: var(--bpp-tlo-hover, #e8e8e8);
+        color: var(--bpp-tekst, #333);
     }
 
     .collapsible-trigger .fi-plus,
@@ -106,9 +106,9 @@ $(document).ready(function() {
 
     .collapsible-content {
         padding: 1rem;
-        border: 1px solid #ddd;
+        border: 1px solid var(--bpp-ramka, #ddd);
         border-top: none;
-        background-color: #fafafa;
+        background-color: var(--bpp-tlo-pow-2, #fafafa);
     }
 
     .collapsible-content ul {
@@ -123,7 +123,7 @@ $(document).ready(function() {
 
     .select-all-container {
         padding-top: 0.5rem;
-        border-bottom: 1px solid #ddd;
+        border-bottom: 1px solid var(--bpp-ramka, #ddd);
         padding-bottom: 0.5rem;
     }
 </style>

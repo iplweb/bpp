@@ -246,9 +246,17 @@ zmian), w ciemnym definiują je oba mechanizmy: `_tryb-ciemny.scss` (blok
 `test_zmienne_kolorow_zdefiniowane_w_obu_trybach_ciemnych` pilnuje, żeby
 każda użyta zmienna była zdefiniowana w obu miejscach.
 
-Zamianę robi `bin/tryb-ciemny-zmienne.py PLIK…` (pliki `.html` — tylko
-bloki `<style>`; obsługuje zagnieżdżenia SCSS; plakietki i barwne gradienty
-skal zostawia). Wynik przejrzyj w `git diff`.
+Zamianę robi `bin/tryb-ciemny-zmienne.py PLIK…` (pliki `.html` — bloki
+`<style>` i atrybuty `style="…"`; obsługuje zagnieżdżenia SCSS; plakietki
+i barwne gradienty skal zostawia). Wynik przejrzyj w `git diff`. Przepuszczone
+są nim arkusze modułów (`src/*/static/*/scss/*.scss` poza motywem i adminem,
+`deduplikator_publikacji.css`) oraz szablony z kolorami (bez admina, wydruków
+i PDF-ów oraz samodzielnych stron bez motywu). **Nowy kolor w stylu modułu
+albo szablonu** — pisz od razu `var(--bpp-…, kolor)` albo przepuść plik przez
+narzędzie.
+
+Audyt modułów: `bin/tryb-ciemny-audyt.py --moduly` (strony z menu + lista
+`MODULY_DODATKOWE`) albo `--tylko-moduly`.
 
 Wykresy JS (Plotly, circle-progress) w metrykach biorą kolory z wyliczonego
 stylu strony: `ewaluacja_metryki/js/wykresy-motyw.js` owija
