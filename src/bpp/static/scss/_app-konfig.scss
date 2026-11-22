@@ -142,7 +142,8 @@ nav.sticky-header {
 
 // Strzałki rozwijania rysowane obramowaniem — w kolorze napisów paska.
 .top-bar .dropdown.menu > li.is-dropdown-submenu-parent > a::after,
-.top-bar .dropdown.menu > li.has-submenu > a::after {
+.top-bar .dropdown.menu > li.has-submenu > a::after,
+html.bpp-js-init .top-bar .dropdown.menu > li:has(> a[aria-haspopup]):not(.has-submenu) > a::after {
   border-top-color: currentColor;
 }
 
