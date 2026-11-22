@@ -241,14 +241,15 @@ def _wiersze_list(model, obj, wersja1, wersja2, fmt):
         if not (usuniete or dodane or zmienione):
             continue
         bez_zmian = len(e1.keys() & e2.keys()) - len(zmienione)
+        klucz = _klucz_kolejnosci(powiazany)
         zmiana = [
             *(
                 format_html("<li><del>− {}</del></li>", w.object_repr)
-                for w in sorted(usuniete, key=lambda v: v.object_repr)
+                for w in sorted(usuniete, key=klucz)
             ),
             *(
                 format_html("<li><ins>+ {}</ins></li>", w.object_repr)
-                for w in sorted(dodane, key=lambda v: v.object_repr)
+                for w in sorted(dodane, key=klucz)
             ),
             *(
                 format_html(
@@ -260,7 +261,7 @@ def _wiersze_list(model, obj, wersja1, wersja2, fmt):
                         pola,
                     ),
                 )
-                for _w1, w2, pola in sorted(zmienione, key=lambda z: z[1].object_repr)
+                for _w1, w2, pola in sorted(zmienione, key=lambda z: klucz(z[1]))
             ),
         ]
         if bez_zmian:
@@ -273,14 +274,37 @@ def _wiersze_list(model, obj, wersja1, wersja2, fmt):
         nazwa = str(powiazany._meta.verbose_name_plural)
         yield {
             "etykieta": nazwa[:1].upper() + nazwa[1:],
-            "stare": _lista(e1),
+            "stare": _lista(e1, klucz),
             "zmiana": format_html("<ul>{}</ul>", mark_safe("".join(zmiana))),
-            "nowe": _lista(e2),
+            "nowe": _lista(e2, klucz),
             "lista": True,
         }
 
 
-def _lista(elementy):
+def _klucz_kolejnosci(model):
+    """Klucz sortowania pozycji z wersji wg domyślnego porządku modelu
+    (``Meta.ordering`` — u autorów ``kolejnosc``), a nie alfabetycznie:
+    zmiana kolejności autorów musi być widać w porównaniu."""
+    pola = []
+    for nazwa in model._meta.ordering or ():
+        if not isinstance(nazwa, str) or "__" in nazwa or nazwa == "?":
+            continue
+        try:
+            pola.append(model._meta.get_field(nazwa.lstrip("-")).attname)
+        except LookupError:
+            continue
+
+    def klucz(wersja):
+        wartosci = tuple(
+            (wartosc is None, wartosc if wartosc is not None else 0)
+            for wartosc in (wersja.field_dict.get(p) for p in pola)
+        )
+        return (wartosci, wersja.object_repr)
+
+    return klucz
+
+
+def _lista(elementy, klucz):
     """Pełna lista pozycji z jednej wersji (kolumny boczne)."""
     if not elementy:
         return "—"
@@ -289,10 +313,7 @@ def _lista(elementy):
         format_html_join(
             "",
             "<li>{}</li>",
-            (
-                (v.object_repr,)
-                for v in sorted(elementy.values(), key=lambda v: v.object_repr)
-            ),
+            ((v.object_repr,) for v in sorted(elementy.values(), key=klucz)),
         ),
     )
 

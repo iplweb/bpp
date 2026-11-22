@@ -3,6 +3,7 @@ import sys
 import uuid
 from functools import update_wrapper
 
+import reversion
 from django.conf import settings
 from django.contrib import admin, messages
 from django.contrib.admin import helpers
@@ -24,6 +25,7 @@ from bpp.admin.helpers.fieldsets import MODEL_Z_OPLATA_ZA_PUBLIKACJE
 from bpp.admin.helpers.mixins import BppSoftDeleteAdminMixin
 from bpp.admin.helpers.wersje import HistoriaWersjiMixin
 from bpp.util import zaloguj_polkniety_wyjatek
+from bpp.wersjonowanie import zapewnij_wersje_poczatkowa
 from bpp.zglaszanie_bledow import capture_exception
 from import_common.normalization import extract_doi_from_url
 from zglos_publikacje.models import (
@@ -324,11 +326,18 @@ class Zgloszenie_PublikacjiAdmin(
             form = form_class(request.POST, request.FILES, instance=obj)
             form_validated = form.is_valid()
             if form_validated:
-                new_object = self.save_form(request, form, change=True)
-                new_object.status = Zgloszenie_Publikacji.Statusy.WYMAGA_ZMIAN
-                new_object.kod_do_edycji = uuid.uuid4()
-                self.save_model(request, new_object, form, not add)
                 change_message = f"Rekord został zwrócony, przyczyna {form.cleaned_data['przyczyna_zwrotu']}"
+                # Zwrot jako wersja w historii (FD#587): stan sprzed zwrotu
+                # i po nim, z przyczyną w opisie zmiany.
+                zapewnij_wersje_poczatkowa(Zgloszenie_Publikacji.objects.get(pk=obj.pk))
+                with transaction.atomic(), reversion.create_revision():
+                    new_object = self.save_form(request, form, change=True)
+                    new_object.status = Zgloszenie_Publikacji.Statusy.WYMAGA_ZMIAN
+                    new_object.kod_do_edycji = uuid.uuid4()
+                    self.save_model(request, new_object, form, not add)
+                    reversion.add_to_revision(new_object)
+                    reversion.set_user(request.user)
+                    reversion.set_comment(change_message)
                 self.log_change(request, new_object, change_message)
 
                 def _():

@@ -569,3 +569,45 @@ def test_przywrocenie_nie_cofa_innych_rekordow_z_tej_samej_rewizji(
     drugi.refresh_from_db()
     assert wydawnictwo_ciagle.tytul_oryginalny == wspolna.field_dict["tytul_oryginalny"]
     assert drugi.tytul_oryginalny == f"Nowy tytuł {drugi.pk}"
+
+
+def test_uczelnia_i_tag_bez_danych_wyliczanych_i_cudzych_powiazan():
+    """Wersja uczelni NIE obejmuje wyliczanej liczby N, a wersja tagu NIE
+    obejmuje jego wystąpień w publikacjach — przywrócenie wersji
+    nadpisałoby liczbę N albo usunęło słowo kluczowe z innych rekordów."""
+    from taggit.models import Tag
+
+    from bpp.models import Uczelnia
+    from bpp.wersjonowanie import sledzone_relacje
+
+    assert sledzone_relacje(Uczelnia) == ("ukryj_status_korekty_set",)
+    assert sledzone_relacje(Tag) == ()
+
+
+def test_porownanie_list_wg_kolejnosci_a_nie_alfabetu(
+    admin_client, wydawnictwo_ciagle, autor_jan_nowak, autor_jan_kowalski, jednostka
+):
+    """Autorzy w porównaniu są w kolejności z rekordu (``kolejnosc``), więc
+    zamiana kolejności jest widoczna — po bokach i jako zmiana pola."""
+    nowak = wydawnictwo_ciagle.dodaj_autora(autor_jan_nowak, jednostka, kolejnosc=1)
+    kowalski = wydawnictwo_ciagle.dodaj_autora(
+        autor_jan_kowalski, jednostka, kolejnosc=2
+    )
+    with reversion.create_revision():
+        wydawnictwo_ciagle.save()
+    nowak.kolejnosc, kowalski.kolejnosc = 3, 0
+    nowak.save()
+    kowalski.save()
+    with reversion.create_revision():
+        wydawnictwo_ciagle.save()
+    nowsza, starsza = Version.objects.get_for_object(wydawnictwo_ciagle)[:2]
+
+    tresc = admin_client.get(
+        reverse("admin:bpp_wydawnictwo_ciagle_compare", args=(wydawnictwo_ciagle.pk,)),
+        {"version_id1": starsza.pk, "version_id2": nowsza.pk},
+    ).content.decode()
+    wiersz = tresc[tresc.index("Powiązania autorów") :]
+    stara, zmiana, nowa = wiersz.split("<td", 4)[1:4]
+    assert stara.index("Nowak") < stara.index("Kowalski")
+    assert nowa.index("Kowalski") < nowa.index("Nowak")
+    assert "Kolejność" in zmiana

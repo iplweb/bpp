@@ -488,6 +488,15 @@ def test_sciezka_jawna_do_zapisu_zwrotnego_oznacza_dozwolone_zgloszenie(
     assert zgl.zaimportowal_id == importer_user.pk
     assert zgl.kod_do_edycji is None
 
+    # FD#587: oznaczenie jest w historii zgłoszenia (stan „przed” i „po”).
+    from reversion.models import Version
+
+    po, przed = Version.objects.get_for_object(zgl)[:2]
+    assert po.revision.comment.startswith("Zaimportowano jako rekord")
+    assert po.revision.user_id == importer_user.pk
+    assert po.field_dict["status"] == STATUSY.ZAIMPORTOWANY
+    assert przed.field_dict["status"] != STATUSY.ZAIMPORTOWANY
+
 
 # --------------------------------------------------------------------------
 # zgloszenie_dozwolone — jednostkowo

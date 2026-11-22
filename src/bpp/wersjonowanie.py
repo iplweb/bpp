@@ -267,6 +267,21 @@ def _zarejestruj_modele_bpp():
     # Zatrudnienie autorów NIE jest śledzone (jak przy ``Autor``).
     zarejestruj_wersjonowanie(Jednostka, exclude=("search",))
 
+    # Jawnie, zanim zrobi to automatycznie ``VersionAdmin`` z inline'ów:
+    # - uczelnia BEZ wyliczanej liczby N (``LiczbaNDlaUczelni``) —
+    #   przywrócenie wersji nadpisałoby ją starymi wartościami,
+    # - tag (słowo kluczowe) BEZ powiązań z rekordami — wersja tagu
+    #   obejmowałaby jego wystąpienia we WSZYSTKICH publikacjach, a jej
+    #   przywrócenie usunęłoby słowo z publikacji, którym dodano je później.
+    from bpp.models import Uczelnia
+
+    zarejestruj_wersjonowanie(Uczelnia, follow=("ukryj_status_korekty_set",))
+
+    from django.apps import apps
+
+    if apps.is_installed("taggit"):
+        zarejestruj_wersjonowanie(apps.get_model("taggit", "Tag"))
+
 
 _zarejestruj_modele_bpp()
 

@@ -663,7 +663,39 @@ class Zgloszenie_PublikacjiWizard(UczelniaSettingRequiredMixin, SessionWizardVie
             self._wyczysc_tmp_pliki()
             messages.add_message(self.request, messages.ERROR, KOMUNIKAT_LIMIT_ZGLOSZEN)
             return HttpResponseRedirect(self.request.path)
-        return self._zapisz_zgloszenie(form_list, **kwargs)
+        return self._zapisz_z_historia(form_list, **kwargs)
+
+    def _zapisz_z_historia(self, form_list, **kwargs):
+        """Zapis zgłoszenia jako wersja w historii (FD#587): nowe zgłoszenie
+        i poprawka zgłaszającego (link z e-maila) to rewizje ze zgłoszonymi
+        autorami i załącznikami. Przy poprawce najpierw stan sprzed zmiany —
+        żeby dało się porównać, co zgłaszający zmienił."""
+        import reversion
+
+        from bpp.wersjonowanie import zapewnij_wersje_poczatkowa
+
+        nowe = self.object is None
+        if not nowe:
+            zapewnij_wersje_poczatkowa(self.object)
+        odpowiedz = self._zapisz_zgloszenie(form_list, **kwargs)
+        # Wersja PO zapisie (a nie rewizja wokół niego): zapis zgłoszenia
+        # sam zapisuje historię innych rekordów (np. dyscyplina autora), a
+        # rewizje reversion nie mogą się zagnieżdżać.
+        with transaction.atomic(), reversion.create_revision():
+            reversion.add_to_revision(
+                Zgloszenie_Publikacji.objects.get(pk=self.object.pk)
+            )
+            if self.request.user.is_authenticated:
+                reversion.set_user(self.request.user)
+            reversion.set_comment(
+                (
+                    "Zgłoszono publikację przez formularz na stronie"
+                    if nowe
+                    else "Zgłaszający poprawił zgłoszenie (link z e-maila)"
+                )
+                + f" (zgłaszający: {self.object.email})."
+            )
+        return odpowiedz
 
     @transaction.atomic
     def _zapisz_zgloszenie(self, form_list, **kwargs):
