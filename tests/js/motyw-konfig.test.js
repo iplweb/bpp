@@ -276,6 +276,32 @@ describe("gotowe motywy i wykresy", () => {
         }
     });
 
+    // Dotychczasowe motywy app-* odwzorowują stare kolory i część z nich
+    // celowo nie spełnia wymogu kontrastu — tych nie sprawdzamy.
+    const NOWE = M.GOTOWE.filter((g) => !g.klucz.startsWith("app-"));
+
+    test("klucze gotowych motywów są unikalne", () => {
+        const klucze = M.GOTOWE.map((g) => g.klucz);
+        expect(new Set(klucze).size).toBe(klucze.length);
+    });
+
+    test.each(NOWE.map((g) => [g.klucz, g]))(
+        "gotowy motyw %s przechodzi walidację (z kontrastem)",
+        (klucz, g) => {
+            expect(M.waliduj(g.konfig, { bezNazwy: true })).toEqual([]);
+        },
+    );
+
+    test.each(NOWE.filter((g) => g.klucz !== "domyslny").map((g) => [g.klucz, g]))(
+        "gotowy motyw %s nie dostaje stylu dotychczasowego i się kompiluje",
+        (klucz, g) => {
+            expect(g.konfig.kolor_naglowka).not.toBe("#e6e6e6");
+            const css = M.przetworzCss(kompiluj(g.konfig), M.normalizuj(g.konfig));
+            expect(css).toContain(".top-bar");
+        },
+        30000,
+    );
+
     test("motywy dotychczasowe: jasne i kanciaste", () => {
         const zielony = M.GOTOWE.find((g) => g.klucz === "app-green");
         expect(zielony.konfig.tryb_kolorow).toBe("jasny");
