@@ -90,7 +90,8 @@
     <p class="errornote">
     {% load i18n %}
     {% blocktranslate count counter=errors|length %}Please correct the error below.{% plural %}Please correct the errors below.{% endblocktranslate %}
-    <a href="#" class="bpp-do-pierwszego-bledu">Przejdź do pierwszego błędu ↓</a>
+    {# Kolor jak tekst komunikatu (domyślny niebieski link na czerwonym tle był nieczytelny). #}
+    <a href="#" class="bpp-do-pierwszego-bledu" style="color: inherit !important; font-weight: bold; text-decoration: underline; margin-left: .5em; white-space: nowrap;"><span aria-hidden="true" style="font-size: 18px; line-height: 1; vertical-align: -2px; text-decoration: none; display: inline-block; margin-right: .2em;">⬇</span>Kliknij tutaj, aby przejść do pierwszego błędu</a>
     </p>
     {{ adminform.form.non_field_errors }}
 {% endif %}
