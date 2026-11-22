@@ -123,11 +123,12 @@ akcje **„Ustaw status korekty: przed korektą”**, **„Ustaw status
 korekty: w trakcie korekty”** i **„Ustaw status korekty: po korekcie”**
 zmieniają status wszystkich zaznaczonych rekordów. Każdy zmieniony rekord
 dostaje w swojej „Historii” wpis, np. „Ustawiono status korekty: po
-korekcie (akcja masowa)” — z nazwą użytkownika i datą. Publikacje nie mają
-zapisywanych wersji, więc z „Historii” widać kto i kiedy zmienił status,
-ale nie ma tam przycisku przywracania — poprzedni status ustawia się
-ponownie akcją albo w formularzu rekordu. Akcje wymagają uprawnienia do
-edycji publikacji; jedną akcją można zmienić najwyżej 20000 rekordów.
+korekcie (akcja masowa)” — z nazwą użytkownika i datą. Publikacje mają
+zapisywane wersje, więc z „Historii” każdego rekordu można wrócić do stanu
+sprzed akcji (każdy rekord ma własną wersję — przywrócenie jednego nie
+zmienia pozostałych). Akcje wymagają uprawnienia do edycji publikacji;
+jedną akcją można zmienić najwyżej 5000 rekordów (przy większej liczbie
+zawęź listę filtrami, np. po roku i statusie).
 
 Ustawienia widoczności są zapisane na autorze, a nie na jego powiązaniu
 z uczelnią. W instalacji z kilkoma uczelniami ukrycie autora (zarówno

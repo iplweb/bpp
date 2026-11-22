@@ -64,7 +64,11 @@ To pole nie daje innych uprawnień. Szczegóły:
 - **Historia zmian.**
     - Szablony z bazy (dbtemplates) mają historię wersji z porównaniem
       zmian (django-reversion) — przycisk „Historia” na stronie szablonu.
-    - Rekord uczelni również ma historię wersji (django-reversion).
+    - Rekord uczelni, autorzy, publikacje (z autorami), zgłoszenia
+      publikacji, źródła, wydawcy, konferencje, serie wydawnicze
+      i jednostki mają historię wersji (django-reversion) z porównaniem
+      dwóch wersji i przywracaniem — patrz
+      [Historia zmian publikacji](../redaktor/wydawnictwa.md#historia-zmian).
     - W instalacji produkcyjnej dziennik django-easy-audit rejestruje
       zmiany rekordów uczelni i jednostek.
     - Dla pozostałych obiektów (artykuły, ustawienia formularzy, raporty,
@@ -82,9 +86,9 @@ To pole nie daje innych uprawnień. Szczegóły:
       autorów, przemapowania źródeł i prac autora (oraz ich cofnięcia),
       aktualizacje z importu pracowników, POLON-u i importu dyscyplin,
       ustawienia z porównania z CrossRef i modułu rozbieżności, powiązania
-      z PBN — mają wpis „zmieniono” z opisem operacji. U autorów taka
-      zmiana zapisuje też wersję, więc można ją cofnąć przyciskiem
-      „Historia”. Usunięcie duplikatu przy scalaniu zostawia wpis
+      z PBN — mają wpis „zmieniono” z opisem operacji. W modelach
+      z historią wersji (m.in. autorzy, publikacje) taka zmiana zapisuje
+      też wersję, więc można ją cofnąć przyciskiem „Historia”. Usunięcie duplikatu przy scalaniu zostawia wpis
       „usunięto”.
 - **Konta `system-user-…`.** Gdy import uruchomiono poleceniem
   `manage.py` (bez zalogowanej osoby), wpisy historii są przypisywane

@@ -1,5 +1,5 @@
 {% extends "admin/object_history.html" %}
-{% load i18n admin_urls %}
+{% load i18n admin_urls l10n %}
 
 {% block extrahead %}
     {{ block.super }}
@@ -63,6 +63,12 @@
             text-decoration: underline;
         }
 
+        .bpp-historia-tabela .bpp-historia-porownaj {
+            width: 1%;
+            white-space: nowrap;
+            text-align: center;
+        }
+
         .grp-module {
             margin: 0 0 20px;
             border: 1px solid var(--bpp-ramka, #d4d4d4);
@@ -112,10 +118,23 @@
                 {% if action_list %}
                     <div class="grp-description">
                         <p>{% blocktrans %}Choose a date from the list below to revert to a previous version of this object.{% endblocktrans %}</p>
+                        {% if compare_view and comparable %}
+                            <p>Aby zobaczyć, co się zmieniło, zaznacz dwie wersje (starszą w lewej kolumnie, nowszą w prawej) i kliknij „Porównaj wersje”.</p>
+                        {% endif %}
                     </div>
+                    {% if compare_view %}<form method="get" action="compare/">{% endif %}
                     <table id="grp-change-history" class="grp-table bpp-historia-tabela">
                         <thead>
                             <tr>
+                                {% if compare_view %}
+                                    <th scope="col" class="bpp-historia-porownaj">
+                                        {% if comparable %}
+                                            <button type="submit" class="grp-button">Porównaj wersje</button>
+                                        {% else %}
+                                            Porównaj
+                                        {% endif %}
+                                    </th>
+                                {% endif %}
                                 <th scope="col">{% trans 'Date/time' %}</th>
                                 <th scope="col">{% trans 'User' %}</th>
                                 <th scope="col">{% trans 'Action' %}</th>
@@ -124,6 +143,17 @@
                         <tbody>
                             {% for action in action_list %}
                                 <tr class="{% cycle 'grp-row-even' 'grp-row-odd' %}">
+                                    {% if compare_view %}
+                                        <td class="bpp-historia-porownaj">
+                                            {% if comparable %}
+                                                {# Lewa kolumna: wersja starsza, prawa: nowsza (jak w reversion-compare). #}
+                                                <input type="radio" name="version_id1" value="{{ action.version.pk|unlocalize }}" aria-label="Wersja starsza" {% if action.first %}style="visibility:hidden"{% endif %} {% if action.second %}checked{% endif %}>
+                                                <input type="radio" name="version_id2" value="{{ action.version.pk|unlocalize }}" aria-label="Wersja nowsza" {% if action.first %}checked{% endif %}>
+                                            {% else %}
+                                                &ndash;
+                                            {% endif %}
+                                        </td>
+                                    {% endif %}
                                     <th scope="row">
                                         {% if action.url %}
                                             <a href="{{ action.url }}">{{ action.revision.date_created|date:"j E Y, H:i" }}</a>
@@ -152,6 +182,7 @@
                             {% endfor %}
                         </tbody>
                     </table>
+                    {% if compare_view %}</form>{% endif %}
                 {% elif historia_sprzed_wersjonowania %}
                     {# Stara historia (LogEntry) jest niżej — komunikat „brak historii” by jej przeczył. #}
                     <div class="grp-row">

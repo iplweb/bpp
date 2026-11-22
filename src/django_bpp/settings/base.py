@@ -1342,6 +1342,12 @@ COMPRESS_OUTPUT_DIR = "CACHE"
 DBTEMPLATES_USE_REVERSION = True
 DBTEMPLATES_USE_REVERSION_COMPARE = True
 
+# Porównanie wersji (reversion-compare, strona „Historia" w adminie): klucze
+# obce porównujemy po ID. Domyślnie biblioteka uznaje KAŻDE pole FK za
+# zmienione, gdy w wersji zmieniło się cokolwiek (np. sam tytuł), i zalewa
+# diff niezmienionymi słownikami.
+REVERSION_COMPARE_FOREIGN_OBJECTS_AS_ID = True
+
 # Nasza tabela django_template ma kilka wierszy (override'y frontendu), a admin
 # rozwiazuje ~150 szablonow na strone. Bez tej flagi dbtemplates pytalby DB o
 # kazda taka nazwe (pod DummyCache w dev = ~300 zapytan/strone). Loader trzyma

@@ -113,6 +113,15 @@ def test_changelist_bez_rewizji_dla_akcji_z_historia(admin_user, nazwa):
 
 
 @pytest.mark.django_db
+def test_changelist_bez_rewizji_dla_nieoznaczonych_akcji(admin_user):
+    """FD#587: także akcja NIEoznaczona (wbudowane usuwanie) nie dostaje
+    wspólnej rewizji — przywrócenie wersji jednego rekordu cofnęłoby
+    wszystkie zmienione tą akcją."""
+    dane = {"action": "delete_selected", "_selected_action": [1], "index": 0}
+    assert _czy_rewizja_aktywna(admin_user, "post", dane) is False
+
+
+@pytest.mark.django_db
 @pytest.mark.parametrize(
     "metoda,dane,url",
     [
@@ -120,12 +129,6 @@ def test_changelist_bez_rewizji_dla_akcji_z_historia(admin_user, nazwa):
         ("get", None, "/admin/bpp/autor/"),
         # POST listy bez akcji (np. list_editable / wyszukiwanie).
         ("post", {"q": "x"}, "/admin/bpp/autor/"),
-        # Akcja NIEoznaczona (wbudowane usuwanie).
-        (
-            "post",
-            {"action": "delete_selected", "_selected_action": [1], "index": 0},
-            "/admin/bpp/autor/",
-        ),
         # Nieznana akcja albo zły indeks — decyduje Django, rewizja jak dotąd.
         ("post", {"action": "nie_ma_takiej", "index": 0}, "/admin/bpp/autor/"),
         ("post", {"action": "ukryj_autorow_wszedzie", "index": 5}, "/admin/bpp/autor/"),
@@ -156,10 +159,13 @@ def test_akcja_z_historia_przed_i_po_w_osobnych_rewizjach(admin_client, admin_us
 
     przed = {Version.objects.get_for_object(a).last().revision_id for a in autorzy}
     po = {Version.objects.get_for_object(a).first().revision_id for a in autorzy}
-    # Jedna rewizja „przed” (hurtem) i jedna „po” — różne.
-    assert len(przed) == 1
-    assert len(po) == 1
-    assert przed != po
+    # FD#587: każdy autor we własnej rewizji „przed” i „po” — cofnięcie
+    # jednego nie cofa drugiego.
+    assert len(przed) == 2
+    assert len(po) == 2
+    assert not przed & po
+    for rewizja in przed | po:
+        assert Version.objects.filter(revision_id=rewizja).count() == 1
     uzytkownicy_po = set(
         Version.objects.filter(revision_id__in=po).values_list(
             "revision__user", flat=True
@@ -174,12 +180,11 @@ def test_akcja_z_historia_przed_i_po_w_osobnych_rewizjach(admin_client, admin_us
 
 
 @pytest.mark.django_db
-@pytest.mark.parametrize("oznaczona,oczekiwana", [(False, True), (True, False)])
-def test_changelist_otwiera_rewizje_tylko_dla_nieoznaczonych_akcji(
-    admin_client, oznaczona, oczekiwana
-):
-    """Przez prawdziwy ``changelist_view``: zwykła akcja wykonuje się
-    w rewizji reversion jak dotąd, oznaczona ``zapisuje_historie`` — nie."""
+@pytest.mark.parametrize("oznaczona,oczekiwana", [(False, False), (True, False)])
+def test_changelist_nie_otwiera_rewizji_dla_akcji(admin_client, oznaczona, oczekiwana):
+    """Przez prawdziwy ``changelist_view``: żadna akcja masowa nie wykonuje
+    się we wspólnej rewizji reversion (FD#587) — oznaczone
+    ``zapisuje_historie`` zapisują wersje same, osobno dla rekordów."""
     stan = []
 
     def akcja_testowa(modeladmin, request, queryset):

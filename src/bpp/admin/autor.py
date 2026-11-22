@@ -5,7 +5,7 @@ from django.contrib.admin.utils import unquote
 from django.core.exceptions import ValidationError
 from django.core.files.uploadedfile import UploadedFile
 from django.forms.models import BaseInlineFormSet
-from reversion.admin import VersionAdmin
+from reversion_compare.admin import CompareVersionAdmin
 
 from bpp.admin.helpers.djangoql import BppDjangoQLSearchMixin
 from bpp.admin.helpers.dynamic_columns import BppDynamicColumnsMixin
@@ -354,7 +354,7 @@ class AutorAdmin(
     # tuż przed ``VersionAdmin`` (żaden z nich nie nadpisuje get_queryset).
     BppSoftDeleteAdminMixin,
     HistoriaWersjiMixin,
-    VersionAdmin,
+    CompareVersionAdmin,
 ):
     uczelnia_field_path = "aktualna_jednostka__uczelnia"
 

@@ -4,6 +4,7 @@ z kosza tylko do odczytu, wyszarzony „Usuń" dla rekordu z PBN UID (FD#539).""
 import pytest
 from django.urls import reverse
 from model_bakery import baker
+from reversion.models import Version
 
 from bpp.models import Wydawnictwo_Ciagle
 from pbn_export_queue.models import PBN_Export_Queue
@@ -148,7 +149,7 @@ def test_rekord_z_kosza_tylko_do_odczytu(superuser_client):
 def test_usun_w_adminie_nie_zapisuje_deletion_tylko_change(
     superuser, superuser_client, bez_celery
 ):
-    from django.contrib.admin.models import CHANGE, DELETION, LogEntry
+    from django.contrib.admin.models import DELETION, LogEntry
 
     wc = baker.make(Wydawnictwo_Ciagle)
     url = reverse("admin:bpp_wydawnictwo_ciagle_delete", args=[wc.pk])
@@ -156,6 +157,7 @@ def test_usun_w_adminie_nie_zapisuje_deletion_tylko_change(
 
     wpisy = LogEntry.objects.filter(object_id=str(wc.pk))
     assert not wpisy.filter(action_flag=DELETION).exists()
-    assert wpisy.filter(
-        action_flag=CHANGE, change_message="Przeniesiono do kosza (powód: dubel)"
-    ).exists()
+    # FD#587: publikacje są w reversion — kosz to rewizja z powodem.
+    assert [v.revision.comment for v in Version.objects.get_for_object(wc)] == [
+        "Przeniesiono do kosza (powód: dubel)"
+    ]

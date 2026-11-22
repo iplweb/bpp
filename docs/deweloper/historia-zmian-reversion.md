@@ -4,8 +4,8 @@
     Spec przeniesiony z PR #310 („spec wersjonowania zmian django-reversion +
     kontrakty z soft-delete", 2026-06-04) i dostosowany do stanu po
     skonsolidowanym PR kosza ([Soft-delete (kosz)](soft-delete.md)).
-    **Kontrakty z koszem (sekcja 5) są już zaimplementowane.** Rejestracja
-    kolejnych modeli w reversion (sekcja 4) to **następny, osobny PR**.
+    **Kontrakty z koszem (sekcja 5) są zaimplementowane.** Rejestracja
+    modeli edytowanych w adminie (sekcja 4) — zaimplementowana w FD#587.
 
 **Cel:** rozliczalność edycji ludzkich. Operator otwiera rekord w adminie,
 klika „Historia" i widzi ciągłą oś: kto utworzył, kto co zmienił, kto
@@ -28,7 +28,8 @@ total-audyt bazy (bulk-importy, surowy SQL, triggery zostają poza nim).
 - **reversion — zarejestrowane modele:** `Autor` (jawnie,
   `src/bpp/wersjonowanie.py`: `exclude=("search", "deleted_at",
   "restored_at", "transaction_id")`, `follow=("wybrane_publikacje",)`)
-  i `WybranaPublikacjaAutora`; `Uczelnia` przez `VersionAdmin`. Zatrudnienie,
+  i `WybranaPublikacjaAutora`; `Uczelnia` przez `VersionAdmin`; od FD#587
+  publikacje, zgłoszenia, słowniki i `Jednostka` (sekcja 4). Zatrudnienie,
   dyscypliny i absencje autora celowo **nieśledzone** (revert z
   `delete=True` ruszałby wiersze innych uczelni / przypisania dyscyplin).
 - **Edycje spoza admina:** profil autora (`zmiana_ze_strony` — rewizja +
@@ -40,7 +41,7 @@ total-audyt bazy (bulk-importy, surowy SQL, triggery zostają poza nim).
   (`zapewnij_wersje_poczatkowa`), kontrola typu i uczelni w
   `revision_view`, recover tylko dla superusera. Rekord z kosza: „przywróć
   wersję" zablokowane (najpierw „Przywróć" z kosza).
-- **Publikacje, struktura (`Jednostka`), słowniki NIE są w reversion.**
+- Przed FD#587 publikacje, struktura i słowniki miały tylko `LogEntry`.
 
 ## 3. Relacja do `SoftDeleteLog`
 
@@ -52,7 +53,69 @@ Komplementarne, nie duplikaty:
 | Pytanie | „co, kto, dlaczego zniknęło; co z PBN" | „jak rekord wyglądał i kto go zmieniał" |
 | UX | log operacji kosza | zakładka „Historia" rekordu |
 
-## 4. Następny krok: rejestracja modeli w reversion (osobny PR)
+## 4. Rejestracja modeli w reversion (FD#587, zaimplementowane)
+
+**Co jest wersjonowane** (`zarejestruj_wersjonowanie` w
+`src/bpp/wersjonowanie.py`; zgłoszenia w `zglos_publikacje/wersjonowanie.py`;
+import w `AppConfig.ready`, więc rejestracja działa też w Celery
+i poleceniach):
+
+| Model | `follow` | `exclude` (poza `POLA_KOSZA`) |
+|---|---|---|
+| `Wydawnictwo_Ciagle`, `Wydawnictwo_Zwarte` | `autorzy_set`, `streszczenia`, `dodatkowe_tytuly`, `zewnetrzna_baza_danych` | `search_index`, `tytul_oryginalny_sort`, cache opisu i `cached_punkty_dyscyplin` |
+| `Patent` | `autorzy_set` | jw. |
+| `Praca_Doktorska` | — | jw. |
+| `Praca_Habilitacyjna` | `publikacja_habilitacyjna_set` | jw. |
+| `Zgloszenie_Publikacji` | `zgloszenie_publikacji_autor_set` | — |
+| `Zrodlo` | punktacja, redakcja, dyscypliny źródła | `search` |
+| `Wydawca` | `poziom_wydawcy_set` | `lista_poziomow`, `ile_aliasow` |
+| `Konferencja`, `Seria_Wydawnicza` | — | — |
+| `Jednostka` | — (zatrudnienie nieśledzone, jak u `Autor`) | `search` |
+
+Nieśledzone: granty, nagrody, `Element_Repozytorium` (relacje generyczne),
+słowa kluczowe (taggit), załączniki zgłoszeń.
+
+**`exclude` — pułapka.** Przywrócenie wersji zapisuje obiekt surowo
+(`save_base(raw=True)`), a pole spoza wersji dostaje WARTOŚĆ DOMYŚLNĄ
+modelu. Wolno wyłączać tylko pola liczone przez trigger `BEFORE` albo
+denorm (przeliczane przy zapisie formularza po przywróceniu) lub mogące
+być puste. Dlatego `slug`, `ostatnio_zmieniony` i pola MPTT `Jednostka`
+(`lft`/`rght`/`tree_id`/`level`, NOT NULL) SĄ w wersji. Rejestr
+`POLA_POZA_WERSJA` + parametryzowany test przywracania każdego modelu
+(`test_fd587_historia_wersji.py`).
+
+**Admin.** Wszystkie adminy z zakresu: `HistoriaWersjiMixin` +
+`CompareVersionAdmin` (tuż przed terminalną klasą; `BppSoftDeleteAdminMixin`
+zostaje przed nimi). Mixin dodatkowo:
+
+- `compare_view` z kontrolą zakresu uczelni i uprawnień
+  (reversion-compare sam ich nie sprawdza),
+- `compare_exclude` — pomija pola techniczne, relacje nieśledzone
+  i m2m przez własne tabele (inaczej diff źródła przeglądałby wszystkie
+  jego publikacje); `REVERSION_COMPARE_FOREIGN_OBJECTS_AS_ID = True`,
+  bo domyślnie biblioteka pokazuje KAŻDE pole FK jako zmienione,
+- `po_przywroceniu_wersji` — hook; `JednostkaAdmin` przebudowuje drzewo
+  MPTT (zapis surowy omija MPTT),
+- szablon historii BPP z selektorem pary wersji („Porównaj wersje”);
+  bez przycisku „Odzyskaj usunięte” na liście (decyzja 4 niżej).
+
+**Jedna rewizja = jeden rekord.** `revision.revert()` odwraca CAŁĄ
+rewizję. Dlatego:
+
+- akcje masowe w ogóle nie dostają wspólnej rewizji z `changelist_view`
+  (`HistoriaWersjiMixin.create_revision`),
+- hurtowe zapisy wersji (`zapewnij_wersje_poczatkowe`,
+  `zmien_hurtowo_z_historia`, `zapisz_wersje_utworzenia`) idą przez
+  `zapisz_wersje_osobno`: rewizja na rekord, dwa `bulk_create` (stała
+  liczba zapytań). Wersje są budowane po stronie BPP (pola jak
+  w `reversion.register`), bo reversion nie ma publicznego API hurtowego,
+  a prywatnego nie używamy (test-strażnik).
+
+Limit akcji masowej dla publikacji: 5000 rekordów
+(`MAKS_REKORDOW_AKCJI_MASOWEJ_PUBLIKACJI`, zmierzone ~4 ms/rekord z
+autorem — wersja „przed” i „po”).
+
+### Pierwotny plan (archiwum)
 
 Decyzja właściciela (listopad 2026): w osobnym PR do reversion trafi
 **praktycznie każdy model edytowany w adminie** — publikacje
@@ -111,9 +174,17 @@ receivery `SoftDeleteLog` i historii (reversion/`LogEntry`).
   wyłącznie dla superusera; docelowo ukryć albo przekierować na
   przywracanie z kosza.
 
-## 6. Otwarte decyzje
+## 6. Decyzje
 
-1. Backfill `createinitialrevisions` na dużych tabelach: tak / „od teraz".
-2. Retencja rewizji (`deleterevisions`) — czy i po ilu dniach.
-3. Czy zmiany pozycji w drzewie `Jednostka` (MPTT) wersjonować.
-4. Czy recover reversion całkiem ukryć dla modeli z koszem.
+1. Backfill `createinitialrevisions` — **nie**: historia „od teraz”;
+   wersję początkową zapisuje `zapewnij_wersje_poczatkowa` przy pierwszej
+   zmianie rekordu.
+2. Retencja rewizji (`deleterevisions`) — **otwarte**; do decyzji po
+   obserwacji przyrostu tabeli `reversion_version` na produkcji.
+3. Pozycja w drzewie `Jednostka` — rodzic i pola MPTT są w wersji (NOT
+   NULL), po przywróceniu drzewo jest przebudowywane; w porównaniu wersji
+   pola MPTT są ukryte.
+4. Recover reversion — przycisk ukryty na listach; widok zostaje tylko dla
+   superużytkownika (dotyczy wyłącznie rekordów skasowanych twardo).
+5. Źródło zmiany (admin / import / MCP, `oauth_application`) na rewizji —
+   **nie w tym PR**; dojdzie z edycją przez MCP (seria „MCP-edycja”).

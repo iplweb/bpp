@@ -1,6 +1,8 @@
 """Mixin historii wersji (django-reversion) dla adminów BPP.
 
-Stawiać w MRO tuż PRZED ``VersionAdmin``. Dokłada do widoków reversion:
+Stawiać w MRO tuż PRZED ``CompareVersionAdmin`` (``reversion-compare``;
+porównanie dwóch wersji na stronie „Historia") albo ``VersionAdmin``.
+Dokłada do widoków reversion:
 
 * zapis stanu sprzed pierwszej zmiany (rekordy sprzed włączenia
   wersjonowania nie mają wersji, więc inaczej pierwszej edycji nie dałoby
@@ -14,12 +16,16 @@ Stawiać w MRO tuż PRZED ``VersionAdmin``. Dokłada do widoków reversion:
   rekordu nie da się przypisać do uczelni przez queryset),
 * wpisy ``LogEntry`` sprzed włączenia wersjonowania na stronie „Historia"
   (reversion pokazuje wyłącznie wersje — starsza historia by zniknęła),
-* akcje masowe oznaczone ``zapisuje_historie`` wykonują się BEZ rewizji
-  otwieranej przez ``changelist_view`` — same zapisują wersję „przed”
-  i „po” w osobnych rewizjach (w jednej rewizji stan „po” nadpisałby
-  „przed”),
+* akcje masowe wykonują się BEZ wspólnej rewizji otwieranej przez
+  ``changelist_view`` (przywrócenie jednego rekordu cofnęłoby wszystkie);
+  oznaczone ``zapisuje_historie`` same zapisują wersję „przed” i „po”
+  w osobnych rewizjach (w jednej stan „po” nadpisałby „przed”),
 * zapamiętanie relacji śledzonych przez modele rejestrowane automatycznie
-  (``FOLLOW_REVERSION``, do prefetchu przy hurtowym zapisie wersji).
+  (``FOLLOW_REVERSION``, do prefetchu przy hurtowym zapisie wersji),
+* porównanie wersji z tą samą kontrolą zakresu uczelni co podgląd wersji
+  i bez pól wyliczanych / relacji nieśledzonych (szum w diffie),
+* ``po_przywroceniu_wersji`` — hook po udanym przywróceniu wersji (np.
+  przebudowa drzewa jednostek).
 """
 
 from contextlib import nullcontext
@@ -34,11 +40,67 @@ from reversion.models import Version
 from bpp.wersjonowanie import (
     FOLLOW_REVERSION,
     POLA_KOSZA,
+    POLA_POZA_WERSJA,
     zapewnij_wersje_poczatkowa,
+)
+
+#: Pola pomijane w porównaniu wersji w każdym modelu — zmieniają się przy
+#: każdym zapisie albo są techniczne, więc tylko zaśmiecałyby diff.
+POLA_POZA_POROWNANIEM = (
+    "ostatnio_zmieniony",
+    "utworzono",
+    "slug",
+    "legacy_data",
+    "lft",
+    "rght",
+    "tree_id",
+    "level",
 )
 
 
 class HistoriaWersjiMixin:
+    # Własny szablon historii BPP (``reversion/object_history.html``), także
+    # pod ``CompareVersionAdmin``, który domyślnie podstawia swój.
+    object_history_template = "reversion/object_history.html"
+    # Zwykła lista rekordów — bez przycisku „Odzyskaj usunięte" z reversion:
+    # modele BPP mają kosz (odzyskiwanie z wersji ominęłoby ``restore()``),
+    # a sam widok i tak jest tylko dla superużytkownika.
+    change_list_template = None
+
+    @property
+    def compare_exclude(self):
+        """Pola pomijane w porównaniu wersji: wyliczane, spoza wersji,
+        relacje nieśledzone (reversion-compare przeglądałby np. wszystkie
+        publikacje źródła) i m2m przez własne tabele (autorzy są w
+        ``autorzy_set``)."""
+        opts = self.model._meta
+        sledzone = set(FOLLOW_REVERSION.get(self.model, ()))
+        wykluczone = set(POLA_POZA_POROWNANIEM) | set(
+            POLA_POZA_WERSJA.get(self.model, POLA_KOSZA)
+        )
+        for relacja in opts.related_objects:
+            if relacja.get_accessor_name() not in sledzone:
+                wykluczone.add(relacja.name)
+        for pole in opts.many_to_many:
+            through = getattr(pole.remote_field, "through", None)
+            if through is None or not through._meta.auto_created:
+                wykluczone.add(pole.name)
+        return tuple(wykluczone)
+
+    def compare_view(self, request, object_id, extra_context=None):
+        # reversion-compare nie sprawdza uprawnień ani zakresu uczelni —
+        # sam ``admin_view`` wpuszcza każdego członka personelu.
+        obj = self.get_object(request, unquote(object_id))
+        if obj is None:
+            raise Http404("Brak takiego rekordu w zakresie Twojej uczelni.")
+        if not self.has_view_or_change_permission(request, obj):
+            raise PermissionDenied
+        return super().compare_view(request, object_id, extra_context)
+
+    def po_przywroceniu_wersji(self, request, obj):
+        """Hook po udanym przywróceniu wersji ``obj`` (już zapisanej
+        formularzem). Domyślnie nic nie robi."""
+
     def change_view(self, request, object_id, form_url="", extra_context=None):
         if request.method == "POST":
             zapewnij_wersje_poczatkowa(self.get_object(request, unquote(object_id)))
@@ -67,7 +129,15 @@ class HistoriaWersjiMixin:
             .exists()
         ):
             raise Http404("Brak takiej wersji tego rekordu.")
-        return super().revision_view(request, object_id, version_id, extra_context)
+        response = super().revision_view(request, object_id, version_id, extra_context)
+        # Jak reversion: POST zakończony przekierowaniem = wersja przywrócona.
+        # Błąd przywracania też kończy się przekierowaniem (na listę), więc
+        # hook musi być bezpieczny do wywołania bez zmiany.
+        if request.method == "POST" and response.status_code == 302:
+            self.po_przywroceniu_wersji(
+                request, self.model._default_manager.get(pk=obj.pk)
+            )
+        return response
 
     def recoverlist_view(self, request, extra_context=None):
         if not request.user.is_superuser:
@@ -111,28 +181,34 @@ class HistoriaWersjiMixin:
         if hasattr(model, "deleted_objects"):
             # Pola kosza nie wchodzą do wersji (patrz ``POLA_KOSZA``).
             kwargs["exclude"] = (*kwargs.get("exclude", ()), *POLA_KOSZA)
+        POLA_POZA_WERSJA.setdefault(model, tuple(kwargs.get("exclude", ())))
         super().reversion_register(model, **kwargs)
 
     def create_revision(self, request):
-        if self._akcja_zapisuje_historie(request):
+        # Akcje masowe NIE dostają wspólnej rewizji z ``changelist_view``:
+        # przywrócenie wersji odwraca całą rewizję, więc cofnięcie jednego
+        # rekordu cofnęłoby po cichu wszystkie zmienione tą samą akcją (także
+        # spoza uczelni użytkownika — kontrola zakresu dotyczy tylko rekordu
+        # z adresu). Akcje oznaczone ``zapisuje_historie`` zapisują wersje
+        # same, osobno dla każdego rekordu.
+        if self._post_akcji_masowej(request) is not None:
             return nullcontext()
         return super().create_revision(request)
 
-    def _akcja_zapisuje_historie(self, request):
-        """Czy ``request`` to POST listy rekordów uruchamiający akcję
-        oznaczoną ``zapisuje_historie`` (patrz ``bpp.admin.actions``)."""
+    def _post_akcji_masowej(self, request):
+        """Akcja (krotka z ``get_actions``) uruchamiana POST-em listy
+        rekordów albo ``None``, gdy ``request`` nie uruchamia akcji."""
         if request.method != "POST" or "action" not in request.POST:
-            return False
+            return None
         dopasowanie = getattr(request, "resolver_match", None)
         opts = self.model._meta
         lista = f"{opts.app_label}_{opts.model_name}_changelist"
         if dopasowanie is None or dopasowanie.url_name != lista:
-            return False
+            return None
         # Jak ``ModelAdmin.response_action``: przy kilku formularzach akcji
         # na stronie ``index`` wskazuje, który wysłano.
         try:
             nazwa = request.POST.getlist("action")[int(request.POST.get("index", 0))]
         except (ValueError, IndexError):
-            return False  # niepoprawny POST — ``response_action`` go odrzuci
-        akcja = self.get_actions(request).get(nazwa)
-        return akcja is not None and getattr(akcja[0], "zapisuje_historie", False)
+            return None  # niepoprawny POST — ``response_action`` go odrzuci
+        return self.get_actions(request).get(nazwa)

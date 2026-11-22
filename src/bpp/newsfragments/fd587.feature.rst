@@ -1,0 +1,23 @@
+Historia zmian z możliwością cofnięcia obejmuje teraz publikacje
+(wydawnictwa ciągłe i zwarte, patenty, prace doktorskie i habilitacyjne),
+zgłoszenia publikacji, źródła, wydawców, konferencje, serie wydawnicze
+i jednostki — wcześniej tylko autorów i uczelnię; przy pozostałych
+rekordach „Historia” pokazywała jedynie, kto i kiedy coś zmienił, bez
+poprzednich wartości. Każdy zapis w module redagowania tworzy wersję
+rekordu; wersja publikacji obejmuje też listę autorów (z jednostką,
+dyscypliną, afiliacją i kolejnością), streszczenia, dodatkowe tytuły
+i zewnętrzne bazy danych. Na stronie „Historia” (przycisk w prawym górnym
+rogu formularza) można zaznaczyć dwie wersje i kliknąć „Porównaj wersje”
+— widać wtedy tylko zmienione pola i zmiany na liście autorów (dotyczy to
+także autorów i uczelni). Kliknięcie daty otwiera formularz w stanie
+z tej wersji, a jego zapisanie przywraca tę wersję (autorzy dopisani
+później zostaną z publikacji usunięci). Wersje są zapisywane od chwili
+aktualizacji — starsze zmiany widać jak dotąd w tabeli „Wcześniejsza
+historia”, bez przywracania. Przywrócenie nie dotyczy grantów, nagród,
+plików w repozytorium ani słów kluczowych; rekord z kosza trzeba najpierw
+przywrócić z kosza. Przeniesienie do kosza, przywrócenie z kosza i akcje
+masowe (np. „Ustaw status korekty”) też trafiają do historii jako wersje,
+każdy rekord osobno — przywrócenie wersji jednego rekordu nie zmienia
+innych. Jedną akcją masową na publikacjach można teraz zmienić najwyżej
+5000 rekordów (wcześniej 20000); przy większej liczbie wystarczy zawęzić
+listę filtrami.

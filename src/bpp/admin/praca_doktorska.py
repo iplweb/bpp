@@ -1,6 +1,7 @@
 from dal import autocomplete
 from django import forms
 from django.contrib import admin
+from reversion_compare.admin import CompareVersionAdmin
 from taggit.forms import TextareaTagWidget
 
 from bpp.admin.helpers.djangoql import BppDjangoQLSearchMixin
@@ -37,6 +38,7 @@ from .helpers.mixins import (
     DomyslnyStatusKorektyMixin,
     Wycinaj_W_z_InformacjiMixin,
 )
+from .helpers.wersje import HistoriaWersjiMixin
 from .wydawnictwo_ciagle import CleanDOIWWWPublicWWWMixin
 from .xlsx_export import resources
 from .xlsx_export.mixins import EksportDanychZFormatowanieMixin, ExportActionsMixin
@@ -62,7 +64,12 @@ DOKTORSKA_FIELDS = (
 
 
 class Praca_Doktorska_Habilitacyjna_Admin_Base(
-    BppDjangoQLSearchMixin, AdnotacjeZDatamiMixin, BaseBppAdminMixin, admin.ModelAdmin
+    BppDjangoQLSearchMixin,
+    AdnotacjeZDatamiMixin,
+    BaseBppAdminMixin,
+    # Historia zmian (FD#587): tuż przed terminalną klasą admina.
+    HistoriaWersjiMixin,
+    CompareVersionAdmin,
 ):
     djangoql_completion_enabled_by_default = False
     djangoql_completion = True
