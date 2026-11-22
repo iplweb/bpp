@@ -5,13 +5,13 @@ from __future__ import annotations
 import functools
 from contextlib import asynccontextmanager
 
-import rollbar
 from bpp_mcp import register_tools
 from bpp_mcp.client import BppError
 from django.conf import settings
 from mcp.server.mcpserver import MCPServer
 from mcp.server.transport_security import TransportSecuritySettings
 
+from bpp.zglaszanie_bledow import capture_exception
 from mcp_server.klient import zbuduj_klienta
 from mcp_server.start import StartMcp
 
@@ -151,7 +151,7 @@ def _z_raportowaniem(serwer: MCPServer) -> MCPServer:
                     # tracebacku; inny wyjątek uznałby za awarię.
                     raise
                 except Exception:
-                    rollbar.report_exc_info()
+                    capture_exception()
                     raise
 
             return dekorator(wrapper)

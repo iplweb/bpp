@@ -175,7 +175,7 @@ PRZYKŁADY UŻYCIA:
                         f"Naprawa typu odpowiedzialności dla oświadczenia PBN "
                         f"(book pk={book.pk}, person={oswiadczenie.personId})",
                         logger=logger,
-                        do_rollbar=False,
+                        do_monitoringu=False,
                     )
                     errors.append(
                         f"{book.tytul_oryginalny[:50]} / {oswiadczenie.personId}: {e}"
@@ -295,7 +295,7 @@ PRZYKŁADY UŻYCIA:
                     f"Integracja dyscyplin z oświadczenia PBN "
                     f"(publication={oswiadczenie.publicationId})",
                     logger=logger,
-                    do_rollbar=False,
+                    do_monitoringu=False,
                 )
                 if verbose:
                     self.stdout.write(

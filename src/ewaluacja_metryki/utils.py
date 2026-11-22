@@ -541,7 +541,7 @@ def _process_single_author(
                 "Wywołanie progress_callback przy obliczaniu metryk autora "
                 f"(idx={idx}/{total}) nie powiodło się",
                 logger=logger,
-                do_rollbar=True,
+                do_monitoringu=True,
             )
 
     try:

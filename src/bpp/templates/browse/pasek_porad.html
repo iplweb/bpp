@@ -1,0 +1,100 @@
+{# Pasek „Porady BPP” na stronie głównej (w miejscu okruszków). #}
+{# Zamknięcie zapamiętuje przeglądarka (localStorage) razem z wersją porad — #}
+{# po zmianie treści porad pasek pojawi się ponownie. Strona jest w cache'u #}
+{# dla anonimowych, więc stan zamknięcia nie może pochodzić z serwera. #}
+<div id="breadcrumbs-wrapper"
+     class="grid-container-fluid hide-for-small-only breadcrumbs-tips-wrapper"
+     data-wersja-porad="{{ wersja_porad }}">
+    <div class="grid-x">
+        <div class="cell">
+            <div id="rotating-tips" role="region" aria-label="Porady BPP">
+                <div class="tip-content">
+                    <i class="fi-lightbulb" aria-hidden="true"></i>
+                    <strong>Porady BPP:</strong>
+                    <span id="tip-text">
+                        {% for porada in porady %}
+                            <span class="tip-item"{% if not forloop.first %} hidden{% endif %}>
+                                {{ porada.tekst }}
+                                <a href="{{ porada.url }}" target="_blank" rel="noopener">{{ porada.link_tekst }}<span class="show-for-sr"> (otwiera się w nowym oknie)</span></a>
+                            </span>
+                        {% endfor %}
+                    </span>
+                </div>
+                <button type="button" class="tips-close"
+                        aria-label="Zamknij porady" title="Zamknij porady">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+<script>
+    (function () {
+        var KLUCZ = 'bppPoradyZamkniete';
+        var pasek = document.getElementById('breadcrumbs-wrapper');
+        var wersja = pasek.getAttribute('data-wersja-porad');
+
+        function czytaj() {
+            try {
+                return window.localStorage.getItem(KLUCZ);
+            } catch (e) {
+                // np. przeglądarka blokuje localStorage — pokaż pasek
+                console.warn('Porady BPP: brak dostępu do localStorage', e);
+                return null;
+            }
+        }
+
+        // Zamknięty wcześniej (ta sama wersja porad): usuń przed
+        // wyrenderowaniem, zanim base.html policzy wysokość belek sticky.
+        if (czytaj() === wersja) {
+            pasek.remove();
+            return;
+        }
+
+        var tresc = pasek.querySelector('.tip-content');
+        var porady = pasek.querySelectorAll('.tip-item');
+        var biezaca = 0;
+        var wstrzymane = false;
+
+        function pokaz(indeks) {
+            porady[biezaca].hidden = true;
+            porady[indeks].hidden = false;
+            biezaca = indeks;
+        }
+
+        function nastepna() {
+            if (wstrzymane || porady.length < 2) {
+                return;
+            }
+            tresc.classList.add('tip-content--wygasza');
+            setTimeout(function () {
+                pokaz((biezaca + 1) % porady.length);
+                tresc.classList.remove('tip-content--wygasza');
+            }, 500);
+        }
+
+        if (porady.length > 1) {
+            pokaz(Math.floor(Math.random() * porady.length));
+            setInterval(nastepna, 15000);
+        }
+
+        // Nie podmieniaj porady pod kursorem ani pod fokusem klawiatury.
+        pasek.addEventListener('mouseenter', function () { wstrzymane = true; });
+        pasek.addEventListener('mouseleave', function () { wstrzymane = false; });
+        pasek.addEventListener('focusin', function () { wstrzymane = true; });
+        pasek.addEventListener('focusout', function () { wstrzymane = false; });
+
+        pasek.querySelector('.tips-close').addEventListener('click', function () {
+            try {
+                window.localStorage.setItem(KLUCZ, wersja);
+            } catch (e) {
+                // zamknięcie zadziała do przeładowania strony
+                console.warn('Porady BPP: nie można zapamiętać zamknięcia', e);
+            }
+            pasek.remove();
+            if (typeof adjustBreadcrumbsPosition === 'function') {
+                adjustBreadcrumbsPosition();
+            }
+        });
+    })();
+</script>

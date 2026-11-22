@@ -273,7 +273,7 @@ class ImportPracownikow(LiveOperation):
         # liveops.runner._handle_error zapisuje traceback WYŁĄCZNIE do bazy (pole
         # `traceback`) — bez śladu na konsoli workera i bez zgłoszenia do
         # rollbara. Owijamy właściwy przebieg, żeby błąd był WIDOCZNY: surowy
-        # traceback na stderr (konsola celery/run-site) + rollbar (konwencja
+        # traceback na stderr (konsola celery/run-site) + monitoring błędów (konwencja
         # bg-tasków w projekcie), po czym re-raise — liveops i tak zapisze
         # traceback do bazy i pokaże błąd w UI/adminie.
         try:
@@ -282,10 +282,10 @@ class ImportPracownikow(LiveOperation):
             import sys
             import traceback as _traceback
 
-            import rollbar
+            from bpp.zglaszanie_bledow import capture_exception
 
             _traceback.print_exc()
-            rollbar.report_exc_info(sys.exc_info())
+            capture_exception(sys.exc_info())
             raise
 
     def _wykonaj(self, p):

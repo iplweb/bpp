@@ -20,6 +20,11 @@ from bpp.templatetags.prace import link_do_pi
 from pbn_api.models import Publication, PublikacjaInstytucji_V2
 
 
+@pytest.fixture(autouse=True)
+def _rollbar_skonfigurowany(rollbar_skonfigurowany):
+    """Testy patchują ``rollbar.report_*`` globalnie — patrz fikstura."""
+
+
 @pytest.mark.django_db
 def test_link_do_pi_z_placeholderem_nie_robi_lookupu(mocker):
     u1 = baker.make(Uczelnia, pbn_api_root="https://pbn-u1.example.com")

@@ -216,3 +216,6 @@ ROLLBAR["environment"] = "production"  # noqa
 
 if DJANGO_BPP_ENABLE_TEST_CONFIGURATION:  # noqa
     ROLLBAR["environment"] = "staging"  # noqa
+
+# Sentry/GlitchTip: domyślnie to samo środowisko co Rollbar.
+SENTRY_ENVIRONMENT = env("SENTRY_ENVIRONMENT") or ROLLBAR["environment"]

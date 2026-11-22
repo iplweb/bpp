@@ -27,6 +27,11 @@ from pbn_api.exceptions import (
 from pbn_export_queue.models import PBN_Export_Queue, RodzajBledu, SendStatus
 
 
+@pytest.fixture(autouse=True)
+def _rollbar_skonfigurowany(rollbar_skonfigurowany):
+    """Testy patchują ``rollbar.report_*`` globalnie — patrz fikstura."""
+
+
 @pytest.mark.django_db
 class TestSendToPbn:
     """Tests for send_to_pbn method"""
@@ -290,14 +295,14 @@ class TestSendToPbn:
         ) as mock_send:
             mock_send.side_effect = ValueError("Some error")
 
-            with patch("rollbar.report_exc_info") as mock_rollbar:
+            with patch("rollbar.report_exc_info") as mock_zgloszenie:
                 result = queue_item.send_to_pbn()
 
                 assert result == SendStatus.FINISHED_ERROR
                 queue_item.refresh_from_db()
                 assert queue_item.zakonczono_pomyslnie is False
                 assert "nieobsługiwany błąd" in queue_item.komunikat
-                mock_rollbar.assert_called_once()
+                mock_zgloszenie.assert_called_once()
 
     def test_send_to_pbn_sent_data_is_none(self, wydawnictwo_ciagle, admin_user):
         """Test error when sent_data is None"""

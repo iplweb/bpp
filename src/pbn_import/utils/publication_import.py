@@ -185,7 +185,7 @@ class PublicationImporter(ImportStepBase):
                 "Nie udało się pobrać publikacji z instytucji "
                 f"(pbn_uid={uczelnia.pbn_uid_id})",
                 logger=logger,
-                do_rollbar=False,  # Rollbar już w handle_error
+                do_monitoringu=False,  # zgłoszenie już w handle_error
             )
             self.handle_pbn_error(e, "Nie udało się pobrać publikacji")
         return None
@@ -213,7 +213,7 @@ class PublicationImporter(ImportStepBase):
             zaloguj_polkniety_wyjatek(
                 "Nie udało się pobrać publikacji z instytucji (wersja 2)",
                 logger=logger,
-                do_rollbar=False,  # Rollbar już w handle_error
+                do_monitoringu=False,  # zgłoszenie już w handle_error
             )
             self.handle_pbn_error(e, "Nie udało się pobrać publikacji v2")
         finally:
@@ -245,7 +245,7 @@ class PublicationImporter(ImportStepBase):
             zaloguj_polkniety_wyjatek(
                 "Nie udało się zaimportować publikacji do bazy danych",
                 logger=logger,
-                do_rollbar=False,  # Rollbar już w handle_error
+                do_monitoringu=False,  # zgłoszenie już w handle_error
             )
             self.handle_error(e, "Nie udało się zaimportować publikacji")
             if hasattr(self.session, "statistics"):
@@ -310,7 +310,7 @@ class PublicationImporter(ImportStepBase):
                 zaloguj_polkniety_wyjatek(
                     f"Nie udało się zaimportować publikacji {pbn_publication.mongoId}",
                     logger=logger,
-                    do_rollbar=False,  # Rollbar już w handle_error
+                    do_monitoringu=False,  # zgłoszenie już w handle_error
                 )
                 failed_count += 1
                 self.handle_error(

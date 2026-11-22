@@ -1,18 +1,24 @@
 {% load user_in_group %}
 <nav role="navigation" aria-label="Główna nawigacja" class="sticky-header">
 <div class="title-bar" data-responsive-toggle="example-menu" data-hide-for="medium">
-    <button class="menu-icon" type="button" data-toggle="example-menu"
-            aria-label="Otwórz menu nawigacyjne"></button>
-    <div class="title-bar-title hide-for-print">Menu</div>
+    {# Ikona z trzech pasków (nie ::after + box-shadow Foundation) — kolor i kształt ustawia motyw. #}
+    {# Trzy puste elementy span to paski ikony — celowo puste (djlint H020). #}
+    {# djlint:off H020 #}
+    <button class="menu-icon bpp-ikona-menu" type="button" data-toggle="example-menu"
+            aria-controls="example-menu" aria-expanded="false"
+            aria-label="Otwórz menu nawigacyjne"><span></span><span></span><span></span></button>
+    {# djlint:on #}
+    <div class="title-bar-title hide-for-print"><span class="bpp-napis-menu">Menu</span></div>
 </div>
 
 <div class="top-bar stacked-for-medium hide-for-print" id="example-menu">
     <div class="top-bar-left">
         <ul class="dropdown menu" data-dropdown-menu>
             <li>
-                <a href="/">
-                    <img src="{% load static %}{% static 'images/bpp-icon.png' %}" alt="BPP" class="bpp-logo">
-                    BPP
+                {# Logo i napis może ukryć/podmienić motyw z konfiguratora wyglądu — stąd stała nazwa linku dla czytników ekranu. #}
+                <a href="/" class="bpp-strona-glowna" aria-label="Strona główna">
+                    <img src="{% load static %}{% static 'images/bpp-icon.png' %}" alt="" class="bpp-logo">
+                    <span class="bpp-napis">BPP</span>
                 </a>
             </li>
             <li>
@@ -256,6 +262,14 @@
                                     <i class="fi-upload"></i> Zgłoszenia publikacji
                                 </a>
                             </li>
+                            {% if MOZE_KONFIGUROWAC_WYGLAD %}
+                                <hr/>
+                                <li>
+                                    <a href="{% url "bpp:konfigurator_wygladu" %}">
+                                        <i class="fi-paint-bucket"></i> Konfigurator wyglądu
+                                    </a>
+                                </li>
+                            {% endif %}
                             {% if request.user.is_superuser %}
                                 <hr/>
                                 <li>
@@ -467,6 +481,34 @@
                     </li>
                 {% endif %}
 
+            {% endif %}
+
+            {% if TRYB_KOLOROW_PRZELACZNIK %}
+                {# Przełącznik jasny/ciemny (bpp/js/tryb-kolorow.js). Tylko przy motywach z obiema wersjami. #}
+                <li class="bpp-tryb-kolorow">
+                    <a href="#" aria-haspopup="menu" class="bpp-tryb-kolorow__przycisk"
+                       aria-label="Tryb kolorów: automatyczny (jak w systemie)">
+                        <i class="bpp-tryb-kolorow__ikona fi-monitor" aria-hidden="true"></i>
+                        <span class="bpp-tryb-kolorow__napis">kolory</span>
+                    </a>
+                    <ul class="menu vertical" role="menu" aria-label="Tryb kolorów">
+                        <li role="none">
+                            <a href="#" role="menuitemradio" aria-checked="true" data-ustaw-tryb-kolorow="auto">
+                                <i class="fi-monitor" aria-hidden="true"></i> automatyczny (jak w systemie)
+                            </a>
+                        </li>
+                        <li role="none">
+                            <a href="#" role="menuitemradio" aria-checked="false" data-ustaw-tryb-kolorow="jasny">
+                                <i class="fi-lightbulb" aria-hidden="true"></i> jasny
+                            </a>
+                        </li>
+                        <li role="none">
+                            <a href="#" role="menuitemradio" aria-checked="false" data-ustaw-tryb-kolorow="ciemny">
+                                <i class="fi-contrast" aria-hidden="true"></i> ciemny
+                            </a>
+                        </li>
+                    </ul>
+                </li>
             {% endif %}
 
         </ul>

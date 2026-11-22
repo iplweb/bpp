@@ -267,4 +267,22 @@
       }
     }
   });
+  /**
+   * Ikona menu na telefonie: aria-expanded po otwarciu/zamknięciu menu
+   * (Foundation ResponsiveToggle go nie ustawia) — dla czytników ekranu
+   * i animacji ikony w motywie.
+   */
+  if (window.jQuery) {
+    window.jQuery(document).on(
+      "toggled.zf.responsiveToggle",
+      "[data-responsive-toggle]",
+      function () {
+        var cel = document.getElementById(this.getAttribute("data-responsive-toggle"));
+        var otwarte = !!cel && window.jQuery(cel).is(":visible");
+        this.querySelectorAll(".bpp-ikona-menu").forEach(function (b) {
+          b.setAttribute("aria-expanded", String(otwarte));
+        });
+      },
+    );
+  }
 })();

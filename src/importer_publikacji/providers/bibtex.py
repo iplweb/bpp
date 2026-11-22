@@ -160,7 +160,7 @@ class BibTeXProvider(DataProvider):
 
     def fetch(self, identifier: str) -> FetchedPublication | None:
         # NIE lykamy po cichu: nieoczekiwany blad parsera to bug, ktory ma
-        # trafic do logow + Rollbara (przez @task_failure w celery_tasks),
+        # trafic do logow + monitoringu bledow (przez @task_failure w celery_tasks),
         # a nie zniknac jako "dostawca nic nie zwrocil". validate_identifier
         # juz potwierdzil parsowalnosc synchronicznie przed kolejka.
         try:

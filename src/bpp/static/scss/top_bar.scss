@@ -43,6 +43,9 @@ nav.sticky-header {
 body .uwy.userway_p1 .userway_buttons_wrapper {
     top: var(--bpp-userway-top, 35px);
     transform: translate(-100%, -50%);
+    // UserWay ma `transition: transform 0.4s` — po wczytaniu widget
+    // „wjeżdżał” z boku na miejsce ustawione powyżej. Od razu na miejscu.
+    transition: none !important;
 }
 
 .top-bar {
@@ -121,6 +124,25 @@ body .uwy.userway_p1 .userway_buttons_wrapper {
     // Keep flex display for menu-columns-wrapper
     .dropdown.menu .menu-columns-wrapper[data-submenu] {
         display: flex !important;
+    }
+
+    // Strzałka rozwijania na czas inicjalizacji Foundation (bare.html:
+    // html.bpp-js-init). Klasę is-dropdown-submenu-parent dodaje dopiero JS,
+    // więc przy przejściach strzałka na moment znikała. Te same wymiary
+    // i kolor co strzałka Foundation (motywy nadpisują kolor dla obu reguł).
+    // .has-submenu ma własną strzałkę niżej, od razu.
+    @at-root html.bpp-js-init .top-bar .dropdown.menu > li:has(> a[aria-haspopup]):not(.has-submenu) > a {
+        position: relative;
+        padding-right: $dropdownmenu-arrow-padding;
+
+        &::after {
+            @include css-triangle($dropdownmenu-arrow-size, $dropdownmenu-arrow-color, down);
+            position: absolute;
+            top: 50%;
+            right: 5px;
+            left: auto;
+            margin-top: -1 * ($dropdownmenu-arrow-size * 0.5);
+        }
     }
 
     // Ensure submenu positioning
@@ -904,5 +926,45 @@ html.global-search-scrollbar-gutter {
         box-shadow:
             0 1px 0 rgba(255, 255, 255, 0.5) inset,
             0 0 1px rgba(0, 0, 0, 0.15);
+    }
+}
+
+
+// Ikona menu na telefonie (top_bar.html: `.bpp-ikona-menu`): trzy paski
+// w kolorze napisów paska (currentColor). Zamiast ::after z box-shadow
+// Foundation — cienie i tło przeliczały się w trybie ciemnym różnie
+// (jeden pasek czarny, dwa białe). Stan otwarcia: aria-expanded
+// (event-handlers.js); motyw może dodać animację w „X”.
+.title-bar .menu-icon.bpp-ikona-menu {
+    position: relative;
+    width: 20px;
+    height: 16px;
+    color: inherit;
+
+    &::after {
+        display: none;
+    }
+
+    span {
+        position: absolute;
+        left: 0;
+        width: 100%;
+        height: 2px;
+        border-radius: 1px;
+        background: currentColor;
+        transition: top 0.2s ease, transform 0.2s ease, opacity 0.15s ease,
+            width 0.2s ease;
+
+        &:nth-child(1) {
+            top: 0;
+        }
+
+        &:nth-child(2) {
+            top: 7px;
+        }
+
+        &:nth-child(3) {
+            top: 14px;
+        }
     }
 }

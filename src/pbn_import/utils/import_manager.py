@@ -5,12 +5,12 @@ import sys
 import traceback
 from typing import Any
 
-import rollbar
 from django.core.management import call_command
 from django.db import transaction
 from django.utils import timezone
 
 from bpp.util import zaloguj_polkniety_wyjatek
+from bpp.zglaszanie_bledow import capture_exception
 
 from ..models import ImportLog, ImportSession
 from .base import CancelledException
@@ -194,9 +194,9 @@ class ImportManager:
         error_msg = self._extract_error_message(e)
         logger.error(f"Krok {step_config['name']} nie powiódł się: {error_msg}")
 
-        rollbar.report_exc_info(
+        capture_exception(
             sys.exc_info(),
-            extra_data={
+            extra={
                 "step": step_config["name"],
                 "session_id": self.session.id,
                 "required": step_config.get("required", False),
@@ -281,7 +281,7 @@ class ImportManager:
                 f"Błąd wykonania kroku importu PBN '{step_config['name']}' "
                 f"(sesja #{self.session.id})",
                 logger=logger,
-                do_rollbar=False,  # Rollbar już w handle_error
+                do_monitoringu=False,  # zgłoszenie już w handle_error
             )
             return self._handle_step_error(
                 e, step_config, results, has_errors, critical_error, tb_string
@@ -450,7 +450,7 @@ class ImportManager:
             zaloguj_polkniety_wyjatek(
                 f"Krytyczny błąd importu PBN (sesja #{self.session.id})",
                 logger=logger,
-                do_rollbar=False,  # Rollbar już w handle_error
+                do_monitoringu=False,  # zgłoszenie już w handle_error
             )
             return self._handle_critical_error(e)
 
@@ -458,9 +458,9 @@ class ImportManager:
         """Handle critical errors during import"""
         logger.error(f"Import nie powiódł się: {e}")
 
-        rollbar.report_exc_info(
+        capture_exception(
             sys.exc_info(),
-            extra_data={
+            extra={
                 "session_id": self.session.id,
                 "error_type": "critical_import_failure",
             },
@@ -503,14 +503,14 @@ class ImportManager:
             except Exception as e:
                 # Błąd komendy post-importu NIE może zniknąć po cichu (kiedyś
                 # samo logger.error → niewidoczne w UI, punkty się nie ustawiały
-                # bez śladu). Zgłaszamy do Rollbara i zapisujemy jako ImportLog
+                # bez śladu). Zgłaszamy do monitoringu i zapisujemy jako ImportLog
                 # widoczny w logu sesji importu. Mimo to NIE wywalamy całego
                 # importu — pozostałe komendy post-importu lecą dalej (awaria
                 # jednego typu punktacji nie powinna blokować reszty).
                 logger.exception(f"Komenda post-importu {cmd} nie powiodła się")
-                rollbar.report_exc_info(
+                capture_exception(
                     sys.exc_info(),
-                    extra_data={
+                    extra={
                         "session_id": self.session.id,
                         "post_import_command": cmd,
                     },

@@ -1,10 +1,10 @@
 import logging
 import sys
 
-import rollbar
 from django import forms
 from django.core.exceptions import ValidationError
 
+from bpp.zglaszanie_bledow import capture_exception
 from crossref_bpp.models import CrossrefAPICache
 from import_common.normalization import normalize_doi
 
@@ -28,9 +28,9 @@ class PobierzZCrossrefAPIForm(forms.Form):
         try:
             data = CrossrefAPICache.objects.get_by_doi(doi)
         except Exception as e:
-            rollbar.report_exc_info(sys.exc_info())
+            capture_exception(sys.exc_info())
             logging.exception(e)
-            raise ValidationError(f"Podczas pobierania danych wystąpił błąd {e}")
+            raise ValidationError(f"Podczas pobierania danych wystąpił błąd {e}") from e
 
         if data is None:
             raise ValidationError(

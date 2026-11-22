@@ -29,7 +29,7 @@ class ConferenceImporter(ImportStepBase):
             zaloguj_polkniety_wyjatek(
                 "Nie udało się zaimportować konferencji z PBN",
                 logger=logger,
-                do_rollbar=False,  # Rollbar już w handle_error
+                do_monitoringu=False,  # zgłoszenie już w handle_error
             )
             self.handle_error(e, "Nie udało się zaimportować konferencji")
         finally:

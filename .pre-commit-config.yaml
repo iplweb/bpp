@@ -145,8 +145,13 @@ repos:
         - id: trufflehog
           name: TruffleHog
           description: Detect secrets in your data.
-          entry: bash -c 'trufflehog git file://. --since-commit HEAD --only-verified --fail --no-update'
+          # Jeden proces na commit (pass_filenames: false) i wspólny limit RAM przez
+          # ~/.config/systemd/user/trufflehog.slice (chezmoi); bez systemd (CI, macOS)
+          # biegnie zwykłe wywołanie.
+          entry: bash -c 't="trufflehog git file://. --since-commit HEAD --only-verified --fail --no-update --concurrency=6"; if command -v systemd-run >/dev/null && [ -S "${XDG_RUNTIME_DIR:-/nonexistent}/bus" ]; then exec systemd-run --user --scope --quiet --collect --slice=trufflehog.slice $t; else exec $t; fi'
           language: system
+          pass_filenames: false
+          require_serial: true
           stages: ["pre-commit", "pre-push"]
 
         # Lint CAŁEGO zakresu gałęzi (origin/dev..HEAD) tym samym ruff-em co

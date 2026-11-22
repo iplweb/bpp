@@ -68,7 +68,7 @@
         {% endif %}
 
         <div class="row">
-            <div class="medium-6 columns">
+            <div class="small-12 medium-6 columns">
                 <div class="callout">
                     <h4><span class="fi-info"></span> Informacje podstawowe</h4>
                     <table>
@@ -100,12 +100,12 @@
                 </div>
             </div>
 
-            <div class="medium-6 columns">
+            <div class="small-12 medium-6 columns">
                 <div class="callout secondary">
                     <h4><span class="fi-graph-bar"></span> Wykorzystanie slotów</h4>
 
                     <div class="row">
-                        <div class="medium-6 columns">
+                        <div class="small-12 medium-6 columns">
                             <div class="slot-progress-container ewaluacja-metryki__slot-progress">
                                 <div class="circular-progress-wrapper">
                                     <div class="circle-progress-detail" data-value="{{ metryka.procent_wykorzystania_slotow|unlocalize }}" data-size="150" data-thickness="15"></div>
@@ -115,7 +115,7 @@
                             </div>
                         </div>
 
-                        <div class="medium-6 columns">
+                        <div class="small-12 medium-6 columns">
                             <table>
                                 <tbody>
                                     <tr>
@@ -141,14 +141,14 @@
         <!-- Wykresy wizualizacji prac -->
         {% if chart_data %}
         <div class="row">
-            <div class="medium-12 columns">
+            <div class="small-12 medium-12 columns">
                 <h3><span class="fi-graph-trend"></span> Wizualizacja prac w czasie</h3>
             </div>
         </div>
 
         <div class="row">
             <!-- Wykres 1: Bąbelkowy czasowy -->
-            <div class="medium-6 columns">
+            <div class="small-12 medium-6 columns">
                 <div class="callout">
                     <h5>Rozkład prac w czasie</h5>
                     <div id="bubble-time-chart" class="ewaluacja-metryki__chart-container"></div>
@@ -156,7 +156,7 @@
             </div>
 
             <!-- Wykres 2: Słupki po latach -->
-            <div class="medium-6 columns">
+            <div class="small-12 medium-6 columns">
                 <div class="callout">
                     <h5>Produktywność po latach</h5>
                     <div id="year-bars-chart" class="ewaluacja-metryki__chart-container"></div>
@@ -166,7 +166,7 @@
 
         <div class="row">
             <!-- Wykres 3: Scatter z kolorem -->
-            <div class="medium-6 columns">
+            <div class="small-12 medium-6 columns">
                 <div class="callout">
                     <h5>Punkty vs Sloty (kolor = rok)</h5>
                     <div id="scatter-time-chart" class="ewaluacja-metryki__chart-container"></div>
@@ -174,7 +174,7 @@
             </div>
 
             <!-- Wykres 4: Heatmap -->
-            <div class="medium-6 columns">
+            <div class="small-12 medium-6 columns">
                 <div class="callout">
                     <h5>Mapa publikacji</h5>
                     <div id="heatmap-chart" class="ewaluacja-metryki__chart-container"></div>
@@ -186,7 +186,7 @@
         <!-- Wymiar etatu i procent dyscypliny -->
         {% if dyscyplina_lata %}
         <div class="row">
-            <div class="medium-12 columns">
+            <div class="small-12 medium-12 columns">
                 <div class="callout">
                     <h4><span class="fi-calendar"></span> Wymiar etatu i procent dyscypliny w latach {{ metryka.rok_min }}-{{ metryka.rok_max }}</h4>
                     <table class="hover">
@@ -292,7 +292,7 @@
 
         <!-- Porównanie metryk -->
         <div class="row">
-            <div class="medium-6 columns">
+            <div class="small-12 medium-6 columns">
                 <div class="callout success">
                     <h4><span class="fi-check"></span> Prace nazbierane (algorytm plecakowy)</h4>
                     <table>
@@ -320,7 +320,7 @@
                 </div>
             </div>
 
-            <div class="medium-6 columns">
+            <div class="small-12 medium-6 columns">
                 <div class="callout">
                     <h4><span class="fi-list"></span> Wszystkie prace</h4>
                     <table>
@@ -352,16 +352,18 @@
         {% if prace_nazbierane %}
         <div class="callout" id="prace-nazbierane">
             <h4><span class="fi-page-multiple"></span> Szczegóły prac nazbieranych</h4>
-            <table class="hover">
+            {# Telefon: bez Lp. i Rok (rok pod tytułem), przyciski jeden pod drugim, przewijanie w poziomie w razie potrzeby. #}
+            <div class="ewaluacja-metryki__tabela-przewijana">
+            <table class="hover ewaluacja-metryki__tabela-prac">
                 <thead>
                     <tr>
-                        <th>Lp.</th>
+                        <th class="show-for-medium">Lp.</th>
                         <th class="text-center">Akcje</th>
                         <th>Tytuł</th>
-                        <th>Rok</th>
+                        <th class="show-for-medium">Rok</th>
                         <th class="text-right">PKDaut</th>
                         <th class="text-right">Slot</th>
-                        <th class="text-right">PKDaut/Slot</th>
+                        <th class="text-right">PKDaut/<wbr>Slot</th>
                         {% if not autor_only_mode %}
                         <th class="text-center">Odepnij</th>
                         {% endif %}
@@ -370,7 +372,7 @@
                 <tbody>
                     {% for praca in prace_nazbierane %}
                     <tr>
-                        <td>{{ forloop.counter }}</td>
+                        <td class="show-for-medium">{{ forloop.counter }}</td>
                         <td class="text-center ewaluacja-metryki__actions-cell">
                             <a href="{% url 'ewaluacja_optymalizuj_publikacje:optymalizuj' praca.rekord.slug %}"
                                class="button small warning ewaluacja-metryki__optimize-btn"
@@ -387,8 +389,9 @@
                             <a href="{% url 'ewaluacja_optymalizuj_publikacje:optymalizuj' praca.rekord.slug %}">
                                 {{ praca.rekord.tytul_oryginalny|truncatewords_html:10|safe_tytul }}
                             </a>
+                                <span class="hide-for-medium ewaluacja-metryki__rok-pod-tytulem">{{ praca.rekord.rok }}</span>
                         </td>
-                        <td>{{ praca.rekord.rok }}</td>
+                        <td class="show-for-medium">{{ praca.rekord.rok }}</td>
                         <td class="text-right">{{ praca.pkdaut|floatformat:2 }}</td>
                         <td class="text-right">{{ praca.slot|floatformat:2 }}</td>
                         <td class="text-right">
@@ -412,6 +415,7 @@
                     {% endfor %}
                 </tbody>
             </table>
+            </div>
         </div>
         {% endif %}
 
@@ -422,16 +426,18 @@
                 <span class="fi-page-multiple"></span> Wszystkie prace w okresie
             </h4>
             <div id="all-papers">
-                <table class="hover">
+                {# Telefon: bez Lp. i Rok (rok pod tytułem), przyciski jeden pod drugim, przewijanie w poziomie w razie potrzeby. #}
+                <div class="ewaluacja-metryki__tabela-przewijana">
+                <table class="hover ewaluacja-metryki__tabela-prac">
                     <thead>
                         <tr>
-                            <th>Lp.</th>
+                            <th class="show-for-medium">Lp.</th>
                             <th class="text-center">Podgląd</th>
                             <th>Tytuł</th>
-                            <th>Rok</th>
+                            <th class="show-for-medium">Rok</th>
                             <th class="text-right">PKDaut</th>
                             <th class="text-right">Slot</th>
-                            <th class="text-right">PKDaut/Slot</th>
+                            <th class="text-right">PKDaut/<wbr>Slot</th>
                             {% if not autor_only_mode %}
                             <th>Akcje</th>
                             {% endif %}
@@ -440,7 +446,7 @@
                     <tbody>
                         {% for praca in prace_wszystkie %}
                         <tr {% if praca.is_nazbierana %}class="success"{% endif %}>
-                            <td>{{ forloop.counter }}</td>
+                            <td class="show-for-medium">{{ forloop.counter }}</td>
                             <td class="text-center ewaluacja-metryki__actions-cell">
                                 <a href="{% url 'ewaluacja_optymalizuj_publikacje:optymalizuj' praca.rekord.slug %}"
                                    class="button small warning ewaluacja-metryki__optimize-btn"
@@ -457,11 +463,12 @@
                                 <a href="{% url 'ewaluacja_optymalizuj_publikacje:optymalizuj' praca.rekord.slug %}">
                                     {{ praca.rekord.tytul_oryginalny|truncatewords_html:10|safe_tytul }}
                                 </a>
+                                <span class="hide-for-medium ewaluacja-metryki__rok-pod-tytulem">{{ praca.rekord.rok }}</span>
                                 {% if praca.is_nazbierana %}
                                     <span class="label success">Wybrana</span>
                                 {% endif %}
                             </td>
-                            <td>{{ praca.rekord.rok }}</td>
+                            <td class="show-for-medium">{{ praca.rekord.rok }}</td>
                             <td class="text-right">{{ praca.pkdaut|floatformat:2 }}</td>
                             <td class="text-right">{{ praca.slot|floatformat:2 }}</td>
                             <td class="text-right">
@@ -486,6 +493,7 @@
                     </tbody>
                 </table>
             </div>
+            </div>
         </div>
         {% endif %}
 
@@ -503,15 +511,19 @@
                     </p>
                 </div>
 
-                <table class="hover">
+                {# Telefon: bez Lp. i Rok (rok pod tytułem), przyciski jeden pod drugim, przewijanie w poziomie w razie potrzeby. #}
+
+                <div class="ewaluacja-metryki__tabela-przewijana">
+
+                <table class="hover ewaluacja-metryki__tabela-prac">
                     <thead>
                         <tr>
-                            <th>Lp.</th>
+                            <th class="show-for-medium">Lp.</th>
                             <th>Tytuł</th>
-                            <th>Rok</th>
+                            <th class="show-for-medium">Rok</th>
                             <th class="text-right">PKDaut</th>
                             <th class="text-right">Slot</th>
-                            <th class="text-right">PKDaut/Slot</th>
+                            <th class="text-right">PKDaut/<wbr>Slot</th>
                             {% if not autor_only_mode %}
                             <th>Akcje</th>
                             {% endif %}
@@ -520,14 +532,15 @@
                     <tbody>
                         {% for praca in prace_odpiete %}
                         <tr class="unpinned-work">
-                            <td>{{ forloop.counter }}</td>
+                            <td class="show-for-medium">{{ forloop.counter }}</td>
                             <td>
                                 <a href="{% url 'bpp:browse_praca_by_slug' praca.rekord.slug %}">
                                     {{ praca.tytul_oryginalny|truncatewords_html:10|safe_tytul }}
                                 </a>
+                                <span class="hide-for-medium ewaluacja-metryki__rok-pod-tytulem">{{ praca.rok }}</span>
                                 <span class="label secondary">Odpięta</span>
                             </td>
-                            <td>{{ praca.rok }}</td>
+                            <td class="show-for-medium">{{ praca.rok }}</td>
                             <td class="text-right">{{ praca.pkdaut_est|floatformat:2 }}</td>
                             <td class="text-right">{{ praca.slot_est|floatformat:2 }}</td>
                             <td class="text-right">
@@ -551,6 +564,7 @@
                         {% endfor %}
                     </tbody>
                 </table>
+            </div>
             </div>
         </div>
         {% endif %}
@@ -919,6 +933,8 @@ $(document).ready(function() {
 });
 </script>
 {% endif %}
+{# Kolory wykresów w trybie ciemnym (owija Plotly.newPlot i circleProgress). #}
+<script src="{% static 'ewaluacja_metryki/js/wykresy-motyw.js' %}"></script>
 
 <style>
     .progress.large {
@@ -930,11 +946,11 @@ $(document).ready(function() {
         line-height: 2rem;
     }
     tr.success {
-        background-color: #e1faea;
+        background-color: var(--bpp-tlo-sukces, #e1faea);
     }
 
     tr.unpinned-work {
-        background-color: #f0f0f0;
+        background-color: var(--bpp-tlo-pow-2, #f0f0f0);
     }
 
     /* Circular Progress Gauge Styles for Detail Page */
@@ -961,14 +977,14 @@ $(document).ready(function() {
         transform: translate(-50%, -50%);
         font-size: 28px;
         font-weight: 600;
-        color: #333;
+        color: var(--bpp-tekst, #333);
         z-index: 1;
     }
 
     .circular-progress-wrapper .progress-label-detail {
         display: block;
         margin-top: 10px;
-        color: #666;
+        color: var(--bpp-tekst-przygaszony, #666);
         font-size: 1rem;
         white-space: nowrap;
         font-weight: 500;
@@ -982,7 +998,7 @@ $(document).ready(function() {
     }
 
     .button-group.stacked-for-small .button:hover {
-        background-color: #f7fafc !important;
+        background-color: var(--bpp-tlo-hover, #f7fafc) !important;
         border-color: #a0aec0 !important;
         transform: translateX(2px);
     }

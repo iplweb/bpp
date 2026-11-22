@@ -84,6 +84,8 @@ services:
       - ENABLE_AUTORELOAD_ON_CODE_CHANGE=${ENABLE_AUTORELOAD_ON_CODE_CHANGE:-1}
       - DJANGO_BPP_CSRF_EXTRA_ORIGINS=https://bpp.localnet:10443,https://localhost:10443
       # DJANGO_BPP_HTML2DOCX_URL jest w .env.docker (współdzielone z workerami).
+      # Kompilator motywów konfiguratora wyglądu (serwis niżej).
+      - DJANGO_BPP_MOTYW_KOMPILATOR_URL=http://motyw-kompilator:8095
     entrypoint: ["/entrypoint-appserver.sh"]
     depends_on:
       redis:
@@ -102,6 +104,24 @@ services:
       - media:/mediaroot
     ports:
       - ${DJANGO_BPP_PORT_APP:-8000}:8000
+
+  # Kompilator motywów konfiguratora wyglądu („Zastosuj”, odswiez_motywy).
+  # Gotowy node:22-alpine, bez własnego obrazu — jak w bpp-deploy, tylko
+  # zamiast wolumenu plików statycznych czyta pliki prosto z src/ (wymaga
+  # zbudowanych assetów: make assets). Zmiany w plikach wczytuje sam.
+  motyw-kompilator:
+    image: node:22-alpine
+    restart: always
+    command:
+      - sh
+      - -c
+      - >-
+        while [ ! -f /static/bpp/js/dist/motyw-zrodla-scss.json ]; do sleep 10; done;
+        exec node /static/bpp/js/motyw-kompilator-serwer.js
+    user: node
+    read_only: true
+    volumes:
+      - ./src/bpp/static:/static:ro
 
   # Usługa konwersji HTML->DOCX (fallback gdy pandoc zawiedzie). Sidecar HTTP
   # zamiast docker.sock — appserver POST-uje HTML, dostaje docx. Obraz budowany

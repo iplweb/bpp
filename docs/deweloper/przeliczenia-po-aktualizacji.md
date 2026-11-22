@@ -28,8 +28,8 @@ Nie pisz do tego migracji danych.
    we własnej transakcji (bez długiej transakcji blokującej triggery przy
    edycjach), a na końcu, pod blokadą wiersza (`SELECT … FOR UPDATE`), zapisuje
    nową wersję. Błąd w trakcie zostawia starą wersję — przeliczenie zostanie
-   zlecone przy następnym starcie workera (wyjątek idzie do Rollbara przez
-   `task_failure`); ponowne oznaczenie jest nieszkodliwe, bo istniejące
+   zlecone przy następnym starcie workera (wyjątek idzie do monitoringu błędów przez
+   `task_failure` / integrację Celery); ponowne oznaczenie jest nieszkodliwe, bo istniejące
    znaczniki są pomijane. Starszy kod nie cofa zapisanej wersji.
 3. Resztę robi kolejka denorm (`denorm-queue` → `flush_via_queue` →
    `flush_batch`, kolejka Celery `denorm`): partie po

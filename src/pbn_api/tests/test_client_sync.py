@@ -765,7 +765,7 @@ def test_sync_publication_get_statements_retry_wyczerpane_raises(
     pbn_publication,
     monkeypatch,
 ):
-    """GET statements zawodzi 3 razy → StatementsResendFailedException + rollbar."""
+    """GET statements zawodzi 3 razy → StatementsResendFailedException + zgłoszenie błędu."""
     _patch_intended_statements(monkeypatch, [])
     _setup_common_mocks(pbn_client, pbn_publication.pk, pbn_statements=[])
     # Nadpisujemy GET statements żeby rzucał
@@ -774,19 +774,19 @@ def test_sync_publication_get_statements_retry_wyczerpane_raises(
         + f"?publicationId={pbn_publication.pk}&size=5120"
     ] = HttpException(500, "/api/v1/.../page/statements", "Server Error")
 
-    # Mock sleep i rollbar żeby test nie był powolny i weryfikujemy call
+    # Mock sleep i zgłoszenia żeby test nie był powolny i weryfikujemy call
     monkeypatch.setattr(time, "sleep", lambda *_: None)
 
-    with patch("pbn_api.client.publication_sync.rollbar.report_exc_info") as mock_rb:
+    with patch("pbn_api.reporting.capture_exception") as mock_rb:
         with pytest.raises(StatementsResendFailedException) as exc_info:
             pbn_client.sync_publication(pbn_wydawnictwo_zwarte_z_autorem_z_dyscyplina)
 
-    # Rollbar wywołany raz z level=warning
+    # Zgłoszenie wywołane raz z level=warning
     assert mock_rb.called
     call_kwargs = mock_rb.call_args.kwargs
     assert call_kwargs.get("level") == "warning"
-    assert "publication_pk" in call_kwargs.get("extra_data", {})
-    assert "pbn_uid" in call_kwargs.get("extra_data", {})
+    assert "publication_pk" in call_kwargs.get("extra", {})
+    assert "pbn_uid" in call_kwargs.get("extra", {})
 
     # Exception ma publication_pk i pbn_uid
     assert exc_info.value.pbn_uid == pbn_publication.pk
@@ -830,7 +830,7 @@ def test_sync_publication_selektywny_delete_retry_wyczerpane_raises(
 
     monkeypatch.setattr(time, "sleep", lambda *_: None)
 
-    with patch("pbn_api.client.publication_sync.rollbar.report_exc_info"):
+    with patch("pbn_api.client.publication_sync.capture_exception"):
         with pytest.raises(StatementsResendFailedException):
             pbn_client.sync_publication(pbn_wydawnictwo_zwarte_z_autorem_z_dyscyplina)
 
@@ -861,7 +861,7 @@ def test_sync_publication_post_v2_statements_retry_wyczerpane_raises(
 
     monkeypatch.setattr(time, "sleep", lambda *_: None)
 
-    with patch("pbn_api.client.publication_sync.rollbar.report_exc_info"):
+    with patch("pbn_api.client.publication_sync.capture_exception"):
         with pytest.raises(StatementsResendFailedException):
             pbn_client.sync_publication(pbn_wydawnictwo_zwarte_z_autorem_z_dyscyplina)
 

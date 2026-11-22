@@ -1,0 +1,1 @@
+Konfigurator wyglądu ma 12 nowych gotowych motywów o różnym charakterze (m.in. klasyczny akademicki, nowoczesny minimalistyczny, nocny, wysokiego kontrastu, przyrodniczy) — różnią się nie tylko kolorami, ale też czcionkami, kształtem przycisków, paskiem menu, kaflami i stopką, a wszystkie spełniają wymogi kontrastu WCAG.

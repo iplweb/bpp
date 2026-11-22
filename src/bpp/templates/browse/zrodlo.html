@@ -15,10 +15,11 @@
     <!-- Modern Header Section -->
     <div class="source-header">
         <div class="grid-x grid-margin-x align-middle">
-            <div class="cell auto">
+            {# Telefon: nazwa i przyciski jeden pod drugim. #}
+            <div class="cell small-12 medium-auto">
                 <h1>{{ zrodlo.nazwa }}</h1>
             </div>
-            <div class="cell shrink">
+            <div class="cell small-12 medium-shrink">
                 {% include "browse/go_to_admin_change.html" with url="admin:bpp_zrodlo_change" pk=zrodlo.pk group="wprowadzanie danych" %}
                 {% include "browse/go_to_admin_list.html" with url="admin:bpp_zrodlo_add" group="wprowadzanie danych" text="Dodaj nowy rekord" %}
                 {% if has_publications and user.is_authenticated %}
@@ -40,7 +41,7 @@
     </div>
 
     {# Ile punktów daje artykuł w bieżącej ewaluacji (bpp.punkty_ewaluacji). #}
-    {% include "browse/_punkty_ewaluacji_zrodla.html" %}
+    {% include "browse/_okresy_ewaluacji.html" with szablon="browse/_punkty_ewaluacji_zrodla.html" %}
 
     <!-- Banner for sources without publications -->
     {% if not has_publications %}
@@ -64,6 +65,8 @@
             {# (zapis tylko do własnej sesji), by strona weszła do cache. #}
             <input type="hidden" name="zrodlo" value="{{ zrodlo.pk }}"/>
             <input type="hidden" name="suggested-title" value="{{ zrodlo }}"/>
+            {# cel=wyniki: od razu lista wyników, bez formularza multiseek. #}
+            <input type="hidden" name="cel" value="wyniki"/>
             <button type="submit" class="button button-show-all">
                 <i class="fi-list-bullet"></i>Pokaż wszystkie publikacje
             </button>
@@ -137,7 +140,7 @@
                             <div class="callout id-badge">
                                 <div class="id-label">MNiSW ID</div>
                                 <div>{{ zrodlo.pbn_uid.mniswId }}</div>
-                                <small style="font-size: 0.875rem; color: #666; margin-top: 0.25rem; display: block;">
+                                <small style="font-size: 0.875rem; color: var(--bpp-tekst-przygaszony, #666); margin-top: 0.25rem; display: block;">
                                     Czasopismo z oficjalnej listy Ministerstwa
                                 </small>
                             </div>

@@ -2,7 +2,6 @@ import logging
 import sys
 from abc import abstractmethod
 
-import rollbar
 from dal import autocomplete
 from django import http
 from django.contrib.auth.mixins import LoginRequiredMixin
@@ -12,7 +11,9 @@ from django.utils.translation import gettext_lazy as _
 from bpp import const
 from bpp.const import PBN_UID_LEN
 from bpp.models import Uczelnia
+from bpp.util.isbn import warianty_isbn, wyglada_jak_isbn
 from bpp.util.wyjatki import zaloguj_polkniety_wyjatek
+from bpp.zglaszanie_bledow import capture_exception
 from pbn_api.client import PBNClient
 from pbn_api.exceptions import (
     AccessDeniedException,
@@ -159,8 +160,8 @@ class BasePBNAutocomplete(
             return _odpowiedz_bledem(tekst)
 
         except Exception as e:
-            # Zaloguj wyjątek do Rollbara
-            rollbar.report_exc_info(sys.exc_info())
+            # Zaloguj wyjątek i zgłoś do monitoringu
+            capture_exception(sys.exc_info())
             return http.HttpResponseBadRequest(str(e))
 
         return http.JsonResponse(
@@ -199,13 +200,36 @@ class PublicationAutocomplete(BasePBNAutocomplete):
     def fetch_pbn_data(self, client, query):
         return client.get_publication_by_id(query)
 
+    #: Rodzaje rekordów PBN pokazywane w podpowiedziach — rozdział i książka
+    #: często mają ten sam ISBN, a powiązanie rozdziału z rekordem książki
+    #: (albo odwrotnie) to błąd, który PBN zgłasza dopiero przy wysyłce.
+    RODZAJE = {
+        "BOOK": "książka",
+        "EDITED_BOOK": "książka pod red.",
+        "CHAPTER": "rozdział",
+        "ARTICLE": "artykuł",
+    }
+
+    def get_result_label(self, result):
+        etykieta = super().get_result_label(result)
+        rodzaj = result.type()
+        if rodzaj:
+            etykieta = f"{etykieta} [{self.RODZAJE.get(rodzaj, rodzaj)}]"
+        return etykieta
+
     def filter_queryset(self, qs, word):
-        return qs.filter(
+        warunek = (
             Q(title__istartswith=self.q.strip())
             | Q(title__icontains=word)
             | Q(isbn__exact=word)
             | Q(doi__icontains=word)
         )
+        if wyglada_jak_isbn(word):
+            # ``Publication.isbn`` jest bez separatorów; wpisany ISBN mógł mieć
+            # myślniki albo być w drugiej odmianie (ISBN-10/ISBN-13).
+            for wariant in warianty_isbn(word):
+                warunek |= Q(isbn__icontains=wariant)
+        return qs.filter(warunek)
 
 
 class ScientistAutocomplete(BasePBNAutocomplete):

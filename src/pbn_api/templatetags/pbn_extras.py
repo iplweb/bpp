@@ -113,7 +113,7 @@ def parse_timestamp(timestamp_str):
             f"Nie udało się sparsować znacznika czasu '{timestamp_str}' "
             "z historii komunikatów PBN",
             logger=logger,
-            do_rollbar=True,
+            do_monitoringu=True,
         )
         return None
 

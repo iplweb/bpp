@@ -495,3 +495,32 @@ class UzytkownikHistoriiMiddleware:
             return self.get_response(request)
         with jako_uzytkownik(user):
             return self.get_response(request)
+
+
+class PodgladJakoGoscMiddleware:
+    """Konfigurator wyglądu: podgląd strony tak, jak widzi ją niezalogowany
+    odwiedzający (bez przycisków obsługi, „Otwórz do edycji” itd.).
+
+    Tylko dla obsługi i tylko w trybie podglądu (``?podglad_motywu&podglad_jako=gosc``):
+    żądanie dostaje anonimowego użytkownika — wyłącznie zmniejsza
+    uprawnienia. ``request.podglad_motywu`` zachowuje informację, że to
+    podgląd (procesor kontekstu ``config`` wstawia wtedy miejsce na motyw).
+    """
+
+    def __init__(self, get_response):
+        self.get_response = get_response
+
+    def __call__(self, request):
+        user = getattr(request, "user", None)
+        from bpp.konfigurator_dostep import moze_konfigurowac_wyglad
+
+        if (
+            "podglad_motywu" in request.GET
+            and request.GET.get("podglad_jako") == "gosc"
+            and moze_konfigurowac_wyglad(user)
+        ):
+            from django.contrib.auth.models import AnonymousUser
+
+            request.podglad_motywu = True
+            request.user = AnonymousUser()
+        return self.get_response(request)

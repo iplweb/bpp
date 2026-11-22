@@ -1119,7 +1119,7 @@ class Uczelnia(
         from pbn_client.conf import settings as pbn_defaults
 
         from pbn_api import client
-        from pbn_api.reporting import rollbar_reporter
+        from pbn_api.reporting import bpp_reporter
 
         class UczelniaTransport(client.RequestsTransport):
             def authorize(self, base_url, app_id, token):
@@ -1147,7 +1147,7 @@ class Uczelnia(
                 "PBN_CLIENT_HTTP_TIMEOUT",
                 pbn_defaults.PBN_CLIENT_HTTP_TIMEOUT,
             ),
-            reporter=rollbar_reporter,
+            reporter=bpp_reporter,
         )
         return client.BppPBNClient(transport, uczelnia=self)
 

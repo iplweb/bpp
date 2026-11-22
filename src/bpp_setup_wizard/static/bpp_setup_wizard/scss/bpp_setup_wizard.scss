@@ -5,7 +5,7 @@
     max-width: 800px;
     margin: 50px auto;
     padding: 40px;
-    background: white;
+    background: var(--bpp-tlo-pow, white);
     border-radius: 8px;
     box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
 
@@ -14,30 +14,30 @@
         text-align: center;
         margin-bottom: 40px;
         padding-bottom: 20px;
-        border-bottom: 2px solid #f0f0f0;
+        border-bottom: 2px solid var(--bpp-ramka, #f0f0f0);
     }
 
     &__header-title {
-        color: #333;
+        color: var(--bpp-tekst, #333);
         font-size: 32px;
         margin-bottom: 10px;
     }
 
     &__header-subtitle {
-        color: #666;
+        color: var(--bpp-tekst-przygaszony, #666);
         font-size: 16px;
         margin: 0;
     }
 
     &__icon {
         font-size: 48px;
-        color: #0a7cb8;
+        color: var(--bpp-akcent, #0a7cb8);
         margin-bottom: 20px;
     }
 
     // Info section
     &__info {
-        background: #f8f9fa;
+        background: var(--bpp-tlo-pow-2, #f8f9fa);
         border-left: 4px solid #0a7cb8;
         padding: 15px;
         margin-bottom: 30px;
@@ -46,26 +46,26 @@
 
     &__info-title {
         margin: 0 0 10px 0;
-        color: #333;
+        color: var(--bpp-tekst, #333);
         font-size: 18px;
     }
 
     &__info-text {
         margin: 5px 0;
-        color: #555;
+        color: var(--bpp-tekst-przygaszony, #555);
     }
 
     // Form section
     &__form-section {
         margin-bottom: 30px;
         padding: 20px;
-        background: #fafafa;
+        background: var(--bpp-tlo-pow-2, #fafafa);
         border-radius: 6px;
     }
 
     &__form-section-title {
         margin: 0 0 20px 0;
-        color: #333;
+        color: var(--bpp-tekst, #333);
         font-size: 20px;
         border-bottom: 2px solid #0a7cb8;
         padding-bottom: 10px;
@@ -80,14 +80,14 @@
         display: block;
         margin-bottom: 8px;
         font-weight: 600;
-        color: #333;
+        color: var(--bpp-tekst, #333);
     }
 
     // Form control
     &__form-control {
         width: 100%;
         padding: 10px;
-        border: 1px solid #ddd;
+        border: 1px solid var(--bpp-ramka, #ddd);
         border-radius: 4px;
         font-size: 14px;
 
@@ -112,7 +112,7 @@
         display: block;
         margin-top: 5px;
         font-size: 12px;
-        color: #666;
+        color: var(--bpp-tekst-przygaszony, #666);
     }
 
     // Submit button
@@ -134,31 +134,31 @@
 
     // Error messages
     &__error-message {
-        color: #d32f2f;
+        color: var(--bpp-tekst-blad, #d32f2f);
         font-size: 14px;
         margin-top: 5px;
     }
 
     &__form-errors {
-        background: #ffebee;
+        background: var(--bpp-tlo-pow-2, #ffebee);
         border: 1px solid #ffcdd2;
         border-radius: 4px;
         padding: 15px;
         margin-bottom: 20px;
-        color: #c62828;
+        color: var(--bpp-tekst-blad, #c62828);
     }
 
     &__form-errors-title {
         margin: 0 0 10px 0;
         font-size: 18px;
-        color: #c62828;
+        color: var(--bpp-tekst-blad, #c62828);
     }
 
     &__form-errors-list {
         margin: 0 0 0 20px;
 
         a {
-            color: #c62828;
+            color: var(--bpp-tekst-blad, #c62828);
             font-weight: 600;
             text-decoration: underline;
         }
@@ -166,13 +166,13 @@
 
     // PBN note
     &__pbn-note {
-        background: #fff3cd;
+        background: var(--bpp-tlo-ostrzezenie, #fff3cd);
         border: 1px solid #ffc107;
         border-radius: 4px;
         padding: 10px;
         margin-top: 10px;
         font-size: 13px;
-        color: #856404;
+        color: var(--bpp-tekst-ostrzezenie, #856404);
 
         .fi-alert {
             margin-right: 5px;
@@ -183,14 +183,14 @@
     &__pbn-documentation {
         margin-top: 15px;
         padding: 15px;
-        background: #e3f2fd;
+        background: var(--bpp-tlo-info, #e3f2fd);
         border: 1px solid #2196f3;
         border-radius: 4px;
     }
 
     &__pbn-documentation-title {
         margin: 0 0 10px 0;
-        color: #1976d2;
+        color: var(--bpp-akcent, #1976d2);
         font-size: 16px;
     }
 
@@ -209,7 +209,7 @@
     }
 
     &__pbn-documentation-link {
-        color: #1976d2;
+        color: var(--bpp-akcent, #1976d2);
         text-decoration: underline;
     }
 
@@ -221,12 +221,12 @@
     &__pbn-documentation-hint {
         margin: 10px 0 0 0;
         font-size: 13px;
-        color: #555;
+        color: var(--bpp-tekst-przygaszony, #555);
     }
 
     // Auto-configured fields
     &__auto-configured {
-        background: #e8f5e9;
+        background: var(--bpp-tlo-pow-2, #e8f5e9);
         border: 1px solid #4caf50;
         border-radius: 4px;
         padding: 15px;
@@ -234,18 +234,18 @@
     }
 
     &__auto-configured-title {
-        color: #2e7d32;
+        color: var(--bpp-tekst-sukces, #2e7d32);
         margin: 0 0 10px 0;
         font-size: 16px;
     }
 
     &__auto-configured-text {
-        color: #2e7d32;
+        color: var(--bpp-tekst-sukces, #2e7d32);
     }
 
     &__auto-configured-list {
         margin: 10px 0 0 20px;
-        color: #2e7d32;
+        color: var(--bpp-tekst-sukces, #2e7d32);
     }
 
     &__auto-configured-list-item {
@@ -261,7 +261,7 @@
     &__progress-label {
         text-align: center;
         font-weight: bold;
-        color: #0a7cb8;
+        color: var(--bpp-akcent, #0a7cb8);
         margin: 0 0 10px 0;
     }
 
@@ -278,17 +278,17 @@
         list-style: none; // Foundation numeruje <li> w <ol>; numer jest w „Krok N z 3"
         text-align: center;
         font-size: 13px;
-        color: #888;
+        color: var(--bpp-tekst-przygaszony, #888);
         padding-top: 8px;
-        border-top: 4px solid #e0e0e0;
+        border-top: 4px solid var(--bpp-ramka, #e0e0e0);
 
         &--done {
-            color: #2e7d32;
+            color: var(--bpp-tekst-sukces, #2e7d32);
             border-top-color: #4caf50;
         }
 
         &--current {
-            color: #0a7cb8;
+            color: var(--bpp-akcent, #0a7cb8);
             font-weight: bold;
             border-top-color: #0a7cb8;
         }
@@ -301,7 +301,7 @@
     }
 
     &__question-title {
-        color: #333;
+        color: var(--bpp-tekst, #333);
         font-size: 22px;
         margin-bottom: 20px;
     }
@@ -319,7 +319,7 @@
         padding: 14px 20px;
         border: 2px solid #0a7cb8;
         border-radius: 4px;
-        color: #0a7cb8;
+        color: var(--bpp-akcent, #0a7cb8);
         font-size: 16px;
         text-align: left;
 

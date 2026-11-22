@@ -9,7 +9,7 @@
 
     // Icon indicators
     &__icon-check {
-        color: green;
+        color: var(--bpp-tekst-sukces, green);
     }
 
     &__icon-x {
@@ -30,7 +30,7 @@
     &__disciplines-section {
         margin-bottom: 1rem;
         padding: 0.5rem;
-        background-color: #f4f4f4;
+        background-color: var(--bpp-tlo-pow-2, #f4f4f4);
         border-radius: 4px;
     }
 
@@ -53,7 +53,7 @@
     }
 
     &__count-matched {
-        color: green;
+        color: var(--bpp-tekst-sukces, green);
     }
 
     &__count-unmatched {
@@ -74,7 +74,7 @@
     }
 
     &__status-icon--check {
-        color: green;
+        color: var(--bpp-tekst-sukces, green);
     }
 
     &__status-icon--x {

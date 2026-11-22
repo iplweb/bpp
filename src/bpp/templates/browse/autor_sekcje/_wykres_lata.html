@@ -2,7 +2,7 @@
 {# dane.maks, dane.etykieta, dane.miejsca (miejsca po przecinku etykiet; #}
 {# widthratio liczy z surowych wartości). Powyżej 10 punktów → liniowy #}
 {# SVG (zwarty dla długich serii), do 10 → słupki. Bez zależności (czysty SVG/HTML). #}
-{# Klik w słupek / kolumnę roku → multiseek z pracami z tego roku #}
+{# Klik w słupek / kolumnę roku → lista prac z tego roku (cel=wyniki) #}
 {# (autora, a z szukaj_pola — jednostki, źródła lub wydawcy). #}
 {# Przyciski leżą poza formularzem (atrybut form=), każdy niesie name=rok. #}
 {% with form_id="wykres-szukaj-"|add:nazwa|slugify %}
@@ -28,6 +28,8 @@
         {# Typ raportu multiseeka (np. „table” dla punktów); BuildSearch #}
         {# ustawia go tylko, gdy użytkownik ma ten raport do wyboru. #}
         {% if raport %}<input type="hidden" name="raport" value="{{ raport }}"/>{% endif %}
+        {# Od razu lista wyników; zawężenie — „Zawęź w wyszukiwarce” nad wynikami. #}
+        <input type="hidden" name="cel" value="wyniki"/>
         {# Dodatkowe filtry wykresu (np. „Książki w latach” u wydawcy). #}
         {% for nazwa_pola, wartosc_pola in pola %}
             <input type="hidden" name="{{ nazwa_pola }}" value="{{ wartosc_pola }}"/>

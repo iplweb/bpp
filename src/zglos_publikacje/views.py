@@ -2,7 +2,6 @@ import logging
 import sys
 import unicodedata
 
-import rollbar
 from django.conf import settings
 from django.contrib.contenttypes.models import ContentType
 from django.core.exceptions import ValidationError
@@ -23,6 +22,7 @@ from bpp.models.wydawca import Wydawca
 from bpp.models.wydawnictwo_zwarte import Wydawnictwo_Zwarte
 from bpp.util import zaloguj_polkniety_wyjatek
 from bpp.views.mixins import UczelniaSettingRequiredMixin
+from bpp.zglaszanie_bledow import capture_exception, capture_message
 from import_common.normalization import normalize_tytul_publikacji
 from pbn_api.models.publication import (
     Publication as PBN_Publication,
@@ -216,7 +216,7 @@ def _send_notification_email(publication_object, request):
             },
         )
     except Exception:
-        rollbar.report_exc_info(sys.exc_info())
+        capture_exception(sys.exc_info())
 
         messages.add_message(
             request,
@@ -498,7 +498,7 @@ class Zgloszenie_PublikacjiWizard(UczelniaSettingRequiredMixin, SessionWizardVie
 
         Odrzuca pliki > MAX_ROZMIAR_PLIKU, przycina do MAX_LICZBA_PLIKOW
         i do łącznego limitu rozmiaru (``max_laczny_rozmiar_plikow``).
-        Jeśli cokolwiek odrzuci/przytnie → alarmuje przez rollbar: to „nie
+        Jeśli cokolwiek odrzuci/przytnie → alarmuje przez monitoring błędów: to „nie
         powinno się zdarzyć", bo walidacja formularza (A2) już przepuściła
         dokładnie tę listę — rozjazd = błąd w warstwie walidacji.
         """
@@ -517,7 +517,7 @@ class Zgloszenie_PublikacjiWizard(UczelniaSettingRequiredMixin, SessionWizardVie
         odrzucone_liczba = len(w_limicie) - len(przyciete)
 
         if odrzucone_rozmiar or odrzucone_liczba:
-            rollbar.report_message(
+            capture_message(
                 "process_step_files: _pliki_w_limicie odrzuciło pliki mimo"
                 " że walidacja formularza (A2) je przepuściła —"
                 f" odrzucone_rozmiar={odrzucone_rozmiar},"

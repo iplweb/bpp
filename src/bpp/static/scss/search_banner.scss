@@ -102,3 +102,11 @@
         display: none;
     }
 }
+
+// Skrót „/” ma sens tylko z klawiaturą: na telefonach i tabletach (ekran
+// dotykowy albo wąski) baner się nie pokazuje.
+@media (hover: none), (pointer: coarse), screen and (max-width: 63.9375em) {
+  .search-shortcut-banner {
+    display: none !important;
+  }
+}

@@ -1,10 +1,10 @@
 import sys
 
-import rollbar
 from django.urls import reverse
 from django.utils.html import format_html, format_html_join
 
 from bpp.admin.helpers import link_do_obiektu
+from bpp.zglaszanie_bledow import capture_exception
 from import_common.normalization import normalize_isbn
 from pbn_api.exceptions import (
     AccessDeniedException,
@@ -365,8 +365,8 @@ def sprobuj_wyslac_do_pbn(  # noqa: C901
             )
         )
 
-        # Zaloguj problem do Rollbar, bo w sumie nie wiadomo, co to za problem na tym etapie...
-        rollbar.report_exc_info(sys.exc_info())
+        # Zgłoś problem do monitoringu, bo w sumie nie wiadomo, co to za problem na tym etapie...
+        capture_exception(sys.exc_info())
 
         if raise_exceptions:
             raise e

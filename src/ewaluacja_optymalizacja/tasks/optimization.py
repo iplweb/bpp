@@ -5,12 +5,12 @@ import traceback
 from datetime import datetime
 from decimal import Decimal
 
-import rollbar
 from celery import chord, group, shared_task
 from celery.exceptions import SoftTimeLimitExceeded
 from celery_singleton import Singleton
 from django.utils import timezone
 
+from bpp.zglaszanie_bledow import capture_exception
 from ewaluacja_liczba_n.models import LiczbaNDlaUczelni
 
 from ..okres import filtr_lat, pobierz_okres
@@ -208,8 +208,8 @@ def solve_single_discipline_task(
             f"Full traceback:\n{tb}"
         )
 
-        # Report to Rollbar for production monitoring
-        rollbar.report_exc_info()
+        # Zgłoś do monitoringu błędów (Rollbar/Sentry)
+        capture_exception()
 
         discipline_result["status"] = "failed"
         discipline_result["error"] = f"{type(e).__name__}: {str(e)}"

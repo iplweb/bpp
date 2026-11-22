@@ -16,9 +16,9 @@
         .zapytanie-model-group .button {
             margin: 0;
             cursor: pointer;
-            background: #fff;
-            color: #2c3e50;
-            border: 1px solid #cfd8dc;
+            background: var(--bpp-tlo-pow, #fff);
+            color: var(--bpp-tekst, #2c3e50);
+            border: 1px solid var(--bpp-ramka, #cfd8dc);
             font-weight: 500;
             display: inline-flex;
             align-items: center;
@@ -32,7 +32,7 @@
             height: 1px;
         }
         .zapytanie-model-group .button:hover {
-            background: #f1f5f9;
+            background: var(--bpp-tlo-hover, #f1f5f9);
         }
         .zapytanie-model-group .button:has(input[type="radio"]:checked) {
             background: #1779ba;
@@ -91,8 +91,8 @@
         }
 
         .zapytanie-help-card {
-            background: #f8fafc;
-            border: 1px solid #e2e8f0;
+            background: var(--bpp-tlo-pow-2, #f8fafc);
+            border: 1px solid var(--bpp-ramka, #e2e8f0);
             border-radius: 4px;
             padding: 0.75rem 1rem;
             margin-top: 0.5rem;
@@ -100,15 +100,15 @@
         .zapytanie-help-card summary {
             cursor: pointer;
             font-weight: 600;
-            color: #1779ba;
+            color: var(--bpp-akcent, #1779ba);
         }
         .zapytanie-help-card kbd {
             display: inline-block;
             padding: 1px 6px;
             font-family: monospace;
             font-size: 0.85em;
-            background: #fff;
-            border: 1px solid #cbd5e0;
+            background: var(--bpp-tlo-pow, #fff);
+            border: 1px solid var(--bpp-ramka, #cbd5e0);
             border-radius: 3px;
         }
         .zapytanie-help-card table { margin-top: 0.5rem; }
@@ -124,7 +124,7 @@
         }
         .zapytanie-history-card .history-remove {
             background: transparent;
-            border: 1px solid #e2e8f0;
+            border: 1px solid var(--bpp-ramka, #e2e8f0);
             border-radius: 3px;
             color: #94a3b8;
             cursor: pointer;
@@ -134,9 +134,9 @@
             padding: 2px 6px;
         }
         .zapytanie-history-card .history-remove:hover {
-            color: #dc2626;
+            color: var(--bpp-tekst-blad, #dc2626);
             border-color: #fca5a5;
-            background: #fef2f2;
+            background: var(--bpp-tlo-hover, #fef2f2);
         }
         .zapytanie-history-card td { vertical-align: top; }
         .zapytanie-history-card .history-count-cell {
@@ -159,7 +159,7 @@
             margin-bottom: 0.7rem;
         }
         .zapytanie-help-sublevel ul.examples > li > em {
-            color: #475569;
+            color: var(--bpp-tekst-przygaszony, #475569);
             font-size: 0.85rem;
         }
         .zapytanie-help-sublevel ul.examples code {
@@ -168,10 +168,10 @@
             padding: 0.5rem 0.7rem;
             font-family: 'SF Mono', Monaco, 'Cascadia Code', 'Roboto Mono', Consolas, monospace;
             font-size: 0.85rem;
-            background: #f1f5f9;
-            border: 1px solid #cbd5e1;
+            background: var(--bpp-tlo-pow-2, #f1f5f9);
+            border: 1px solid var(--bpp-ramka, #cbd5e1);
             border-radius: 4px;
-            color: #0f172a;
+            color: var(--bpp-akcent, #0f172a);
             cursor: pointer;
             white-space: pre-wrap;
             word-break: break-word;
@@ -180,7 +180,7 @@
             user-select: text;
         }
         .zapytanie-help-sublevel ul.examples code:hover {
-            background: #e0f2fe;
+            background: var(--bpp-tlo-info, #e0f2fe);
             border-color: #38bdf8;
         }
         .zapytanie-help-sublevel ul.examples code:active {
@@ -192,12 +192,12 @@
         }
         /* Klikalny wiersz tabeli wynikow */
         tr[data-href] { cursor: pointer; }
-        tr[data-href]:hover { background: #f8fafc; }
+        tr[data-href]:hover { background: var(--bpp-tlo-hover, #f8fafc); }
         tr[data-href] a, tr[data-href] button { cursor: auto; }
         .rekord-id-cell {
             font-family: 'SF Mono', Monaco, monospace;
             font-size: 0.85rem;
-            color: #64748b;
+            color: var(--bpp-tekst-przygaszony, #64748b);
             white-space: nowrap;
         }
         /* Inline error dla AJAX (Sformatuj / Wyjaśnij liczby) */
@@ -217,7 +217,7 @@
         #zapytanie-explain-panel[hidden] { display: none; }
         #zapytanie-explain-panel { margin-top: 1.2rem; }
         .zapytanie-explain-legend {
-            font-size: 0.8rem; color: #6b7280; margin: 0.2rem 0 0.6rem;
+            font-size: 0.8rem; color: var(--bpp-tekst-przygaszony, #6b7280); margin: 0.2rem 0 0.6rem;
         }
         ul.zapytanie-explain-tree,
         ul.zapytanie-explain-tree ul {
@@ -231,8 +231,8 @@
             text-align: right; font-variant-numeric: tabular-nums;
             font-weight: 600; color: #9ca3af;
         }
-        .zapytanie-explain-tree .node-count.zero { color: #dc2626; }
-        .zapytanie-explain-tree .node-count.dead { color: #b45309; }
+        .zapytanie-explain-tree .node-count.zero { color: var(--bpp-tekst-blad, #dc2626); }
+        .zapytanie-explain-tree .node-count.dead { color: var(--bpp-tekst-ostrzezenie, #b45309); }
         .zapytanie-explain-tree .node-label {
             font-family: 'SF Mono', Monaco, 'Cascadia Code', monospace;
             font-size: 0.85rem;
@@ -455,7 +455,7 @@
                 Historia zapytań
                 (<span id="zapytanie-history-count">0</span>)
             </summary>
-            <p style="margin-top: 0.5rem; color: #64748b; font-size: 0.85rem;">
+            <p style="margin-top: 0.5rem; color: var(--bpp-tekst-przygaszony, #64748b); font-size: 0.85rem;">
                 <em>Historia ostatnich 20 różnych zapytań z tej przeglądarki.
                 Kliknij wpis, żeby je przywrócić.</em>
             </p>
@@ -486,9 +486,9 @@
             </h3>
             <p class="zapytanie-explain-legend">
                 Ile rekordów pasuje do każdej gałęzi z osobna.
-                <span style="color:#dc2626;font-weight:600;">Czerwone</span> &mdash;
+                <span style="color:var(--bpp-tekst-blad, #dc2626);font-weight:600;">Czerwone</span> &mdash;
                 tu przecięcie schodzi do zera (kończą się dane);
-                <span style="color:#b45309;font-weight:600;">bursztynowe</span> &mdash;
+                <span style="color:var(--bpp-tekst-ostrzezenie, #b45309);font-weight:600;">bursztynowe</span> &mdash;
                 martwa gałąź <code>or</code>, która nic nie wnosi.
             </p>
             <div id="zapytanie-explain-tree"></div>

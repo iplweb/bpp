@@ -10,6 +10,8 @@ from celery_singleton import util as singleton_util
 from django.apps import apps
 from django.conf import settings
 
+from bpp.zglaszanie_bledow import capture_exception
+
 if platform.system() == "Darwin":
     os.environ.setdefault("OBJC_DISABLE_INITIALIZE_FORK_SAFETY", "YES")
 
@@ -130,9 +132,12 @@ def handle_task_failure(**kw):
     # sys.exc_info(), ktore Celery potrafi juz wyczyscic w momencie emisji
     # task_failure -> do Rollbara szedl pusty/smieciowy raport albo nic
     # (Freshdesk #344: 500 importera nie pojawial sie w Rollbarze).
+    #
+    # pomin_sentry: Sentry/GlitchTip dostaje błędy zadań z własnej
+    # CeleryIntegration (bpp.sentry_config) — zgłoszenie stąd byłoby duplikatem.
     einfo = kw.get("einfo")
     exc_info = getattr(einfo, "exc_info", None)
-    rollbar.report_exc_info(exc_info=exc_info, extra_data=kw)
+    capture_exception(exc_info, extra=kw, pomin_sentry=True)
 
 
 def celery_base_data_hook(request, data):

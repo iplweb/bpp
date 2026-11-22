@@ -1435,3 +1435,17 @@ def django_db_setup(django_db_setup, django_db_blocker):
                     for sn, lv, ic in rows
                 ]
                 cursor.execute("\n".join(alter_stmts))
+
+
+@pytest.fixture
+def rollbar_skonfigurowany(monkeypatch):
+    """Udaj, że Rollbar ma token dostępu.
+
+    ``bpp.zglaszanie_bledow`` woła ``rollbar.report_*`` tylko wtedy, gdy Rollbar
+    jest skonfigurowany, a w testach tokenu nie ma. Testy, które patchują
+    ``rollbar.report_exc_info`` / ``rollbar.report_message`` globalnie, muszą
+    użyć tej fikstury — inaczej ``assert_not_called()`` przechodziłoby zawsze.
+    """
+    import rollbar
+
+    monkeypatch.setitem(rollbar.SETTINGS, "access_token", "atrapa-tokenu")

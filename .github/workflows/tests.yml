@@ -455,6 +455,11 @@ jobs:
           sleep 2
         done
 
+    - name: Start motyw-kompilator (konfigurator wyglądu)
+      # Prawdziwa kompilacja motywów w testach — patrz skrypt.
+      timeout-minutes: 3
+      run: bin/ci-motyw-kompilator.sh
+
     - name: Tests (shard ${{ matrix.shard }}/${{ env.NUM_SHARDS }})
       timeout-minutes: 25
       env:

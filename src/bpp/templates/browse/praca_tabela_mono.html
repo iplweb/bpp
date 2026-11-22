@@ -594,7 +594,8 @@
                 </span>
                 <div id="bibtex-container" class="praca-mono__bibtex-container">
                     <textarea id="bibtex-content" readonly
-                              class="praca-mono__bibtex-textarea"></textarea>
+                              class="praca-mono__bibtex-textarea"
+                              title="Kliknij, aby skopiować BibTeX do schowka"></textarea>
                 </div>
             </div>
         </div>
@@ -1016,6 +1017,11 @@
 
             bibtexCopyBtn.click(function () {
                 copyToClipboard();
+            });
+
+            // Kliknięcie w pole też kopiuje (jak przycisk „Kopiuj”).
+            bibtexContent.click(function () {
+                if (bibtexLoaded) copyToClipboard();
             });
 
             function loadBibTeX() {

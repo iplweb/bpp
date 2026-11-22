@@ -378,7 +378,7 @@ class CancelImportView(LoginRequiredMixin, ImportPermissionMixin, View):
                         "Nie udało się anulować zadania Celery "
                         f"{session.task_id} dla sesji importu #{session.id}",
                         logger=logger,
-                        do_rollbar=True,
+                        do_monitoringu=True,
                     )
                     ImportLog.objects.create(
                         session=session,

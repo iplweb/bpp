@@ -53,7 +53,7 @@
     {% include "multiseek/paginator.html" with max_rows=uczelnia.wyszukiwanie_rekordy_na_strone_zalogowany is_live=is_live %}
 {% endif %}
 
-<div style="padding: 10px;">
+<div class="multiseek-results-body">
 
     {% if description %}
         <div class="multiseek-query-params {% if not uczelnia.wydruk_parametry_zapytania %}hide-for-print{% endif %}">

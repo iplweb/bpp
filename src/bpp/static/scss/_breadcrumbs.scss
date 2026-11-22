@@ -18,9 +18,12 @@
   backdrop-filter: blur(8px);
   -webkit-backdrop-filter: blur(8px);
 
+  // Blok, nie inline-block: inline-block siedział na linii bazowej komórki
+  // i pod tekstem zostawało miejsce na „ogonki” liter (~7 px) — pasek
+  // wyglądał na niewyśrodkowany (więcej miejsca pod tekstem niż nad nim).
   .breadcrumbs {
     margin: 0 !important;
     background: transparent;
-    display: inline-block;
+    display: block;
   }
 }

@@ -35,10 +35,10 @@
     align-items: center;
     justify-content: space-between;
     padding: 15px;
-    background: white;
+    background: var(--bpp-tlo-pow, white);
     border-radius: 8px;
     margin-bottom: 10px;
-    border: 2px solid #e0e0e0;
+    border: 2px solid var(--bpp-ramka, #e0e0e0);
     transition: all 0.3s;
 }
 
@@ -55,11 +55,11 @@
 }
 
 .user-badge {
-    background: #e0e0e0;
+    background: var(--bpp-tlo-pow-2, #e0e0e0);
     padding: 3px 8px;
     border-radius: 15px;
     font-size: 0.85rem;
-    color: #666;
+    color: var(--bpp-tekst-przygaszony, #666);
 }
 
 .session-progress {
@@ -73,7 +73,7 @@
 .mini-progress {
     flex: 1;
     height: 8px;
-    background: #f0f0f0;
+    background: var(--bpp-tlo-pow-2, #f0f0f0);
     border-radius: 4px;
     overflow: hidden;
 }
@@ -109,7 +109,7 @@
 
 .progress-text {
     font-weight: bold;
-    color: #667eea;
+    color: var(--bpp-tekst-przygaszony, #667eea);
     min-width: 40px;
 }
 

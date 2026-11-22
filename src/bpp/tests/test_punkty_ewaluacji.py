@@ -83,3 +83,37 @@ def test_strona_wydawcy_pokazuje_punkty(client):
     assert f"poziom II ({STOP})" in html
     assert "200 pkt" in html
     assert "50 pkt" in html
+
+
+@pytest.mark.django_db
+def test_okresy_biezacy_rozwiniety_poprzednie_zwiniete(zrodlo):
+    from unittest import mock
+
+    from bpp.punkty_ewaluacji import okresy_ewaluacji_strony
+    from ewaluacja_common.models import OkresEwaluacji
+
+    OkresEwaluacji.objects.all().delete()
+    OkresEwaluacji.objects.create(rok_od=2022, rok_do=2025)
+    OkresEwaluacji.objects.create(rok_od=2026, rok_do=2030)
+    OkresEwaluacji.objects.create(rok_od=2031, rok_do=2035)  # przyszły — pomijany
+    baker.make(Punktacja_Zrodla, zrodlo=zrodlo, rok=2024, punkty_kbn=100)
+
+    with mock.patch("django.utils.timezone.localdate") as dzis:
+        dzis.return_value.year = 2027
+        okresy = okresy_ewaluacji_strony(punkty_ewaluacji_zrodla, zrodlo)
+
+    assert [(o["dane"]["od"], o["biezacy"]) for o in okresy] == [
+        (2026, True),
+        (2022, False),
+    ]
+    # Bieżący okres bez żadnej punktacji w bazie — wykaz niewczytany.
+    assert okresy[0]["dane"]["brak_wykazu"] is True
+    assert okresy[1]["dane"]["aktualne"]["punkty"] == Decimal("100")
+
+
+@pytest.mark.django_db
+def test_wydawca_brak_wykazu_w_nowym_okresie():
+    wydawca = baker.make(Wydawca, nazwa="Nowy")
+    wynik = punkty_ewaluacji_wydawcy(wydawca, 2026, 2030)
+    assert wynik["brak_wykazu"] is True
+    assert not wynik["w_wykazie"]

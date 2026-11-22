@@ -816,7 +816,7 @@ def test_zepsuty_rekord_jest_pomijany_a_harvest_leci_dalej(
     )
     zgloszenia = []
     monkeypatch.setattr(
-        czasowniki.rollbar, "report_exc_info", lambda *a, **kw: zgloszenia.append(1)
+        czasowniki, "capture_exception", lambda *a, **kw: zgloszenia.append(1)
     )
 
     korzen = wykonaj(
@@ -844,7 +844,7 @@ def test_zepsuty_rekord_podnosi_wyjatek_gdy_wlaczone_przerywanie(
     monkeypatch.setattr(
         czasowniki, "serializer_dla", lambda slug: _serializer_wybuchajacy_na(2)
     )
-    monkeypatch.setattr(czasowniki.rollbar, "report_exc_info", lambda *a, **kw: None)
+    monkeypatch.setattr(czasowniki, "capture_exception", lambda *a, **kw: None)
 
     with pytest.raises(RuntimeError):
         wykonaj(
@@ -860,7 +860,7 @@ def test_zepsuty_rekord_w_get_record_nie_jest_pomijany(monkeypatch, uczelnia, re
     monkeypatch.setattr(
         czasowniki, "serializer_dla", lambda slug: _serializer_wybuchajacy_na(2)
     )
-    monkeypatch.setattr(czasowniki.rollbar, "report_exc_info", lambda *a, **kw: None)
+    monkeypatch.setattr(czasowniki, "capture_exception", lambda *a, **kw: None)
 
     with pytest.raises(RuntimeError):
         wykonaj(

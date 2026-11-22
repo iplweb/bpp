@@ -1,7 +1,6 @@
 import logging
 from io import BytesIO
 
-import rollbar
 from django.core.paginator import Paginator
 from django.db.models import Sum
 from django.http import HttpResponse, JsonResponse
@@ -16,6 +15,7 @@ from queryset_sequence import QuerySetSequence
 from bpp.const import GR_WPROWADZANIE_DANYCH
 from bpp.models import Uczelnia
 from bpp.util import sanitize_xlsx_row, zaloguj_polkniety_wyjatek
+from bpp.zglaszanie_bledow import capture_exception
 from ewaluacja_common.okres import okres_dla_request
 from pbn_wysylka_oswiadczen.models import PbnWysylkaLog, PbnWysylkaOswiadczenTask
 from pbn_wysylka_oswiadczen.queries import get_publications_queryset
@@ -301,14 +301,14 @@ class StartTaskView(View):
                 "Nie udało się uruchomić zadania Celery wysyłki oświadczeń "
                 f"(PbnWysylkaOswiadczenTask pk={task.pk})",
                 logger=logger,
-                do_rollbar=True,
+                do_monitoringu=True,
             )
             task.status = "failed"
             task.error_message = str(e)
             task.save()
-            # Persist the detail on the task / report to Rollbar, but do not
+            # Persist the detail on the task / report to error monitoring, but do not
             # echo the raw exception text back to the client.
-            rollbar.report_exc_info()
+            capture_exception()
             return JsonResponse(
                 {
                     "success": False,

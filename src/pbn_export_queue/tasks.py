@@ -1,12 +1,12 @@
 import logging
 from datetime import timedelta
 
-import rollbar
 from django.apps import apps
 from django.core.cache import cache
 from django.urls import reverse
 from django.utils import timezone
 
+from bpp.zglaszanie_bledow import capture_exception, capture_message
 from django_bpp.celery_tasks import app
 from long_running.util import wait_for_object
 
@@ -201,7 +201,7 @@ def queue_pbn_export_batch(
             )
         except Exception:
             # Każdy inny wyjątek to realny problem (DB error, integrity,
-            # programmer error). Logujemy, raportujemy do Rollbara,
+            # programmer error). Logujemy, raportujemy do monitoringu,
             # kontynuujemy batch — pojedynczy zły rekord nie powinien
             # zatrzymać wysyłki dziesiątek innych.
             logger.exception(
@@ -210,7 +210,7 @@ def queue_pbn_export_batch(
                 model_name,
                 record_id,
             )
-            rollbar.report_exc_info()
+            capture_exception()
 
 
 @app.task
@@ -299,7 +299,7 @@ def _najnowszy_komunikat(komunikat):
 @app.task
 def report_technical_errors_to_rollbar():
     """
-    Raportuje do Rollbar błędy techniczne w kolejce PBN.
+    Raportuje do monitoringu (Rollbar/Sentry) błędy techniczne w kolejce PBN.
     Uruchamiane przez Celery Beat raz dziennie.
 
     Raportuje jedynie jeśli liczba błędów jest większa niż 0.
@@ -337,13 +337,13 @@ def report_technical_errors_to_rollbar():
         for wpis in qset.order_by("-wysylke_zakonczono")[:LIMIT_WPISOW_W_ALARMIE]
     ]
 
-    rollbar.report_message(
+    capture_message(
         (
             f"PBN Export Queue contains {technical_errors_count} "
             "TECHNICAL errors that require investigation"
         ),
         level="warning",
-        extra_data={
+        extra={
             "technical_errors_count": technical_errors_count,
             "queue_name": "pbn_export_queue",
             "error_type": "TECHNICZNY",

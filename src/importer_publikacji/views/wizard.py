@@ -1200,6 +1200,7 @@ class CreateView(ImporterPermissionMixin, View):
         # User dostaje komunikat na przeglądzie i może poprawić dopasowanie.
         from django.core.exceptions import ValidationError
 
+        from ..dyscypliny import autorzy_z_niezgodna_dyscyplina
         from .publikacja import waliduj_afiliacje_sesji
         from .steps import _render_review_full, _render_review_step
 
@@ -1210,6 +1211,16 @@ class CreateView(ImporterPermissionMixin, View):
             if request.headers.get("HX-Request"):
                 return _render_review_step(request, session, error=error)
             return _render_review_full(request, session, error=error)
+
+        # FD#623: autor przypisany na rok pracy do innej dyscypliny niż
+        # wybrana — lista z odnośnikami (popraw w nowej karcie i kliknij
+        # „Utwórz" ponownie), zamiast nieudanego taska.
+        niezgodni = autorzy_z_niezgodna_dyscyplina(session)
+        if niezgodni:
+            extra = {"autorzy_niezgodna_dyscyplina": niezgodni}
+            if request.headers.get("HX-Request"):
+                return _render_review_step(request, session, extra=extra)
+            return _render_review_full(request, session, extra=extra)
 
         # Patent nie ma ścieżki eksportu do PBN — ignoruj also_pbn nawet gdy
         # przyszło w POST (replay ze starej karty / ręczny POST).

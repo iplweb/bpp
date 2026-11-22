@@ -23,12 +23,12 @@
 }
 
 .source-table-header {
-    background-color: #f5f5f5;
-    color: #333;
+    background-color: var(--bpp-tlo-pow-2, #f5f5f5);
+    color: var(--bpp-tekst, #333);
     padding: 15px;
     margin-bottom: 20px;
     border-radius: 3px;
-    border: 1px solid #e0e0e0;
+    border: 1px solid var(--bpp-ramka, #e0e0e0);
 
     h4 {
         margin-bottom: 5px;
@@ -47,7 +47,7 @@
     h5 {
         margin-bottom: 15px;
         padding: 10px 15px;
-        background-color: #f5f5f5;
+        background-color: var(--bpp-tlo-pow-2, #f5f5f5);
         font-weight: 600;
         display: flex;
         align-items: center;
@@ -67,18 +67,18 @@
     cursor: pointer;
     padding: 15px;
     margin-bottom: 10px;
-    border: 2px solid #e0e0e0;
+    border: 2px solid var(--bpp-ramka, #e0e0e0);
     border-radius: 4px;
-    background-color: #fff;
+    background-color: var(--bpp-tlo-pow, #fff);
     transition: all 0.2s ease;
 
     &:hover {
         border-color: #bdbdbd;
-        background-color: #fafafa;
+        background-color: var(--bpp-tlo-hover, #fafafa);
     }
 
     &.selected {
-        background-color: #e3f2fd;
+        background-color: var(--bpp-tlo-info, #e3f2fd);
         border-color: #1976d2;
         border-width: 2px;
         box-shadow: 0 2px 4px rgba(25, 118, 210, 0.2);
@@ -87,16 +87,16 @@
     // Special styling for items WITH MNISW ID
     &.has-mnisw-id {
         border-left: 4px solid #2e7d32;
-        background-color: #f1f8e9;
+        background-color: var(--bpp-tlo-pow-2, #f1f8e9);
         box-shadow: 0 1px 3px rgba(46, 125, 50, 0.15);
 
         &:hover {
-            background-color: #e8f5e9;
+            background-color: var(--bpp-tlo-hover, #e8f5e9);
             box-shadow: 0 2px 6px rgba(46, 125, 50, 0.25);
         }
 
         &.selected {
-            background-color: #c8e6c9;
+            background-color: var(--bpp-tlo-sukces, #c8e6c9);
             border-color: #2e7d32;
             border-left-width: 4px;
             box-shadow: 0 3px 8px rgba(46, 125, 50, 0.3);
@@ -109,7 +109,7 @@
     font-size: 1.05em;
     font-weight: 600;
     margin-bottom: 8px;
-    color: #333;
+    color: var(--bpp-tekst, #333);
 }
 
 // Metadata section
@@ -118,7 +118,7 @@
     flex-wrap: wrap;
     gap: 12px;
     font-size: 0.9em;
-    color: #666;
+    color: var(--bpp-tekst-przygaszony, #666);
 }
 
 .source-item-meta-item {
@@ -129,15 +129,15 @@
 
 .source-item-meta-label {
     font-weight: 500;
-    color: #888;
+    color: var(--bpp-tekst-przygaszony, #888);
 }
 
 // MNISW ID styling with pulsating animation
 .mnisw-id {
     font-weight: 700;
     font-size: 1.15em;
-    color: #1b5e20;
-    background-color: #c8e6c9;
+    color: var(--bpp-tekst-sukces, #1b5e20);
+    background-color: var(--bpp-tlo-sukces, #c8e6c9);
     padding: 4px 10px;
     border-radius: 4px;
     display: inline-block;
@@ -160,8 +160,8 @@
 // Similarity badge
 .similarity-badge {
     display: inline-block;
-    background-color: #e3f2fd;
-    color: #1976d2;
+    background-color: var(--bpp-tlo-info, #e3f2fd);
+    color: var(--bpp-akcent, #1976d2);
     padding: 2px 8px;
     border-radius: 3px;
     font-size: 0.85em;
@@ -179,13 +179,13 @@
 }
 
 .match-type-best {
-    background-color: #c8e6c9;
-    color: #1b5e20;
+    background-color: var(--bpp-tlo-sukces, #c8e6c9);
+    color: var(--bpp-tekst-sukces, #1b5e20);
 }
 
 .match-type-good {
     background-color: #bbdefb;
-    color: #0d47a1;
+    color: var(--bpp-akcent, #0d47a1);
 }
 
 .match-type-acceptable {
@@ -222,13 +222,13 @@
     h6 {
         margin-bottom: 15px;
         font-size: 1.2em;
-        color: #333;
+        color: var(--bpp-tekst, #333);
     }
 
     .source-details {
         dt {
             font-weight: 600;
-            color: #666;
+            color: var(--bpp-tekst-przygaszony, #666);
             margin-top: 10px;
             font-size: 0.9em;
         }
@@ -237,7 +237,7 @@
             margin-left: 0;
             margin-bottom: 8px;
             font-size: 1em;
-            color: #333;
+            color: var(--bpp-tekst, #333);
 
             .text-muted {
                 color: #999;
@@ -276,7 +276,7 @@
     gap: 8px;
 
     &:hover {
-        background-color: #eeeeee;
+        background-color: var(--bpp-tlo-hover, #eeeeee);
     }
 }
 

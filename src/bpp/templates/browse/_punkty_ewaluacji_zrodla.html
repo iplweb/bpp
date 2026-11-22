@@ -1,4 +1,4 @@
-{# Punkty za artykuł w bieżącej ewaluacji (bpp.punkty_ewaluacji). #}
+{# Punkty za artykuł w jednym okresie ewaluacji (bpp.punkty_ewaluacji). #}
 {# Oczekuje: ewaluacja = punkty_ewaluacji_zrodla(zrodlo). #}
 <div class="callout punkty-ewaluacji">
     <div class="punkty-ewaluacji__naglowek">
@@ -18,6 +18,10 @@
         {% endif %}
         <p class="punkty-ewaluacji__przypis">
             Punktacja czasopisma z wykazu; przy kilku autorach punkty dzielą się wg zasad ewaluacji.
+        </p>
+    {% elif ewaluacja.brak_wykazu %}
+        <p class="punkty-ewaluacji__glowne">
+            Punktacja czasopism za lata {{ ewaluacja.od }}–{{ ewaluacja.do }} nie została jeszcze wczytana.
         </p>
     {% else %}
         <p class="punkty-ewaluacji__glowne">

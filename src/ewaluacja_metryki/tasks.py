@@ -1,11 +1,11 @@
 import logging
 import sys
 
-import rollbar
 from celery import chord, group, shared_task
 from django.utils import timezone
 
 from bpp.models import Uczelnia
+from bpp.zglaszanie_bledow import capture_exception
 from ewaluacja_liczba_n.utils import oblicz_liczby_n_dla_okresu
 
 from .models import StatusGenerowania
@@ -118,7 +118,7 @@ def oblicz_metryki_dla_autora_task(
     except Exception as e:
         error_msg = f"Błąd przy przetwarzaniu ID {ilosc_udzialow_id}: {str(e)}"
         logger.error(error_msg)
-        rollbar.report_exc_info(sys.exc_info())
+        capture_exception(sys.exc_info())
         # Atomowo zwiększ licznik przetworzonych tasków (per uczelnia i okres)
         StatusGenerowania.objects.filter(
             uczelnia_id=uczelnia_id, okres_id=okres_pk
@@ -335,7 +335,7 @@ def generuj_metryki_task_parallel(
         logger.error(
             f"Błąd podczas uruchamiania równoległego generowania metryk: {str(e)}"
         )
-        rollbar.report_exc_info(sys.exc_info())
+        capture_exception(sys.exc_info())
 
         # Oznacz błąd
         status.w_trakcie = False
@@ -495,7 +495,7 @@ def generuj_metryki_task(
 
     except Exception as e:
         logger.error(f"Błąd podczas generowania metryk: {str(e)}")
-        rollbar.report_exc_info(sys.exc_info())
+        capture_exception(sys.exc_info())
 
         # Oznacz błąd
         status.w_trakcie = False

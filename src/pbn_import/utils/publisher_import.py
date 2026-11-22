@@ -29,7 +29,7 @@ class PublisherImporter(ImportStepBase):
             zaloguj_polkniety_wyjatek(
                 "Nie udało się pobrać wydawców z MNiSW",
                 logger=logger,
-                do_rollbar=False,  # Rollbar już w handle_error
+                do_monitoringu=False,  # zgłoszenie już w handle_error
             )
             self.handle_error(e, "Nie udało się pobrać wydawców")
         self.update_progress(1, 1, "Zakończono pobieranie wydawców")
@@ -57,7 +57,7 @@ class PublisherImporter(ImportStepBase):
             zaloguj_polkniety_wyjatek(
                 "Nie udało się zaimportować wydawców do bazy danych",
                 logger=logger,
-                do_rollbar=False,  # Rollbar już w handle_error
+                do_monitoringu=False,  # zgłoszenie już w handle_error
             )
             self.handle_error(e, "Nie udało się zaimportować wydawców")
         finally:

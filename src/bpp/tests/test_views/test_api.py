@@ -146,9 +146,12 @@ def test_GetPBNPublicationsByISBN_wiele_isbn(
     pbn_client.transport.return_values[f"/api/v1/publications/id/{UID_REKORDU}"] = pub1
     pbn_client.transport.return_values[f"/api/v1/publications/id/{UID_REKORDU}2"] = pub2
 
-    res = GetPBNPublicationsByISBN(request=req).post(req)
+    res = json.loads(GetPBNPublicationsByISBN(request=req).post(req).content)
 
-    assert json.loads(res.content)["id"] == UID_REKORDU
+    # Kilka rekordów PBN — do wyszukiwarki pola „Odpowiednik w PBN" trafia
+    # ISBN, a redaktor wybiera właściwy rekord z listy (FD#622).
+    assert res["id"] == ISBN
+    assert {k["id"] for k in res["kandydaci"]} == {UID_REKORDU, UID_REKORDU + "2"}
 
 
 @pytest.fixture

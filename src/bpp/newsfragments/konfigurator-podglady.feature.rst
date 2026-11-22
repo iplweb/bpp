@@ -1,0 +1,1 @@
+Konfigurator wyglądu: podgląd na tablecie, przełącznik „Gość / Obsługa” (strona tak, jak widzi ją niezalogowany odwiedzający albo zalogowana obsługa); podglądy budują się wszystkie, także przy obu wersjach kolorów.
