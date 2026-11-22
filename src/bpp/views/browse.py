@@ -279,11 +279,41 @@ class JednostkaView(DetailView):
 
     def get_context_data(self, **kwargs):
         ctx = super().get_context_data(typy=TYPY, **(self.podjednostki or {}), **kwargs)
+        ctx.update(self._przycisk_prac())
         if self.podjednostki is None:
             # Wykresy w latach tylko w zwykłym widoku jednostki — styl
             # strukturalny (wydział) nie pokazuje własnych prac.
             ctx.update(self._wykresy())
         return ctx
+
+    def _przycisk_prac(self):
+        """Dane przycisku „Pokaż wszystkie publikacje” i jego menu (lata,
+        typy, charaktery): liczby prac oraz ukryte pola zawężające wyniki do
+        jednostki — te same, których używa główny przycisk w szablonie."""
+        jednostka = self.object
+        request = getattr(self, "request", None)
+        uczelnia = Uczelnia.objects.get_for_request(request)
+        pks = list(
+            jednostka.get_descendants(include_self=True).values_list("pk", flat=True)
+        )
+        pola = [("jednostka", pk) for pk in pks]
+        # Korzeń z poddrzewem (styl wydziału): krótki filtr poddrzewa, jak
+        # w głównym przycisku (por. komentarz w szablonie).
+        pola_struktura = pola
+        if not jednostka.parent_id and len(pks) > 1:
+            if uczelnia is not None and uczelnia.uzywaj_wydzialow:
+                pola_struktura = [("wydzial", jednostka.pk)]
+            else:
+                pola_struktura = [("jednostka_nadrzedna", jednostka.pk)]
+        return {
+            "liczby_prac": liczby_prac_jednostki(
+                pks,
+                uczelnia,
+                zalogowany=request is not None and request.user.is_authenticated,
+            ),
+            "pola_prac": pola,
+            "pola_prac_struktura": pola_struktura,
+        }
 
     def _wykresy(self):
         from bpp.models import Rekord
@@ -310,34 +340,31 @@ class JednostkaView(DetailView):
 LICZBA_CHARAKTEROW_W_MENU = 5
 
 
-def liczby_prac_autora(autor, uczelnia=None, zalogowany=False):
-    """Liczby prac autora do przycisków „Pokaż wszystkie prace (N)” i zakresów
-    lat („2022–2025 (34)”) na stronie autora.
+def _liczby_prac(qs, uczelnia=None, zalogowany=False):
+    """Liczby prac ze zbioru ``qs`` (``Rekord`` bez duplikatów z joinów) do
+    przycisku „Pokaż wszystkie prace (N)” i jego menu: zakresy lat, typy
+    i najliczniejsze charaktery formalne.
 
-    Ten sam zbiór co wyniki multiseek po kliknięciu: „autor = X” (podzapytanie
-    po ``Autorzy`` — bez duplikatów z joinu), a dla anonima bez statusów
-    ukrytych w multiwyszukiwarce (por. ``MyMultiseekResults.get_queryset``).
+    Ten sam zbiór co wyniki multiseek po kliknięciu — dla anonima bez
+    statusów ukrytych w multiwyszukiwarce (por.
+    ``MyMultiseekResults.get_queryset``).
 
     Zakresy lat (i ich kolejność) bierzemy z ``OkresEwaluacji`` — to TYLKO
-    źródło zakresów: przyciski dostaje każdy autor z pracami w danych latach,
+    źródło zakresów: pozycje dostaje każdy zbiór z pracami w danych latach,
     bez żadnych warunków ewaluacyjnych (N, dyscypliny itp.), a UI nie używa
-    słownictwa ewaluacyjnego. Zakresy — jedno małe zapytanie;
-    wszystkie liczby — JEDNO zapytanie agregujące (``COUNT(rok) FILTER``).
+    słownictwa ewaluacyjnego. Zakresy — jedno małe zapytanie; liczby —
+    JEDNO zapytanie agregujące (``COUNT … FILTER``); charaktery — jedno
+    grupujące.
     Zwraca ``{"wszystkie": N, "okresy": [{"rok_od", "rok_do", "liczba"}],
-    "charaktery": [{"nazwa", "liczba"}], "typy": [{"nazwa", "liczba"}]}`` —
-    tylko okresy i typy z co najmniej jedną pracą oraz kilka najliczniejszych
-    charakterów formalnych (osobne zapytanie). ``uczelnia`` — już pobrana przez
-    widok (bez dodatkowego zapytania); ``zalogowany`` — jak w multiseeku,
-    ukryte statusy odcinamy tylko anonimowi.
+    "typy": [{"nazwa", "liczba"}], "charaktery": [{"nazwa", "liczba"}],
+    "ma_menu": bool}`` — tylko okresy i typy z co najmniej jedną pracą.
+    ``uczelnia`` — już pobrana przez widok (bez dodatkowego zapytania);
+    ``zalogowany`` — jak w multiseeku, ukryte statusy odcinamy tylko anonimowi.
     """
-    from bpp.models.cache import Autorzy
     from ewaluacja_common.models import OkresEwaluacji
 
     okresy = list(OkresEwaluacji.objects.values_list("rok_od", "rok_do"))
 
-    qs = Rekord.objects.filter(
-        pk__in=Autorzy.objects.filter(autor=autor).values("rekord_id")
-    )
     if not zalogowany and uczelnia is not None:
         qs = qs.exclude(
             status_korekty_id__in=uczelnia.ukryte_statusy("multiwyszukiwarka")
@@ -367,7 +394,7 @@ def liczby_prac_autora(autor, uczelnia=None, zalogowany=False):
         .order_by("-liczba", "charakter_formalny__nazwa")[:LICZBA_CHARAKTEROW_W_MENU]
     )
 
-    return {
+    wynik = {
         "wszystkie": liczby["wszystkie"],
         "charaktery": [
             {"nazwa": c["charakter_formalny__nazwa"], "liczba": c["liczba"]}
@@ -384,6 +411,32 @@ def liczby_prac_autora(autor, uczelnia=None, zalogowany=False):
             if liczby[f"okres_{nr}"]
         ],
     }
+    wynik["ma_menu"] = bool(wynik["okresy"] or wynik["typy"] or wynik["charaktery"])
+    return wynik
+
+
+def liczby_prac_autora(autor, uczelnia=None, zalogowany=False):
+    """Liczby prac autora („autor = X”; podzapytanie po ``Autorzy`` — bez
+    duplikatów z joinu). Opis wyniku: ``_liczby_prac``."""
+    from bpp.models.cache import Autorzy
+
+    qs = Rekord.objects.filter(
+        pk__in=Autorzy.objects.filter(autor=autor).values("rekord_id")
+    )
+    return _liczby_prac(qs, uczelnia, zalogowany)
+
+
+def liczby_prac_jednostki(pks, uczelnia=None, zalogowany=False):
+    """Liczby prac jednostki razem z jednostkami podrzędnymi — ten sam zbiór,
+    co przycisk „Pokaż wszystkie publikacje” na jej stronie (także w stylu
+    wydziału: całe poddrzewo). ``pks`` — klucze jednostki i jej potomków.
+    Opis wyniku: ``_liczby_prac``."""
+    from bpp.models.cache import Autorzy
+
+    qs = Rekord.objects.filter(
+        pk__in=Autorzy.objects.filter(jednostka__in=pks).values("rekord_id")
+    )
+    return _liczby_prac(qs, uczelnia, zalogowany)
 
 
 @method_decorator(cache_publiczny(), name="dispatch")
@@ -439,6 +492,7 @@ class AutorView(RekordUsunietyDetailMixin, DetailView):
                 uczelnia,
                 zalogowany=request is not None and request.user.is_authenticated,
             ),
+            pola_prac=[("autor", self.object.pk)],
             **kwargs,
         )
         # NIE nadpisuj None-em sentinela ``NiezdefiniowanaUczelnia`` wstrzykiwanego
