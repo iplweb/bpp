@@ -60,27 +60,27 @@
             </div>
             <h3><span class="fi-database"></span> Statystyki globalne</h3>
             <div class="row">
-                <div class="medium-2 columns text-center">
+                <div class="small-6 medium-2 columns text-center">
                     <h5>Liczba wierszy</h5>
                     <p class="stat">{{ statystyki_globalne.liczba_wierszy|default:"0" }}</p>
                 </div>
-                <div class="medium-2 columns text-center">
+                <div class="small-6 medium-2 columns text-center">
                     <h5>Liczba autorów</h5>
                     <p class="stat">{{ statystyki_globalne.liczba_autorow|default:"0" }}</p>
                 </div>
-                <div class="medium-2 columns text-center">
+                <div class="small-6 medium-2 columns text-center">
                     <h5>Średnie wykorzystanie</h5>
                     <p class="stat">{{ statystyki_globalne.srednia_wykorzystania|floatformat:1|default:"0" }}%</p>
                 </div>
-                <div class="medium-2 columns text-center">
+                <div class="small-6 medium-2 columns text-center">
                     <h5>Średnia PKDaut/slot</h5>
                     <p class="stat">{{ statystyki_globalne.srednia_pkd_slot|floatformat:2|default:"0" }}</p>
                 </div>
-                <div class="medium-2 columns text-center">
+                <div class="small-6 medium-2 columns text-center">
                     <h5>Suma punktów</h5>
                     <p class="stat">{{ statystyki_globalne.suma_punktow|floatformat:0|default:"0" }}</p>
                 </div>
-                <div class="medium-2 columns text-center">
+                <div class="small-6 medium-2 columns text-center">
                     <h5>Suma slotów</h5>
                     <p class="stat">{{ statystyki_globalne.suma_slotow|floatformat:0|default:"0" }}</p>
                 </div>
@@ -119,7 +119,7 @@
 
         <!-- Top 20 autorów - wide list -->
         <div class="row">
-            <div class="medium-12 columns">
+            <div class="small-12 medium-12 columns">
                 <div class="callout success" id="top-autorzy">
                     <div class="float-right">
                         <a href="{% url 'ewaluacja_metryki:export_xlsx' 'top-autorzy' %}" class="button tiny success">
@@ -192,7 +192,7 @@
 
         <!-- Top 20 autorów - sloty wypełnione -->
         <div class="row">
-            <div class="medium-12 columns">
+            <div class="small-12 medium-12 columns">
                 <div class="callout primary" id="top-sloty" style="background-color: #2ca8ff; border-color: #0e90db;">
                     <div class="float-right">
                         <a href="{% url 'ewaluacja_metryki:export_xlsx' 'top-sloty' %}" class="button tiny success">
@@ -265,7 +265,7 @@
 
         <!-- Rozkład wykorzystania slotów -->
         <div class="row">
-            <div class="medium-6 columns">
+            <div class="small-12 medium-6 columns">
                 <div class="callout">
                     <div class="float-right">
                         <a href="{% url 'ewaluacja_metryki:export_xlsx' 'wykorzystanie' %}" class="button tiny success">
@@ -333,7 +333,7 @@
 
         <!-- Najniższe 20 autorów wg PKDaut/slot (nie-zerowych) -->
         <div class="row">
-            <div class="medium-12 columns">
+            <div class="small-12 medium-12 columns">
                 <div class="callout warning" id="bottom-autorzy">
                     <div class="float-right">
                         <a href="{% url 'ewaluacja_metryki:export_xlsx' 'bottom-pkd' %}" class="button tiny success">
@@ -406,7 +406,7 @@
 
         <!-- Najniższe 20 autorów wg slotów wypełnionych (nie-zerowych) -->
         <div class="row">
-            <div class="medium-12 columns">
+            <div class="small-12 medium-12 columns">
                 <div class="callout alert" id="bottom-sloty">
                     <div class="float-right">
                         <a href="{% url 'ewaluacja_metryki:export_xlsx' 'bottom-sloty' %}" class="button tiny success">
@@ -509,7 +509,7 @@
 
         <!-- Lista autorów zerowych -->
         <div class="row">
-            <div class="medium-12 columns">
+            <div class="small-12 medium-12 columns">
                 <div class="callout secondary" id="autorzy-zerowi">
                     <div class="float-right">
                         <a href="{% url 'ewaluacja_metryki:export_xlsx' 'zerowi' %}" class="button tiny success">

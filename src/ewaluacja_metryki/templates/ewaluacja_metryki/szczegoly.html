@@ -68,7 +68,7 @@
         {% endif %}
 
         <div class="row">
-            <div class="medium-6 columns">
+            <div class="small-12 medium-6 columns">
                 <div class="callout">
                     <h4><span class="fi-info"></span> Informacje podstawowe</h4>
                     <table>
@@ -100,12 +100,12 @@
                 </div>
             </div>
 
-            <div class="medium-6 columns">
+            <div class="small-12 medium-6 columns">
                 <div class="callout secondary">
                     <h4><span class="fi-graph-bar"></span> Wykorzystanie slotów</h4>
 
                     <div class="row">
-                        <div class="medium-6 columns">
+                        <div class="small-12 medium-6 columns">
                             <div class="slot-progress-container ewaluacja-metryki__slot-progress">
                                 <div class="circular-progress-wrapper">
                                     <div class="circle-progress-detail" data-value="{{ metryka.procent_wykorzystania_slotow|unlocalize }}" data-size="150" data-thickness="15"></div>
@@ -115,7 +115,7 @@
                             </div>
                         </div>
 
-                        <div class="medium-6 columns">
+                        <div class="small-12 medium-6 columns">
                             <table>
                                 <tbody>
                                     <tr>
@@ -141,14 +141,14 @@
         <!-- Wykresy wizualizacji prac -->
         {% if chart_data %}
         <div class="row">
-            <div class="medium-12 columns">
+            <div class="small-12 medium-12 columns">
                 <h3><span class="fi-graph-trend"></span> Wizualizacja prac w czasie</h3>
             </div>
         </div>
 
         <div class="row">
             <!-- Wykres 1: Bąbelkowy czasowy -->
-            <div class="medium-6 columns">
+            <div class="small-12 medium-6 columns">
                 <div class="callout">
                     <h5>Rozkład prac w czasie</h5>
                     <div id="bubble-time-chart" class="ewaluacja-metryki__chart-container"></div>
@@ -156,7 +156,7 @@
             </div>
 
             <!-- Wykres 2: Słupki po latach -->
-            <div class="medium-6 columns">
+            <div class="small-12 medium-6 columns">
                 <div class="callout">
                     <h5>Produktywność po latach</h5>
                     <div id="year-bars-chart" class="ewaluacja-metryki__chart-container"></div>
@@ -166,7 +166,7 @@
 
         <div class="row">
             <!-- Wykres 3: Scatter z kolorem -->
-            <div class="medium-6 columns">
+            <div class="small-12 medium-6 columns">
                 <div class="callout">
                     <h5>Punkty vs Sloty (kolor = rok)</h5>
                     <div id="scatter-time-chart" class="ewaluacja-metryki__chart-container"></div>
@@ -174,7 +174,7 @@
             </div>
 
             <!-- Wykres 4: Heatmap -->
-            <div class="medium-6 columns">
+            <div class="small-12 medium-6 columns">
                 <div class="callout">
                     <h5>Mapa publikacji</h5>
                     <div id="heatmap-chart" class="ewaluacja-metryki__chart-container"></div>
@@ -186,7 +186,7 @@
         <!-- Wymiar etatu i procent dyscypliny -->
         {% if dyscyplina_lata %}
         <div class="row">
-            <div class="medium-12 columns">
+            <div class="small-12 medium-12 columns">
                 <div class="callout">
                     <h4><span class="fi-calendar"></span> Wymiar etatu i procent dyscypliny w latach {{ metryka.rok_min }}-{{ metryka.rok_max }}</h4>
                     <table class="hover">
@@ -292,7 +292,7 @@
 
         <!-- Porównanie metryk -->
         <div class="row">
-            <div class="medium-6 columns">
+            <div class="small-12 medium-6 columns">
                 <div class="callout success">
                     <h4><span class="fi-check"></span> Prace nazbierane (algorytm plecakowy)</h4>
                     <table>
@@ -320,7 +320,7 @@
                 </div>
             </div>
 
-            <div class="medium-6 columns">
+            <div class="small-12 medium-6 columns">
                 <div class="callout">
                     <h4><span class="fi-list"></span> Wszystkie prace</h4>
                     <table>
