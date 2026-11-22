@@ -318,8 +318,9 @@ Importer współpracuje z modułem [Zgłaszanie publikacji](zglaszanie-publikacj
 ## Anulowanie importu
 
 Na każdym etapie importu dostępny jest przycisk "Anuluj", który po potwierdzeniu
-oznacza sesję jako anulowaną. Anulowane sesje nie są wyświetlane na liście
-ostatnich importów.
+oznacza sesję jako anulowaną. Anulowane sesje nie są domyślnie wyświetlane
+na liście ostatnich importów — można je pokazać filtrem **„Status”** →
+„Anulowano” (opis filtrów listy: [instrukcja redaktora](../redaktor/importer-publikacji.md#lista-sesje-importu-filtry-i-zapamiętany-widok)).
 
 ## Kontynuacja przerwanego importu
 
