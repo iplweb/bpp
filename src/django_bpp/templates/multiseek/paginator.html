@@ -45,7 +45,34 @@
                 </button>
             </li>
         {% endif %}
+        {% if not is_live and rodzaje_raportu|length > 1 %}
+            {# Zmiana rodzaju raportu bez wracania do formularza wyszukiwarki. #}
+            <li>
+                <button type="button" class="button dropdown"
+                        data-toggle="multiseek-widok-menu{% if magellan %}-bottom{% endif %}"
+                        aria-haspopup="menu">
+                    <i class="fi-layout"></i> Widok{% for rodzaj in rodzaje_raportu %}{% if rodzaj.id == report_type %}: {{ rodzaj.nazwa }}{% endif %}{% endfor %}
+                </button>
+            </li>
+        {% endif %}
     </ul>
+    {% if not is_live and rodzaje_raportu|length > 1 %}
+        <div class="dropdown-pane multiseek-widok-menu" id="multiseek-widok-menu{% if magellan %}-bottom{% endif %}"
+             data-dropdown data-auto-focus="true">
+            <form method="post" action="{% url "multiseek-rodzaj-raportu" %}">
+                {% csrf_token %}
+                <ul class="menu vertical" style="margin-bottom:0;">
+                    {% for rodzaj in rodzaje_raportu %}
+                        <li>
+                            <button type="submit" name="raport" value="{{ rodzaj.id }}"
+                                    class="multiseek-widok-menu__pozycja{% if rodzaj.id == report_type %} multiseek-widok-menu__pozycja--aktywna{% endif %}"
+                                    {% if rodzaj.id == report_type %}aria-current="true"{% endif %}>{{ rodzaj.nazwa|capfirst }}</button>
+                        </li>
+                    {% endfor %}
+                </ul>
+            </form>
+        </div>
+    {% endif %}
     {% if request.user.is_authenticated and paginator_count > 0 and paginator_count <= multiseek_export_max_rows %}
         {% url "multiseek-export" "csv" as multiseek_export_csv_url %}
         {% url "multiseek-export" "xlsx" as multiseek_export_xlsx_url %}

@@ -194,3 +194,42 @@
 .multiseek-report-container > ul.menu {
   @include multiseek-menu-style;
 }
+
+// Menu „Widok” (rodzaj raportu) na stronie wyników — pozycje to przyciski
+// formularza, wyglądają jak linki menu „Eksport”.
+.multiseek-widok-menu {
+  .menu.vertical > li {
+    display: block;
+    width: 100%;
+  }
+}
+
+// !important: globalne reguły przycisków (wyśrodkowanie, uniesienie i cień
+// po najechaniu) nie pasują do pozycji menu.
+.multiseek-widok-menu__pozycja {
+  display: block;
+  width: 100%;
+  padding: 0.7rem 1rem;
+  text-align: left !important;
+  line-height: 1.2;
+  color: inherit;
+  background: none;
+  border: 0;
+  border-radius: 4px;
+  cursor: pointer;
+  box-shadow: none !important;
+  transform: none !important;
+
+  &:hover,
+  &:focus {
+    background: rgba(0, 0, 0, 0.06);
+  }
+
+  &--aktywna {
+    font-weight: 600;
+
+    &::after {
+      content: " ✓";
+    }
+  }
+}
