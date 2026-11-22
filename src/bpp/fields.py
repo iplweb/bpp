@@ -1,3 +1,4 @@
+import hashlib
 import logging
 from decimal import Decimal, InvalidOperation
 
@@ -125,6 +126,47 @@ def zaszyfruj(wartosc: str) -> str:
     return mf.encrypt(wartosc.encode()).decode()
 
 
+#: Skróty (SHA-256) szyfrogramów, dla których ten proces zgłosił już
+#: ostrzeżenie o nieudanym odszyfrowaniu. Rekordy z takimi polami bywają
+#: ładowane w kółko (np. przez workery przy denormalizacji) — bez tego
+#: ten sam komunikat trafiał do logu dziesiątki tysięcy razy na godzinę.
+_zgloszone_nieodszyfrowalne: set[str] = set()
+
+#: Górna granica rozmiaru powyższego zbioru. Po jej osiągnięciu kolejne,
+#: nowe szyfrogramy są zgłaszane już tylko na poziomie DEBUG — całość
+#: problemu i tak raportuje ``manage.py check`` (``bpp.W103``).
+MAKS_ZGLOSZONYCH_NIEODSZYFROWALNYCH = 1000
+
+
+def _zglos_nieodszyfrowalne(szyfrogram: str) -> None:
+    """Loguje nieudane odszyfrowanie: WARNING raz na proces dla danego
+    szyfrogramu, powtórki na poziomie DEBUG.
+
+    Do logu trafia wyłącznie krótki skrót szyfrogramu (pozwala odróżnić
+    wartości), nigdy sam szyfrogram ani klucz.
+    """
+    skrot = hashlib.sha256(szyfrogram.encode()).hexdigest()[:16]
+    if (
+        skrot in _zgloszone_nieodszyfrowalne
+        or len(_zgloszone_nieodszyfrowalne) >= MAKS_ZGLOSZONYCH_NIEODSZYFROWALNYCH
+    ):
+        logger.debug(
+            "Nie udało się odszyfrować EncryptedTextField (skrót szyfrogramu "
+            "%s) — zwracam pustą wartość.",
+            skrot,
+        )
+        return
+    _zgloszone_nieodszyfrowalne.add(skrot)
+    logger.warning(
+        "Nie udało się odszyfrować EncryptedTextField (brak/zły klucz "
+        "DJANGO_BPP_FIELD_ENCRYPTION_KEY lub uszkodzony szyfrogram) — "
+        "zwracam pustą wartość. Skrót szyfrogramu: %s; kolejne nieudane "
+        "odczyty tej wartości w tym procesie będą logowane na poziomie "
+        "DEBUG. Sprawdź `manage.py check` (bpp.W103).",
+        skrot,
+    )
+
+
 def odszyfruj(wartosc: str) -> str:
     """Odszyfrowuje szyfrogram; wartość jawną (sprzed szyfrowania) zwraca
     wprost. Nieodszyfrowalny szyfrogram → :class:`NieodszyfrowanaWartosc`.
@@ -137,11 +179,7 @@ def odszyfruj(wartosc: str) -> str:
             raise InvalidToken
         return mf.decrypt(wartosc.encode()).decode()
     except (InvalidToken, ImproperlyConfigured):
-        logger.warning(
-            "Nie udało się odszyfrować EncryptedTextField (brak/zły klucz "
-            "DJANGO_BPP_FIELD_ENCRYPTION_KEY lub uszkodzony szyfrogram) — "
-            "zwracam pustą wartość."
-        )
+        _zglos_nieodszyfrowalne(wartosc)
         return NieodszyfrowanaWartosc(wartosc)
 
 
