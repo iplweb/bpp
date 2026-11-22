@@ -18,7 +18,7 @@
         {% if rekord_w_koszu %}
             <div class="bpp-kosz-ramka">
                 <div>
-                    <strong>🗑️ Rekord jest w koszu</strong> (od {{ w_koszu_od|date:"j E Y, H:i" }}).
+                    <strong>🗑️ Rekord jest w koszu</strong> (od {{ w_koszu_od|date:"l, j E Y, H:i"|lower }}).
                     Wcześniejsze wersje można przeglądać i porównywać, ale przywrócić dopiero po wyjęciu rekordu z kosza.
                 </div>
                 {% if kosz_przywroc_url %}
@@ -61,9 +61,9 @@
                             {% endif %}
                             <td class="bpp-kol-data">
                                 {% if action.url and not rekord_w_koszu %}
-                                    <a href="{{ action.url }}" title="Obejrzyj tę wersję i przywróć ją">{{ action.revision.date_created|date:"j E Y, H:i" }}</a>
+                                    <a href="{{ action.url }}" title="Obejrzyj tę wersję i przywróć ją">{{ action.revision.date_created|date:"l, j E Y, H:i"|lower }}</a>
                                 {% else %}
-                                    {{ action.revision.date_created|date:"j E Y, H:i" }}
+                                    {{ action.revision.date_created|date:"l, j E Y, H:i"|lower }}
                                 {% endif %}
                                 {% if action.version.pk == aktualna_wersja_pk %}<br><span class="bpp-aktualna" title="Najnowsza zapisana wersja — obecny stan rekordu">wersja aktualna</span>{% elif action.version.pk == najstarsza_wersja_pk %}<br><span class="bpp-najstarsza" title="Pierwsza zapisana wersja rekordu">wersja najstarsza</span>{% endif %}
                             </td>
@@ -117,7 +117,7 @@
                 <tbody>
                     {% for wpis in historia_sprzed_wersjonowania %}
                         <tr>
-                            <td class="bpp-kol-data">{{ wpis.action_time|date:"j E Y, H:i" }}</td>
+                            <td class="bpp-kol-data">{{ wpis.action_time|date:"l, j E Y, H:i"|lower }}</td>
                             <td class="bpp-kol-user">
                                 {% if wpis.user %}
                                     {{ wpis.user.get_full_name|default:wpis.user.get_username }}

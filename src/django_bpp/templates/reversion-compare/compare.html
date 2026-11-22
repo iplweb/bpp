@@ -34,7 +34,7 @@
         {% if rekord_w_koszu %}
             <div class="bpp-kosz-ramka">
                 <div>
-                    <strong>🗑️ Rekord jest w koszu</strong> (od {{ w_koszu_od|date:"j E Y, H:i" }}).
+                    <strong>🗑️ Rekord jest w koszu</strong> (od {{ w_koszu_od|date:"l, j E Y, H:i"|lower }}).
                     Wcześniejsze wersje można przeglądać i porównywać, ale przywrócić dopiero po wyjęciu rekordu z kosza.
                 </div>
                 {% if kosz_przywroc_url %}
@@ -53,7 +53,7 @@
                             {% if forloop.last %}<th scope="col" class="bpp-kol-zmiana-diff">Zmiana</th>{% endif %}
                             <th scope="col" class="bpp-naglowek-wersji {{ klasa }}">
                                 <div class="bpp-naglowek-nazwa">{{ nazwa }}{% if wersja.pk == aktualna_wersja_pk %} <span class="bpp-aktualna">wersja aktualna</span>{% endif %}{% if wersja.pk == najstarsza_wersja_pk %} <span class="bpp-najstarsza">wersja najstarsza</span>{% endif %}</div>
-                                <div><strong>{{ wersja.revision.date_created|date:"j E Y, H:i" }}</strong>, {% if wersja.revision.user %}{{ wersja.revision.user.get_full_name|default:wersja.revision.user.get_username }}{% else %}bez użytkownika{% endif %}
+                                <div><strong>{{ wersja.revision.date_created|date:"l, j E Y, H:i"|lower }}</strong>, {% if wersja.revision.user %}{{ wersja.revision.user.get_full_name|default:wersja.revision.user.get_username }}{% else %}bez użytkownika{% endif %}
                                     {% with zrodlo=wersja.revision.zrodlo_zmiany %}{% if zrodlo %}<span class="bpp-zrodlo bpp-zrodlo-{{ zrodlo.zrodlo }}">{{ zrodlo.get_zrodlo_display }}{% if zrodlo.aplikacja_nazwa %}: {{ zrodlo.aplikacja_nazwa }}{% endif %}</span>{% endif %}{% endwith %}
                                 </div>
                                 <div class="bpp-naglowek-opis">{{ wersja.revision.comment|default:"(bez opisu zmiany)" }}</div>
@@ -82,12 +82,12 @@
             <a class="grp-button" href="{{ history_url }}">Wróć do historii</a>
             <a class="grp-button" href="{% url opts|admin_urlname:'change' original.pk|admin_urlquote %}">✏️ Edytuj rekord</a>
             {% if rekord_w_koszu %}
-                <button type="button" class="grp-button bpp-przycisk-nieaktywny" disabled title="Rekord jest w koszu — najpierw przywróć go z kosza, potem przywracaj wcześniejsze wersje">Przywróć wersję starszą ({{ version1.revision.date_created|date:"j E Y, H:i" }})…</button>
+                <button type="button" class="grp-button bpp-przycisk-nieaktywny" disabled title="Rekord jest w koszu — najpierw przywróć go z kosza, potem przywracaj wcześniejsze wersje">Przywróć wersję starszą ({{ version1.revision.date_created|date:"l, j E Y, H:i"|lower }})…</button>
                 <span class="bpp-historia-pomoc">🗑️ Rekord jest w koszu — najpierw przywróć go z kosza (przycisk na górze strony).</span>
             {% else %}
-                <a class="grp-button grp-default" href="{{ save_url }}" title="Podgląd wersji starszej z przyciskiem „Przywróć tę wersję”">Przywróć wersję starszą ({{ version1.revision.date_created|date:"j E Y, H:i" }})…</a>
+                <a class="grp-button grp-default" href="{{ save_url }}" title="Podgląd wersji starszej z przyciskiem „Przywróć tę wersję”">Przywróć wersję starszą ({{ version1.revision.date_created|date:"l, j E Y, H:i"|lower }})…</a>
                 {% if version2.pk != aktualna_wersja_pk %}
-                    <a class="grp-button" href="{{ przywroc_nowsza_url }}" title="Podgląd wersji nowszej z przyciskiem „Przywróć tę wersję”">Przywróć wersję nowszą ({{ version2.revision.date_created|date:"j E Y, H:i" }})…</a>
+                    <a class="grp-button" href="{{ przywroc_nowsza_url }}" title="Podgląd wersji nowszej z przyciskiem „Przywróć tę wersję”">Przywróć wersję nowszą ({{ version2.revision.date_created|date:"l, j E Y, H:i"|lower }})…</a>
                 {% endif %}
             {% endif %}
         </div>
