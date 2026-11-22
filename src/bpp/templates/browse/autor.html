@@ -59,20 +59,31 @@
 {# (+ zakres lat okresu) i przez cel=wyniki lądują od razu na liście wyników #}
 {# (bez formularza wyszukiwarki). Liczby: views.browse.liczby_prac_autora. #}
 <div class="autor-page__quick-actions">
-    <form method="post"
-          action="{% url "bpp:browse_build_search" %}"
-          class="autor-page__quick-actions-form">
-        {# Brak {% csrf_token %} celowo — BuildSearch jest @csrf_exempt. #}
-        <input type="hidden" name="autor" value="{{ autor.pk }}"/>
-        <input type="hidden" name="suggested-title" value="{{ autor }}"/>
-        <input type="hidden" name="cel" value="wyniki"/>
-        <button type="submit"
-                class="button primary large autor-page__show-all-btn">
-            <i class="fi-list-bullet autor-page__icon--mr-lg"></i>Pokaż wszystkie prace ({{ liczby_prac.wszystkie }})
-        </button>
-    </form>
+    {# Rząd 1: duże przyciski (wszystkie prace, sieć powiązań). #}
+    <div class="autor-page__glowne-akcje">
+        <form method="post"
+              action="{% url "bpp:browse_build_search" %}"
+              class="autor-page__quick-actions-form">
+            {# Brak {% csrf_token %} celowo — BuildSearch jest @csrf_exempt. #}
+            <input type="hidden" name="autor" value="{{ autor.pk }}"/>
+            <input type="hidden" name="suggested-title" value="{{ autor }}"/>
+            <input type="hidden" name="cel" value="wyniki"/>
+            <button type="submit"
+                    class="button primary large autor-page__show-all-btn">
+                <i class="fi-list-bullet autor-page__icon--mr-lg"></i>Pokaż wszystkie prace ({{ liczby_prac.wszystkie }})
+            </button>
+        </form>
+        {% if ma_powiazania %}
+            <a href="{% url 'bpp:browse_autor_powiazania' autor.pk %}"
+               class="button primary large autor-page__show-all-btn autor-page__network-btn">
+                <i class="fi-share autor-page__icon--mr-lg"></i>Zobacz sieć powiązań
+            </a>
+        {% endif %}
+    </div>
+    {# Rząd 2 (pod dużymi przyciskami): prace z zakresów lat. #}
     {% if liczby_prac.okresy %}
-        <div class="autor-page__okresy" role="group" aria-label="Prace z zakresów lat">
+        <div class="autor-page__okresy" role="group" aria-labelledby="autor-okresy-etykieta">
+            <span class="autor-page__okresy-etykieta" id="autor-okresy-etykieta">Prace z lat:</span>
             {% for okres in liczby_prac.okresy %}
                 <form method="post"
                       action="{% url "bpp:browse_build_search" %}"
@@ -87,12 +98,6 @@
                 </form>
             {% endfor %}
         </div>
-    {% endif %}
-    {% if ma_powiazania %}
-        <a href="{% url 'bpp:browse_autor_powiazania' autor.pk %}"
-           class="button primary large autor-page__show-all-btn autor-page__network-btn">
-            <i class="fi-share autor-page__icon--mr-lg"></i>Zobacz sieć powiązań
-        </a>
     {% endif %}
 </div>
 
