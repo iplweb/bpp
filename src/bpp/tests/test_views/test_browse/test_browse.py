@@ -557,6 +557,45 @@ def test_buildSearch_najnowsze_lista_sortowana_wg_utworzono_malejaco(client):
 
 
 @pytest.mark.django_db
+def test_buildSearch_cel_wyniki_przekierowuje_na_liste_wynikow(client):
+    """„Pokaż wszystkie prace/publikacje” (``cel=wyniki``) → pełnostronicowa
+    lista wyników, nie formularz wyszukiwarki."""
+    autor = baker.make("bpp.Autor")
+    res = client.post(
+        reverse("bpp:browse_build_search"),
+        {"autor": autor.pk, "cel": "wyniki", "suggested-title": "X"},
+    )
+    assert res.status_code == 302
+    assert res["Location"].endswith(reverse("multiseek:results"))
+    assert MULTISEEK_SESSION_KEY in client.session
+
+    res = client.get(res["Location"])
+    assert res.status_code == 200
+    # Lista wyników bez formularza multiseek.
+    assert b"multiseek-report-container" in res.content
+    assert b'id="multiseek-szukaj"' not in res.content
+
+
+@pytest.mark.django_db
+def test_buildSearch_bez_celu_przekierowuje_na_formularz(client):
+    """Formularze z filtrami (bez ``cel``) dalej lądują w wyszukiwarce."""
+    res = client.post(reverse("bpp:browse_build_search"), {"rok": "2013"})
+    assert res.status_code == 302
+    assert res["Location"].endswith(reverse("multiseek:index"))
+
+
+@pytest.mark.django_db
+def test_buildSearch_cel_wyniki_https(client):
+    res = client.post(
+        reverse("bpp:browse_build_search"),
+        {"cel": "wyniki"},
+        HTTP_X_SCHEME="https",
+    )
+    assert res["Location"].startswith("https://")
+    assert res["Location"].endswith(reverse("multiseek:results"))
+
+
+@pytest.mark.django_db
 def test_buildSearch_bez_najnowsze_bez_sortowania(client):
     """Pozostałe przyciski (autor, jednostka, źródło) nie narzucają sortowania
     ani rodzaju raportu — zostaje domyślne sortowanie rejestru."""
@@ -571,3 +610,19 @@ def test_buildSearch_bez_najnowsze_bez_sortowania(client):
 def test_uczelnia_przycisk_najnowsze_prace_wysyla_najnowsze(client, uczelnia):
     res = client.get(reverse("bpp:browse_uczelnia", args=(uczelnia.slug,)))
     assert b'name="najnowsze" value="1"' in res.content
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize("nazwa_fixtury", ["jednostka", "zrodlo"])
+def test_pokaz_wszystkie_publikacje_prowadzi_do_listy_wynikow(
+    client, request, nazwa_fixtury
+):
+    """Przycisk „Pokaż wszystkie publikacje” na stronie jednostki i źródła
+    wysyła ``cel=wyniki`` — lista wyników zamiast formularza wyszukiwarki."""
+    obiekt = request.getfixturevalue(nazwa_fixtury)
+    tresc = client.get(obiekt.get_absolute_url()).content.decode()
+    formularze = re.findall(r"<form[^>]*>.*?</form>", tresc, re.S)
+    pokaz_wszystkie = [f for f in formularze if "Pokaż wszystkie publikacje" in f]
+    assert pokaz_wszystkie
+    for formularz in pokaz_wszystkie:
+        assert 'name="cel" value="wyniki"' in formularz

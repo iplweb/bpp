@@ -1377,6 +1377,10 @@ def ustawienia_najnowszych_prac(request):
     }
 
 
+# Wartość pola ``cel`` w POST do ``BuildSearch``: przekieruj na listę wyników.
+CEL_WYNIKI = "wyniki"
+
+
 @method_decorator(csrf_exempt, name="dispatch")
 class BuildSearch(RedirectView):
     """Widok przyjmuje zmienne w request.POST i buduje w sesji formularz
@@ -1389,7 +1393,8 @@ class BuildSearch(RedirectView):
     wyszukiwawczego do WŁASNEJ sesji requestującego
     (``request.session[MULTISEEK_SESSION_KEY]`` + tytuł + wyczyszczenie
     listy ręcznie wyrzuconych rekordów) i przekierowanie na
-    ``multiseek:index``. Nie ma tu żadnej uprzywilejowanej akcji, mutacji
+    ``multiseek:index`` (albo ``multiseek:results`` przy ``cel=wyniki``).
+    Nie ma tu żadnej uprzywilejowanej akcji, mutacji
     danych współdzielonych, ujawnienia sekretu ani zmiany stanu poza sesją
     ofiary. Najgorsze, co atak CSRF może osiągnąć, to podsunięcie ofierze
     wyszukiwania, którego sama nie wpisała — zero szkody. Ta sama
@@ -1407,7 +1412,16 @@ class BuildSearch(RedirectView):
     """
 
     def get_redirect_url(self, **kwargs):
-        url = self.request.build_absolute_uri(reverse("multiseek:index"))
+        # ``cel=wyniki`` (przyciski „Pokaż wszystkie prace/publikacje”): od razu
+        # pełnostronicowa lista wyników zamiast formularza wyszukiwarki — na
+        # telefonie formularz zasłaniał cały ekran, a wyniki były dopiero po
+        # kliknięciu „Wyszukaj”. Bez ``cel`` (formularze z filtrami) jak dotąd
+        # formularz multiseek z podglądem wyników.
+        if self.request.POST.get("cel") == CEL_WYNIKI:
+            nazwa = "multiseek:results"
+        else:
+            nazwa = "multiseek:index"
+        url = self.request.build_absolute_uri(reverse(nazwa))
         scheme = self.request.META.get("HTTP_X_SCHEME", "").lower()
         if scheme == "https":
             url = url.replace("http://", "https://").replace("HTTP://", "HTTPS://")

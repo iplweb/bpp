@@ -38,6 +38,12 @@
     margin-bottom: 30px;
   }
 
+  // Formularz „Pokaż wszystkie prace” nie tworzy własnego pudełka — przycisk
+  // jest bezpośrednim elementem flexa, obok „Zobacz sieć powiązań”.
+  &__quick-actions-form {
+    display: contents;
+  }
+
   // Show all works button
   &__show-all-btn {
     background: #27ae60;

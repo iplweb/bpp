@@ -51,6 +51,8 @@
                 {# (zapis tylko do własnej sesji), by strona weszła do cache. #}
                 <input type="hidden" name="wydawca" value="{{ wydawca.pk }}"/>
                 <input type="hidden" name="suggested-title" value="{{ wydawca }}"/>
+                {# cel=wyniki: od razu lista wyników, bez formularza multiseek. #}
+                <input type="hidden" name="cel" value="wyniki"/>
                 <button type="submit" class="button button-show-all">
                     <i class="fi-list-bullet"></i>Pokaż wszystkie publikacje
                 </button>

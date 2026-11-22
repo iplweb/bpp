@@ -105,6 +105,8 @@
                     {% endfor %}
                 {% endif %}
                 <input type="hidden" name="suggested-title" value="{{ jednostka }}"/>
+                {# cel=wyniki: od razu lista wyników, bez formularza multiseek. #}
+                <input type="hidden" name="cel" value="wyniki"/>
                 <button type="submit" class="button button-show-all">
                     <i class="fi-list-bullet"></i>Pokaż wszystkie publikacje
                 </button>
@@ -426,6 +428,8 @@
                 <input type="hidden" name="jednostka" value="{{ descendant.pk }}"/>
             {% endfor %}
             <input type="hidden" name="suggested-title" value="{{ jednostka }}"/>
+            {# cel=wyniki: od razu lista wyników, bez formularza multiseek. #}
+            <input type="hidden" name="cel" value="wyniki"/>
             <button type="submit"
                     class="button primary large jednostka__btn-primary">
                 <i class="fi-list-bullet jednostka__icon--mr-sm"></i>Pokaż wszystkie publikacje
