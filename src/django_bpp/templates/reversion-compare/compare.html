@@ -22,7 +22,6 @@
 
 {% block object-tools %}
     <ul class="grp-object-tools">
-        <li><a href="{% url opts|admin_urlname:'change' original.pk|admin_urlquote %}">Edytuj aktualny rekord</a></li>
         <li><a href="{{ history_url }}">Historia</a></li>
     </ul>
 {% endblock %}
@@ -127,7 +126,6 @@
         <div>
             {% if prev_url %}<div class="grp-float-left"><a class="grp-button" href="{{ prev_url }}">← Poprzednia zmiana</a></div>{% endif %}
             <div><a class="grp-button grp-default" href="{% url opts|admin_urlname:'change' original.pk|admin_urlquote %}">✏️ Edytuj aktualny rekord</a></div>
-            <div><a class="grp-button" href="{{ history_url }}">📜 Historia</a></div>
             {% if next_url %}<div><a class="grp-button" href="{{ next_url }}">Następna zmiana →</a></div>{% endif %}
         </div>
     </footer>
