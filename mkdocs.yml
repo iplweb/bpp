@@ -135,6 +135,7 @@ nav:
       - Duplikaty publikacji: redaktor/duplikaty-publikacji.md
   - Instrukcja administratora:
       - Konfiguracja ogólna: administrator/ogolna.md
+      - Konfigurator wyglądu: administrator/konfigurator-wygladu.md
       - Importer publikacji: administrator/importer-publikacji.md
       - Import pracowników: administrator/import-pracownikow.md
       - Zgłaszanie publikacji: administrator/zglaszanie-publikacji.md

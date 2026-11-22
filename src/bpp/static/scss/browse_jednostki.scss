@@ -174,8 +174,11 @@
   }
 }
 
-// Warning Callout (No results)
-.callout.warning {
+// Brak wyników na liście jednostek: duży, wyśrodkowany komunikat. Tylko tu —
+// wcześniej selektor `.callout.warning` bez klasy strony obejmował każde
+// ostrzeżenie w BPP (browse_jednostki jest importowany przez wszystkie
+// motywy), więc zwykłe komunikaty były wysokie i wyśrodkowane.
+.callout.warning.jednostki__brak-wynikow {
   text-align: center;
   padding: 40px;
   border-radius: 8px;

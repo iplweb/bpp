@@ -80,6 +80,21 @@ button.uczelnia__button--invisible.main-page-button-secondary {
     height: 100%;
 }
 
+// Kafel jako link. Hover w SCSS (nie w <style> szablonu), żeby motywy
+// i tryb ciemny konfiguratora mogły go nadpisać.
+.browse-tile {
+    text-decoration: none;
+    display: block;
+    height: 100%;
+}
+
+.browse-tile:hover > .uczelnia__tile,
+.browse-tile:focus-visible > .uczelnia__tile {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    background: #fff;
+}
+
 // Tile icon base style
 .uczelnia__tile-icon {
     font-size: 3rem;

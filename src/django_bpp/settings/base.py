@@ -16,6 +16,7 @@ from django.core.exceptions import ImproperlyConfigured
 from bpp.auth.microsoft_conf import normalize_microsoft_tenant_id
 from bpp.util import slugify_function
 from django_bpp.channels_prefix import get_channels_prefix
+from django_bpp.motywy_z_konfiguracji import wczytaj_motywy
 from django_bpp.rollbar_filters import zbuduj_exception_level_filters
 from django_bpp.version import VERSION
 
@@ -712,6 +713,14 @@ BPP_THEMES = [
     ("app-mwsl", "Pomarańczowo-granatowy (MWSL)"),
     ("app-uafm", "Czerwono-błękitny"),
 ]
+
+# Motywy z konfiguratora wyglądu (src/bpp/static/scss/motywy/*.json) — bez
+# wpisu tutaj ani targetu w Gruntfile.js (kompiluje je task `motywy`).
+BPP_THEMES += wczytaj_motywy(zajete=[value for value, _label in BPP_THEMES])
+
+# Kompilator motywów konfiguratora wyglądu (osobny kontener, patrz
+# bpp/motyw_kompilator.py). Pusty = dev: jednorazowe `node serwer.js`.
+BPP_MOTYW_KOMPILATOR_URL = os.environ.get("DJANGO_BPP_MOTYW_KOMPILATOR_URL", "")
 
 COMPRESS_OFFLINE_CONTEXT = [
     {

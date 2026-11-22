@@ -1,3 +1,4 @@
+import re
 import traceback
 from datetime import datetime
 from pathlib import Path
@@ -35,11 +36,22 @@ CLEANUP_SCRIPT = """
 """
 
 
+# Link do CSS-a motywu z konfiguratora wyglądu (bare.html, MOTYW_WLASNY_URL).
+RE_MOTYW_WLASNY = re.compile(r'href="([^"]*/motyw-wlasny/([0-9a-f]{64})\.css)"')
+
+
 class Command(BaseCommand):
     help = "Generuje statyczne pliki 500.html dla nginx (generyczny + per-domena)"
 
-    def handle(self, *args, **options):
+    def add_arguments(self, parser):
+        parser.add_argument(
+            "--domena",
+            help="Tylko strona tej domeny (+ generyczna), np. po zmianie motywu.",
+        )
+
+    def handle(self, *args, domena=None, **options):
         static_root = Path(settings.STATIC_ROOT)
+        self._motywy_uzyte = set()
 
         # Multi-hosted + SEO: renderowane strony 500 zawierają w <head>
         # `<meta property="og:url" content="{{ request.build_absolute_uri }}">`
@@ -71,7 +83,10 @@ class Command(BaseCommand):
         # 2. Per-domena — każdy Site dostaje stronę z brandingiem swojej
         #    uczelni w `$STATIC_ROOT/500/<domena>.html`.
         count = 0
-        for site in Site.objects.all():
+        witryny = Site.objects.all()
+        if domena:
+            witryny = witryny.filter(domain=domena)
+        for site in witryny:
             try:
                 uczelnia = Uczelnia.objects.get_for_site(site)
                 html = self._render_500(uczelnia, site.domain)
@@ -89,11 +104,42 @@ class Command(BaseCommand):
                 traceback.print_exc()
                 continue
 
+        # Stare kopie CSS motywów (po zmianie motywu) — tylko przy pełnym
+        # przebiegu, bo przy --domena nie wiemy, czego używają inne domeny.
+        if not domena:
+            for plik in (static_root / "500").glob("motyw-*.css"):
+                if plik.stem.removeprefix("motyw-") not in self._motywy_uzyte:
+                    plik.unlink(missing_ok=True)
+
         self.stdout.write(
             self.style.SUCCESS(
                 f"Wygenerowano stronę 500: generyczną + {count} per-domena "
                 f"w {static_root}"
             )
+        )
+
+    def _motyw_statyczny(self, html):
+        """CSS motywu z konfiguratora → plik obok strony 500.
+
+        Strona 500 jest serwowana przez nginx, gdy aplikacja nie działa — wtedy
+        /bpp/motyw-wlasny/<sha>.css (widok Django) też jest niedostępny. Kopia
+        w $STATIC_ROOT/500/ (nginx serwuje /static/) i podmiana linku.
+        """
+        from bpp.models import MotywWlasny
+
+        m = RE_MOTYW_WLASNY.search(html)
+        if not m:
+            return html
+        skrot = m.group(2)
+        motyw = MotywWlasny.objects.filter(skrot=skrot).only("css").first()
+        if motyw is None:
+            return html
+        cel = Path(settings.STATIC_ROOT) / "500" / f"motyw-{skrot}.css"
+        if not cel.exists():
+            self._write(cel, motyw.css)
+        self._motywy_uzyte.add(skrot)
+        return html.replace(
+            m.group(1), f"{settings.STATIC_URL.rstrip('/')}/500/motyw-{skrot}.css"
         )
 
     def _render_500(self, uczelnia, host):
@@ -143,7 +189,7 @@ This file is auto-generated and any manual changes will be lost when regenerated
 To modify this page, edit src/bpp/templates/50x.html and run the generate_500_page command again.
 -->
 """
-        final_html = warning + rendered_html
+        final_html = self._motyw_statyczny(warning + rendered_html)
 
         # Minify HTML, usuwając zbędne białe znaki.
         return html_minify(

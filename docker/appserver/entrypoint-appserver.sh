@@ -49,6 +49,14 @@ echo "Starting background tasks..."
         python src/manage.py collectstatic --noinput -v0 --traceback
     fi
 
+    # Migracja wyglądu: motywy z konfiguratora zbudowane w starszej wersji
+    # BPP przebudowują się z zapisanych ustawień (bpp/motyw_kompilator.py,
+    # V8). Po seedzie STATIC_ROOT, bo kompilator czyta z niego dart-sassa
+    # i źródła SCSS. Błąd nie zatrzymuje kontenera — stary CSS zostaje.
+    echo "  [bg] odswiez_motywy..."
+    python src/manage.py odswiez_motywy \
+        || echo "  [bg] UWAGA: odswiez_motywy nie powiodlo sie (stary motyw zostaje)"
+
     echo "  [bg] compress..."
     python src/manage.py compress -v0 --force --traceback
     echo "  [bg] compress done."

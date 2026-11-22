@@ -40,7 +40,7 @@ def favicon_file(settings):
     path = Path(settings.MEDIA_ROOT) / "favicon" / "test-content-length.ico"
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_bytes(FAVICON)
-    cache.clear()  # /favicon.ico is wrapped in cache_page
+    cache.clear()  # cache fragmentów/odpowiedzi nie może przenosić się między testami
     # Patch the manager class, not ``Uczelnia.objects``: Django hands out copies
     # of managers (Options.managers_map), which are rebuilt when the app
     # registry cache is cleared, so a patched instance attribute can be lost.
