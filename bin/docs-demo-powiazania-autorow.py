@@ -17,22 +17,14 @@ shows no "Zobacz sieć powiązań" button. This script:
 from django.db import transaction
 from django.db.models import Q
 
-from bpp.models import Autor, BppUser, Wydawnictwo_Ciagle
+from bpp.demo_data.zrzuty import yennefer
+from bpp.models import Autor, Wydawnictwo_Ciagle
 from powiazania_autorow.core import calculate_author_connections
 from powiazania_autorow.models import AuthorConnection
 
 # Autorka powiązana z kontem „yennefer” (krok 2 w docs/deweloper/zrzuty-ekranu.md).
 # Nie po pk: klucze główne zależą od tego, czy baza była już wcześniej zapełniana.
-YENNEFER = (
-    BppUser.objects.filter(username="yennefer", autor__isnull=False)
-    .values_list("autor_id", flat=True)
-    .first()
-)
-if YENNEFER is None:
-    raise SystemExit(
-        "Brak konta „yennefer” powiązanego z autorem — załóż je wg kroku 2 "
-        "w docs/deweloper/zrzuty-ekranu.md."
-    )
+YENNEFER = yennefer().pk
 # how many more joint articles for her 1st and 2nd closest co-author
 DOPISZ = [8, 4]
 

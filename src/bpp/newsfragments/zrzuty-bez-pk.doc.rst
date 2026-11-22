@@ -1,0 +1,1 @@
+Zrzuty ekranu w dokumentacji odtworzono na świeżo wygenerowanych danych demo: scenariusze (``bin/docs-screenshots.py``) i skrypty przygotowujące dane (``bin/docs-demo-*.py``) wybierają autorów, jednostki, prace i czasopisma z bazy według wspólnych reguł, zamiast identyfikatorów i nazw ze starego zrzutu bazy.

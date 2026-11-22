@@ -4,11 +4,12 @@ Run on the Witcher demo DB (docs/deweloper/zrzuty-ekranu.md):
 
     uv run python src/manage.py shell < bin/docs-demo-admin-import-pracownikow.py
 
-The scenario uploads a small staff file for one unit (see IMPORT_PRAC_* in
-bin/docs-screenshots.py). Jednostkę bierzemy z bazy, a nie po nazwie (nazwy
-losuje generator danych demo): to obecna jednostka autorki Margarity Merigold
-— pierwszej osoby z pliku. Skrypt wypisuje jej nazwę; plik w scenariuszu
-musi używać tej samej. The "odpięcia" proposal lists
+The scenario uploads a small staff file for one unit (plik_pracownikow_demo
+in bin/docs-screenshots.py). Jednostkę i osoby pliku bierzemy z bazy, a nie
+po nazwie (nazwy losuje generator danych demo) — reguły w
+bpp.demo_data.zrzuty.import_pracownikow, wspólne ze scenariuszem: jednostka
+to obecna jednostka autorki Margarity Merigold, pierwszej osoby z pliku.
+Skrypt wypisuje wybór. The "odpięcia" proposal lists
 every active author+unit link that is missing from the file, but only in units
 with "Zarządzaj automatycznie" set. In the demo every unit has it set, so a
 seven-person file would propose unlinking the whole university. This keeps the
@@ -26,21 +27,14 @@ staff numbers stored on the matched authors), so re-run it on a fresh demo DB
 from django.contrib.auth.models import Group
 from password_policies.models import PasswordHistory
 
-from bpp.models import Autor, BppUser, Jednostka
+from bpp.demo_data.zrzuty import import_pracownikow
+from bpp.models import BppUser, Jednostka
 
-# Jednostka z bazy, a nie po nazwie: po rozszerzeniu puli nazw motywu
-# „wiedzmin” (commit 4be76d7aa) ten sam --seed daje inne jednostki — np.
-# „Klinika Mutacji” już nie powstaje. Margarita Merigold jest autorką
-# obowiązkową motywu, więc istnieje zawsze.
-margarita = (
-    Autor.objects.filter(imiona="Margarita", nazwisko="Merigold").order_by("pk").first()
-)
-if margarita is None or margarita.aktualna_jednostka is None:
-    raise SystemExit(
-        "Brak autorki Margarita Merigold z aktualną jednostką — wygeneruj dane "
-        "demo wg docs/deweloper/zrzuty-ekranu.md."
-    )
-JEDNOSTKA = margarita.aktualna_jednostka
+# Jednostka i osoby pliku z bazy, a nie po nazwie (nazwy losuje generator
+# danych demo): reguły w bpp.demo_data.zrzuty.import_pracownikow — te same,
+# z których scenariusz ``import-pracownikow`` składa plik.
+OSOBY = import_pracownikow()
+JEDNOSTKA = OSOBY["jednostka"]
 
 # --- editor account -------------------------------------------------------
 user, _ = BppUser.objects.get_or_create(
@@ -60,3 +54,6 @@ if not PasswordHistory.objects.filter(user=user).exists():
 Jednostka.objects.exclude(pk=JEDNOSTKA.pk).update(zarzadzaj_automatycznie=False)
 Jednostka.objects.filter(pk=JEDNOSTKA.pk).update(zarzadzaj_automatycznie=True)
 print("zarzadzaj_automatycznie: only", JEDNOSTKA.nazwa)
+print("w pliku:", ", ".join(str(a) for a in [OSOBY["margarita"], *OSOBY["w_pliku"]]))
+print("po BPP ID:", OSOBY["po_id"], "| wielu kandydatów:", OSOBY["wielu"])
+print("spoza pliku (propozycja odpięcia):", ", ".join(map(str, OSOBY["spoza_pliku"])))

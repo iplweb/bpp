@@ -26,6 +26,7 @@ from django.contrib.auth.models import Group
 from django.db import transaction
 from password_policies.models import PasswordHistory
 
+from bpp.demo_data.zrzuty import autorzy_pomocniczy, wydzial_zgloszen
 from bpp.models import (
     Autor,
     Autor_Jednostka,
@@ -63,13 +64,9 @@ with transaction.atomic():
         nazwa="Koło naukowe", defaults=dict(skrot="SKN", kolejnosc=90)
     )
     # Wydział z bazy, a nie po nazwie (nazwy losuje generator danych demo):
-    # pierwszy alfabetycznie wydział (jednostka najwyższego poziomu).
-    wydzial = Jednostka.objects.filter(parent=None).order_by("nazwa").first()
-    if wydzial is None:
-        raise SystemExit(
-            "Brak wydziałów w bazie demo — wygeneruj dane wg "
-            "docs/deweloper/zrzuty-ekranu.md."
-        )
+    # pierwszy alfabetycznie wydział (bez „Jednostki Domyślnej” i „Obcej
+    # jednostki”, które też nie mają nadrzędnej).
+    wydzial = wydzial_zgloszen()
     skn = Jednostka.objects.filter(nazwa="SKN Alchemików").first()
     if skn is None:
         skn = Jednostka.objects.create(
@@ -79,10 +76,16 @@ with transaction.atomic():
             wydzial=wydzial.wydzial,
             uczelnia=wydzial.uczelnia,
             rodzaj=rodzaj,
+            # koło naukowe nie pochodzi z kadr: bez tego import pracowników
+            # (bin/docs-demo-admin-import-pracownikow.py) proponowałby odpięcie
+            # jego członków
+            zarzadzaj_automatycznie=False,
         )
+    # Autorzy „pomocniczy” (bpp.demo_data.zrzuty.autorzy_pomocniczy) — nie
+    # ci, których pokazują inne zrzuty (np. Yennefer, duplikaty Geralta).
     studenci = list(
-        Autor.objects.filter(wydawnictwo_ciagle_autor__isnull=False)
-        .distinct()
+        autorzy_pomocniczy()
+        .filter(wydawnictwo_ciagle_autor__isnull=False)
         .order_by("-pk")[:3]
     )
     for a in studenci:
@@ -94,7 +97,8 @@ with transaction.atomic():
 
     # --- hidden staff authors ---------------------------------------------
     for a in (
-        Autor.objects.exclude(aktualna_jednostka=None)
+        autorzy_pomocniczy()
+        .exclude(aktualna_jednostka=None)
         .exclude(aktualna_jednostka=skn)
         .order_by("pk")[:2]
     ):

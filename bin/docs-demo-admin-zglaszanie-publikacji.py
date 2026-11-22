@@ -18,7 +18,8 @@ from django.contrib.auth.models import Group
 from password_policies.models import PasswordHistory
 
 from bpp.const import GR_WPROWADZANIE_DANYCH, GR_ZGLOSZENIA_PUBLIKACJI
-from bpp.models import BppUser, Jednostka, Uczelnia
+from bpp.demo_data.zrzuty import wydzial_zgloszen
+from bpp.models import BppUser, Uczelnia
 from zglos_publikacje.models import Obslugujacy_Zgloszenia_Wydzialow
 
 
@@ -54,13 +55,10 @@ konto(
 )
 
 # Wydział z bazy, a nie po nazwie (nazwy losuje generator danych demo):
-# pierwszy alfabetycznie wydział (jednostka najwyższego poziomu).
-wydzial = Jednostka.objects.filter(parent__isnull=True).order_by("nazwa").first()
-if wydzial is None:
-    raise SystemExit(
-        "Brak wydziałów w bazie demo — wygeneruj dane wg "
-        "docs/deweloper/zrzuty-ekranu.md."
-    )
+# pierwszy alfabetycznie wydział (bez „Jednostki Domyślnej” i „Obcej
+# jednostki”, które też nie mają nadrzędnej) — wspólne ze scenariuszem
+# ``admin-zglaszanie-publikacji``.
+wydzial = wydzial_zgloszen()
 Obslugujacy_Zgloszenia_Wydzialow.objects.get_or_create(user=vesemir, wydzial=wydzial)
 
 Uczelnia.objects.update(

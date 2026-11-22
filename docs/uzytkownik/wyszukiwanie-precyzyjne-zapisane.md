@@ -9,9 +9,9 @@ gotowe zestawienia.
 
 ## Kto może zapisywać
 
-Przycisk **„Zapisz formularz”** widzą tylko osoby z dostępem do modułu
-redagowania (konta z uprawnieniami redaktora w panelu administracyjnym,
-zwykle pracownicy biblioteki). Zwykły zalogowany użytkownik i odwiedzający
+Pozycję **„Zapisz formularz…”** w menu **„Formularz”** widzą tylko osoby
+z dostępem do modułu redagowania (konta z uprawnieniami redaktora w panelu
+administracyjnym, zwykle pracownicy biblioteki). Zwykły zalogowany użytkownik i odwiedzający
 bez logowania mogą zapisane formularze **wczytywać**, ale nie zapisywać.
 
 ## Zapisywanie formularza
@@ -19,12 +19,14 @@ bez logowania mogą zapisane formularze **wczytywać**, ale nie zapisywać.
 1. Zbuduj zapytanie w formularzu **szukaj → precyzyjnie** (patrz
    [Wyszukiwanie precyzyjne — podstawy](wyszukiwanie-precyzyjne.md)).
    Zapisywane są warunki, a także rodzaj raportu i sortowanie.
-2. Kliknij **„Zapisz formularz”**.
+2. Kliknij **„Formularz”** (pod warunkami, po prawej) i wybierz
+   **„Zapisz formularz…”**.
 
-    ![Formularz z dwoma warunkami i przyciskiem „Zapisz formularz”](../images/uzytkownik/wyszukiwanie-precyzyjne-zapisane/01-zapisz-formularz.png)
+    ![Formularz z dwoma warunkami i rozwiniętym menu „Formularz” z pozycją „Zapisz formularz…”](../images/uzytkownik/wyszukiwanie-precyzyjne-zapisane/01-zapisz-formularz.png)
 
 3. W okienku **„Nazwa formularza?”** wpisz nazwę, pod którą formularz
-   będzie widoczny na liście, np. „Klinika Eliksirologii — artykuły”.
+   będzie widoczny na liście, np. „Katedra i Zakład Smoków i Draconidów —
+   artykuły”.
    Nazwa nie może być pusta.
 4. Odpowiedz na pytanie **„Czy ten formularz powinien być dostępny dla
    wszystkich użytkowników tego serwisu?”**:
@@ -54,9 +56,10 @@ użytkownika — wybierz inną nazwę.”**
 ## Wczytywanie formularza
 
 1. Otwórz **szukaj → precyzyjnie**.
-2. Kliknij **„Wczytaj formularz”** i wybierz nazwę z listy.
+2. Kliknij **„Formularz”** i wybierz nazwę z listy **„Wczytaj zapisany
+   formularz”**.
 
-![Rozwinięta lista „Wczytaj formularz” z trzema zapisanymi formularzami](../images/uzytkownik/wyszukiwanie-precyzyjne-zapisane/02-wczytaj-formularz.png)
+![Rozwinięte menu „Formularz” z listą trzech zapisanych formularzy](../images/uzytkownik/wyszukiwanie-precyzyjne-zapisane/02-wczytaj-formularz.png)
 
 Formularz zastąpi bieżące warunki. Możesz od razu kliknąć „Wyświetl wyniki
 wyszukiwania” albo najpierw zmienić warunki — np. rok — bez wpływu na
@@ -67,8 +70,8 @@ Lista pokazuje:
 - niezalogowanym — formularze publiczne,
 - zalogowanym — formularze publiczne oraz własne prywatne.
 
-Przycisk „Wczytaj formularz” pojawia się tylko wtedy, gdy na liście jest
-co najmniej jeden formularz.
+Lista „Wczytaj zapisany formularz” pojawia się w menu tylko wtedy, gdy
+jest co najmniej jeden formularz.
 
 ## Udostępnianie współpracownikom
 

@@ -14,10 +14,10 @@ authors (the screenshots pick her by name) and rebuilds the slot cache.
 
 from django.db import transaction
 
+from bpp.demo_data.zrzuty import yennefer
 from bpp.models import (
     Autor,
     Autor_Dyscyplina,
-    BppUser,
     Dyscyplina_Naukowa,
     Wydawnictwo_Ciagle,
     Wydawnictwo_Ciagle_Autor,
@@ -26,16 +26,7 @@ from ewaluacja_common.models import Rodzaj_Autora
 
 # Autorka powiązana z kontem „yennefer” (krok 2 w docs/deweloper/zrzuty-ekranu.md).
 # Nie po pk: klucze główne zależą od tego, czy baza była już wcześniej zapełniana.
-YENNEFER = (
-    BppUser.objects.filter(username="yennefer", autor__isnull=False)
-    .values_list("autor_id", flat=True)
-    .first()
-)
-if YENNEFER is None:
-    raise SystemExit(
-        "Brak konta „yennefer” powiązanego z autorem — załóż je wg kroku 2 "
-        "w docs/deweloper/zrzuty-ekranu.md."
-    )
+YENNEFER = yennefer().pk
 PROGI = [200, 140, 100, 70, 40, 20]
 NAZWY = ["filozofia", "nauki teologiczne", "biotechnologia", "archeologia"]
 

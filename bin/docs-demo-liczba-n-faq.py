@@ -8,9 +8,10 @@ In the demo dump every author is "N", on a full-time contract, with one
 discipline at 100% in each year 2022-2025 - so the N number is just a head
 count and none of the usual reasons for a difference shows up. This script
 introduces one example of each reason. Autorów wybieramy z bazy, a nie po pk
-(pk i nazwiska zależą od danych demo): pierwsi alfabetycznie autorzy danej
-dyscypliny, przypisani do niej we wszystkich latach 2022-2025 (dyscypliny
-ustawia bin/docs-demo-sloty.py). Skrypt wypisuje, kogo wybrał:
+(pk i nazwiska zależą od danych demo): pierwsi (po pk) autorzy danej
+dyscypliny, przypisani do niej we wszystkich latach 2022-2025 (biotechnologia:
+2024-2025; dyscypliny ustawia bin/docs-demo-sloty.py). Reguła mieszka
+w bpp.demo_data.zrzuty, wspólna ze scenariuszem ``liczba-n-faq``. Skrypt wypisuje, kogo wybrał:
 
 - 8 authors of "nauki teologiczne" split 60/40 with "historia", so a
   second, small discipline lands in "Dyscypliny nieraportowane",
@@ -29,9 +30,15 @@ danych") and computes the N number. Meant for a disposable demo DB.
 from decimal import Decimal
 
 from django.contrib.auth.models import Group
-from django.db.models import Count
 from password_policies.models import PasswordHistory
 
+from bpp.demo_data.zrzuty import (
+    LICZBA_N_BIOTECHNOLOGIA,
+    LICZBA_N_FILOZOFIA,
+    liczba_n_autorzy,
+    ustaw_okres_zrzutow,
+    wydzialy,
+)
 from bpp.models import (
     Autor,
     Autor_Dyscyplina,
@@ -46,33 +53,19 @@ from ewaluacja_liczba_n.utils import oblicz_liczby_n_dla_okresu
 LATA = range(2022, 2026)
 
 
-def autorzy(dyscyplina, ile):
-    """Pierwsi alfabetycznie autorzy z ``dyscyplina`` w każdym roku z LATA,
-    liczeni do N (aktualna jednostka skupia pracowników)."""
-    wynik = list(
-        Autor.objects.filter(
-            aktualna_jednostka__skupia_pracownikow=True,
-            autor_dyscyplina__rok__in=LATA,
-            autor_dyscyplina__dyscyplina_naukowa__nazwa=dyscyplina,
-        )
-        .annotate(lat=Count("autor_dyscyplina__rok", distinct=True))
-        .filter(lat=len(LATA))
-        .order_by("nazwisko", "imiona", "pk")[:ile]
-    )
-    if len(wynik) < ile:
-        raise SystemExit(
-            f"Za mało autorów z dyscypliną „{dyscyplina}” w latach 2022-2025 — "
-            "wygeneruj dane wg docs/deweloper/zrzuty-ekranu.md (z krokiem "
-            "bin/docs-demo-sloty.py)."
-        )
+def autorzy(dyscyplina, ile, lata=LATA):
+    """Pierwsi (po pk) autorzy z ``dyscyplina`` w każdym roku z ``lata``
+    (reguła w bpp.demo_data.zrzuty, wspólna ze scenariuszem ``liczba-n-faq``)."""
+    wynik = liczba_n_autorzy(dyscyplina, ile, lata)
     for autor in wynik:
         print(f"{dyscyplina}: {autor} (pk {autor.pk})")
     return [autor.pk for autor in wynik]
 
 
 TEOLOGIA_Z_HISTORIA = autorzy("nauki teologiczne", 8)
-POL_ETATU, TRZY_CZWARTE_ETATU, PROCENT_75 = autorzy("filozofia", 3)
-OD_2024, DOKTORANT = autorzy("biotechnologia", 2)
+POL_ETATU, TRZY_CZWARTE_ETATU, PROCENT_75 = autorzy(*LICZBA_N_FILOZOFIA)
+# biotechnologia: po latach 2024–2025, bo OD_2024 traci tu lata 2022–2023
+OD_2024, DOKTORANT = autorzy(*LICZBA_N_BIOTECHNOLOGIA)
 BEZ_RODZAJU_2025, BEZ_ETATU_2023, ODESZLA = autorzy("archeologia", 3)
 
 historia = Dyscyplina_Naukowa.objects.get(nazwa="historia")
@@ -123,7 +116,7 @@ emeryci, _ = Jednostka.objects.get_or_create(
         uczelnia=uczelnia,
         skupia_pracownikow=False,
         # pierwszy alfabetycznie wydział — nazwy losuje generator danych demo
-        parent=Jednostka.objects.filter(parent=None).order_by("nazwa").first(),
+        parent=wydzialy().first(),
     ),
 )
 Autor.objects.filter(pk=ODESZLA).update(aktualna_jednostka=emeryci)
@@ -141,4 +134,6 @@ if not PasswordHistory.objects.filter(user=u).exists():
     PasswordHistory.objects.create(user=u, password=u.password)
 
 oblicz_liczby_n_dla_okresu(uczelnia, rok_min=LATA.start, rok_max=LATA.stop - 1)
+# ekrany ewaluacji kont demo: okres 2022-2025, nie bieżący (pusty) 2026-2030
+print("okres ewaluacji kont demo:", ustaw_okres_zrzutow())
 print("liczba-n-faq demo state ready")

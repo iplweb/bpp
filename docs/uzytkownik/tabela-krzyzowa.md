@@ -77,11 +77,11 @@ Prace bez źródła, dyscypliny itp. trafiają do wiersza lub kolumny
 ![Tabela krzyżowa: punkty jednostek według charakteru formalnego, z wierszem i kolumną RAZEM](../images/uzytkownik/tabela-krzyzowa/04-wynik-razem.png)
 
 - Każda **komórka** to wartość dla przecięcia wiersza i kolumny — tu
-  (zaznaczona na obrazku): 830 punktów za artykuły w czasopismach, które autorka opublikowała,
-  pracując w Klinice Eliksirologii. Pusta komórka oznacza, że takich prac
-  nie ma.
+  (zaznaczona na obrazku): 580 punktów za artykuły w czasopismach, które
+  autorka opublikowała, pracując w Katedrze i Zakładzie Medycyny Polowej.
+  Pusta komórka oznacza, że takich prac nie ma.
 - Kolumna **RAZEM** to suma wiersza — tu odpowiedź na pytanie: najwięcej
-  punktów (980) autorka zebrała w Klinice Eliksirologii.
+  punktów (795) autorka zebrała w Katedrze Smoków i Draconidów.
 - Wiersz **RAZEM** na dole to suma kolumny, a jego ostatnia komórka — suma
   całej tabeli.
 - Kliknięcie nagłówka pierwszej kolumny (tu: **Jednostka**) sortuje wiersze

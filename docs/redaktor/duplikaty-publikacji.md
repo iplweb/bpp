@@ -126,7 +126,7 @@ wpisano trzy razy, na liście są wszystkie trzy pary.
 Kliknij oba tytuły z pary — każdy otworzy się w nowej karcie. Porównaj
 autorów, źródło, DOI i pozostałe dane.
 
-![Dwa rekordy jednej pary: ten sam tytuł, 2 i 8 autorów, DOI zapisany raz jako link, raz bez niego](../images/redaktor/duplikaty-publikacji/05-porownanie-pary.png)
+![Dwa rekordy jednej pary: ten sam tytuł, 2 i 6 autorów, DOI zapisany raz jako link, raz bez niego](../images/redaktor/duplikaty-publikacji/05-porownanie-pary.png)
 
 Potem wróć do listy i w kolumnie **Akcje** kliknij:
 
@@ -178,21 +178,21 @@ ręcznie:
 
 ### Przykład 1. Ten sam artykuł wpisany dwa razy {#przyklad-1}
 
-Na liście jest para „Wpływ mutacji na tolerancję eliksirów (nr 28)”
-(2024), oba rekordy to artykuły, **Powody**: **DOI**, **źródło**, podobieństwo 100%. Na
-stronach rekordów widać ten sam tytuł i czasopismo „Folia Temerska”;
-jeden ma DOI zapisany jako link i 2 autorów, drugi — DOI bez linku
-i 8 autorów.
+Na liście jest para „Analiza wpływu potworów na przeżywalność adeptów
+w laboratorium aretuzańskim (nr 58)” (2024), oba rekordy to artykuły,
+**Powody**: **DOI**, **źródło**, podobieństwo 100%. Na stronach rekordów
+widać ten sam tytuł i czasopismo „Zeszyty Naukowe Aretuzańska”; jeden ma
+DOI zapisany jako link i 2 autorów, drugi — DOI bez linku i 6 autorów.
 
 To ta sama praca: kliknij **Potwierdź jako duplikat**. Zostaw rekord
-z 8 autorami. Sprawdź, czy dwóch autorów z drugiego rekordu ma te same
+z 6 autorami. Sprawdź, czy dwóch autorów z drugiego rekordu ma te same
 dyscypliny, potem usuń rekord z 2 autorami.
 
 ### Przykład 2. Artykuł wpisany ponownie jako rozdział {#przyklad-2}
 
-Para „Perspektywy rozwoju bestii w lochach Novigradu (nr 10)” (artykuł,
-Wydawnictwo ciągłe) i „Perspektywy rozwoju bestii w lochach Novigradu”
-(Wydawnictwo zwarte), **Powody**: **tytuł**, podobieństwo ok. 90%. Tytuły różnią się tylko
+Para „Analiza wpływu glifów na handel w Novigradzie w pałacu w Wyzimie
+(nr 431)” (artykuł, Wydawnictwo ciągłe) i „Analiza wpływu glifów na handel
+w Novigradzie w pałacu w Wyzimie” (Wydawnictwo zwarte), **Powody**: **tytuł**, podobieństwo ok. 90%. Tytuły różnią się tylko
 końcówką, rok ten sam.
 
 Sprawdź, czy rozdział nie jest przypadkiem osobną publikacją (np. ta sama
@@ -201,10 +201,9 @@ potwierdź duplikat i usuń rekord o złym rodzaju — tu rozdział.
 
 ### Przykład 3. Podobne tytuły, różne prace {#przyklad-3}
 
-Para „Perspektywy rozwoju szlaku wiedźmińskiego w warunkach Kaer Morhen
-(nr 253)” (artykuł) i „… (nr 243)” (rozdział), **Powody**: **tytuł**.
-Tytuły różnią się tylko numerem, a na stronach rekordów widać innych
-autorów.
+Para „Przegląd literatury dotyczącej szkoły Gryfa (nr 15)” i „… (nr 74)”
+(dwa artykuły w różnych czasopismach), **Powody**: **tytuł**. Tytuły różnią
+się tylko numerem, a na stronach rekordów widać innych autorów.
 
 To różne prace z serii o podobnych tytułach: kliknij **Nie jest
 duplikatem**. Przy następnym skanowaniu ta para już się nie pojawi.
