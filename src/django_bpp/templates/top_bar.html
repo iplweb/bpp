@@ -10,9 +10,10 @@
     <div class="top-bar-left">
         <ul class="dropdown menu" data-dropdown-menu>
             <li>
-                <a href="/">
-                    <img src="{% load static %}{% static 'images/bpp-icon.png' %}" alt="BPP" class="bpp-logo">
-                    BPP
+                {# Logo i napis może ukryć/podmienić motyw z konfiguratora wyglądu — stąd stała nazwa linku dla czytników ekranu. #}
+                <a href="/" class="bpp-strona-glowna" aria-label="Strona główna">
+                    <img src="{% load static %}{% static 'images/bpp-icon.png' %}" alt="" class="bpp-logo">
+                    <span class="bpp-napis">BPP</span>
                 </a>
             </li>
             <li>

@@ -12,6 +12,7 @@ except ImportError:
 from django.http import JsonResponse
 from django.http.response import HttpResponse, HttpResponseServerError
 from django.views.decorators.csrf import csrf_exempt
+from django.views.decorators.http import condition
 from django.views.decorators.vary import vary_on_headers
 from django.views.defaults import page_not_found, permission_denied
 from django_sendfile import sendfile
@@ -40,17 +41,33 @@ def root(request):
     return shortcuts.render(request, "browse/uczelnia.html", context)
 
 
+def _favicon_uczelni(request):
+    uczelnia = getattr(request, "_uczelnia", None)
+    if uczelnia is None:
+        uczelnia = Uczelnia.objects.filter(pk=1).first()
+    return uczelnia.favicon_ico if uczelnia is not None else None
+
+
+def _favicon_etag(request):
+    plik = _favicon_uczelni(request)
+    return getattr(plik, "name", None) or None
+
+
+# Bez cache po stronie serwera (dawniej cache_page na godzinę — po zmianie
+# ikony serwował starą): ETag = nazwa pliku (nowy plik = nowa nazwa), więc
+# przeglądarka dostaje tanie 304, dopóki ikona się nie zmieni.
+@condition(etag_func=_favicon_etag)
 def favicon(request):
-    try:
-        fn = Uczelnia.objects.get(pk=1).favicon_ico
-    except Uczelnia.DoesNotExist:
+    plik = _favicon_uczelni(request)
+    if plik is None:
         return HttpResponse("create Uczelnia object first")
 
     try:
-        return sendfile(request, fn.path)
+        odpowiedz = sendfile(request, plik.path)
     except ValueError:
         return HttpResponse("icon image is not set")
-        # raise Http404
+    odpowiedz["Cache-Control"] = "public, max-age=0, must-revalidate"
+    return odpowiedz
 
 
 @csrf_exempt

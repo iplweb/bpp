@@ -59,8 +59,31 @@
         }
     </style>
 
+    {# Podgląd konfiguratora wyglądu: motyw wstawia konfigurator do tego <style>. #}
+    {# CSS bierzemy od razu z okna konfiguratora (ta sama domena), zanim ruszy JS Foundation, #}
+    {# który przy starcie odczytuje z CSS-a breakpointy. #}
+    {% if PODGLAD_MOTYWU %}
+        <style id="bpp-motyw-podglad"></style>
+        <script>
+            try {
+                {# window.top — także strony w ramkach zagnieżdżonych (wyniki multiseek). #}
+                if (window.top !== window && window.top.BppKonfiguratorCss) {
+                    document.getElementById("bpp-motyw-podglad").textContent =
+                        window.top.BppKonfiguratorCss;
+                }
+            } catch (e) {
+                // Rodzic z innej domeny — zostaje pusty <style>.
+                if (e.name !== "SecurityError") throw e;
+            }
+        </script>
+    {% elif MOTYW_WLASNY_URL %}
+        {# Motyw z konfiguratora wyglądu — z bazy, więc poza compress. #}
+        <link rel="stylesheet" type="text/css" href="{{ MOTYW_WLASNY_URL }}"/>
+    {% endif %}
     {% compress css %}
-        <link rel="stylesheet" type="text/css" href="{% static THEME_NAME %}"/>
+        {% if not PODGLAD_MOTYWU and not MOTYW_WLASNY_URL %}
+            <link rel="stylesheet" type="text/css" href="{% static THEME_NAME %}"/>
+        {% endif %}
         <link rel="stylesheet" type="text/css" href="{% static "jqueryui/jquery-ui.css" %}">
         <link rel="stylesheet" type="text/css" href="{% static "multiseek/css/style.css" %}">
         <link rel="stylesheet" type="text/css" href="{% static 'session_security/style.css' %}">
@@ -144,7 +167,8 @@
     {# vary_on host: favicon podąża za Site (multi-tenant), więc fragment #}
     {# MUSI być kluczowany per host — inaczej cache podałby favicon jednej #}
     {# uczelni pod domeną innej. Patrz favicon_bpp.place_favicon. #}
-    {% cache 3600 favicon request.get_host %}
+    {# FAVICON_WERSJA: każda zmiana ikony unieważnia fragment (bpp/favicon_wersja.py). #}
+    {% cache 3600 favicon request.get_host FAVICON_WERSJA %}
         {% load favicon_bpp %}
         {% place_favicon %}
     {% endcache %}

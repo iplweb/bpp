@@ -49,6 +49,7 @@ class BppConfig(AppConfig):
         # INSTALLED_APPS bez "favicon" (patrz django_bpp.settings.auth_server).
         if apps.is_installed("favicon"):
             self._patch_favicon_save_per_site()
+            self._podepnij_wersje_faviconu()
 
         # django-easy-audit pobiera poprzednia wersje wiersza przez
         # `sender.objects`, wiec na modelach soft-delete wywraca `restore()`
@@ -71,6 +72,25 @@ class BppConfig(AppConfig):
         from bpp.rollbar_config import configure_rollbar
 
         configure_rollbar()
+
+    def _podepnij_wersje_faviconu(self):
+        """Każda zmiana ikony unieważnia cache faviconu (bpp/favicon_wersja.py)."""
+        from django.apps import apps
+        from django.db.models.signals import post_delete, post_save
+
+        from bpp.favicon_wersja import podbij
+
+        for model in (
+            apps.get_model("favicon", "Favicon"),
+            apps.get_model("favicon", "FaviconImg"),
+            apps.get_model("bpp", "Uczelnia"),
+        ):
+            for nazwa, sygnal in (("save", post_save), ("delete", post_delete)):
+                sygnal.connect(
+                    podbij,
+                    sender=model,
+                    dispatch_uid=f"bpp.favicon_wersja.{model.__name__}.{nazwa}",
+                )
 
     def _patch_favicon_save_per_site(self):
         """Zawęź „gaszenie pozostałych faviconów" w ``Favicon.save`` do site'u.
@@ -127,6 +147,9 @@ class BppConfig(AppConfig):
         "Jednostka",
         "Zrodlo",
         "Uczelnia",
+        # Motyw z konfiguratora wyglądu — adres jego CSS-a (ze skrótem treści)
+        # jest w HTML-u każdej strony.
+        "MotywWlasny",
         # Słowniki — ich nazwy trafiają do opisów bibliograficznych, więc
         # zmiana nazwy zmienia treść publicznych stron. Bez nich obietnica
         # „zapis w adminie unieważnia natychmiast" byłaby dla tych modeli

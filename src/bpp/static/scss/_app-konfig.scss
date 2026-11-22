@@ -1,0 +1,597 @@
+// Motyw z konfiguracji (konfigurator wyglądu). Nie kompiluje się
+// samodzielnie: punkt wejścia ze zmiennymi `$cfg-*` i nadpisanymi zmiennymi
+// Foundation generuje motyw-konfig.js (doScss), a kompiluje konfigurator
+// w przeglądarce albo task Grunta `motywy`.
+//
+// Opis: docs/deweloper/budowanie-css.md, sekcja „Motywy z konfiguracji”.
+
+@use "sass:color";
+
+// Katalog czcionek względem pliku CSS (src/bpp/static/scss/app-*.css).
+// Konfigurator w przeglądarce podaje własną ścieżkę.
+$cfg-czcionki-url: "../bpp/fonts" !default;
+
+@import "settings";
+
+// Wybrane zaokrąglenie — zapamiętane, bo _callouts.scss (przez common)
+// nadpisuje globalnie `$global-radius: 6px` i bez tego opcja „Rogi” nie
+// działałaby ani dla komponentów Foundation, ani dla reguł niżej.
+$cfg-promien: $global-radius;
+
+// --- Czcionki lokalne (self-hosted) -----------------------------------------
+
+$cfg-zakres-latin-ext: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
+$cfg-zakres-latin: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+
+// Lista (nazwa, katalog, wagi) — czcionka tekstu i/lub nagłówków.
+@each $nazwa, $katalog, $wagi in $cfg-czcionki-lokalne {
+  @each $waga in $wagi {
+    @each $podzbior, $zakres in (latin-ext $cfg-zakres-latin-ext, latin $cfg-zakres-latin) {
+      @font-face {
+        font-family: $nazwa;
+        font-style: normal;
+        font-weight: $waga;
+        font-display: swap;
+        src: url('#{$cfg-czcionki-url}/#{$katalog}/#{$katalog}-#{$waga}-#{$podzbior}.woff2') format('woff2');
+        unicode-range: $zakres;
+      }
+    }
+  }
+}
+
+@import "common";
+@import "checkbox";
+@import "main_page_buttons";
+@import "browse";
+@import "browse_autorzy";
+@import "browse_jednostki";
+@import "external_links";
+@import "ranking_autorow";
+@import "pagination";
+@import "wizard_forms";
+
+$global-radius: $cfg-promien;
+
+@import "foundation-includes";
+
+input[type=checkbox],
+input[type=radio] {
+  accent-color: $primary-color;
+}
+
+// Nagłówki — część stylów BPP ustawia font-family na sztywno.
+h1, h2, h3, h4, h5, h6,
+.modern-header h1, .modern-header h2, .section-header h2 {
+  font-family: $header-font-family;
+}
+
+// --- Kolor główny w elementach spoza Foundation ------------------------------
+
+.modern-header h1 .fi-foundation,
+.modern-header h2 .fi-foundation,
+.section-header h2 .fi-home {
+  color: $primary-color;
+}
+
+.button-search {
+  background: $primary-color;
+
+  &:hover {
+    background-color: color.adjust($primary-color, $lightness: -10%);
+  }
+}
+
+.button-show-all {
+  background: $secondary-color;
+  color: color-pick-contrast($secondary-color);
+
+  &:hover {
+    background-color: color.adjust($secondary-color, $lightness: -10%);
+    color: color-pick-contrast($secondary-color);
+  }
+}
+
+.author-profile-link {
+  color: $primary-color;
+}
+
+.ui-state-focus {
+  background: $primary-color !important;
+  border: 1px white !important;
+}
+
+.select2-results__option--highlighted {
+  background: $primary-color !important;
+  color: color-pick-contrast($primary-color);
+}
+
+// --- Pasek menu ----------------------------------------------------------------
+
+$cfg-naglowek-hover: rgba($cfg-naglowek-tekst, 0.12);
+
+nav.sticky-header {
+  background: $cfg-naglowek;
+  box-shadow: $cfg-cien-menu;
+}
+
+.top-bar,
+.top-bar > .top-bar-left > ul.dropdown.menu,
+.top-bar > .top-bar-right > ul.dropdown.menu,
+.title-bar {
+  background: $cfg-naglowek;
+}
+
+// Pozycje najwyższego poziomu. Podmenu zostają białe z ciemnym tekstem
+// (top_bar.scss), więc kolor dotyczy tylko `> li > a`.
+.top-bar .dropdown.menu > li > a,
+.top-bar .menu-text,
+.top-bar .dropdown.menu > li > a[href*="logout"] {
+  color: $cfg-naglowek-tekst;
+
+  &:hover,
+  &:focus-visible {
+    background-color: $cfg-naglowek-hover;
+    color: $cfg-naglowek-tekst;
+  }
+}
+
+.title-bar,
+.title-bar .title-bar-title {
+  color: $cfg-naglowek-tekst;
+}
+
+// Strzałki rozwijania rysowane obramowaniem — w kolorze napisów paska.
+.top-bar .dropdown.menu > li.is-dropdown-submenu-parent > a::after,
+.top-bar .dropdown.menu > li.has-submenu > a::after {
+  border-top-color: currentColor;
+}
+
+// Logo BPP (pomarańczowy <img>; top_bar.scss: szare, kolorowe po
+// najechaniu). Na ciemnym pasku szare logo ginie, więc w trybie „auto”
+// jest tam zawsze kolorowe.
+@if $cfg-logo-bpp == "kolorowe" or ($cfg-logo-bpp == "auto" and $cfg-naglowek-ciemny) {
+  .top-bar .bpp-logo,
+  .dropdown.menu > li > a:hover .bpp-logo {
+    filter: none !important;
+  }
+} @else if $cfg-logo-bpp == "jak_napisy" {
+  // brightness(0) = czarna sylwetka; invert(1) = biała.
+  .top-bar .bpp-logo,
+  .dropdown.menu > li > a:hover .bpp-logo {
+    @if $cfg-naglowek-ciemny {
+      filter: brightness(0) invert(1) !important;
+    } @else {
+      filter: brightness(0) !important;
+    }
+  }
+} @else if $cfg-logo-bpp == "ukryte" {
+  .top-bar .bpp-logo {
+    display: none !important;
+  }
+}
+
+// Napis obok logo (top_bar.html: `.bpp-napis`). Link ma aria-label „Strona
+// główna”, więc ukrycie/podmiana napisu nie zabiera mu nazwy dostępnej.
+@if $cfg-napis == "brak" or $cfg-napis == "wlasny" {
+  .top-bar .bpp-strona-glowna .bpp-napis {
+    display: none;
+  }
+}
+
+@if $cfg-napis == "wlasny" {
+  .top-bar .bpp-strona-glowna::after {
+    content: "#{$cfg-napis-wlasny}";
+    vertical-align: middle;
+  }
+}
+
+// Logo uczelni przed napisem; szerokość wylicza konfigurator przy wgraniu
+// (proporcje obrazka przy wysokości 28 px).
+@if $cfg-logo-uczelni {
+  .top-bar .bpp-strona-glowna::before {
+    content: "";
+    display: inline-block;
+    width: $cfg-logo-uczelni-szerokosc;
+    height: 28px;
+    margin-right: 0.4rem;
+    vertical-align: middle;
+    background: url("#{$cfg-logo-uczelni}") center / contain no-repeat;
+  }
+}
+
+// Rozwijane podmenu zostają białe niezależnie od koloru paska.
+.top-bar .dropdown.menu .menu.vertical,
+.top-bar .dropdown.menu ul.menu.vertical,
+.top-bar .menu-columns-wrapper {
+  background: $white;
+}
+
+@if not $cfg-menu-zaokraglone {
+  .top-bar .dropdown.menu .menu.vertical,
+  .top-bar .dropdown.menu ul.menu.vertical,
+  .top-bar .menu-columns-wrapper,
+  .top-bar .menu-columns-wrapper * {
+    border-radius: 0 !important;
+  }
+}
+
+// Ikony fi-* w pasku i w podmenu. Logo BPP to <img>, nie fi-*, zostaje.
+// !important, bo top_bar.scss ustawia ikonom w podmenu display regułą
+// o wyższej specyficzności.
+@if not $cfg-ikony-w-menu {
+  .top-bar {
+    [class^="fi-"], [class*=" fi-"] {
+      display: none !important;
+    }
+  }
+}
+
+// --- Tło strony ------------------------------------------------------------------
+
+// Tło strony malują główne kontenery (_layout.scss: białe, `#content`
+// z !important), nie `body` — inaczej wybór tła nie byłby widoczny.
+.grid-container-fluid[data-sticky-container],
+#content {
+  background-color: $body-background !important;
+}
+
+// Na szarym tle karty i tabele zostają białe.
+@if $cfg-tlo-szare {
+  .card,
+  table tbody {
+    background-color: $white;
+  }
+}
+
+// Grafika w tle: osobna warstwa pod treścią (przezroczystość bez wpływu na
+// treść), nieruchoma względem okna. `html::after`, bo `body::before` zajmuje
+// już gradient tła (layout BPP); ta warstwa rysuje się nad nim.
+@if $cfg-tlo-obraz {
+  // Kontenery przezroczyste, kolor tła pod grafiką (na `html`); gradient
+  // layoutu z `body::before` przykrywamy tym samym kolorem.
+  html {
+    background-color: $body-background;
+  }
+
+  body::before {
+    background: $body-background !important;
+  }
+
+  .grid-container-fluid[data-sticky-container],
+  #content {
+    background-color: transparent !important;
+  }
+
+  html::after {
+    content: "";
+    position: fixed;
+    inset: 0;
+    z-index: -1;
+    pointer-events: none;
+    opacity: $cfg-tlo-widocznosc;
+    background-image: url("#{$cfg-tlo-obraz}");
+    background-position: $cfg-tlo-pozycja;
+    @if $cfg-tlo-tryb == "kafelki" {
+      background-repeat: repeat;
+      background-size: $cfg-tlo-rozmiar auto;
+    } @else if $cfg-tlo-tryb == "caly" {
+      background-repeat: no-repeat;
+      background-size: cover;
+    } @else {
+      background-repeat: no-repeat;
+      background-size: $cfg-tlo-rozmiar auto;
+    }
+  }
+
+  @media print {
+    html::after {
+      display: none;
+    }
+  }
+}
+
+// --- Kafle na stronie głównej -------------------------------------------------------
+
+@if $cfg-kafle-styl == "ikony_glowny" {
+  .uczelnia__tile-icon {
+    color: $primary-color !important;
+  }
+} @else if $cfg-kafle-styl == "obrys" {
+  .uczelnia__tile {
+    background: $white;
+    border: 2px solid $primary-color;
+  }
+
+  .uczelnia__tile-icon {
+    color: $primary-color !important;
+  }
+} @else if $cfg-kafle-styl == "wypelnione" {
+  .uczelnia__tile {
+    background: $primary-color;
+    border-color: $primary-color;
+  }
+
+  .uczelnia__tile-icon,
+  .uczelnia__tile-title,
+  .uczelnia__tile-description {
+    color: $cfg-kafle-tekst !important;
+  }
+
+  .uczelnia__tile-description {
+    opacity: 0.85;
+  }
+}
+
+// --- Okruszki i stopka ---------------------------------------------------------------
+
+@if $cfg-okruszki {
+  #breadcrumbs-wrapper {
+    background-color: map-get($cfg-okruszki, tlo);
+    border-bottom-color: rgba(map-get($cfg-okruszki, tekst), 0.15);
+  }
+
+  #breadcrumbs-wrapper .breadcrumbs li,
+  #breadcrumbs-wrapper .breadcrumbs li:not(:last-child)::after {
+    color: map-get($cfg-okruszki, tekst);
+  }
+
+  #breadcrumbs-wrapper .breadcrumbs a {
+    color: map-get($cfg-okruszki, link);
+    text-decoration: underline;
+  }
+}
+
+@if $cfg-stopka {
+  .footer-container {
+    background-color: map-get($cfg-stopka, tlo);
+    border-top-color: rgba(map-get($cfg-stopka, tekst), 0.15);
+    color: map-get($cfg-stopka, tekst);
+  }
+
+  .footer-container :is(p, small, span, li, div, td) {
+    color: inherit;
+  }
+
+  .footer-container a:not(.button) {
+    color: map-get($cfg-stopka, link);
+    text-decoration: underline;
+  }
+}
+
+// --- Wykresy „w latach” (_autor-bem.scss: kolory na sztywno) ------------------------
+
+.autor-page__slupek-bar,
+.autor-page__slupek:hover .autor-page__slupek-bar,
+.autor-page__slupek:focus-visible .autor-page__slupek-bar {
+  background: $cfg-kolor-wykresow;
+}
+
+.autor-page__slupek:hover .autor-page__slupek-bar,
+.autor-page__slupek:focus-visible .autor-page__slupek-bar {
+  filter: brightness(1.2);
+}
+
+.autor-page__slupek:hover,
+.autor-page__slupek:focus-visible {
+  background: rgba($cfg-kolor-wykresow, 0.1);
+}
+
+.autor-page__wykres-linia {
+  stroke: $cfg-kolor-wykresow;
+}
+
+.autor-page__wykres-punkt {
+  fill: $cfg-kolor-wykresow;
+}
+
+// --- Komunikaty (flash_messages.scss: kolory na sztywno) -----------------------------
+
+@each $typ, $k in $cfg-komunikaty {
+  .callout.#{$typ} {
+    background: map-get($k, tlo);
+    border-color: map-get($k, ramka);
+    color: map-get($k, tekst);
+
+    .close-button {
+      color: map-get($k, tekst);
+    }
+
+    &::before {
+      background: map-get($k, ramka);
+    }
+
+    a:not(.button) {
+      color: map-get($k, tekst);
+      text-decoration: underline;
+    }
+  }
+}
+
+// --- Rogi ------------------------------------------------------------------------
+
+// Style BPP mają ok. 200 zaokrągleń wpisanych na sztywno (np. `.button`
+// 8 px), więc wybrane zaokrąglenie wymuszamy na grupach elementów.
+.button,
+button:not(.close-button):not(.bpp-support-button):not(.autor-page__slupek),
+input[type="submit"],
+input[type="button"],
+input[type="reset"],
+.main-page-button-primary,
+.main-page-button-secondary,
+.button-search,
+.button-show-all,
+.edit-button {
+  border-radius: $cfg-promien-przyciskow !important;
+}
+
+// Zakładka „Pomoc” przyklejona do dolnej krawędzi ekranu: górne rogi według
+// wybranego zaokrąglenia, dolne ZAWSZE proste — to zakładka, nie przycisk.
+.bpp-support-button {
+  border-radius: $global-radius $global-radius 0 0 !important;
+}
+
+input[type="text"],
+input[type="search"],
+input[type="email"],
+input[type="number"],
+input[type="password"],
+input[type="date"],
+input[type="url"],
+select,
+textarea,
+.select2-container .select2-selection {
+  border-radius: $global-radius !important;
+}
+
+.card,
+.callout,
+[class*="__tile"],
+[class*="-card"],
+[class*="_card"],
+[class*="__card"] {
+  border-radius: $global-radius !important;
+}
+
+// --- Przyciski ---------------------------------------------------------------------
+
+// Główny przycisk strony głównej („Zgłoś publikację”): w kolorze głównym,
+// bez gradientu, zgodnie ze stylem przycisków.
+.main-page-button-primary {
+  background: $primary-color;
+  color: color-pick-contrast($primary-color);
+
+  &:hover,
+  &:focus {
+    background: color.adjust($primary-color, $lightness: -8%);
+    color: color-pick-contrast($primary-color);
+  }
+}
+
+@if $cfg-przyciski-styl == "pelne" {
+  // Płaskie: bez cienia i „unoszenia” po najechaniu (_form-buttons.scss).
+  .button:hover,
+  .button:active,
+  .main-page-button-primary,
+  .main-page-button-primary:hover {
+    box-shadow: none !important;
+    transform: none !important;
+  }
+}
+
+@if $cfg-przyciski-styl == "cien" {
+  .button:not(.clear),
+  .main-page-button-primary {
+    box-shadow: 0 2px 4px rgba($black, 0.2), 0 1px 2px rgba($black, 0.12);
+  }
+}
+
+@if $cfg-przyciski-styl == "obrys" {
+  // Przezroczyste tło, ramka w kolorze przycisku, napis w kolorze
+  // przyciemnionym do czytelności ($cfg-teksty-przyciskow); po najechaniu
+  // przycisk się wypełnia.
+  .button:not(.clear),
+  .main-page-button-primary {
+    background-color: transparent;
+    border: 2px solid map-get($button-palette, primary);
+    color: map-get($cfg-teksty-przyciskow, primary);
+
+    &:hover,
+    &:focus {
+      background-color: map-get($button-palette, primary);
+      color: color-pick-contrast(map-get($button-palette, primary));
+    }
+  }
+
+  @each $nazwa, $kolor in $button-palette {
+    .button.#{$nazwa}:not(.clear) {
+      background-color: transparent;
+      border-color: $kolor;
+      color: map-get($cfg-teksty-przyciskow, $nazwa);
+
+      &:hover,
+      &:focus {
+        background-color: $kolor;
+        color: color-pick-contrast($kolor);
+      }
+    }
+  }
+
+  .button-search,
+  .button-show-all {
+    background: transparent;
+    border: 2px solid currentColor;
+  }
+
+  .button-search {
+    color: map-get($cfg-teksty-przyciskow, primary);
+  }
+
+  .button-show-all {
+    color: map-get($cfg-teksty-przyciskow, secondary);
+  }
+}
+
+// --- Obce arkusze (Select2, jQuery UI) ---------------------------------------------
+
+// Ładują się po motywie z własnymi jasnymi kolorami. Powtarzamy je tu
+// z wyższą specyficznością (`html …`), żeby tryb ciemny i tło treści
+// (przetworzCss w motyw-konfig.js) mogły je przeliczyć. W trybie jasnym
+// wygląd się nie zmienia.
+html .select2-container--default .select2-selection--single,
+html .select2-container--default .select2-selection--multiple,
+html .select2-dropdown,
+html .select2-search--dropdown .select2-search__field,
+html .select2-container--default .select2-search--inline .select2-search__field {
+  background-color: $white;
+  border-color: $medium-gray;
+  color: $body-font-color;
+}
+
+html .select2-container--default .select2-selection--single .select2-selection__rendered,
+html .select2-results__option {
+  color: $body-font-color;
+}
+
+html .select2-container--default .select2-selection--multiple .select2-selection__choice {
+  background-color: $light-gray;
+  border-color: $medium-gray;
+  color: $body-font-color;
+}
+
+html .ui-widget-content {
+  background: $white;
+  border-color: $light-gray;
+  color: $body-font-color;
+}
+
+html .ui-widget-header {
+  background: $light-gray;
+  border-color: $light-gray;
+  color: $body-font-color;
+}
+
+// --- Przycisk dostępności UserWay --------------------------------------------------
+
+// Widget ładuje się z CDN-u UserWay i rysuje okrągły przycisk; kolor i cień
+// ustawiamy CSS-em (działa też na żywo w podglądzie). Zmienna CSS czyta
+// skrypt osadzenia w base.html (atrybut data-color — kolor panelu widgetu).
+:root {
+  --bpp-userway-kolor: #{$cfg-userway-kolor};
+}
+
+#userwayAccessibilityIcon.uai,
+#userwayLstIcon.ulsti {
+  background-color: $cfg-userway-kolor !important;
+  box-shadow: $cfg-userway-cien !important;
+}
+
+// Wyraźny pierścień fokusa z klawiatury (dostępność).
+a:focus-visible,
+.button:focus-visible,
+button:focus-visible {
+  outline: 2px solid $primary-color;
+  outline-offset: 2px;
+}
+
+// Print styles — MUSZĄ być ostatnie (Foundation emituje własny @media print).
+@import "print";

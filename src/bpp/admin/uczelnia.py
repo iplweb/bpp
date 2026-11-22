@@ -4,12 +4,14 @@ from django import forms
 from django.conf import settings
 from django.contrib import admin, messages
 from django.core.exceptions import ImproperlyConfigured, PermissionDenied
+from django.urls import reverse
+from django.utils.html import format_html
 from reversion.admin import VersionAdmin
 
 from ewaluacja_liczba_n.models import LiczbaNDlaUczelni
 from pbn_api.exceptions import PraceSerwisoweException
 
-from ..models import Uczelnia, Ukryj_Status_Korekty
+from ..models import MOTYW_WLASNY, MotywWlasny, Uczelnia, Ukryj_Status_Korekty
 from ..profil_autora import waliduj_uklad
 from ..util.ssrf import waliduj_url_integracji
 
@@ -87,7 +89,21 @@ class UczelniaAdminForm(forms.ModelForm):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.fields["theme_name"].choices = list(settings.BPP_THEMES)
+        motywy = list(settings.BPP_THEMES)
+        self.fields["theme_name"].help_text = format_html(
+            'Własne kolory, czcionkę i styl przycisków ustawisz w <a href="{}">'
+            "konfiguratorze wyglądu</a> (z podglądem stron).",
+            reverse("bpp:konfigurator_wygladu"),
+        )
+        # Motyw z konfiguratora wyglądu — do wyboru, gdy uczelnia go zapisała.
+        if (
+            self.instance.pk
+            and MotywWlasny.objects.filter(uczelnia=self.instance)
+            .exclude(css="")
+            .exists()
+        ):
+            motywy.append((MOTYW_WLASNY, "Własny (z konfiguratora wyglądu)"))
+        self.fields["theme_name"].choices = motywy
 
         # Multi-hosted: ``site`` jest na poziomie DB NOT NULL (migracja 0417),
         # ale to admin musi je wskazać JAWNIE — to Site wiąże uczelnię z

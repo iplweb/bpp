@@ -105,7 +105,7 @@ urlpatterns = (
         ),
         path("", include("oauth_mcp.urls")),
         path("mcp/", include("mcp_server.urls", namespace="mcp_server")),
-        url(r"^favicon\.ico$", cache_page(60 * 60)(favicon)),
+        url(r"^favicon\.ico$", favicon),
         path("test_403/", tylko_superuser(test_403_view)),
         path("test_500/", tylko_superuser(test_500_view)),
         path("test_exception/", tylko_superuser(test_exception_view)),

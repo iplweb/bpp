@@ -1,0 +1,323 @@
+{% load static %}<!DOCTYPE html>
+<html lang="pl">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Konfigurator wyglądu — BPP</title>
+    {# Strona celowo NIE dziedziczy z bare.html: nie podlega motywowi, który właśnie konfigurujemy. #}
+    <style>
+        :root {
+            --tlo: #f3f4f6;
+            --panel: #ffffff;
+            --tekst: #1f2937;
+            --szary: #6b7280;
+            --ramka: #d1d5db;
+            --akcent: #1d4ed8;
+            --blad: #b91c1c;
+        }
+        * { box-sizing: border-box; }
+        body {
+            margin: 0;
+            font: 15px/1.45 system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
+            color: var(--tekst);
+            background: var(--tlo);
+        }
+        .uklad { display: grid; grid-template-columns: 380px 1fr; height: 100vh; overflow: hidden; }
+        .panel {
+            background: var(--panel);
+            border-right: 1px solid var(--ramka);
+            overflow-y: auto;
+            padding: 1.25rem 1.25rem 2rem;
+        }
+        .panel h1 { font-size: 1.25rem; margin: 0 0 0.25rem; }
+        .panel .wstep { color: var(--szary); margin: 0 0 1rem; font-size: 0.9rem; }
+        fieldset { border: 0; border-top: 1px solid var(--ramka); margin: 0; padding: 0.9rem 0 0.4rem; }
+        legend { font-weight: 700; font-size: 0.8rem; letter-spacing: 0.05em; text-transform: uppercase; color: var(--szary); padding: 0 0.4rem 0 0; }
+        .pole { margin-bottom: 0.9rem; }
+        .pole > label, .pole > .etykieta { display: block; font-weight: 600; margin-bottom: 0.3rem; }
+        .pole .opis { color: var(--szary); font-size: 0.85rem; margin: 0.15rem 0 0.35rem; }
+        .kolor { display: flex; gap: 0.5rem; align-items: center; }
+        .kolor input[type=color] { width: 3rem; height: 2.2rem; padding: 0; border: 1px solid var(--ramka); border-radius: 6px; background: none; cursor: pointer; }
+        .kolor input[type=text] { width: 7rem; font: inherit; font-family: ui-monospace, monospace; padding: 0.35rem 0.5rem; border: 1px solid var(--ramka); border-radius: 6px; }
+        .wybor { display: flex; flex-wrap: wrap; gap: 0.4rem; }
+        /* position: relative — ukryte radio (absolute) musi być pozycjonowane */
+        /* względem kafelka, nie strony; inaczej wydłuża dokument, a fokus po */
+        /* kliknięciu przewija całą stronę i układ „ucieka” w górę. */
+        .wybor label {
+            position: relative;
+            border: 1px solid var(--ramka); border-radius: 6px; padding: 0.35rem 0.65rem;
+            cursor: pointer; font-size: 0.9rem; background: #fff;
+        }
+        .wybor input { position: absolute; opacity: 0; pointer-events: none; }
+        .wybor input:checked + span { font-weight: 700; }
+        .wybor label:has(input:checked) { border-color: var(--akcent); box-shadow: inset 0 0 0 1px var(--akcent); background: #eff6ff; }
+        .wybor label:has(input:focus-visible) { outline: 2px solid var(--akcent); outline-offset: 2px; }
+        .tak-nie { display: flex; gap: 0.5rem; align-items: center; font-weight: 600; cursor: pointer; }
+        .tak-nie input { width: 1.1rem; height: 1.1rem; }
+        .pole[hidden] { display: none; }
+        select.lista { width: 100%; font: inherit; padding: 0.4rem 0.5rem; border: 1px solid var(--ramka); border-radius: 6px; background: #fff; }
+        .tak-nie-maly { font-weight: 400; margin-bottom: 0.4rem; }
+        .obraz { display: flex; flex-direction: column; gap: 0.5rem; align-items: flex-start; }
+        .obraz .miniatura { max-width: 160px; max-height: 120px; border: 1px solid var(--ramka); border-radius: 6px; background: repeating-conic-gradient(#eee 0 25%, #fff 0 50%) 0 0 / 16px 16px; }
+        .obraz .miniatura[hidden], .obraz button[hidden] { display: none; }
+        .kolor input:disabled { opacity: 0.4; }
+        .uklad-podgladow[hidden] { display: none; }
+        .uklad-podgladow { display: flex; gap: 0.3rem; align-items: center; font-size: 0.85rem; color: var(--szary); white-space: nowrap; }
+        .uklad-podgladow button { padding: 0.25rem 0.6rem; font-size: 0.85rem; }
+        .uklad-podgladow button[aria-pressed="true"] { border-color: var(--akcent); box-shadow: inset 0 0 0 1px var(--akcent); background: #eff6ff; font-weight: 600; }
+        .siatka.kolumny-1 { grid-template-columns: 1fr; }
+        .siatka.kolumny-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+        .siatka.kolumny-3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+        .blad { color: var(--blad); font-size: 0.85rem; margin-top: 0.35rem; }
+        .blad button { margin-top: 0.3rem; }
+        input[type=text].tekst { width: 100%; font: inherit; padding: 0.4rem 0.55rem; border: 1px solid var(--ramka); border-radius: 6px; }
+        .przyciski { display: flex; flex-wrap: wrap; gap: 0.5rem; margin-top: 0.5rem; }
+        button, .przycisk {
+            font: inherit; font-size: 0.9rem; border: 1px solid var(--ramka); background: #fff;
+            border-radius: 6px; padding: 0.45rem 0.8rem; cursor: pointer; color: var(--tekst);
+        }
+        button.glowny { background: var(--akcent); border-color: var(--akcent); color: #fff; font-weight: 600; }
+        button:disabled { opacity: 0.5; cursor: not-allowed; }
+        .uwaga { background: #fef3c7; border: 1px solid #f59e0b; border-radius: 6px; padding: 0.6rem 0.75rem; font-size: 0.9rem; margin-bottom: 1rem; }
+        .opis-maly { color: var(--szary); font-size: 0.85rem; margin: 0.5rem 0; }
+        .zaawansowane { margin-top: 1rem; border-top: 1px solid var(--ramka); padding-top: 0.75rem; }
+        .zaawansowane summary { cursor: pointer; font-weight: 600; }
+        /* Sekcje zwijane — wyraźne odstępy, żeby grupy się nie zlewały. */
+        .sekcja { border: 1px solid var(--ramka); border-radius: 8px; margin: 0 0 0.75rem; background: #fff; }
+        .sekcja > summary {
+            cursor: pointer; list-style: none; padding: 0.7rem 0.9rem; font-weight: 700;
+            display: flex; justify-content: space-between; align-items: center; border-radius: 8px;
+        }
+        .sekcja > summary::-webkit-details-marker { display: none; }
+        .sekcja > summary::after { content: "▸"; color: var(--szary); transition: transform 0.15s; }
+        .sekcja[open] > summary::after { transform: rotate(90deg); }
+        .sekcja[open] > summary { border-bottom: 1px solid var(--ramka); border-radius: 8px 8px 0 0; background: #f9fafb; }
+        .sekcja > summary:focus-visible { outline: 2px solid var(--akcent); outline-offset: 2px; }
+        .sekcja-tresc { padding: 0.9rem 0.9rem 0.3rem; }
+        .sekcja.favicon > *:not(summary) { margin-left: 0.9rem; margin-right: 0.9rem; }
+        .sekcja.favicon > .opis { margin-top: 0.8rem; }
+        .historia-lista { margin: 0.5rem 0 0.75rem 1.2rem; padding: 0; font-size: 0.9rem; }
+        .historia-lista li { margin-bottom: 0.35rem; }
+        .historia-lista button { margin-left: 0.4rem; padding: 0.15rem 0.5rem; font-size: 0.8rem; }
+        .historia-lista .aktualny { color: var(--szary); font-size: 0.8rem; margin-left: 0.3rem; }
+        .gotowe { margin: 0 0 1rem; }
+        .sekcje-sterowanie { display: flex; justify-content: flex-end; gap: 0.4rem; margin: 0 0 0.5rem; }
+        .sekcje-sterowanie button { padding: 0.2rem 0.6rem; font-size: 0.8rem; }
+        .akcje {
+            position: sticky; top: -1.25rem; z-index: 5; background: var(--panel);
+            margin: 0 -1.25rem 1rem; padding: 0.75rem 1.25rem 0.5rem;
+            border-bottom: 1px solid var(--ramka); box-shadow: 0 4px 6px -6px rgba(0,0,0,0.25);
+        }
+        .akcje .przyciski { margin-top: 0; }
+        .akcje .status { margin-top: 0.4rem; min-height: 1.2em; }
+        .gotowe label { display: block; font-weight: 600; margin-bottom: 0.3rem; }
+        .gotowe-wiersz { display: flex; gap: 0.5rem; }
+        .uwaga-info { background: #eff6ff; border-color: #93c5fd; }
+        .karta-przegladarki { display: inline-flex; align-items: center; gap: 0.45rem; background: #e5e7eb; border-radius: 8px 8px 0 0; padding: 0.4rem 0.75rem; font-size: 0.8rem; max-width: 100%; margin: 0.5rem 0; }
+        .karta-przegladarki span { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 16rem; }
+        .favicon-rozmiary { display: flex; gap: 0.75rem; align-items: flex-end; margin-bottom: 0.5rem; }
+        .favicon-rozmiary img, .karta-przegladarki img { image-rendering: auto; background: repeating-conic-gradient(#eee 0 25%, #fff 0 50%) 0 0 / 8px 8px; }
+        .favicon-rozmiary img[src=""], .karta-przegladarki img[src=""] { visibility: hidden; }
+        .status { font-size: 0.85rem; color: var(--szary); min-height: 1.3em; margin-top: 0.6rem; }
+        .status.blad { color: var(--blad); }
+
+        .podglady { overflow-y: auto; padding: 1.25rem; }
+        .podglady-naglowek { display: flex; justify-content: space-between; align-items: center; gap: 1rem; margin-bottom: 0.75rem; }
+        .podglady-naglowek p { margin: 0; color: var(--szary); font-size: 0.9rem; }
+        .siatka { display: grid; grid-template-columns: repeat(auto-fill, minmax(420px, 1fr)); gap: 1rem; align-items: start; }
+        .karta { background: var(--panel); border: 1px solid var(--ramka); border-radius: 8px; overflow: hidden; }
+        .karta header { display: flex; justify-content: space-between; align-items: center; padding: 0.45rem 0.7rem; border-bottom: 1px solid var(--ramka); font-weight: 600; font-size: 0.9rem; }
+        .karta header button { padding: 0.2rem 0.55rem; font-size: 0.8rem; }
+        .okno { position: relative; overflow: hidden; background: #fff; }
+        .okno iframe { border: 0; transform-origin: 0 0; position: absolute; top: 0; left: 0; background: #fff; }
+        .karta-telefony { grid-column: 1 / -1; }
+        .telefony { display: flex; gap: 12px; padding: 12px; justify-content: center; align-items: flex-start; }
+        .telefon { display: flex; flex-direction: column; gap: 0.35rem; }
+        .telefon-naglowek { display: flex; justify-content: space-between; align-items: center; font-size: 0.85rem; font-weight: 600; gap: 0.5rem; }
+        .telefon-naglowek button { padding: 0.15rem 0.5rem; font-size: 0.8rem; }
+        .telefon .okno { border: 1px solid var(--ramka); border-radius: 10px; }
+        .okno .zaslona {
+            position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
+            background: rgba(255,255,255,0.85); color: var(--szary); font-size: 0.9rem; transition: opacity 0.2s;
+        }
+        .okno .zaslona.ukryta { opacity: 0; pointer-events: none; }
+
+        .powiekszenie {
+            position: fixed; inset: 0; background: rgba(17,24,39,0.6); display: none;
+            align-items: center; justify-content: center; z-index: 10; padding: 2rem;
+        }
+        .powiekszenie.otwarte { display: flex; }
+        .powiekszenie .ramka { background: #fff; border-radius: 8px; overflow: hidden; display: flex; flex-direction: column; width: min(1400px, 100%); height: 100%; }
+        .powiekszenie .ramka.telefon { width: 420px; }
+        .powiekszenie header { display: flex; justify-content: space-between; align-items: center; padding: 0.5rem 0.8rem; border-bottom: 1px solid var(--ramka); font-weight: 600; }
+        .powiekszenie-tresc { position: relative; flex: 1; display: flex; }
+        .powiekszenie iframe { flex: 1; border: 0; width: 100%; }
+        .powiekszenie-ladowanie {
+            position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
+            background: #fff; color: var(--szary);
+        }
+        .powiekszenie-ladowanie[hidden] { display: none; }
+
+        @media (min-width: 901px) {
+            html, body { height: 100%; overflow: hidden; }
+        }
+        @media (max-width: 900px) {
+            .uklad { grid-template-columns: 1fr; height: auto; }
+            .panel { border-right: 0; border-bottom: 1px solid var(--ramka); }
+            .siatka { grid-template-columns: 1fr; }
+        }
+    </style>
+</head>
+<body>
+<div class="uklad">
+    <aside class="panel">
+        <h1>Konfigurator wyglądu</h1>
+        <p class="wstep">
+            Wybierz kolory i styl. Podgląd po prawej pokazuje prawdziwe strony
+            tej bazy. Gdy wygląd Ci odpowiada, kliknij „Zastosuj” — zmiana od
+            razu obejmie całą stronę.
+        </p>
+        {# Akcje na górze, przyklejone — widoczne przy przewijaniu długiej listy sekcji. #}
+        <div class="akcje">
+            <div class="przyciski">
+                <button type="button" class="glowny" id="zastosuj" hidden>Zastosuj na tej stronie</button>
+                <button type="button" id="zapisz" hidden>Zapisz w bazie</button>
+                <button type="button" id="przymierz" hidden>Przymierz (tylko ja)</button>
+                <button type="button" id="wroc-do-zapisanego" hidden>Wróć do zastosowanych</button>
+            </div>
+            <p class="opis-maly" id="tylko-superuzytkownik" hidden>
+                Zastosować motyw może tylko superużytkownik.
+            </p>
+            <div class="status" id="status" role="status" aria-live="polite"></div>
+        </div>
+        <div class="uwaga" id="uwaga-wersja" hidden></div>
+        <div class="uwaga" id="uwaga-kompilator" hidden></div>
+        <div class="uwaga uwaga-info" id="uwaga-roboczy" hidden></div>
+        <div class="gotowe">
+            <label for="gotowy-motyw">Zacznij od gotowego motywu</label>
+            <div class="gotowe-wiersz">
+                <select id="gotowy-motyw" class="lista"></select>
+                <button type="button" id="wczytaj-gotowy">Wczytaj</button>
+            </div>
+        </div>
+        <div class="sekcje-sterowanie">
+            <button type="button" id="rozwin-wszystkie">Rozwiń wszystkie</button>
+            <button type="button" id="zwin-wszystkie">Zwiń wszystkie</button>
+        </div>
+        <form id="formularz" novalidate>
+            <div id="pola"></div>
+        </form>
+        <details class="sekcja favicon" data-sekcja="favicon">
+            <summary>Ikona strony (favicon)</summary>
+            <div class="opis">
+                Ikonka na karcie przeglądarki i w zakładkach. PNG (najlepiej
+                kwadrat, co najmniej 64×64 px) albo ICO, do 1 MB. Zapisuje się
+                razem z „Zastosuj”.
+            </div>
+            <div class="karta-przegladarki" aria-hidden="true">
+                <img id="favicon-podglad" alt="" width="16" height="16">
+                <span id="favicon-tytul">Bibliografia Publikacji Pracowników</span>
+            </div>
+            <div class="favicon-rozmiary" aria-hidden="true">
+                <img id="favicon-32" alt="" width="32" height="32">
+                <img id="favicon-64" alt="" width="64" height="64">
+            </div>
+            <div class="przyciski">
+                <label class="przycisk" for="favicon-plik">Wybierz ikonę…</label>
+                <input type="file" id="favicon-plik" accept="image/png,image/x-icon,image/vnd.microsoft.icon,.ico" hidden>
+                <button type="button" id="favicon-cofnij" hidden>Cofnij zmianę ikony</button>
+            </div>
+            <div class="blad" id="favicon-blad" hidden></div>
+        </details>
+        <details class="sekcja historia" data-sekcja="historia">
+            <summary>Historia i cofanie zmian</summary>
+            <div class="sekcja-tresc">
+                <div class="opis">
+                    Ostatnie zastosowane motywy. „Wczytaj” wstawia ustawienia do
+                    edytora — żeby przywrócić je na stronie, kliknij „Zastosuj”.
+                </div>
+                <ol class="historia-lista" id="historia-lista"></ol>
+                <p class="opis-maly" id="historia-pusta">Nie zastosowano jeszcze żadnego motywu.</p>
+                <div id="motyw-sprzed" hidden>
+                    <button type="button" id="przywroc-sprzed"></button>
+                    <div class="opis">Bez kompilacji — od razu.</div>
+                </div>
+            </div>
+        </details>
+        <details class="sekcja plik" data-sekcja="plik">
+            <summary>Zapisz do pliku / wczytaj z pliku</summary>
+            <div class="sekcja-tresc">
+                <p class="opis-maly">
+                    Plik z ustawieniami (.json) — kopia na dysku, przeniesienie
+                    motywu do innej bazy BPP albo wysłanie do IPLweb.
+                </p>
+                <div class="przyciski">
+                    <button type="button" id="pobierz">Zapisz do pliku</button>
+                    <label class="przycisk" for="wczytaj">Wczytaj z pliku…</label>
+                    <input type="file" id="wczytaj" accept=".json,application/json" hidden>
+                    <button type="button" id="kopiuj">Kopiuj do schowka</button>
+                </div>
+                <div class="pole">
+                    <label for="pole-opis">Opis motywu (opcjonalnie)</label>
+                    <input type="text" class="tekst" id="pole-opis" maxlength="80"
+                           placeholder="np. Granatowy, czcionka Inter">
+                </div>
+                <div class="pole">
+                    <label for="pole-nazwa">Nazwa pliku (opcjonalnie)</label>
+                    <input type="text" class="tekst" id="pole-nazwa" maxlength="41"
+                           placeholder="motyw-bpp" spellcheck="false">
+                    <div class="opis">Małe litery bez polskich znaków, cyfry i myślniki.</div>
+                    <div class="blad" id="blad-nazwa" hidden></div>
+                </div>
+            </div>
+        </details>
+    </aside>
+
+    <main class="podglady">
+        <div class="podglady-naglowek">
+            <p>Podglądy są „żywe” — można w nie klikać. Kliknij „Powiększ”, żeby obejrzeć stronę w pełnym rozmiarze.</p>
+            <div class="uklad-podgladow" id="tryb-podgladu" role="group" aria-label="Wariant trybu automatycznego" hidden>
+                Podgląd:
+                <button type="button" data-tryb="jasny">jasny</button>
+                <button type="button" data-tryb="ciemny">ciemny</button>
+            </div>
+            <div class="uklad-podgladow" role="group" aria-label="Układ podglądów">
+                Układ:
+                <button type="button" data-kolumny="1">1 kolumna</button>
+                <button type="button" data-kolumny="2">2 kolumny</button>
+                <button type="button" data-kolumny="3">3 kolumny</button>
+                <button type="button" data-kolumny="auto">Auto</button>
+            </div>
+        </div>
+        <div class="siatka" id="siatka"></div>
+    </main>
+</div>
+
+<div class="powiekszenie" id="powiekszenie" role="dialog" aria-modal="true" aria-labelledby="powiekszenie-tytul">
+    <div class="ramka">
+        <header>
+            <span id="powiekszenie-tytul"></span>
+            <button type="button" id="zamknij-powiekszenie">Zamknij</button>
+        </header>
+        <div class="powiekszenie-tresc">
+            <div class="powiekszenie-ladowanie" id="powiekszenie-ladowanie" hidden>Ładuję stronę…</div>
+            <iframe id="powiekszenie-ramka" title="Powiększony podgląd"></iframe>
+        </div>
+    </div>
+</div>
+
+{{ podglady|json_script:"konfigurator-podglady" }}
+{{ stan_serwera|json_script:"konfigurator-serwer" }}
+{% csrf_token %}
+<script id="konfigurator-adresy" type="application/json">{
+    "worker": "{% static 'bpp/js/motyw-kompilator-worker.js' %}",
+    "sass": "{% static 'bpp/js/dist/sass-przegladarka.js' %}",
+    "konfig": "{% static 'bpp/js/motyw-konfig.js' %}",
+    "kompilator": "{% static 'bpp/js/motyw-kompilator.js' %}",
+    "zrodla": "{% static 'bpp/js/dist/motyw-zrodla-scss.json' %}",
+    "czcionki": "{% static 'bpp/fonts' %}"
+}</script>
+<script src="{% static 'bpp/js/motyw-konfig.js' %}"></script>
+<script src="{% static 'bpp/js/konfigurator-wygladu.js' %}"></script>
+</body>
+</html>

@@ -1,0 +1,77 @@
+{% extends "base.html" %}
+{# Strona demo konfiguratora wyglądu: wszystkie rodzaje komunikatów, przycisków i pól w jednym miejscu. #}
+
+{% block extratitle %}Komunikaty i przyciski — podgląd motywu{% endblock %}
+
+{% block breadcrumbs %}
+    {{ block.super }}
+    <li class="current">Komunikaty i przyciski</li>
+{% endblock %}
+
+{% block content %}
+    <h1>Komunikaty i przyciski</h1>
+    <p>
+        Przykładowa strona konfiguratora wyglądu. Komunikaty u góry strony
+        pojawiają się po zapisaniu zmian, błędach itp.
+    </p>
+
+    <h2>Komunikaty w treści</h2>
+    {% for klasa, opis in komunikaty %}
+        <div class="callout {{ klasa }}">{{ opis }} <a href="#">Przykładowy link</a>.</div>
+    {% endfor %}
+
+    <h2>Przyciski</h2>
+    <p>
+        {% for klasa, opis in przyciski %}
+            <a href="#" class="button {{ klasa }}">{{ opis }}</a>
+        {% endfor %}
+    </p>
+    <p>
+        {% for klasa, opis in przyciski %}
+            <a href="#" class="button hollow {{ klasa }}">{{ opis }}</a>
+        {% endfor %}
+    </p>
+    <p>
+        <a href="#" class="button small">Mały</a>
+        <a href="#" class="button">Zwykły</a>
+        <a href="#" class="button large">Duży</a>
+        <a href="#" class="button disabled" aria-disabled="true">Nieaktywny</a>
+        <button type="button" class="button">Przycisk formularza</button>
+    </p>
+    <p>
+        <a href="#" class="main-page-button-primary">Masz nową publikację? Zgłoś ją do bazy!</a>
+        <a href="#" class="main-page-button-secondary">Przeglądaj najnowsze prace</a>
+        <a href="#" class="edit-button">Edytuj</a>
+    </p>
+
+    <h2>Etykiety</h2>
+    <p>
+        {% for klasa, opis in przyciski %}
+            <span class="label {{ klasa }}">{{ opis }}</span>
+        {% endfor %}
+    </p>
+
+    <h2>Pola formularza</h2>
+    <form action="#" onsubmit="return false;">
+        <div class="grid-x grid-margin-x">
+            <div class="cell medium-4">
+                <label>Tytuł pracy <input type="text" placeholder="Wpisz tytuł…"></label>
+            </div>
+            <div class="cell medium-4">
+                <label>Rok
+                    <select><option>2026</option><option>2025</option></select>
+                </label>
+            </div>
+            <div class="cell medium-4">
+                <label>Uwagi <textarea rows="2"></textarea></label>
+            </div>
+        </div>
+        <input type="submit" class="button" value="Szukaj">
+    </form>
+
+    <h2>Karta</h2>
+    <div class="card" style="max-width: 24rem;">
+        <div class="card-divider">Nagłówek karty</div>
+        <div class="card-section">Treść karty z przykładowym tekstem.</div>
+    </div>
+{% endblock %}

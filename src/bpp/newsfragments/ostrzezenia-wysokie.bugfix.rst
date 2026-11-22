@@ -1,0 +1,1 @@
+Komunikaty-ostrzeżenia (żółte) na wszystkich stronach miały zbędnie dużą wysokość i wyśrodkowany tekst — styl przeznaczony dla komunikatu „nie znaleziono jednostek” na liście jednostek obejmował każde ostrzeżenie. Teraz ostrzeżenia mają zwykły wygląd, a duży wyśrodkowany komunikat został tylko na liście jednostek.

@@ -55,3 +55,9 @@ TABLE_TO_MODEL = {
 from .opi_2012 import *  # noqa
 from .oplaty_log import *  # noqa
 from .soft_delete_log import *  # noqa
+from .motyw_wlasny import (  # noqa
+    MOTYW_WLASNY,
+    MotywPrzymiarka,
+    MotywWersja,
+    MotywWlasny,
+)

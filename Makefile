@@ -29,7 +29,7 @@
 
 BRANCH=`git branch | sed -n '/\* /s///p'`
 
-.PHONY: help clean distclean tests test-durations release tests-without-playwright tests-only-playwright docker destroy-test-databases cache-delete buildx-cache-stats buildx-cache-prune buildx-cache-prune-aggressive buildx-cache-prune-registry buildx-cache-export buildx-cache-import buildx-cache-list bump-dev bump-release bump-and-start-dev migrate new-worktree clean-worktree generate-500-page build build-force build-base build-app-services build-appserver-base build-appserver build-workerserver build-beatserver build-authserver build-denorm-queue build-testserver build-production build-production-force build-all check-not-pushing build-servers docker-images-on-ci check-clean-tree prepare-claude prepare-developer-machine prepare-developer-machine-linux prepare-developer-machine-macos playwright-install playwright-check
+.PHONY: help clean distclean tests test-durations release tests-without-playwright tests-only-playwright docker destroy-test-databases cache-delete buildx-cache-stats buildx-cache-prune buildx-cache-prune-aggressive buildx-cache-prune-registry buildx-cache-export buildx-cache-import buildx-cache-list bump-dev bump-release bump-and-start-dev migrate new-worktree clean-worktree generate-500-page build build-force build-base build-app-services build-appserver-base build-appserver build-workerserver build-beatserver build-authserver build-denorm-queue build-motyw-kompilator build-testserver build-production build-production-force build-all check-not-pushing build-servers docker-images-on-ci check-clean-tree prepare-claude prepare-developer-machine prepare-developer-machine-linux prepare-developer-machine-macos playwright-install playwright-check
 
 .DEFAULT_GOAL := help
 
@@ -1008,6 +1008,9 @@ build-authserver: ## Zbuduj tylko authserver
 
 build-denorm-queue: ## Zbuduj tylko denorm-queue
 	docker buildx bake $(BAKE_ARGS) denorm-queue
+
+build-motyw-kompilator: ## Zbuduj tylko kompilator motywów (konfigurator wyglądu)
+	docker buildx bake $(BAKE_ARGS) motyw-kompilator
 
 # Alias for backward compatibility — celowo wskazuje na `build-all`, nie na
 # `build`: historycznie oznaczał „zbuduj wszystkie serwery", a `build` zawęził

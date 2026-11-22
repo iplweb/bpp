@@ -89,7 +89,7 @@ variable "COMPRESSION_LEVEL" {
 # `bake testserver` (patrz Makefile, sekcja "Docker build (buildx bake)").
 group "default" {
   targets = ["appserver", "workerserver",
-             "beatserver", "authserver", "denorm-queue"]
+             "beatserver", "authserver", "denorm-queue", "motyw-kompilator"]
 }
 
 group "base-only" {
@@ -97,7 +97,8 @@ group "base-only" {
 }
 
 group "app-services" {
-  targets = ["appserver", "workerserver", "beatserver", "authserver", "denorm-queue"]
+  targets = ["appserver", "workerserver", "beatserver", "authserver", "denorm-queue",
+             "motyw-kompilator"]
 }
 
 # Base image - critical path, app services depend on this
@@ -248,6 +249,28 @@ target "denorm-queue" {
     "iplweb/bpp_denorm_queue:latest"
   ] : [
     "iplweb/bpp_denorm_queue:${DOCKER_VERSION}"
+  ]
+  platforms = [PLATFORM]
+  output    = PUSH ? ["type=registry,compression=${COMPRESSION},compression-level=${COMPRESSION_LEVEL},force-compression=true"] : ["type=docker"]
+}
+
+# Kompilator motywów konfiguratora wyglądu — osobny, odizolowany kontener
+# (Node, bez bazy i sekretów). Pliki JS/SCSS z obrazu bazowego tej samej
+# wersji, patrz docker/motyw-kompilator/Dockerfile.
+target "motyw-kompilator" {
+  dockerfile = "docker/motyw-kompilator/Dockerfile"
+  context    = "."
+  args = {
+    BPP_BASE_TAG = DOCKER_VERSION
+  }
+  contexts = {
+    "iplweb/bpp_base:${DOCKER_VERSION}" = "target:base"
+  }
+  tags = TAG_LATEST == "true" ? [
+    "iplweb/bpp_motyw_kompilator:${DOCKER_VERSION}",
+    "iplweb/bpp_motyw_kompilator:latest"
+  ] : [
+    "iplweb/bpp_motyw_kompilator:${DOCKER_VERSION}"
   ]
   platforms = [PLATFORM]
   output    = PUSH ? ["type=registry,compression=${COMPRESSION},compression-level=${COMPRESSION_LEVEL},force-compression=true"] : ["type=docker"]

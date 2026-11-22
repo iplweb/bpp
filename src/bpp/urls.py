@@ -100,6 +100,18 @@ from bpp.views.eksport_autora import (
     PrzekierowanieEksportuAutoraView,
     StartEksportAutoraView,
 )
+from bpp.views.konfigurator_wygladu import (
+    konfigurator_wygladu,
+    konfigurator_wygladu_demo,
+    konfigurator_wygladu_przymiarka_koniec,
+    konfigurator_wygladu_przymierz,
+    konfigurator_wygladu_przywroc,
+    konfigurator_wygladu_wersja,
+    konfigurator_wygladu_zapisz,
+    konfigurator_wygladu_zastosuj,
+    motyw_przymiarka_css,
+    motyw_wlasny_css,
+)
 from bpp.views.microsoft_auth_redirect import MicrosoftAuthRedirectView
 from bpp.views.oai import OAIView
 from bpp.views.profil_edycja import ProfilBiogramPodgladView, ProfilEdycjaView
@@ -315,6 +327,56 @@ urlpatterns = [
         name="browse_artykul",
     ),
     url(r"^autorzy/$", AutorzyView.as_view(), name="browse_autorzy"),
+    path(
+        "konfigurator-wygladu/",
+        konfigurator_wygladu,
+        name="konfigurator_wygladu",
+    ),
+    path(
+        "konfigurator-wygladu/demo/",
+        konfigurator_wygladu_demo,
+        name="konfigurator_wygladu_demo",
+    ),
+    path(
+        "konfigurator-wygladu/wersja/<int:pk>/",
+        konfigurator_wygladu_wersja,
+        name="konfigurator_wygladu_wersja",
+    ),
+    path(
+        "konfigurator-wygladu/przywroc/",
+        konfigurator_wygladu_przywroc,
+        name="konfigurator_wygladu_przywroc",
+    ),
+    path(
+        "konfigurator-wygladu/zapisz/",
+        konfigurator_wygladu_zapisz,
+        name="konfigurator_wygladu_zapisz",
+    ),
+    path(
+        "konfigurator-wygladu/zastosuj/",
+        konfigurator_wygladu_zastosuj,
+        name="konfigurator_wygladu_zastosuj",
+    ),
+    path(
+        "konfigurator-wygladu/przymierz/",
+        konfigurator_wygladu_przymierz,
+        name="konfigurator_wygladu_przymierz",
+    ),
+    path(
+        "konfigurator-wygladu/przymierz/koniec/",
+        konfigurator_wygladu_przymiarka_koniec,
+        name="konfigurator_wygladu_przymiarka_koniec",
+    ),
+    path(
+        "motyw-przymiarka/<str:skrot>.css",
+        motyw_przymiarka_css,
+        name="motyw_przymiarka_css",
+    ),
+    path(
+        "motyw-wlasny/<str:skrot>.css",
+        motyw_wlasny_css,
+        name="motyw_wlasny_css",
+    ),
     url(
         r"^autorzy/(?P<literka>.)/$",
         AutorzyView.as_view(),
