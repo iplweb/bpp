@@ -16712,6 +16712,42 @@ COPY public.django_countdown_sitecountdown (id, countdown_time, message, long_de
 --
 
 COPY public.django_migrations (id, app, name, applied) FROM stdin;
+829	miniblog	0003_alter_article_article_body	2000-01-01 00:00:00+00
+1146	bpp	0446_merge_20260619_2128	2000-01-01 00:00:00+00
+880	raport_slotow	0001_initial	2000-01-01 00:00:00+00
+512	bpp	0405_add_rok_to_oplaty_log	2000-01-01 00:00:00+00
+706	favicon	0003_site_manager	2000-01-01 00:00:00+00
+1135	bpp	0487_api_v1_przelaczniki	2000-01-01 00:00:00+00
+554	constance	0001_initial	2000-01-01 00:00:00+00
+808	integrator2	0001_initial	2000-01-01 00:00:00+00
+716	flexible_reports	0008_auto_20171025_0553	2000-01-01 00:00:00+00
+717	flexible_reports	0009_auto_20171025_0558	2000-01-01 00:00:00+00
+718	flexible_reports	0010_auto_20171026_0340	2000-01-01 00:00:00+00
+805	importer_publikacji	0007_merge_20260421_1248	2000-01-01 00:00:00+00
+719	flexible_reports	0011_alter_reportelement_options_alter_column_attrs_and_more	2000-01-01 00:00:00+00
+720	flexible_reports	0012_add_query_language	2000-01-01 00:00:00+00
+721	flexible_reports	0013_add_sample_context	2000-01-01 00:00:00+00
+722	flexible_reports	0014_alter_datasource_sample_context	2000-01-01 00:00:00+00
+724	formdefaults	0002_django32	2000-01-01 00:00:00+00
+725	formdefaults	0003_formrepresentation_pre_registered	2000-01-01 00:00:00+00
+726	formdefaults	0004_unique_field_user	2000-01-01 00:00:00+00
+727	formdefaults	0005_unique_field_system	2000-01-01 00:00:00+00
+728	formdefaults	0006_formfielddefaultvalue_is_auto_snapshot	2000-01-01 00:00:00+00
+729	formdefaults	0007_backfill_is_auto_snapshot	2000-01-01 00:00:00+00
+730	import_dyscyplin	0001_initial	2000-01-01 00:00:00+00
+731	import_dyscyplin	0002_import_dyscyplin_web_page_uid	2000-01-01 00:00:00+00
+732	import_dyscyplin	0003_auto_20180409_1129	2000-01-01 00:00:00+00
+733	import_dyscyplin	0004_auto_20180409_1240	2000-01-01 00:00:00+00
+734	import_dyscyplin	0005_auto_20180414_1801	2000-01-01 00:00:00+00
+735	import_dyscyplin	0006_auto_20180414_1841	2000-01-01 00:00:00+00
+736	import_dyscyplin	0007_auto_20180414_1917	2000-01-01 00:00:00+00
+737	import_dyscyplin	0008_auto_20180415_0813	2000-01-01 00:00:00+00
+738	import_dyscyplin	0009_auto_20180415_0847	2000-01-01 00:00:00+00
+739	import_dyscyplin	0010_auto_20180415_1107	2000-01-01 00:00:00+00
+740	import_dyscyplin	0011_auto_20180415_2223	2000-01-01 00:00:00+00
+741	import_dyscyplin	0012_import_dyscyplin_row_dyscyplina_ostateczna	2000-01-01 00:00:00+00
+742	import_dyscyplin	0013_auto_20190324_1826	2000-01-01 00:00:00+00
+743	import_dyscyplin	0014_auto_20190324_1906	2000-01-01 00:00:00+00
 299	bpp	0211_oznaczenie_wydania	2000-01-01 00:00:00+00
 745	import_dyscyplin	0016_auto_20190327_0129	2000-01-01 00:00:00+00
 746	import_dyscyplin	0017_auto_20190327_2246	2000-01-01 00:00:00+00
@@ -16803,7 +16839,6 @@ COPY public.django_migrations (id, app, name, applied) FROM stdin;
 826	siteblog	0001_initial	2000-01-01 00:00:00+00
 827	miniblog	0001_initial	2000-01-01 00:00:00+00
 828	miniblog	0002_auto_20180101_2017	2000-01-01 00:00:00+00
-829	miniblog	0003_alter_article_article_body	2000-01-01 00:00:00+00
 830	miniblog	0004_migrate_to_siteblog_and_delete	2000-01-01 00:00:00+00
 832	oswiadczenia	0001_add_export_task_model	2000-01-01 00:00:00+00
 833	oswiadczenia	0002_add_offset_limit	2000-01-01 00:00:00+00
@@ -16906,7 +16941,6 @@ COPY public.django_migrations (id, app, name, applied) FROM stdin;
 1143	nowe_raporty	0002_definicjaraportu_ikona	2000-01-01 00:00:00+00
 1144	bpp	0444_autor_biogram_autor_biogram_format_and_more	2000-01-01 00:00:00+00
 1145	bpp	0445_remove_autor_uklad_profilu_and_more	2000-01-01 00:00:00+00
-1146	bpp	0446_merge_20260619_2128	2000-01-01 00:00:00+00
 1147	bpp	0447_autoreksporttask	2000-01-01 00:00:00+00
 1148	bpp	0448_uczelnia_szerokosc_lewej_kolumny_and_more	2000-01-01 00:00:00+00
 1149	bpp	0454_merge_20260706_0757	2000-01-01 00:00:00+00
@@ -16998,7 +17032,6 @@ COPY public.django_migrations (id, app, name, applied) FROM stdin;
 877	przemapuj_zrodla_pbn	0003_alter_przemapowaniezrodla_zrodlo_nowe_and_more	2000-01-01 00:00:00+00
 878	przemapuj_zrodlo	0001_initial	2000-01-01 00:00:00+00
 879	przemapuj_zrodlo	0002_remove_przemapowazrodla_przemapuj_z_zrodlo__8d9224_idx_and_more	2000-01-01 00:00:00+00
-880	raport_slotow	0001_initial	2000-01-01 00:00:00+00
 881	raport_slotow	0002_auto_20200316_2027	2000-01-01 00:00:00+00
 882	raport_slotow	0003_auto_20200329_1719	2000-01-01 00:00:00+00
 883	raport_slotow	0004_raportslotowuczelnia_raportslotowuczelniawiersz	2000-01-01 00:00:00+00
@@ -17285,6 +17318,7 @@ COPY public.django_migrations (id, app, name, applied) FROM stdin;
 22	axes	0003_auto_20160322_0929	2000-01-01 00:00:00+00
 23	axes	0004_auto_20181024_1538	2000-01-01 00:00:00+00
 24	axes	0005_remove_accessattempt_trusted	2000-01-01 00:00:00+00
+723	formdefaults	0001_initial	2000-01-01 00:00:00+00
 26	axes	0007_alter_accessattempt_unique_together	2000-01-01 00:00:00+00
 28	axes	0009_add_session_hash	2000-01-01 00:00:00+00
 29	axes	0010_accessattemptexpiration	2000-01-01 00:00:00+00
@@ -17507,7 +17541,6 @@ COPY public.django_migrations (id, app, name, applied) FROM stdin;
 255	bpp	0170_wydawnictwo_wydawca	2000-01-01 00:00:00+00
 256	bpp	0171_auto_20190806_2015	2000-01-01 00:00:00+00
 547	bpp	0431_search_index_gin	2000-01-01 00:00:00+00
-723	formdefaults	0001_initial	2000-01-01 00:00:00+00
 811	integrator2	0004_django32	2000-01-01 00:00:00+00
 263	bpp	0177_cache_punktacja_autora_query	2000-01-01 00:00:00+00
 265	bpp	0179_auto_20190910_2147	2000-01-01 00:00:00+00
@@ -17709,7 +17742,6 @@ COPY public.django_migrations (id, app, name, applied) FROM stdin;
 509	bpp	0402_autorzy_data_oswiadczenia	2000-01-01 00:00:00+00
 510	bpp	0403_autorzy_ostatnio_zmieniony	2000-01-01 00:00:00+00
 511	bpp	0404_add_oplaty_publikacji_log	2000-01-01 00:00:00+00
-512	bpp	0405_add_rok_to_oplaty_log	2000-01-01 00:00:00+00
 513	bpp	0406_add_pbn_evaluation_fields	2000-01-01 00:00:00+00
 514	bpp	0407_remove_null_from_string_fields	2000-01-01 00:00:00+00
 515	bpp	0408_add_jest_wydawnictwem_zwartym_to_crossref_mapper	2000-01-01 00:00:00+00
@@ -17804,7 +17836,6 @@ COPY public.django_migrations (id, app, name, applied) FROM stdin;
 619	django_celery_results	0010_remove_duplicate_indices	2000-01-01 00:00:00+00
 620	django_celery_results	0011_taskresult_periodic_task_name	2000-01-01 00:00:00+00
 621	django_celery_results	0012_taskresult_date_started	2000-01-01 00:00:00+00
-706	favicon	0003_site_manager	2000-01-01 00:00:00+00
 622	django_celery_results	0013_taskresult_django_cele_periodi_1993cf_idx	2000-01-01 00:00:00+00
 623	django_celery_results	0014_alter_taskresult_status	2000-01-01 00:00:00+00
 624	sites	0002_alter_domain_unique	2000-01-01 00:00:00+00
@@ -17890,37 +17921,7 @@ COPY public.django_migrations (id, app, name, applied) FROM stdin;
 712	flexible_reports	0004_auto_20170823_2342	2000-01-01 00:00:00+00
 714	flexible_reports	0006_default_ordering	2000-01-01 00:00:00+00
 715	flexible_reports	0007_sort_desc	2000-01-01 00:00:00+00
-1135	bpp	0487_api_v1_przelaczniki	2000-01-01 00:00:00+00
-554	constance	0001_initial	2000-01-01 00:00:00+00
-808	integrator2	0001_initial	2000-01-01 00:00:00+00
-716	flexible_reports	0008_auto_20171025_0553	2000-01-01 00:00:00+00
-717	flexible_reports	0009_auto_20171025_0558	2000-01-01 00:00:00+00
-718	flexible_reports	0010_auto_20171026_0340	2000-01-01 00:00:00+00
-805	importer_publikacji	0007_merge_20260421_1248	2000-01-01 00:00:00+00
-719	flexible_reports	0011_alter_reportelement_options_alter_column_attrs_and_more	2000-01-01 00:00:00+00
-720	flexible_reports	0012_add_query_language	2000-01-01 00:00:00+00
-721	flexible_reports	0013_add_sample_context	2000-01-01 00:00:00+00
-722	flexible_reports	0014_alter_datasource_sample_context	2000-01-01 00:00:00+00
-724	formdefaults	0002_django32	2000-01-01 00:00:00+00
-725	formdefaults	0003_formrepresentation_pre_registered	2000-01-01 00:00:00+00
-726	formdefaults	0004_unique_field_user	2000-01-01 00:00:00+00
-727	formdefaults	0005_unique_field_system	2000-01-01 00:00:00+00
-728	formdefaults	0006_formfielddefaultvalue_is_auto_snapshot	2000-01-01 00:00:00+00
-729	formdefaults	0007_backfill_is_auto_snapshot	2000-01-01 00:00:00+00
-730	import_dyscyplin	0001_initial	2000-01-01 00:00:00+00
-731	import_dyscyplin	0002_import_dyscyplin_web_page_uid	2000-01-01 00:00:00+00
-732	import_dyscyplin	0003_auto_20180409_1129	2000-01-01 00:00:00+00
-733	import_dyscyplin	0004_auto_20180409_1240	2000-01-01 00:00:00+00
-734	import_dyscyplin	0005_auto_20180414_1801	2000-01-01 00:00:00+00
-735	import_dyscyplin	0006_auto_20180414_1841	2000-01-01 00:00:00+00
-736	import_dyscyplin	0007_auto_20180414_1917	2000-01-01 00:00:00+00
-737	import_dyscyplin	0008_auto_20180415_0813	2000-01-01 00:00:00+00
-738	import_dyscyplin	0009_auto_20180415_0847	2000-01-01 00:00:00+00
-739	import_dyscyplin	0010_auto_20180415_1107	2000-01-01 00:00:00+00
-740	import_dyscyplin	0011_auto_20180415_2223	2000-01-01 00:00:00+00
-741	import_dyscyplin	0012_import_dyscyplin_row_dyscyplina_ostateczna	2000-01-01 00:00:00+00
-742	import_dyscyplin	0013_auto_20190324_1826	2000-01-01 00:00:00+00
-743	import_dyscyplin	0014_auto_20190324_1906	2000-01-01 00:00:00+00
+1215	pbn_api	0081_uzupelnij_tlumacza_dyscyplin_fd608	2000-01-01 00:00:00+00
 \.
 
 
@@ -20000,7 +20001,7 @@ SELECT pg_catalog.setval('public.django_countdown_sitecountdown_id_seq', 1, fals
 -- Name: django_migrations_id_seq; Type: SEQUENCE SET; Schema: public; Owner: -
 --
 
-SELECT pg_catalog.setval('public.django_migrations_id_seq', 1214, true);
+SELECT pg_catalog.setval('public.django_migrations_id_seq', 1215, true);
 
 
 --

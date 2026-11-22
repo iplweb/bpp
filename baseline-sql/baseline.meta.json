@@ -1,5 +1,5 @@
 {
-  "git_sha": "7215120eccd5c6366bed94f4ad432783126d3f78",
+  "git_sha": "6f857069aab3b344e9d47d7e2cb9eb79fb59d95c",
   "last_migration": {
     "admin": "0003_logentry_add_action_flag_choices",
     "admin_dashboard": "0001_initial",
@@ -53,7 +53,7 @@
     "orcid_integration": "0001_initial",
     "oswiadczenia": "0007_szablon_oswiadczenia_2026_2030",
     "password_policies": "0003_update_passwordprofile",
-    "pbn_api": "0080_sentdata_withdrawn_at",
+    "pbn_api": "0081_uzupelnij_tlumacza_dyscyplin_fd608",
     "pbn_downloader_app": "0005_task_user_opcjonalny",
     "pbn_export_queue": "0012_zamowil_protect",
     "pbn_import": "0013_alter_importinconsistency_inconsistency_type",
