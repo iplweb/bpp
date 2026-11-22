@@ -352,16 +352,18 @@
         {% if prace_nazbierane %}
         <div class="callout" id="prace-nazbierane">
             <h4><span class="fi-page-multiple"></span> Szczegóły prac nazbieranych</h4>
-            <table class="hover">
+            {# Telefon: bez Lp. i Rok (rok pod tytułem), przyciski jeden pod drugim, przewijanie w poziomie w razie potrzeby. #}
+            <div class="ewaluacja-metryki__tabela-przewijana">
+            <table class="hover ewaluacja-metryki__tabela-prac">
                 <thead>
                     <tr>
-                        <th>Lp.</th>
+                        <th class="show-for-medium">Lp.</th>
                         <th class="text-center">Akcje</th>
                         <th>Tytuł</th>
-                        <th>Rok</th>
+                        <th class="show-for-medium">Rok</th>
                         <th class="text-right">PKDaut</th>
                         <th class="text-right">Slot</th>
-                        <th class="text-right">PKDaut/Slot</th>
+                        <th class="text-right">PKDaut/<wbr>Slot</th>
                         {% if not autor_only_mode %}
                         <th class="text-center">Odepnij</th>
                         {% endif %}
@@ -370,7 +372,7 @@
                 <tbody>
                     {% for praca in prace_nazbierane %}
                     <tr>
-                        <td>{{ forloop.counter }}</td>
+                        <td class="show-for-medium">{{ forloop.counter }}</td>
                         <td class="text-center ewaluacja-metryki__actions-cell">
                             <a href="{% url 'ewaluacja_optymalizuj_publikacje:optymalizuj' praca.rekord.slug %}"
                                class="button small warning ewaluacja-metryki__optimize-btn"
@@ -387,8 +389,9 @@
                             <a href="{% url 'ewaluacja_optymalizuj_publikacje:optymalizuj' praca.rekord.slug %}">
                                 {{ praca.rekord.tytul_oryginalny|truncatewords_html:10|safe_tytul }}
                             </a>
+                                <span class="hide-for-medium ewaluacja-metryki__rok-pod-tytulem">{{ praca.rekord.rok }}</span>
                         </td>
-                        <td>{{ praca.rekord.rok }}</td>
+                        <td class="show-for-medium">{{ praca.rekord.rok }}</td>
                         <td class="text-right">{{ praca.pkdaut|floatformat:2 }}</td>
                         <td class="text-right">{{ praca.slot|floatformat:2 }}</td>
                         <td class="text-right">
@@ -412,6 +415,7 @@
                     {% endfor %}
                 </tbody>
             </table>
+            </div>
         </div>
         {% endif %}
 
@@ -422,16 +426,18 @@
                 <span class="fi-page-multiple"></span> Wszystkie prace w okresie
             </h4>
             <div id="all-papers">
-                <table class="hover">
+                {# Telefon: bez Lp. i Rok (rok pod tytułem), przyciski jeden pod drugim, przewijanie w poziomie w razie potrzeby. #}
+                <div class="ewaluacja-metryki__tabela-przewijana">
+                <table class="hover ewaluacja-metryki__tabela-prac">
                     <thead>
                         <tr>
-                            <th>Lp.</th>
+                            <th class="show-for-medium">Lp.</th>
                             <th class="text-center">Podgląd</th>
                             <th>Tytuł</th>
-                            <th>Rok</th>
+                            <th class="show-for-medium">Rok</th>
                             <th class="text-right">PKDaut</th>
                             <th class="text-right">Slot</th>
-                            <th class="text-right">PKDaut/Slot</th>
+                            <th class="text-right">PKDaut/<wbr>Slot</th>
                             {% if not autor_only_mode %}
                             <th>Akcje</th>
                             {% endif %}
@@ -440,7 +446,7 @@
                     <tbody>
                         {% for praca in prace_wszystkie %}
                         <tr {% if praca.is_nazbierana %}class="success"{% endif %}>
-                            <td>{{ forloop.counter }}</td>
+                            <td class="show-for-medium">{{ forloop.counter }}</td>
                             <td class="text-center ewaluacja-metryki__actions-cell">
                                 <a href="{% url 'ewaluacja_optymalizuj_publikacje:optymalizuj' praca.rekord.slug %}"
                                    class="button small warning ewaluacja-metryki__optimize-btn"
@@ -457,11 +463,12 @@
                                 <a href="{% url 'ewaluacja_optymalizuj_publikacje:optymalizuj' praca.rekord.slug %}">
                                     {{ praca.rekord.tytul_oryginalny|truncatewords_html:10|safe_tytul }}
                                 </a>
+                                <span class="hide-for-medium ewaluacja-metryki__rok-pod-tytulem">{{ praca.rekord.rok }}</span>
                                 {% if praca.is_nazbierana %}
                                     <span class="label success">Wybrana</span>
                                 {% endif %}
                             </td>
-                            <td>{{ praca.rekord.rok }}</td>
+                            <td class="show-for-medium">{{ praca.rekord.rok }}</td>
                             <td class="text-right">{{ praca.pkdaut|floatformat:2 }}</td>
                             <td class="text-right">{{ praca.slot|floatformat:2 }}</td>
                             <td class="text-right">
@@ -486,6 +493,7 @@
                     </tbody>
                 </table>
             </div>
+            </div>
         </div>
         {% endif %}
 
@@ -503,15 +511,19 @@
                     </p>
                 </div>
 
-                <table class="hover">
+                {# Telefon: bez Lp. i Rok (rok pod tytułem), przyciski jeden pod drugim, przewijanie w poziomie w razie potrzeby. #}
+
+                <div class="ewaluacja-metryki__tabela-przewijana">
+
+                <table class="hover ewaluacja-metryki__tabela-prac">
                     <thead>
                         <tr>
-                            <th>Lp.</th>
+                            <th class="show-for-medium">Lp.</th>
                             <th>Tytuł</th>
-                            <th>Rok</th>
+                            <th class="show-for-medium">Rok</th>
                             <th class="text-right">PKDaut</th>
                             <th class="text-right">Slot</th>
-                            <th class="text-right">PKDaut/Slot</th>
+                            <th class="text-right">PKDaut/<wbr>Slot</th>
                             {% if not autor_only_mode %}
                             <th>Akcje</th>
                             {% endif %}
@@ -520,14 +532,15 @@
                     <tbody>
                         {% for praca in prace_odpiete %}
                         <tr class="unpinned-work">
-                            <td>{{ forloop.counter }}</td>
+                            <td class="show-for-medium">{{ forloop.counter }}</td>
                             <td>
                                 <a href="{% url 'bpp:browse_praca_by_slug' praca.rekord.slug %}">
                                     {{ praca.tytul_oryginalny|truncatewords_html:10|safe_tytul }}
                                 </a>
+                                <span class="hide-for-medium ewaluacja-metryki__rok-pod-tytulem">{{ praca.rok }}</span>
                                 <span class="label secondary">Odpięta</span>
                             </td>
-                            <td>{{ praca.rok }}</td>
+                            <td class="show-for-medium">{{ praca.rok }}</td>
                             <td class="text-right">{{ praca.pkdaut_est|floatformat:2 }}</td>
                             <td class="text-right">{{ praca.slot_est|floatformat:2 }}</td>
                             <td class="text-right">
@@ -551,6 +564,7 @@
                         {% endfor %}
                     </tbody>
                 </table>
+            </div>
             </div>
         </div>
         {% endif %}

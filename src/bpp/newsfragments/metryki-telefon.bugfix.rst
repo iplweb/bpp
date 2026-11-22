@@ -1,1 +1,1 @@
-Metryki ewaluacyjne (lista, szczegóły, statystyki) na telefonie: kolumny i wykresy układają się jedna pod drugą zamiast ściskać się w wąskie paski obok siebie.
+Metryki ewaluacyjne na telefonie: kolumny i wykresy układają się jedna pod drugą, przyciski filtrów zawijają się zamiast wystawać za ekran, a tabele prac w szczegółach metryki autora mieszczą się na ekranie (bez kolumn Lp. i Rok — rok pod tytułem, przyciski jeden pod drugim).
