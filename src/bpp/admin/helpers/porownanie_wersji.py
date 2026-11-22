@@ -211,8 +211,42 @@ def _elementy(rewizja, model_powiazany, obj, menedzer):
     }
 
 
+#: Pola autorstwa pokazywane bez etykiety, zaraz po nazwisku autora.
+POLA_OPISU_AUTORA = ("jednostka", "typ_odpowiedzialnosci")
+
+
+def _opis_pozycji(model, wersja, fmt, pelny=True):
+    """Czytelny opis pozycji listy. Dla autorstw (model z polem ``autor``):
+    nazwisko autora, a w pełnym opisie także jednostka, typ
+    odpowiedzialności i WSZYSTKIE pozostałe dane autorstwa (dyscyplina,
+    afiliacja, zatrudnienie, procent…) — zamiast ``__str__`` wiersza
+    („autor - skrót jednostki”). Dla pozostałych — nazwa obiektu."""
+    pola = {f.name: f for f in model._meta.concrete_fields}
+    if "autor" not in pola:
+        return wersja.object_repr
+    stan = wersja.field_dict
+
+    def wartosc(nazwa):
+        return fmt.wartosc(pola[nazwa], stan.get(pola[nazwa].attname))
+
+    autor = wartosc("autor")
+    if not pelny:
+        return autor
+    glowne = [wartosc(n) for n in POLA_OPISU_AUTORA if n in pola and wartosc(n) != "—"]
+    pomijane = POLA_TECHNICZNE_POZYCJI | {"autor", "kolejnosc", *POLA_OPISU_AUTORA}
+    reszta = [
+        f"{_etykieta(pole)}: {fmt.wartosc(pole, stan.get(pole.attname))}"
+        for pole in _pola_modelu(model, pomijane)
+        if fmt.wartosc(pole, stan.get(pole.attname)) != "—"
+    ]
+    opis = autor + (f" — {', '.join(glowne)}" if glowne else "")
+    if reszta:
+        opis += f" ({'; '.join(reszta)})"
+    return opis
+
+
 def _zmienione_pola(model, w1, w2, fmt):
-    pomijane = POLA_TECHNICZNE_POZYCJI
+    pomijane = POLA_TECHNICZNE_POZYCJI | {"kolejnosc"}
     zmiany = []
     for pole in _pola_modelu(model, pomijane):
         a, b = (
@@ -224,44 +258,58 @@ def _zmienione_pola(model, w1, w2, fmt):
     return zmiany
 
 
+def _pozycje(elementy, klucz):
+    """Numer pozycji (od 1) każdej pozycji listy w kolejności modelu."""
+    return {
+        v.object_id: nr
+        for nr, v in enumerate(sorted(elementy.values(), key=klucz), start=1)
+    }
+
+
 def _wiersze_list(model, obj, wersja1, wersja2, fmt):
     for akcesor in FOLLOW_REVERSION.get(model, ()):
         menedzer = getattr(obj, akcesor)
         powiazany = menedzer.model
         e1 = _elementy(wersja1.revision, powiazany, obj, menedzer)
         e2 = _elementy(wersja2.revision, powiazany, obj, menedzer)
+        klucz = _klucz_kolejnosci(powiazany)
+        poz1, poz2 = _pozycje(e1, klucz), _pozycje(e2, klucz)
         usuniete = [e1[k] for k in e1.keys() - e2.keys()]
         dodane = [e2[k] for k in e2.keys() - e1.keys()]
-        zmienione = [
-            (e1[k], e2[k], _zmienione_pola(powiazany, e1[k], e2[k], fmt))
-            for k in e1.keys() & e2.keys()
-            if e1[k].field_dict != e2[k].field_dict
-        ]
-        zmienione = [z for z in zmienione if z[2]]
+        zmienione = []
+        for k in e1.keys() & e2.keys():
+            pola = _zmienione_pola(powiazany, e1[k], e2[k], fmt)
+            if poz1[k] != poz2[k]:
+                pola.insert(0, ("Pozycja na liście", str(poz1[k]), str(poz2[k])))
+            if pola:
+                zmienione.append((e2[k], pola))
         if not (usuniete or dodane or zmienione):
             continue
         bez_zmian = len(e1.keys() & e2.keys()) - len(zmienione)
-        klucz = _klucz_kolejnosci(powiazany)
+
+        def krotki(w, model=powiazany):
+            return _opis_pozycji(model, w, fmt, pelny=False)
+
         zmiana = [
             *(
-                format_html("<li><del>− {}</del></li>", w.object_repr)
+                format_html("<li><del>− {}</del></li>", krotki(w))
                 for w in sorted(usuniete, key=klucz)
             ),
             *(
-                format_html("<li><ins>+ {}</ins></li>", w.object_repr)
+                format_html("<li><ins>+ {}</ins></li>", krotki(w))
                 for w in sorted(dodane, key=klucz)
             ),
             *(
                 format_html(
                     "<li>{}<ul>{}</ul></li>",
-                    w2.object_repr,
+                    krotki(w2),
                     format_html_join(
                         "",
                         "<li>{}: <del>{}</del> → <ins>{}</ins></li>",
                         pola,
                     ),
                 )
-                for _w1, w2, pola in sorted(zmienione, key=lambda z: klucz(z[1]))
+                for w2, pola in sorted(zmienione, key=lambda z: klucz(z[0]))
             ),
         ]
         if bez_zmian:
@@ -274,9 +322,9 @@ def _wiersze_list(model, obj, wersja1, wersja2, fmt):
         nazwa = str(powiazany._meta.verbose_name_plural)
         yield {
             "etykieta": nazwa[:1].upper() + nazwa[1:],
-            "stare": _lista(e1, klucz),
+            "stare": _lista(e1, klucz, powiazany, fmt),
             "zmiana": format_html("<ul>{}</ul>", mark_safe("".join(zmiana))),
-            "nowe": _lista(e2, klucz),
+            "nowe": _lista(e2, klucz, powiazany, fmt),
             "lista": True,
         }
 
@@ -304,16 +352,20 @@ def _klucz_kolejnosci(model):
     return klucz
 
 
-def _lista(elementy, klucz):
-    """Pełna lista pozycji z jednej wersji (kolumny boczne)."""
+def _lista(elementy, klucz, model, fmt):
+    """Pełna, numerowana lista pozycji z jednej wersji (kolumny boczne),
+    w kolejności modelu."""
     if not elementy:
         return "—"
     return format_html(
-        "<ul>{}</ul>",
+        "<ol>{}</ol>",
         format_html_join(
             "",
             "<li>{}</li>",
-            ((v.object_repr,) for v in sorted(elementy.values(), key=klucz)),
+            (
+                (_opis_pozycji(model, v, fmt),)
+                for v in sorted(elementy.values(), key=klucz)
+            ),
         ),
     )
 

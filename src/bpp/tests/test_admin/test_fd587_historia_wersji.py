@@ -610,4 +610,4 @@ def test_porownanie_list_wg_kolejnosci_a_nie_alfabetu(
     stara, zmiana, nowa = wiersz.split("<td", 4)[1:4]
     assert stara.index("Nowak") < stara.index("Kowalski")
     assert nowa.index("Kowalski") < nowa.index("Nowak")
-    assert "Kolejność" in zmiana
+    assert "Pozycja na liście" in zmiana
