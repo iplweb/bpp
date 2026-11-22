@@ -9064,6 +9064,419 @@ def logowanie(page: Page, base: str, out: Path) -> None:
     bez.context.close()
 
 
+# --- docs/administrator/konfigurator-wygladu.md ---------------------------
+
+KONFIGURATOR = "/bpp/konfigurator-wygladu/"
+# Example "krok po kroku" from the docs page: navy menu bar, the university's
+# main colour, a font from the internet, automatic light/dark mode.
+KONF_PASEK = "#1f3a5f"
+KONF_GLOWNY = "#8a1538"
+KONF_ZA_JASNY = "#7cc4f0"  # too light for white text: shows the WCAG check
+KONF_CZCIONKA = "web:Montserrat"
+
+
+def konf_czekaj(page: Page) -> None:
+    """Wait until the in-browser compiler has rebuilt every preview."""
+    page.wait_for_function(
+        "document.getElementById('status').textContent.startsWith('Podgląd aktualny')",
+        timeout=60000,
+    )
+    page.wait_for_timeout(1500)  # the frames repaint after the status changes
+
+
+def konf_ramki(page: Page) -> None:
+    """Wait until every preview frame has dropped its "Buduję podgląd…" veil."""
+    page.wait_for_function(
+        "[...document.querySelectorAll('#siatka .zaslona')]"
+        ".every(z => z.classList.contains('ukryta'))",
+        timeout=60000,
+    )
+    page.wait_for_timeout(1500)
+
+
+def konf_otworz(page: Page, base: str) -> None:
+    page.goto(f"{base}{KONFIGURATOR}")
+    page.wait_for_load_state("networkidle")
+    konf_czekaj(page)
+    konf_podglady_na_gore(page)
+
+
+def konf_podglady_na_gore(page: Page) -> None:
+    """The preview column scrolls on its own; start shots from its header."""
+    page.evaluate("document.querySelector('.podglady').scrollTop = 0")
+
+
+def konf_pole(klucz: str) -> str:
+    return f'.pole[data-klucz="{klucz}"]'
+
+
+def konf_ustaw_kolor(page: Page, klucz: str, kolor: str) -> None:
+    page.fill(f"{konf_pole(klucz)} input[type=text]", kolor)
+
+
+def konf_sekcja(page: Page, nazwa: str) -> str:
+    """Open one collapsible section of the left panel (closing the others)
+    and scroll it to the top of the panel; returns its selector."""
+    sel = f'details.sekcja[data-sekcja="{nazwa}"]'
+    page.click("#zwin-wszystkie")
+    page.evaluate(
+        """(sel) => { const s = document.querySelector(sel); s.open = true;
+        const p = document.querySelector('.panel');
+        p.scrollTop += s.getBoundingClientRect().top - p.getBoundingClientRect().top
+            - p.querySelector('.akcje').offsetHeight - 8; }""",
+        sel,
+    )
+    page.wait_for_timeout(300)
+    return sel
+
+
+def konf_panel(
+    page: Page, path: Path, y: float = 0, height: float | None = None
+) -> None:
+    """Left panel of the configurator plus a strip of the previews, where
+    the labels go (viewport coordinates)."""
+    page.screenshot(
+        path=path,
+        clip={"x": 0, "y": y, "width": 760, "height": height or VIEWPORT["height"] - y},
+    )
+
+
+def konfigurator_wygladu(page: Page, base: str, out: Path) -> None:
+    """docs/administrator/konfigurator-wygladu.md + KB 'Jak zmienić wygląd i kolorystykę systemu'.
+
+    Superuser regis (bin/docs-demo-panel-uczelnia.py): "Zastosuj dla
+    wszystkich" is for superusers only. The scenario applies the example
+    theme twice and at the end restores the theme from before the
+    configurator ("Wróć do motywu sprzed konfiguratora"), so the demo DB
+    keeps its look for the other scenarios. The history shot expects an
+    empty history (fresh demo DB); after earlier runs clear it first:
+    `MotywWersja.objects.all().delete()` in `manage.py shell`.
+    """
+    w = VIEWPORT["width"]
+    adm = new_session(page, base, DEMO_USER_ADMIN)
+
+    # 1. where: menu "redagowanie" on the site
+    li = open_top_menu(adm, "fi-pencil")
+    mark(
+        adm,
+        [
+            {
+                "sel": f"{li} a[href='{KONFIGURATOR}']",
+                "arrow": "left",
+                "label": "Konfigurator wyglądu",
+                "dx": -40,
+                "dy": -60,
+            }
+        ],
+    )
+    shot(adm, out / "01-menu-redagowanie.png", 0, bottom_of(adm, f"{li} > ul", 30))
+
+    # 2. where: editing module, "WWW"
+    adm.goto(f"{base}/admin/")
+    adm.wait_for_load_state("networkidle")
+    li = open_admin_menu(adm, "menu-icon-web")
+    mark(
+        adm,
+        [
+            {
+                "sel": f"{li} a[href='{KONFIGURATOR}']",
+                "arrow": "right",
+                "label": "WWW → Konfigurator wyglądu",
+                "dx": 40,
+                "dy": 0,
+            }
+        ],
+    )
+    shot(adm, out / "02-redagowanie-www.png", 0, bottom_of(adm, f"{li} > ul", 60))
+
+    # 3. where: university -> "Motyw kolorystyczny"
+    otworz_uczelnie(adm, base)
+    mark(
+        adm,
+        [
+            {
+                "sel": ".form-row.theme_name",
+                "arrow": "below",
+                "label": "lista motywów + link do konfiguratora",
+                "dx": 120,
+                "dy": -30,
+            }
+        ],
+    )
+    box = page_box(adm, ".form-row.theme_name")
+    shot(adm, out / "03-uczelnia-motyw.png", box["y"] - 60, box["height"] + 200)
+
+    # 4. overview: actions, "Wczytaj motyw", sections, preview tabs
+    konf_otworz(adm, base)
+    adm.click("#zwin-wszystkie")
+    konf_podglady_na_gore(adm)
+    mark(
+        adm,
+        [
+            {
+                "sel": ".akcje .przyciski",
+                "arrow": "right",
+                "label": "1. zapisz / przymierz / zastosuj",
+                "dx": 40,
+                "dy": 10,
+            },
+            {
+                "sel": ".gotowe",
+                "arrow": "right",
+                "label": "2. gotowe i zapisane motywy",
+                "dx": 40,
+                "dy": 30,
+            },
+            {
+                "sel": "#pola",
+                "arrow": "right",
+                "label": "3. sekcje ustawień",
+                "dx": 40,
+                "dy": 0,
+            },
+        ],
+    )
+    adm.screenshot(path=out / "04-panel-ustawien.png")
+    mark(
+        adm,
+        [
+            {
+                "sel": ".zakladki[aria-label='Rodzaj ekranu']",
+                "arrow": "below",
+                "label": "komputer / telefon / tablet",
+                "dx": -60,
+                "dy": 60,
+            },
+            {
+                "sel": ".zakladki[aria-label='Kto ogląda stronę']",
+                "arrow": "below",
+                "label": "gość / obsługa",
+                "dx": 200,
+                "dy": 150,
+            },
+            {"sel": "#inspektor"},
+            {"sel": ".karta .wersje", "text": "Wersja ciemna"},
+        ],
+    )
+    adm.screenshot(path=out / "05-podglady.png")
+
+    # 5. colours + readability check: too light main colour
+    konf_sekcja(adm, "Kolory")
+    konf_ustaw_kolor(adm, "kolor_glowny", KONF_ZA_JASNY)
+    adm.wait_for_selector("#blad-kolor_glowny button")
+    adm.evaluate(
+        "(sel) => document.querySelector(sel).scrollIntoView({block: 'center'})",
+        konf_pole("kolor_glowny"),
+    )
+    mark(
+        adm,
+        [
+            {
+                "sel": "#blad-kolor_glowny button",
+                "arrow": "right",
+                "label": "jeden klik",
+                "dx": 20,
+                "dy": -60,
+            },
+        ],
+    )
+    konf_panel(adm, out / "06-czytelnosc.png")
+    adm.click("#blad-kolor_glowny button")
+    konf_czekaj(adm)
+
+    # 6. example: navy menu bar, main colour, Lato, automatic mode
+    konf_ustaw_kolor(adm, "kolor_naglowka", KONF_PASEK)
+    konf_ustaw_kolor(adm, "kolor_glowny", KONF_GLOWNY)
+    konf_czekaj(adm)
+    konf_sekcja(adm, "Kolory")
+    mark(
+        adm,
+        [
+            {
+                "sel": konf_pole("kolor_naglowka") + " .kolor",
+                "arrow": "right",
+                "label": "wpisz kod koloru",
+                "dx": 60,
+                "dy": -80,
+            },
+            {
+                "sel": konf_pole("kolor_glowny") + " .reset-pola",
+                "arrow": "right",
+                "label": "przywróć domyślny",
+                "dx": 0,
+                "dy": 30,
+            },
+        ],
+    )
+    konf_panel(adm, out / "07-kolory.png")
+
+    konf_sekcja(adm, "Tekst")
+    adm.select_option(konf_pole("czcionka") + " select", KONF_CZCIONKA)
+    konf_czekaj(adm)
+    mark(
+        adm,
+        [
+            {"sel": konf_pole("czcionka") + " select"},
+            {
+                "sel": konf_pole("zrodlo_czcionek") + " .wybor",
+                "arrow": "right",
+                "label": "zgodnie z RODO",
+                "dx": 0,
+                "dy": 0,
+            },
+        ],
+    )
+    konf_panel(adm, out / "08-czcionka.png")
+
+    # 7. inspector: click the menu bar in the first preview
+    konf_sekcja(adm, "Kolory")
+    adm.click("#zwin-wszystkie")
+    adm.click("#inspektor")
+    ramka = adm.frame_locator("#siatka iframe").first
+    # a synthetic click on the bar itself: a real mouse click would hover a
+    # menu item and leave its dropdown open on the screenshot
+    ramka.locator(".top-bar").first.dispatch_event("click")
+    adm.mouse.move(150, 780)  # away from the previews: no hovered dropdowns
+    adm.wait_for_timeout(1500)  # dropdown close animation
+    mark(
+        adm,
+        [
+            {"sel": "#inspektor"},
+            {"sel": ".pole.inspektor"},
+            {
+                "sel": "#status",
+                "arrow": "right",
+                "label": "co ustawia kliknięty element",
+                "dx": 30,
+                "dy": 60,
+            },
+        ],
+    )
+    adm.screenshot(path=out / "09-inspektor.png")
+    adm.click("#inspektor")
+
+    # 8. phone previews
+    adm.click("[data-zakladka='telefon']")
+    konf_ramki(adm)
+    konf_podglady_na_gore(adm)
+    mark(
+        adm,
+        [
+            {
+                "sel": "[data-zakladka='telefon']",
+                "arrow": "below",
+                "label": "podgląd na telefonie",
+                "dx": 0,
+                "dy": 30,
+            }
+        ],
+    )
+    adm.screenshot(
+        path=out / "10-telefon.png",
+        clip={"x": 380, "y": 0, "width": w - 380, "height": VIEWPORT["height"]},
+    )
+    adm.click("[data-zakladka='komputer']")
+    adm.wait_for_timeout(3000)  # frames below the fold load lazily
+
+    # 9. try on (only me): opens the site in a new tab with a banner
+    with adm.context.expect_page() as nowa:
+        adm.click("#przymierz")
+    proba = nowa.value
+    # the tab opens as about:blank and navigates once the server has built the CSS
+    proba.wait_for_selector("text=Przymierzasz motyw", timeout=120000)
+    proba.wait_for_load_state("networkidle")
+    close_cookie_banner(proba)
+    mark(
+        proba,
+        [
+            {
+                "sel": "div[role=status]:has(> a[href*='konfigurator']) > span",
+                "arrow": "below",
+                "label": "widzisz go tylko Ty",
+                "dx": 200,
+                "dy": 20,
+            },
+        ],
+    )
+    shot(proba, out / "11-przymiarka.png", 0, 420)
+    proba.locator("button", has_text="Zakończ przymiarkę").click()
+    proba.close()
+
+    # 10. apply for everyone (twice: the history needs two entries)
+    adm.on("dialog", lambda d: d.accept())
+    adm.bring_to_front()
+    adm.click("#zastosuj")
+    adm.wait_for_function(
+        "document.getElementById('status').textContent.startsWith('Zastosowano')",
+        timeout=120000,
+    )
+    adm.evaluate("document.querySelector('.panel').scrollTop = 0")
+    mark(
+        adm,
+        [
+            {"sel": "#zastosuj"},
+            {"sel": "#status", "arrow": "right", "label": "gotowe", "dx": 30, "dy": 40},
+        ],
+    )
+    konf_panel(adm, out / "12-zastosowano.png", 0, 420)
+
+    # the site after applying: light/dark switch in the menu bar
+    strona = new_session(page, base, None)
+    li = ".bpp-tryb-kolorow"
+    strona.hover(f"{li} > a")
+    strona.wait_for_selector(f"{li} > ul", state="visible")
+    strona.wait_for_timeout(800)
+    mark(
+        strona,
+        [
+            {
+                "sel": li,
+                "arrow": "right",
+                "label": "wybór odwiedzającego",
+                "dx": 60,
+                "dy": 40,
+            }
+        ],
+    )
+    shot(strona, out / "13-strona-po-zmianie.png", 0, 520)
+    strona.context.close()
+
+    # second apply (a different main colour), then the history
+    konf_sekcja(adm, "Kolory")
+    konf_ustaw_kolor(adm, "kolor_glowny", "#1d5f8a")
+    konf_czekaj(adm)
+    adm.click("#zastosuj")
+    adm.wait_for_function(
+        "document.getElementById('status').textContent.startsWith('Zastosowano')",
+        timeout=120000,
+    )
+    # reopen: the list and "Wróć do motywu sprzed konfiguratora" as on arrival
+    konf_otworz(adm, base)
+    konf_sekcja(adm, "historia")
+    mark(
+        adm,
+        [
+            {
+                "sel": "#historia-lista li:nth-child(2) button",
+                "arrow": "right",
+                "label": "wczytaj poprzednią",
+                "dx": 40,
+                "dy": -110,
+            },
+            {"sel": "#przywroc-sprzed"},
+        ],
+    )
+    konf_panel(adm, out / "14-historia.png")
+
+    # back to the demo look: the theme from before the configurator
+    adm.click("#przywroc-sprzed")
+    adm.wait_for_function(
+        "document.getElementById('status').textContent.startsWith('Przywrócono')",
+        timeout=60000,
+    )
+    adm.context.close()
+
+
 # name -> (docs/images subdirectory, function)
 SCENARIOS = {
     "moj-profil-autora": ("uzytkownik/moj-profil-autora", moj_profil_autora),
@@ -9154,6 +9567,10 @@ SCENARIOS = {
         przemapowanie_prac_autora,
     ),
     "duplikaty-publikacji": ("redaktor/duplikaty-publikacji", duplikaty_publikacji),
+    "konfigurator-wygladu": (
+        "administrator/konfigurator-wygladu",
+        konfigurator_wygladu,
+    ),
 }
 
 

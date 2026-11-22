@@ -18,6 +18,7 @@ Run on the Witcher demo DB (docs/deweloper/zrzuty-ekranu.md):
 import datetime
 
 from django.contrib.auth.models import Group
+from django.db.models import F
 from password_policies.models import PasswordHistory
 
 from bpp.models import Autor, Autor_Jednostka, BppUser, Jednostka, Uczelnia
@@ -47,20 +48,36 @@ konto("regis", "Emiel Regis", "Rohellec Terzieff-Godefroy", superuser=True)
 
 # --- several workplaces of one author -------------------------------------
 autor = Autor.objects.get(imiona="Margarita", nazwisko="Merigold")
+# Jednostki bierzemy z bazy, a nie po nazwie: nazwy losuje generator danych
+# demo z puli motywu, a po rozszerzeniu puli (commit 4be76d7aa) ten sam
+# --seed daje inne jednostki — np. „Klinika Mutacji” już nie powstaje.
+# Główne miejsce pracy = dotychczasowa jednostka autorki; dwie pozostałe =
+# pierwsze alfabetycznie jednostki bez podjednostek (bez wydziałów).
+glowna = autor.aktualna_jednostka
+pozostale = list(
+    Jednostka.objects.filter(rght=F("lft") + 1)
+    .exclude(pk=glowna.pk)
+    .order_by("nazwa")[:2]
+)
+if len(pozostale) < 2:
+    raise SystemExit(
+        "Za mało jednostek w bazie demo — wygeneruj dane wg "
+        "docs/deweloper/zrzuty-ekranu.md."
+    )
 Autor_Jednostka.objects.filter(autor=autor).delete()
-for nazwa, od, do, podstawowe in [
+for jednostka, od, do, podstawowe in [
     (
-        "Zakład Szlaku Wiedźmińskiego",
+        pozostale[0],
         datetime.date(2014, 10, 1),
         datetime.date(2019, 9, 30),
         None,
     ),
-    ("Klinika Mutacji", datetime.date(2019, 10, 1), None, True),
-    ("Katedra i Zakład Mutacji", datetime.date(2021, 3, 1), None, None),
+    (glowna, datetime.date(2019, 10, 1), None, True),
+    (pozostale[1], datetime.date(2021, 3, 1), None, None),
 ]:
     Autor_Jednostka.objects.create(
         autor=autor,
-        jednostka=Jednostka.objects.get(nazwa=nazwa),
+        jednostka=jednostka,
         rozpoczal_prace=od,
         zakonczyl_prace=do,
         podstawowe_miejsce_pracy=podstawowe,
