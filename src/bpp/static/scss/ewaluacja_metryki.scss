@@ -106,17 +106,24 @@
 // =====================================================
 
 // Filter buttons container
+// Przyciski zawijają się do kolejnego wiersza — bez zawijania, dosunięte
+// do prawej, na wąskim ekranie wystawały za lewą krawędź.
 .ewaluacja-metryki__filter-buttons {
     display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
     align-items: flex-end;
     justify-content: flex-end;
     height: 100%;
     min-height: 60px;
-}
 
-// Filter button with margin
-.ewaluacja-metryki__filter-btn {
-    margin-right: 0.5rem;
+    .button {
+        margin: 0;
+    }
+
+    @include breakpoint(small only) {
+        justify-content: flex-start;
+    }
 }
 
 // Clickable table row
