@@ -1,0 +1,1 @@
+Ikona menu na telefonie rysowana z osobnych pasków w kolorze napisów paska (w motywach ciemnych wszystkie paski mają ten sam kolor); konfigurator wyglądu pozwala wybrać jej kształt (trzy/dwa paski, paski różnej długości, kropki), animację w „X” po otwarciu i napis obok („Menu”, własny albo brak).
