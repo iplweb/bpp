@@ -1,9 +1,22 @@
-import math
-from decimal import Decimal
+from decimal import ROUND_HALF_UP, Decimal
 
 from django.utils.functional import cached_property
 
 from bpp.models import Autor
+
+CZTERY_MIEJSCA = Decimal("0.0001")
+
+
+def zaokraglij_do_4_miejsc(wartosc):
+    """Zaokrągla wartość do czterech miejsc po przecinku, „połówki w górę”.
+
+    § 13 ust. 6 rozporządzenia w sprawie ewaluacji jakości działalności
+    naukowej (t.j. Dz.U. 2026 poz. 1346): „Wartości liczb √k/m i k/m ustala
+    się z dokładnością do czterech miejsc po przecinku.” Przepis nie określa
+    trybu, więc stosujemy zwykłe zaokrąglenie matematyczne (ROUND_HALF_UP)
+    — tak samo zaokrągla PostgreSQL przy zapisie do pól numeric(…, 4).
+    """
+    return Decimal(wartosc).quantize(CZTERY_MIEJSCA, rounding=ROUND_HALF_UP)
 
 
 class SlotMixin:
@@ -130,18 +143,22 @@ class SlotMixin:
         return v
 
     def k_przez_m(self, dyscyplina):
-        if self.wszyscy() == 0:
+        """k/m zaokrąglone do 4 miejsc po przecinku (§ 13 ust. 6).
+
+        Liczone na Decimal (bez float), żeby zaokrąglenie „połówek” było
+        dokładne — np. 1/160 = 0,00625 daje 0,0063."""
+        m = self.wszyscy()
+        if m == 0:
             return
-        return Decimal(self.liczba_k(dyscyplina) / self.wszyscy())
+        return zaokraglij_do_4_miejsc(Decimal(self.liczba_k(dyscyplina)) / m)
 
     def pierwiastek_k_przez_m(self, dyscyplina):
-        k_przez_m = self.k_przez_m(dyscyplina)
-        if k_przez_m is None:
-            return
-        return Decimal(math.sqrt(k_przez_m))
+        """√(k/m) zaokrąglony do 4 miejsc po przecinku (§ 13 ust. 6).
 
-    def jeden_przez_wszyscy(self):
-        w = self.wszyscy()
-        if w == 0:
+        Pierwiastek liczymy z dokładnego k/m (nie z już zaokrąglonego),
+        a zaokrąglamy wynik — dopiero ta wartość jest mnożona przez punkty,
+        np. 20 × √(1/6) = 20 × 0,4082 = 8,1640 (a nie 8,1650)."""
+        m = self.wszyscy()
+        if m == 0:
             return
-        return 1 / w
+        return zaokraglij_do_4_miejsc((Decimal(self.liczba_k(dyscyplina)) / m).sqrt())

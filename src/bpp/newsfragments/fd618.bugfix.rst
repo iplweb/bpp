@@ -1,0 +1,24 @@
+Punkty dla dyscyplin i sloty liczone ze wzorów „pierwiastek z k/m” oraz „k/m”
+są teraz zgodne z § 13 ust. 6 rozporządzenia w sprawie ewaluacji jakości
+działalności naukowej (t.j. Dz.U. 2026 poz. 1346): wartość √(k/m) albo k/m
+jest najpierw zaokrąglana do czterech miejsc po przecinku (połówki w górę),
+a dopiero potem mnożona przez punkty. Dotąd BPP mnożył niezaokrąglony
+pierwiastek, przez co wynik mógł różnić się na trzecim–czwartym miejscu po
+przecinku. Przykład: redakcja monografii za 20 pkt, 6 redaktorów, w tym
+1 z danej dyscypliny — √(1/6) = 0,4082, więc punkty dla dyscypliny wynoszą
+teraz 20 × 0,4082 = **8,1640** (wcześniej 8,1650); slot 0,4082 bez zmian.
+Podobnie artykuł za 70 pkt z 2 autorami, z czego 1 z dyscypliny: 49,4970
+(wcześniej 49,4975). Dotyczy artykułów, monografii, rozdziałów i redakcji
+(także referatów) liczonych z √(k/m) albo k/m; zmiana widoczna jest wszędzie,
+gdzie BPP pokazuje punkty i sloty (strona rekordu, raporty slotów, metryki
+ewaluacyjne, optymalizacja). Dla wzoru k/m także slot autora liczony jest
+teraz z zaokrąglonego k/m (k/m ÷ k): np. przy 2 autorach z dyscypliny na
+3 ogółem slot autora to 0,3334 (wcześniej 0,3333). Bez zmian: rekordy liczone
+w 100% (np. artykuły za 100, 140, 200 pkt) oraz przypadki, gdy wszyscy autorzy
+są z dyscypliny (k = m); minimum 10% wartości punktowej działa jak dotąd.
+**Po aktualizacji** administrator powinien przeliczyć zapisane wartości
+poleceniem ``python src/manage.py przelicz_punktacje_dyscyplin`` (przelicza
+tylko rekordy ze slotem mniejszym niż 1; strona działa normalnie w trakcie,
+w dużej bazie trwa to kilkanaście–kilkadziesiąt minut), a następnie ponownie
+wygenerować metryki ewaluacyjne i wyniki optymalizacji, jeśli były już liczone.
+Rekordy zapisywane po aktualizacji są liczone nowym sposobem od razu.

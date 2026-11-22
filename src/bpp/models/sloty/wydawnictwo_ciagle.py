@@ -74,11 +74,19 @@ class SlotKalkulator_Wydawnictwo_Ciagle_Prog3(SlotMixin):
             return self.original.punkty_kbn * max(k_przez_m, Decimal("0.1"))
 
     def slot_dla_autora_z_dyscypliny(self, dyscyplina):
+        # Udział jednostkowy U = P/Pc × 1/k (§ 16 ust. 2), gdzie P/Pc to k/m
+        # zaokrąglone do 4 miejsc (§ 13 ust. 6) — a nie „surowe” 1/m.
         if not self.ma_dyscypline(dyscyplina):
             return
-        return self.jeden_przez_wszyscy()
+        azd = self.liczba_k(dyscyplina)
+        if azd == 0:
+            return
+        k_przez_m = self.k_przez_m(dyscyplina)
+        if k_przez_m is None:
+            return
+        return k_przez_m / azd
 
     def slot_dla_dyscypliny(self, dyscyplina):
         if not self.ma_dyscypline(dyscyplina):
             return
-        return self.jeden_przez_wszyscy() * len(self.autorzy_z_dyscypliny(dyscyplina))
+        return self.k_przez_m(dyscyplina)

@@ -122,6 +122,13 @@ Gdy system aktualizuje już istniejącego pracownika:
   - k: liczba autorów/redaktorów dla rekordu z danej dyscypliny, którzy mają w powiązaniu rekordu
     z autorem wybraną daną dyscyplinę oraz zaznaczone pole *Afiliuje* na *tak*,
   - m: liczba wszystkich autorów rekordu.
+- wartości √(k/m) i k/m są zaokrąglane do **czterech miejsc po przecinku** (połówki w górę)
+  **zanim** zostaną pomnożone przez punkty — zgodnie z § 13 ust. 6 rozporządzenia w sprawie
+  ewaluacji jakości działalności naukowej („Wartości liczb √k/m i k/m ustala się z dokładnością
+  do czterech miejsc po przecinku”). Przykład: redakcja monografii za 20 pkt, 6 redaktorów,
+  1 z danej dyscypliny: √(1/6) = 0,4082, więc PKd = 20 × 0,4082 = 8,1640 (a nie 8,1650,
+  co wyszłoby z niezaokrąglonego pierwiastka). Wyniki (punkty, sloty) zapisywane są
+  z dokładnością do czterech miejsc po przecinku.
 
 ### Próg nr 1
 
@@ -203,13 +210,13 @@ $$
 Slot dla autora:
 
 $$
-slot_{Aut} = { \frac{1}{m} }
+slot_{Aut} = \frac{k}{m} * \frac {1}{k}
 $$
 
 Slot dla dyscypliny:
 
 $$
-slot_{d} = { \frac{1}{m * k} }
+slot_{d} = \frac{k}{m}
 $$
 
 ## Wydawnictwa ciągłe
