@@ -64,27 +64,54 @@
     }
   }
 
-  // Przycisk dzielony: część główna + strzałka, sklejone w jeden przycisk.
+  // Przycisk dzielony: część główna + strzałka stanowią JEDEN przycisk
+  // (wspólny cień i zaokrąglenie, cienka kreska między częściami), a lista
+  // zakresów lat wysuwa się spod niego na pełną jego szerokość.
+  // Kolorów tu NIE ustawiamy — obie części biorą kolor przycisku z motywu
+  // (.button.primary), więc zawsze są takie same.
   &__split {
     display: inline-flex;
     align-items: stretch;
     position: relative;
+    margin-bottom: 1rem;
+    border-radius: 6px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+
+    transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
+
+    // Efekt najechania (uniesienie + cień) dotyczy CAŁEGO przycisku naraz.
+    &:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 3px 8px rgba(0, 0, 0, 0.12), 0 2px 4px rgba(0, 0, 0, 0.08);
+    }
+
+    // Części nie mają własnego marginesu, cienia ani uniesienia — ma je
+    // całość (!important: globalne reguły hover przycisków też go używają).
+    .autor-page__show-all-btn,
+    .autor-page__show-all-btn:hover,
+    .autor-page__show-all-btn:active {
+      margin: 0;
+      box-shadow: none !important;
+      transform: none !important;
+    }
   }
 
+  // !important: motywy nadpisują zaokrąglenie i display przycisków regułami
+  // o wyższej specyficzności — bez tego części miały osobne zaokrąglenia.
   &__split-glowny {
-    border-top-right-radius: 0;
-    border-bottom-right-radius: 0;
+    border-top-right-radius: 0 !important;
+    border-bottom-right-radius: 0 !important;
   }
 
   &__split-strzalka {
-    display: flex;
+    display: flex !important;
     align-items: center;
     box-sizing: border-box;
     padding-left: 14px;
     padding-right: 14px;
-    border-top-left-radius: 0;
-    border-bottom-left-radius: 0;
-    border-left: 1px solid rgba(255, 255, 255, 0.45);
+    border-top-left-radius: 0 !important;
+    border-bottom-left-radius: 0 !important;
+    border-left: 1px solid rgba(255, 255, 255, 0.35);
     list-style: none;
     cursor: pointer;
     user-select: none;
@@ -92,48 +119,53 @@
     &::-webkit-details-marker {
       display: none;
     }
+
+    svg {
+      width: 14px;
+      height: 14px;
+      transition: transform 0.15s ease;
+    }
   }
 
   // <details> tylko trzyma strzałkę; lista jest pozycjonowana względem
-  // całego przycisku dzielonego, więc nie zmienia wysokości strzałki.
+  // całego przycisku dzielonego.
   &__okresy {
     display: flex;
     align-items: stretch;
 
     &[open] .autor-page__split-strzalka {
-      background: #229954;
+      filter: brightness(0.88);
+
+      svg {
+        transform: rotate(180deg);
+      }
     }
   }
 
-  // Rozwinięta lista zakresów lat pod przyciskiem.
+  // Rozwinięta lista zakresów lat — na szerokość całego przycisku.
   &__okresy-lista {
     position: absolute;
-    top: calc(100% + 4px);
+    top: calc(100% + 3px);
+    left: 0;
     right: 0;
     z-index: 20;
-    min-width: 100%;
-    padding: 6px 0;
+    padding: 4px 0;
     background: #fff;
-    border: 1px solid #d6d6d6;
+    border: 1px solid rgba(0, 0, 0, 0.15);
     border-radius: 6px;
     box-shadow: 0 6px 18px rgba(0, 0, 0, 0.15);
     text-align: left;
   }
 
-  &__okresy-naglowek {
-    padding: 4px 16px 6px;
-    font-size: 0.8rem;
-    text-transform: uppercase;
-    letter-spacing: 0.04em;
-    opacity: 0.6;
-  }
-
   &__okres-btn {
-    display: block;
+    display: flex;
+    justify-content: space-between;
+    gap: 1rem;
+    box-sizing: border-box;
     width: 100%;
-    padding: 8px 16px;
-    font-size: 0.95rem;
-    text-align: left;
+    margin: 0;
+    padding: 10px 16px;
+    font-size: 1rem;
     white-space: nowrap;
     color: inherit;
     background: none;
@@ -142,8 +174,12 @@
 
     &:hover,
     &:focus {
-      background: #eaf6ee;
+      background: rgba(0, 0, 0, 0.06);
     }
+  }
+
+  &__okres-liczba {
+    opacity: 0.65;
   }
 
   // Grid with gap
@@ -1261,4 +1297,22 @@
 // na stronach źródła i wydawcy.
 .bpp-sekcje-top {
   margin-top: 1.5rem;
+}
+
+// Sekcja „Osiągnięcia naukowe” (RAD-on): wskaźnik pobierania danych.
+.radon-osiagniecia__ladowanie {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.5rem 0;
+  opacity: 0.75;
+
+  .spinner {
+    margin: 0;
+  }
+}
+
+// Podpis źródła ma sens dopiero, gdy dane już są.
+.radon-osiagniecia[data-radon-laduje] .radon-osiagniecia__zrodlo {
+  display: none;
 }

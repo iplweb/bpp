@@ -38,7 +38,14 @@ def _prace(autor, jednostka, lata):
 
 
 def _przyciski_okresow(tresc):
-    return re.findall(r'class="autor-page__okres-btn"[^>]*>([^<]*)<', tresc)
+    return [
+        f"{lata} ({liczba})"
+        for lata, liczba in re.findall(
+            r'class="autor-page__okres-btn"[^>]*><span>Prace z lat ([^<]*)</span>'
+            r'<span class="autor-page__okres-liczba">(\d+)</span>',
+            tresc,
+        )
+    ]
 
 
 def test_liczby_prac_autora(

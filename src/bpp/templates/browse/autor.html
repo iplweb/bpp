@@ -78,9 +78,8 @@
             <details class="autor-page__okresy">
                 <summary class="button primary large autor-page__show-all-btn autor-page__split-strzalka"
                          title="Prace z wybranego zakresu lat"
-                         aria-label="Prace z wybranego zakresu lat">▾</summary>
+                         aria-label="Prace z wybranego zakresu lat"><svg viewBox="0 0 14 14" aria-hidden="true" focusable="false"><path d="M2 5l5 5 5-5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></summary>
                 <div class="autor-page__okresy-lista" role="group" aria-label="Prace z zakresów lat">
-                    <div class="autor-page__okresy-naglowek">Prace z lat</div>
                     {% for okres in liczby_prac.okresy %}
                         <form method="post"
                               action="{% url "bpp:browse_build_search" %}"
@@ -91,7 +90,7 @@
                             <input type="hidden" name="cel" value="wyniki"/>
                             <button type="submit"
                                     class="autor-page__okres-btn"
-                                    title="Prace z lat {{ okres.rok_od|stringformat:"d" }}–{{ okres.rok_do|stringformat:"d" }}">{{ okres.rok_od|stringformat:"d" }}–{{ okres.rok_do|stringformat:"d" }} ({{ okres.liczba }})</button>
+                                    title="Prace z lat {{ okres.rok_od|stringformat:"d" }}–{{ okres.rok_do|stringformat:"d" }}"><span>Prace z lat {{ okres.rok_od|stringformat:"d" }}–{{ okres.rok_do|stringformat:"d" }}</span><span class="autor-page__okres-liczba">{{ okres.liczba }}</span></button>
                         </form>
                     {% endfor %}
                 </div>
