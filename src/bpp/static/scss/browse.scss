@@ -1429,3 +1429,17 @@ $wydzial-nav-gap: 8px;
     }
   }
 }
+
+// Indeksy (autorzy, jednostki, źródła, wydawcy): kolumny CSS zamiast
+// sztywnych kolumn siatki — przeglądarka sama dobiera 1–3 kolumny do
+// szerokości (wcześniej 3 dopiero od 1024 px, przy węższym oknie tylko 2
+// mimo miejsca). Kolejność alfabetyczna w dół kolumn; karta nie dzieli się
+// między kolumny.
+.bpp-indeks-kolumny {
+  columns: 16rem 3;
+  column-gap: 1.25rem;
+
+  > * {
+    break-inside: avoid;
+  }
+}

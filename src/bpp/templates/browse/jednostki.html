@@ -103,10 +103,9 @@
 
     <!-- Jednostki Grid - BORDERED CARDS -->
     {% if object_list %}
-        <div class="grid-x grid-margin-x">
-            {% for col in object_list|columns:3 %}
-                <div class="large-4 medium-6 small-12 cell">
-                    {% for item in col %}
+        {# Kolumny CSS (1–3 zależnie od szerokości), kolejność alfabetyczna w dół kolumn. #}
+        <div class="bpp-indeks-kolumny">
+            {% for item in object_list %}
                         <!-- Jednostka Card -->
                         <div class="jednostka-card">
 
@@ -134,8 +133,6 @@
                             </div>
                         </div>
                     {% endfor %}
-                </div>
-            {% endfor %}
         </div>
     {% else %}
         <div class="callout warning jednostki__brak-wynikow">
