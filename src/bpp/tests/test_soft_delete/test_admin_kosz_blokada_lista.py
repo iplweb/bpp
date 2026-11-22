@@ -326,3 +326,20 @@ def test_rekord_z_kosza_bez_linku_na_strone(model, superuser_client, bez_celery)
 
     obj.delete()
     assert view_on_site not in superuser_client.get(_url(obj)).content.decode()
+
+
+# --- rekord z kosza: bez przycisków „Zapisz i wyślij do PBN" ---------------
+
+
+@pytest.mark.django_db
+def test_rekord_z_kosza_bez_przyciskow_pbn(superuser_client, bez_celery):
+    baker.make(Uczelnia, pbn_integracja=True, pbn_aktualizuj_na_biezaco=True)
+    wc = baker.make(Wydawnictwo_Ciagle)
+    tresc = superuser_client.get(_url(wc)).content.decode("utf-8")
+    assert 'name="_continue_and_pbn"' in tresc
+    assert 'name="_continue_and_pbn_later"' in tresc
+
+    wc.delete()
+    tresc = superuser_client.get(_url(wc)).content.decode("utf-8")
+    assert 'name="_continue_and_pbn"' not in tresc
+    assert 'name="_continue_and_pbn_later"' not in tresc

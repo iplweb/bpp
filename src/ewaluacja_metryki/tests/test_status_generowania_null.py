@@ -18,6 +18,12 @@ from ewaluacja_metryki.models import StatusGenerowania
 INDEKS = "ewaluacja_metryki_status_jeden_wiersz_bez_uczelni"
 
 
+def _definicja_indeksu():
+    with connection.cursor() as cursor:
+        cursor.execute("SELECT indexdef FROM pg_indexes WHERE indexname = %s", [INDEKS])
+        return cursor.fetchone()[0]
+
+
 @pytest.mark.django_db
 def test_drugi_status_bez_uczelni_odrzucony_przez_baze():
     """Partial unique index dopuszcza co najwyżej jeden wiersz z NULL-em."""
@@ -49,6 +55,7 @@ def test_migracja_0010_deduplikuje_istniejace_nulle():
         "ewaluacja_metryki.migrations.0010_dedup_statusgenerowania_bez_uczelni"
     )
 
+    przed = _definicja_indeksu()
     with connection.cursor() as cursor:
         cursor.execute(f"DROP INDEX {INDEKS}")
     try:
@@ -75,12 +82,40 @@ def test_migracja_0010_deduplikuje_istniejace_nulle():
         # bazę bez indeksu. `pytest.ini` ma `--reuse-db`, więc taka baza
         # przeżyłaby do kolejnych przebiegów i psuła je aż do `--create-db`.
         StatusGenerowania.objects.all().delete()
-        # DDL zduplikowany ręcznie względem constraintu z modelu, zakładanego
-        # przez migrację 0011 (`AddConstraint` → UniqueConstraint o tej samej
-        # nazwie). Po zmianie constraintu w `ewaluacja_metryki.models`
-        # ZAKTUALIZUJ też ten SQL — inaczej rozjedzie się po cichu.
-        with connection.cursor() as cursor:
-            cursor.execute(
-                f"CREATE UNIQUE INDEX {INDEKS} ON ewaluacja_metryki_statusgenerowania "
-                "((uczelnia_id IS NULL)) WHERE uczelnia_id IS NULL"
-            )
+        # Indeks odtwarzamy z AKTUALNEGO constraintu modelu, nie z ręcznego
+        # SQL: ręczna kopia definicji z 0011 rozjechała się po 0014 (indeks
+        # per okres) i test transakcyjny zostawiał w bazie stary indeks —
+        # kolejne testy na tym samym workerze dostawały IntegrityError przy
+        # statusie drugiego okresu.
+        constraint = next(
+            c for c in StatusGenerowania._meta.constraints if c.name == INDEKS
+        )
+        with connection.schema_editor() as editor:
+            editor.add_constraint(StatusGenerowania, constraint)
+
+    # Test nie może zostawić bazy z innym indeksem niż ten z migracji.
+    assert _definicja_indeksu() == przed
+
+
+@pytest.mark.django_db
+def test_migracja_0015_wyrownuje_sekwencje_po_singletonie(uczelnia):
+    """Dawny singleton wstawiał ``pk=1`` bez przesunięcia sekwencji —
+    status dla kolejnego okresu dostawał ``id=1`` → ``IntegrityError``."""
+    from ewaluacja_common.models import OkresEwaluacji
+
+    StatusGenerowania.objects.create(pk=1, uczelnia=uczelnia, okres=None)
+    with connection.cursor() as cur:
+        cur.execute(
+            "SELECT setval(pg_get_serial_sequence("
+            "'ewaluacja_metryki_statusgenerowania', 'id'), 1, false)"
+        )
+
+    migracja = import_module(
+        "ewaluacja_metryki.migrations.0015_statusgenerowania_reset_sekwencji"
+    )
+    with connection.cursor() as cur:
+        cur.execute(migracja.SQL)
+
+    okres = OkresEwaluacji.objects.order_by("rok_od").last()
+    nowy = StatusGenerowania.get_or_create(uczelnia=uczelnia, okres=okres)
+    assert nowy.pk > 1

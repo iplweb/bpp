@@ -63,7 +63,15 @@ class OptionalPBNSaveMixin:
     ):
         from bpp.models import Uczelnia
 
-        uczelnia = Uczelnia.objects.get_for_request(request)
+        # „Zapisz i wyślij do PBN" ma sens tylko, gdy formularz da się zapisać.
+        # Rekord z kosza (albo widok tylko do odczytu) nie ma przycisku „Zapisz",
+        # więc nie może też mieć przycisków wysyłki do PBN.
+        moze_zapisac = (
+            self.has_add_permission(request)
+            if add
+            else self.has_change_permission(request, obj)
+        )
+        uczelnia = Uczelnia.objects.get_for_request(request) if moze_zapisac else None
         if uczelnia is not None:
             if uczelnia.pbn_integracja and uczelnia.pbn_aktualizuj_na_biezaco:
                 context.update({"show_save_and_pbn": True})

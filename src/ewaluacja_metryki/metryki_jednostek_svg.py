@@ -1,4 +1,4 @@
-"""Wykresy SVG zestawienia „Metryki jednostki” (FD#617).
+"""Wykresy SVG zestawień „Metryki jednostki” i „Metryki wydziału” (FD#617).
 
 Generowane po stronie serwera jako inline SVG: WeasyPrint renderuje je
 wektorowo do PDF-a, a podgląd HTML pokazuje to samo. Bez zależności od
@@ -135,10 +135,11 @@ def _ladny_krok(zakres, liczba=5):
     return 10 * potega
 
 
-def wykres_babelkowy(grupa, szerokosc=760, wysokosc=400):
+def wykres_babelkowy(grupa, szerokosc=760, wysokosc=400, dopelniacz="jednostki"):
     """Oś X: wypełnienie slotów (%), oś Y: średnia punktów za slot,
     pole bąbla: punkty nazbierane. Linie podziału: próg wypełnienia
-    i mediana jakości w jednostce (skala „do realiów jednostki”)."""
+    i mediana jakości w jednostce (skala „do realiów jednostki”).
+    ``dopelniacz`` — „jednostki” / „wydziału” w podpisie mediany."""
     wiersze = [w for w in grupa.wiersze if w.kwadrant != r.KWADRANT_BRAK]
     if not wiersze:
         return ""
@@ -214,7 +215,7 @@ def wykres_babelkowy(grupa, szerokosc=760, wysokosc=400):
             f'<text x="{x1 + 4}" y="{_f(y_podpisu)}" font-size="8.5" '
             f'fill="{TEKST_DRUGORZEDNY}">- - mediana</text>'
             f'<text x="{x1 + 4}" y="{_f(y_podpisu + 10)}" font-size="8.5" '
-            f'fill="{TEKST_DRUGORZEDNY}">jednostki: '
+            f'fill="{TEKST_DRUGORZEDNY}">{escape(dopelniacz)}: '
             f"{float(grupa.mediana_sredniej):.1f}</text>"
             f'<text x="{x1 + 4}" y="{_f(y_podpisu + 20)}" font-size="8.5" '
             f'fill="{TEKST_DRUGORZEDNY}">pkt/slot</text>'
@@ -244,7 +245,7 @@ def wykres_babelkowy(grupa, szerokosc=760, wysokosc=400):
             f'<circle cx="{x1 + 10}" cy="{ly}" r="5" '
             f'fill="{KOLOR_KWADRANTU[kwadrant]}" fill-opacity="0.55"/>'
         )
-        slowa = r.OPIS_KWADRANTU[kwadrant].split(", ")
+        slowa = r.opis_kwadrantu(kwadrant, grupa.slowa).split(", ")
         for i, slowo in enumerate(slowa):
             s.append(
                 f'<text x="{x1 + 19}" y="{ly + 3 + i * 10}" font-size="8.5" '
@@ -305,9 +306,19 @@ def _etykiety_babli(wiersze, px, py, max_pkt, x1, y_dol, y_gora):
         )
         for w in wiersze
     }
+    # Przy dużych grupach (zestawienie wydziału) podpisujemy tylko osoby
+    # z największą liczbą punktów i tylko tam, gdzie podpis mieści się bez
+    # kolizji — reszta to bąble bez nazwiska (są w liście efektywności),
+    # inaczej podpisy w skupisku przy 100% zlewają się w nieczytelną plamę.
+    duza_grupa = len(wiersze) > r.MAX_PODPISOW_WYKRESU
+    do_podpisu = sorted(wiersze, key=lambda w: -float(w.punkty))[
+        : r.MAX_PODPISOW_WYKRESU
+    ]
     zajete = []
     wynik = []
-    for w in sorted(wiersze, key=lambda w: (-float(w.srednia), w.autor.nazwisko or "")):
+    for w in sorted(
+        do_podpisu, key=lambda w: (-float(w.srednia), w.autor.nazwisko or "")
+    ):
         cx, cy, promien = bable[id(w)]
         nazwisko = w.autor.nazwisko or ""
         najlepsza = None
@@ -319,6 +330,8 @@ def _etykiety_babli(wiersze, px, py, max_pkt, x1, y_dol, y_gora):
                 najlepsza = (n, prostokat, y)
             if n == 0:
                 break
+        if duza_grupa and (najlepsza is None or najlepsza[0] > 0):
+            continue
         if najlepsza is None:  # brak miejsca w pionie — zostaw przy bąblu
             najlepsza = (0, (cx + promien + 2, cx + promien + 2, cy, cy), cy + 3)
         _, prostokat, y = najlepsza

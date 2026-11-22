@@ -421,3 +421,28 @@ def test_lista_jednostek_wyszukiwanie_q(client, klinika, okres_2022):
     pasuje = {w["jednostka_id"]: w["pasuje"] for w in res.context["jednostki"]}
     assert pasuje == {jednostka.pk: True, inna.pk: False}
     assert "Znaleziono 1 z 2" in res.content.decode()
+
+
+@pytest.mark.django_db
+def test_jednostka_obca_poza_metrykami_jednostek(client, klinika, okres_2022):
+    """Jednostka obca (``skupia_pracownikow=False``) nie trafia na listę
+    „Metryki jednostek” i nie ma raportu."""
+    jednostka, dyscyplina, _ = klinika
+    obca = baker.make(
+        Jednostka,
+        nazwa="Jednostka Obca",
+        skupia_pracownikow=False,
+        uczelnia=jednostka.uczelnia,
+    )
+    _metryka(obca, dyscyplina, okres_2022, "Spoza", 4, 4, 400)
+    _uzytkownik(client, is_superuser=True, is_staff=True)
+    wybierz_okres(client, okres_2022)
+
+    res = client.get(reverse("ewaluacja_metryki:metryki_jednostek"))
+    assert res.status_code == 200
+    tresc = res.content.decode()
+    assert "Klinika Testowa" in tresc
+    assert "Jednostka Obca" not in tresc
+
+    url = reverse("ewaluacja_metryki:metryki_jednostki", args=[obca.pk])
+    assert client.get(url, {"format": "html"}).status_code == 404

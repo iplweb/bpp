@@ -18,8 +18,8 @@ def pierscien_punktow(wiersz):
 
 
 @register.filter
-def wykres_babelkowy(grupa):
-    return svg.wykres_babelkowy(grupa)
+def wykres_babelkowy(grupa, dopelniacz="jednostki"):
+    return svg.wykres_babelkowy(grupa, dopelniacz=dopelniacz)
 
 
 @register.filter
