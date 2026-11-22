@@ -206,7 +206,10 @@ class HistoriaWersjiMixin:
             "app_label": opts.app_label,
             "title": f"Porównanie wersji: {obj}",
             "original": obj,
-            "compare_data": self.compare(obj, wersja1, wersja2)[0],
+            "compare_data": [
+                *self._wiersz_kosza(obj, wersja1, wersja2),
+                *self.compare(obj, wersja1, wersja2)[0],
+            ],
             "version1": wersja1,
             "version2": wersja2,
             "wersje_porownania": [
@@ -259,6 +262,68 @@ class HistoriaWersjiMixin:
         return not porownaj_wersje(
             self.model, obj, wersja, aktualna, self.compare_exclude
         )
+
+    def _wiersz_kosza(self, obj, wersja1, wersja2):
+        """Wiersz „Kosz” w porównaniu wersji. Stan kosza NIE jest częścią
+        danych wersji (pola kosza są celowo wyłączone), więc bez tego
+        porównanie wersji sprzed i po przeniesieniu do kosza pokazywałoby
+        „brak różnic”. Stan i zdarzenia odczytujemy z rewizji kosza
+        (komentarze z ``receivers/soft_delete.py``)."""
+        if not hasattr(self.model, "deleted_objects"):
+            return []
+        from django.utils import formats, timezone
+        from django.utils.html import format_html, format_html_join
+
+        from bpp.receivers.soft_delete import (
+            KOMENTARZ_WERSJI_KOSZ,
+            KOMENTARZ_WERSJI_PRZYWROCENIE,
+        )
+
+        zdarzenia = [
+            v
+            for v in Version.objects.get_for_object(obj)
+            .select_related("revision__user")
+            .order_by("pk")
+            if v.revision.comment.startswith(
+                (KOMENTARZ_WERSJI_KOSZ, KOMENTARZ_WERSJI_PRZYWROCENIE)
+            )
+        ]
+
+        def stan(wersja):
+            wczesniejsze = [z for z in zdarzenia if z.pk <= wersja.pk]
+            w_koszu = bool(wczesniejsze) and wczesniejsze[
+                -1
+            ].revision.comment.startswith(KOMENTARZ_WERSJI_KOSZ)
+            return "🗑️ w koszu" if w_koszu else "poza koszem"
+
+        miedzy = [z for z in zdarzenia if wersja1.pk < z.pk <= wersja2.pk]
+        if not miedzy and stan(wersja1) == stan(wersja2):
+            return []
+
+        def opis(z):
+            kto = z.revision.user or "system"
+            kiedy = formats.date_format(
+                timezone.localtime(z.revision.date_created), "j E Y, H:i"
+            )
+            ikona = "🗑️" if z.revision.comment.startswith(KOMENTARZ_WERSJI_KOSZ) else "♻️"
+            return (ikona, z.revision.comment, kiedy, kto)
+
+        return [
+            {
+                "etykieta": "Kosz",
+                "stare": stan(wersja1),
+                "zmiana": format_html(
+                    "<ul>{}</ul>",
+                    format_html_join(
+                        "",
+                        '<li>{} {} <span class="bpp-przygaszony">— {}, {}</span></li>',
+                        (opis(z) for z in miedzy),
+                    ),
+                ),
+                "nowe": stan(wersja2),
+                "lista": False,
+            }
+        ]
 
     def _stan_kosza(self, request, obj):
         """Kontekst dla stron historii rekordu z kosza: czy jest w koszu,

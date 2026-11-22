@@ -7,6 +7,12 @@
     {% include "reversion/_style_historii.html" %}
 {% endblock %}
 
+{% block object-tools %}
+    <ul class="grp-object-tools">
+        <li><a class="bpp-edytuj-rekord" href="{% url opts|admin_urlname:'change' object.pk|admin_urlquote %}">✏️ Edytuj rekord</a></li>
+    </ul>
+{% endblock %}
+
 {% block content %}
     <div class="g-d-c bpp-historia">
         {% if rekord_w_koszu %}

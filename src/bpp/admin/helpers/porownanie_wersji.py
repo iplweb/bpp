@@ -283,6 +283,7 @@ def _wiersze_list(model, obj, wersja1, wersja2, fmt):
                 pola.insert(0, ("Pozycja na liście", str(poz1[k]), str(poz2[k])))
             if pola:
                 zmienione.append((e2[k], pola))
+        etykiety_zmian = {w.object_id: {e for e, _a, _b in p} for w, p in zmienione}
         if not (usuniete or dodane or zmienione):
             continue
         bez_zmian = len(e1.keys() & e2.keys()) - len(zmienione)
@@ -322,9 +323,9 @@ def _wiersze_list(model, obj, wersja1, wersja2, fmt):
         nazwa = str(powiazany._meta.verbose_name_plural)
         yield {
             "etykieta": nazwa[:1].upper() + nazwa[1:],
-            "stare": _lista(e1, klucz, powiazany, fmt),
+            "stare": _lista(e1, e2, klucz, powiazany, fmt, etykiety_zmian, "stara"),
             "zmiana": format_html("<ul>{}</ul>", mark_safe("".join(zmiana))),
-            "nowe": _lista(e2, klucz, powiazany, fmt),
+            "nowe": _lista(e2, e1, klucz, powiazany, fmt, etykiety_zmian, "nowa"),
             "lista": True,
         }
 
@@ -352,22 +353,74 @@ def _klucz_kolejnosci(model):
     return klucz
 
 
-def _lista(elementy, klucz, model, fmt):
-    """Pełna, numerowana lista pozycji z jednej wersji (kolumny boczne),
-    w kolejności modelu."""
+def _nazwa_pozycji(model, wersja, fmt):
+    """Nagłówek pozycji listy: nazwisko autora (autorstwa) albo nazwa."""
+    pole = next((f for f in model._meta.concrete_fields if f.name == "autor"), None)
+    if pole is None:
+        return wersja.object_repr
+    return fmt.wartosc(pole, wersja.field_dict.get(pole.attname))
+
+
+def _pola_pozycji(model, wersja, fmt, zmienione):
+    """(etykieta, wartość, czy_zmienione) — wszystkie dane pozycji listy
+    z etykietami, bez pól technicznych i bez tego, co jest w nagłówku."""
+    pomijane = POLA_TECHNICZNE_POZYCJI | {"autor", "kolejnosc"}
+    for pole in _pola_modelu(model, pomijane):
+        wartosc = fmt.wartosc(pole, wersja.field_dict.get(pole.attname))
+        etykieta = _etykieta(pole)
+        if wartosc == "—" and etykieta not in zmienione:
+            continue
+        yield etykieta, wartosc, etykieta in zmienione
+
+
+def _lista(elementy, inne, klucz, model, fmt, zmienione, strona):
+    """Numerowana lista pozycji z jednej wersji (kolumna boczna), w kolejności
+    modelu. Pozycje dodane/usunięte i zmienione — z danymi z etykietami
+    (zmienione pola podświetlone), pozostałe — sama nazwa „bez zmian”.
+
+    ``inne`` — pozycje z drugiej wersji; ``zmienione`` — {object_id:
+    zbiór etykiet zmienionych pól}; ``strona`` — "stara" albo "nowa"."""
     if not elementy:
         return "—"
-    return format_html(
-        "<ol>{}</ol>",
-        format_html_join(
+    wiersze = []
+    for wersja in sorted(elementy.values(), key=klucz):
+        nazwa = _nazwa_pozycji(model, wersja, fmt)
+        tylko_tu = wersja.object_id not in inne
+        etykiety = zmienione.get(wersja.object_id, set())
+        if not tylko_tu and not etykiety:
+            wiersze.append(
+                format_html(
+                    '<li>{} <span class="bpp-przygaszony">— bez zmian</span></li>',
+                    nazwa,
+                )
+            )
+            continue
+        if tylko_tu:
+            znacznik = (
+                '<span class="bpp-znacznik-usunieta">usunięty w nowszej wersji</span>'
+                if strona == "stara"
+                else '<span class="bpp-znacznik-dodana">dodany w nowszej wersji</span>'
+            )
+        else:
+            znacznik = '<span class="bpp-znacznik-zmiana">zmieniony</span>'
+        pola = format_html_join(
             "",
-            "<li>{}</li>",
+            '<li{}><span class="bpp-etykieta-pola">{}:</span> {}</li>',
             (
-                (_opis_pozycji(model, v, fmt),)
-                for v in sorted(elementy.values(), key=klucz)
+                (mark_safe(' class="bpp-pole-zmienione"') if zm else "", e, w)
+                for e, w, zm in _pola_pozycji(model, wersja, fmt, etykiety)
             ),
-        ),
-    )
+        )
+        wiersze.append(
+            format_html(
+                '<li class="bpp-pozycja"><strong>{}</strong> {}'
+                '<ul class="bpp-pola-pozycji">{}</ul></li>',
+                nazwa,
+                mark_safe(znacznik),
+                pola,
+            )
+        )
+    return format_html("<ol>{}</ol>", mark_safe("".join(wiersze)))
 
 
 def porownaj_wersje(model, obj, wersja1, wersja2, pomijane):

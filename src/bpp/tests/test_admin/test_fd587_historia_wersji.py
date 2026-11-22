@@ -424,7 +424,7 @@ def test_rekord_z_kosza_historia_i_porownanie_tylko_do_odczytu(
     tresc = porownanie.content.decode()
     assert "FD587</ins>" in tresc
     assert "bpp-nieaktywny" in tresc
-    assert "Najpierw przywróć rekord z kosza" in tresc
+    assert "najpierw przywróć go z kosza" in tresc
 
     res = admin_client.get(
         reverse("admin:bpp_wydawnictwo_ciagle_revision", args=(pk, starsza.pk))
@@ -606,8 +606,34 @@ def test_porownanie_list_wg_kolejnosci_a_nie_alfabetu(
         reverse("admin:bpp_wydawnictwo_ciagle_compare", args=(wydawnictwo_ciagle.pk,)),
         {"version_id1": starsza.pk, "version_id2": nowsza.pk},
     ).content.decode()
-    wiersz = tresc[tresc.index("Powiązania autorów") :]
+    tabela = tresc[tresc.index('class="grp-table bpp-porownanie"') :]
+    wiersz = tabela[tabela.index("Powiązania autorów") :]
     stara, zmiana, nowa = wiersz.split("<td", 4)[1:4]
     assert stara.index("Nowak") < stara.index("Kowalski")
     assert nowa.index("Kowalski") < nowa.index("Nowak")
     assert "Pozycja na liście" in zmiana
+
+
+def test_porownanie_pokazuje_przeniesienie_do_kosza(admin_client, wydawnictwo_ciagle):
+    """Stan kosza nie jest w danych wersji, więc porównanie wersji sprzed
+    i po przeniesieniu do kosza musi to pokazać osobnym wierszem „Kosz”
+    (a nie „brak różnic”)."""
+    with reversion.create_revision():
+        wydawnictwo_ciagle.save()
+    przed = Version.objects.get_for_object(wydawnictwo_ciagle).get()
+    wydawnictwo_ciagle.delete(reason="dubel")
+    po = Version.objects.get_for_object(wydawnictwo_ciagle).first()
+    assert po.pk != przed.pk
+
+    tresc = admin_client.get(
+        reverse("admin:bpp_wydawnictwo_ciagle_compare", args=(wydawnictwo_ciagle.pk,)),
+        {"version_id1": przed.pk, "version_id2": po.pk},
+    ).content.decode()
+    assert "nie ma różnic" not in tresc
+    assert ">Kosz<" in tresc
+    assert "Przeniesiono do kosza (powód: dubel)" in tresc
+    assert "🗑️ w koszu" in tresc
+    assert "poza koszem" in tresc
+    # Przywracanie wersji zablokowane — wyszarzony, ale prawdziwy przycisk.
+    assert "bpp-przycisk-nieaktywny" in tresc
+    assert "disabled" in tresc

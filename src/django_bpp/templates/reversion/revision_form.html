@@ -46,7 +46,12 @@
 
 {% block content_title %}<h1>Wersja z {{ wersja_podgladu.revision.date_created|date:"j E Y, H:i" }}: {{ original|truncatewords:"24" }}</h1>{% endblock %}
 
-{% block object-tools %}{% endblock %}
+{% block object-tools %}
+    <ul class="grp-object-tools">
+        <li><a class="bpp-edytuj-rekord" href="{% url opts|admin_urlname:'change' object_id %}">✏️ Edytuj rekord</a></li>
+        <li><a href="{% url opts|admin_urlname:'history' object_id %}">Historia</a></li>
+    </ul>
+{% endblock %}
 
 {% block form_top %}
     <div class="bpp-przywracanie">
@@ -83,6 +88,7 @@
     <footer class="grp-module grp-submit-row grp-fixed-footer">
         <div>
             <div class="grp-float-left"><a href="{% url opts|admin_urlname:'history' object_id %}" class="grp-button">Wróć do historii</a></div>
+            <div class="grp-float-left"><a href="{% url opts|admin_urlname:'change' object_id %}" class="grp-button">✏️ Edytuj rekord</a></div>
             {% if pokaz_przywroc %}
                 <div><input type="submit" value="♻️ Przywróć tę wersję" class="grp-button grp-default" name="_przywroc_wersje"></div>
             {% endif %}
