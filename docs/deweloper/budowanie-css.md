@@ -144,9 +144,18 @@ w polu „Motyw kolorystyczny” (`Uczelnia.theme_name`) jeden z wariantów:
 
 | Motyw | Zachowanie |
 |---|---|
-| `app-blue` | zawsze jasny (bez zmian) |
-| `app-blue-auto` | jasny, a ciemny, gdy odwiedzający ma w systemie/przeglądarce tryb ciemny (`prefers-color-scheme: dark`) |
-| `app-blue-ciemny` | zawsze ciemny |
+| `app-X` | zawsze jasny (bez zmian) |
+| `app-X-auto` | jasny, a ciemny, gdy odwiedzający ma w systemie/przeglądarce tryb ciemny (`prefers-color-scheme: dark`) albo wybrał „Ciemny” przełącznikiem na pasku menu |
+| `app-X-ciemny` | zawsze ciemny |
+
+Warianty mają wszystkie motywy ręczne: `blue`, `green`, `orange`, `vizja`,
+`mwsl`, `uafm` (np. `app-green-auto`, `app-green-ciemny`). Każdy motyw ma
+treść w `_app-X-baza.scss`, a `app-X.scss`, `-auto` i `-ciemny` różnią się
+tylko końcówką. Mixin dostaje `$primary-color` i `$drugi: $secondary-color`
+(drugi akcent, np. ikony w kolorze dodatkowym).
+
+Rozmiary (gzip): jasny ok. 50 KB, `-ciemny` ok. 61 KB, `-auto` ok. 74–75 KB
+(ciemne reguły dwa razy — przełącznik).
 
 Wydruk jest zawsze jasny (ciemne reguły siedzą w `@media screen`).
 
