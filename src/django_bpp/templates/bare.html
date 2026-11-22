@@ -60,11 +60,16 @@
         setTimeout(function () { document.documentElement.classList.remove("bpp-js-init"); }, 3000);
     </script>
     <style>
-        {# Podmenu rozwijanego menu dostają klasy Foundation dopiero od JS. #}
-        html.bpp-js-init .dropdown.menu ul.menu { display: none; }
-        {# Menu na telefonie chowa Foundation (data-responsive-toggle) dopiero przez JS. #}
+        {# Podmenu (listy i wielokolumnowe bloki) dostają klasy Foundation dopiero od JS — #}
+        {# do tego czasu rozpychały pozycje menu na całą szerokość paska (!important + id menu: reguły podmenu w top_bar.scss mają display: block !important i 5 klas). #}
+        html.bpp-js-init #example-menu .dropdown.menu > li > :not(a) { display: none !important; }
+        {# Telefon: menu chowa Foundation (data-responsive-toggle) dopiero przez JS. #}
         @media screen and (max-width: 39.9375em) {
             html.bpp-js-init [data-responsive-toggle] + .top-bar { display: none; }
+        }
+        {# Komputer: pasek „Menu” z hamburgerem (data-hide-for) też chowa dopiero JS. #}
+        @media screen and (min-width: 40em) {
+            html.bpp-js-init [data-responsive-toggle] { display: none; }
         }
     </style>
 
