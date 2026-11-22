@@ -469,7 +469,9 @@ def test_wersja_aktualna_oznaczona(admin_client, wydawnictwo_ciagle):
     assert 'class="bpp-kol-zmiana-diff"' in porownanie
     assert "Wersja A" not in porownanie
     # Nowsza wersja jest aktualna — nie ma czego przywracać.
-    assert porownanie.count("♻️ Przywróć tę wersję") == 1  # tylko pod wersją starszą
+    # Przycisk przywracania tylko pod wersją starszą (liczymy przyciski, nie
+    # wystąpienia tekstu — podpowiedź ``title`` też go zawiera).
+    assert porownanie.count("♻️ Przywróć tę wersję</a>") == 1
     assert "To jest wersja aktualna — nie ma czego przywracać" in porownanie
 
 
@@ -676,3 +678,83 @@ def test_porownanie_pola_w_kolejnosci_formularza(admin_client, wydawnictwo_ciagl
     oczekiwana = sorted(etykiety, key=w_formularzu.index)
     w_tabeli = sorted(etykiety, key=lambda nazwa: tabela.index(etykiety[nazwa]))
     assert w_tabeli == oczekiwana
+
+
+# --- Poprawki po recenzji (Codex) -----------------------------------------
+
+
+def test_sekrety_uczelni_niewidoczne_w_porownaniu(admin_client, uczelnia):
+    """Tokeny i hasła integracji uczelni są w wersjach zaszyfrowane, ale
+    porównanie wersji wczytuje je odszyfrowane — nie mogą się tam pokazać."""
+    uczelnia.pbn_app_token = "TAJNY-TOKEN-STARY"
+    with reversion.create_revision():
+        uczelnia.save()
+    uczelnia.pbn_app_token = "TAJNY-TOKEN-NOWY"
+    uczelnia.nazwa_dopelniacz_field = "uczelni po zmianie"
+    with reversion.create_revision():
+        uczelnia.save()
+    nowsza, starsza = Version.objects.get_for_object(uczelnia)[:2]
+    assert nowsza.field_dict["pbn_app_token"] == "TAJNY-TOKEN-NOWY"  # odszyfrowane
+
+    tresc = admin_client.get(
+        reverse("admin:bpp_uczelnia_compare", args=(uczelnia.pk,)),
+        {"version_id1": starsza.pk, "version_id2": nowsza.pk},
+    ).content.decode()
+    assert "TAJNY-TOKEN" not in tresc
+    assert "uczelni po zmianie" in tresc
+
+
+def test_przywrocenie_nie_zabiera_autora_przeniesionego_do_innej_publikacji(
+    admin_client, wydawnictwo_ciagle, autor_jan_nowak, jednostka
+):
+    """Wiersz autora przeniesiony (w osobnym adminie autorstw) z publikacji A
+    do B: przywrócenie starej wersji A NIE może go zabrać publikacji B."""
+    wiersz = wydawnictwo_ciagle.dodaj_autora(autor_jan_nowak, jednostka)
+    with reversion.create_revision():
+        wydawnictwo_ciagle.save()
+    stara = Version.objects.get_for_object(wydawnictwo_ciagle).get()
+    with reversion.create_revision():
+        wydawnictwo_ciagle.save()
+
+    publikacja_b = baker.make(
+        Wydawnictwo_Ciagle,
+        rok=wydawnictwo_ciagle.rok,
+        charakter_formalny=wydawnictwo_ciagle.charakter_formalny,
+        jezyk=wydawnictwo_ciagle.jezyk,
+        typ_kbn=wydawnictwo_ciagle.typ_kbn,
+        status_korekty=wydawnictwo_ciagle.status_korekty,
+    )
+    Wydawnictwo_Ciagle_Autor.objects.filter(pk=wiersz.pk).update(rekord=publikacja_b)
+
+    url = reverse(
+        "admin:bpp_wydawnictwo_ciagle_revision",
+        args=(wydawnictwo_ciagle.pk, stara.pk),
+    )
+    podglad = admin_client.get(url).content.decode()
+    assert "Tej wersji nie można przywrócić" in podglad
+    assert "♻️ Przywróć tę wersję" not in podglad
+
+    res = admin_client.post(url)
+    assert res.status_code == 302
+    wiersz.refresh_from_db()
+    assert wiersz.rekord_id == publikacja_b.pk
+
+
+def test_porownanie_szablonow_dbtemplates_dziala(admin_client):
+    """Admin szablonów (dbtemplates) używa widoku porównania biblioteki —
+    szablon porównania BPP nie może go nadpisywać (puste wiersze)."""
+    from dbtemplates.models import Template
+
+    szablon = baker.make(Template, name="fd587.html", content="Stara treść")
+    with reversion.create_revision():
+        szablon.save()
+    szablon.content = "Nowa treść szablonu"
+    with reversion.create_revision():
+        szablon.save()
+    nowsza, starsza = Version.objects.get_for_object(szablon)[:2]
+
+    tresc = admin_client.get(
+        reverse("admin:dbtemplates_template_compare", args=(szablon.pk,)),
+        {"version_id1": starsza.pk, "version_id2": nowsza.pk},
+    ).content.decode()
+    assert "Nowa" in tresc and "Stara" in tresc

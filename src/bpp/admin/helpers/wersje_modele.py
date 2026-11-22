@@ -186,11 +186,6 @@ MODELE_BEZ_HISTORII = {
     "dynamic_admin_columns.modeladmincolumn": "preferencje kolumn",
 }
 
-#: Pola NIGDY nie zapisywane w wersjach (hasła, sekrety, tokeny) — przy
-#: przywróceniu wersji zostają bieżące wartości z bazy
-#: (``zachowaj_pola_wrazliwe``), więc przywrócenie danych użytkownika nie
-#: cofa mu hasła ani nie blokuje konta.
-POLA_WRAZLIWE = {
-    "bpp.bppuser": ("password", "last_login", "pbn_token", "pbn_token_updated"),
-    "oauth2_provider.application": ("client_secret",),
-}
+# Pola wrażliwe (hasła, sekrety) — definicja w ``bpp.wersjonowanie`` (używa
+# jej też rejestracja modeli spoza admina); tu re-eksport dla wygody.
+from bpp.wersjonowanie import POLA_WRAZLIWE  # noqa: E402, F401

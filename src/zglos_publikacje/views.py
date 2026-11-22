@@ -670,18 +670,27 @@ class Zgloszenie_PublikacjiWizard(UczelniaSettingRequiredMixin, SessionWizardVie
         i poprawka zgłaszającego (link z e-maila) to rewizje ze zgłoszonymi
         autorami i załącznikami. Przy poprawce najpierw stan sprzed zmiany —
         żeby dało się porównać, co zgłaszający zmienił."""
+        nowe = self.object is None
+        # Jedna transakcja na zgłoszenie i jego historię: gdyby zapis wersji
+        # się nie udał, nie zostanie zgłoszenie bez historii ani wysłany
+        # e-mail (``on_commit``) — zgłaszający zobaczy błąd i nic nie
+        # zostanie zapisane (bez duplikatów przy ponownej próbie).
+        with transaction.atomic():
+            return self._zapisz_w_transakcji(nowe, form_list, **kwargs)
+
+    def _zapisz_w_transakcji(self, nowe, form_list, **kwargs):
         import reversion
 
         from bpp.wersjonowanie import zapewnij_wersje_poczatkowa
 
-        nowe = self.object is None
         if not nowe:
             zapewnij_wersje_poczatkowa(self.object)
         odpowiedz = self._zapisz_zgloszenie(form_list, **kwargs)
-        # Wersja PO zapisie (a nie rewizja wokół niego): zapis zgłoszenia
-        # sam zapisuje historię innych rekordów (np. dyscyplina autora), a
-        # rewizje reversion nie mogą się zagnieżdżać.
-        with transaction.atomic(), reversion.create_revision():
+        # Wersja PO zapisie (osobny, kolejny blok reversion, a nie rewizja
+        # wokół zapisu): zapis zgłoszenia sam zapisuje historię innych
+        # rekordów (np. dyscyplina autora), a bloki reversion nie mogą się
+        # zagnieżdżać.
+        with reversion.create_revision():
             reversion.add_to_revision(
                 Zgloszenie_Publikacji.objects.get(pk=self.object.pk)
             )

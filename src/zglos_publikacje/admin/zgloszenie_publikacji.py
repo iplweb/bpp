@@ -9,6 +9,7 @@ from django.contrib import admin, messages
 from django.contrib.admin import helpers
 from django.contrib.admin.templatetags.admin_urls import add_preserved_filters
 from django.contrib.auth import get_permission_codename
+from django.core.exceptions import PermissionDenied
 from django.db import transaction
 from django.http import Http404, HttpResponseRedirect
 from django.shortcuts import render
@@ -178,6 +179,15 @@ class Zgloszenie_PublikacjiAdmin(
     def has_change_permission(self, request, obj=None):
         return False
 
+    def moze_zwracac(self, request):
+        """„Zwróć do autora” zmienia status zgłoszenia i wysyła zgłaszającemu
+        nowy link do edycji — wymaga uprawnienia ``change`` do zgłoszeń
+        (formularz zgłoszenia nie jest edytowalny, więc pytamy wprost)."""
+        opts = self.model._meta
+        return request.user.has_perm(
+            f"{opts.app_label}.{get_permission_codename('change', opts)}"
+        )
+
     def moze_przywracac(self, request):
         """Przywracanie z kosza = ``delete`` + ``change`` (jak wszędzie).
 
@@ -227,6 +237,7 @@ class Zgloszenie_PublikacjiAdmin(
         # mógł stanąć w pasku akcji nad tabelą (blok object-tools), a nie w
         # readonly wierszu tabeli (Freshdesk #430).
         extra_context = extra_context or {}
+        extra_context["moze_zwracac"] = self.moze_zwracac(request)
         obj = self.get_object(request, object_id)
         if obj is not None:
             # Zgłoszenie z kosza jest tylko do odczytu: bez importera, zwrotu
@@ -314,9 +325,14 @@ class Zgloszenie_PublikacjiAdmin(
     @transaction.atomic
     def zwroc_view(self, request, id, form_url="", extra_context=None):
         opts = Zgloszenie_Publikacji._meta
-        # ``objects`` — zgłoszenia z kosza nie zwracamy (najpierw „Przywróć").
-        obj = Zgloszenie_Publikacji.objects.filter(pk=id).first()
-        if obj is None:
+        # Sam dostęp do panelu (``admin_view``) nie wystarcza: zwrot zmienia
+        # zgłoszenie i wysyła e-mail z linkiem do edycji.
+        if not self.moze_zwracac(request):
+            raise PermissionDenied
+        # Przez ``get_object`` (zakres admina), a zgłoszenia z kosza nie
+        # zwracamy (najpierw „Przywróć").
+        obj = self.get_object(request, id)
+        if obj is None or obj.deleted_at is not None:
             raise Http404("Zgłoszenie nie istnieje albo jest w koszu")
         form_class = ZwrocEmailForm
 

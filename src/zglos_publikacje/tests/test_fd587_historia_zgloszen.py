@@ -66,3 +66,37 @@ def test_zwrot_do_autora_ma_wersje_z_przyczyna(
     assert "Popraw dane autorów" in po.revision.comment
     assert po.field_dict["status"] == Zgloszenie_Publikacji.Statusy.WYMAGA_ZMIAN
     assert przed.field_dict["status"] == Zgloszenie_Publikacji.Statusy.NOWY
+
+
+@pytest.mark.django_db
+def test_zwrot_do_autora_wymaga_uprawnienia(client, django_user_model, uczelnia):
+    """Sam dostęp do panelu nie wystarcza: zwrot zmienia zgłoszenie i wysyła
+    zgłaszającemu nowy link do edycji (wcześniej każdy z personelu mógł)."""
+    from django.contrib.auth.models import Permission
+
+    zgloszenie = baker.make(
+        Zgloszenie_Publikacji,
+        tytul_oryginalny="Zgłoszenie",
+        email="autor@example.com",
+        rok=2024,
+        status=Zgloszenie_Publikacji.Statusy.NOWY,
+    )
+    personel = baker.make(django_user_model, is_staff=True)
+    personel.user_permissions.add(
+        Permission.objects.get(codename="view_zgloszenie_publikacji")
+    )
+    client.force_login(personel)
+    url = reverse(
+        "admin:zglos_publikacje_zgloszenie_publikacji_zwroc", args=[zgloszenie.pk]
+    )
+    assert client.post(url, {"przyczyna_zwrotu": "x"}).status_code == 403
+    zgloszenie.refresh_from_db()
+    assert zgloszenie.status == Zgloszenie_Publikacji.Statusy.NOWY
+
+    strona = client.get(
+        reverse(
+            "admin:zglos_publikacje_zgloszenie_publikacji_change",
+            args=[zgloszenie.pk],
+        )
+    ).content.decode()
+    assert "Zwróć do autora" not in strona

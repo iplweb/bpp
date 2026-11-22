@@ -66,6 +66,12 @@
             <h3>Podgląd wcześniejszej wersji z {{ wersja_podgladu.revision.date_created|date:"j E Y (l), H:i"|lower }}</h3>
             <p>Poniżej rekord w stanie z tej wersji (nie obecny stan) — tylko do podglądu, bez edycji. {% if pokaz_przywroc %}Przycisk „♻️ Przywróć tę wersję” na dole strony przywraca rekord do tego stanu; samo przywrócenie też trafi do historii, więc da się je cofnąć.{% else %}Nie masz uprawnień do przywracania wersji tego rekordu.{% endif %}</p>
         {% endif %}
+        {% if konflikty_przywrocenia %}
+            <h3 class="bpp-usuniete" style="margin-top: 10px;">Tej wersji nie można przywrócić</h3>
+            <p class="bpp-usuniete">Te pozycje należą teraz do innego rekordu — przywrócenie zabrałoby je tamtemu rekordowi:</p>
+            <ul class="bpp-usuniete">{% for poz in konflikty_przywrocenia %}<li>{{ poz }}</li>{% endfor %}</ul>
+            <p>Popraw rekord ręcznie albo najpierw przenieś te pozycje z powrotem.</p>
+        {% endif %}
         {% if zmiany_powiazanych %}
             <h3 style="margin-top: 10px;">Uwaga: przywrócenie zmieni też listy powiązane z rekordem</h3>
             {% for zmiana in zmiany_powiazanych %}

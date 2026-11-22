@@ -45,6 +45,7 @@ from bpp.wersjonowanie import (
     FOLLOW_REVERSION,
     POLA_KOSZA,
     POLA_POZA_WERSJA,
+    POLA_UKRYTE_W_POROWNANIU,
     zapewnij_wersje_poczatkowa,
 )
 
@@ -92,6 +93,18 @@ def _nalezy_do(wersja, obj, menedzer):
         stan.get(menedzer.content_type_field_name + "_id", "")
         or stan.get(menedzer.content_type_field_name)
     ) == str(menedzer.content_type.pk)
+
+
+def _obiekt_nalezy_do(biezacy, obj, menedzer):
+    """Czy BIEŻĄCY obiekt z bazy (pozycja listy) należy do ``obj``."""
+    pole_fk = getattr(menedzer, "field", None)  # relacja odwrotna FK
+    if pole_fk is not None:
+        return getattr(biezacy, pole_fk.attname) == obj.pk
+    return str(getattr(biezacy, menedzer.object_id_field_name)) == str(
+        obj.pk
+    ) and getattr(biezacy, menedzer.content_type_field_name + "_id") == (
+        menedzer.content_type.pk
+    )
 
 
 def podepnij_historie_wersji(site):
@@ -158,8 +171,13 @@ class HistoriaWersjiMixin:
         ``autorzy_set``)."""
         opts = self.model._meta
         sledzone = set(FOLLOW_REVERSION.get(self.model, ()))
-        wykluczone = set(POLA_POZA_POROWNANIEM) | set(
-            POLA_POZA_WERSJA.get(self.model, POLA_KOSZA)
+        wykluczone = (
+            set(POLA_POZA_POROWNANIEM)
+            | set(POLA_POZA_WERSJA.get(self.model, POLA_KOSZA))
+            # Stare wersje (sprzed wyłączenia) mogą jeszcze nieść sekrety,
+            # a sekrety integracji uczelni są w wersjach celowo (zaszyfrowane).
+            | set(POLA_WRAZLIWE.get(self.model._meta.label_lower, ()))
+            | set(POLA_UKRYTE_W_POROWNANIU.get(self.model._meta.label_lower, ()))
         )
         for relacja in opts.related_objects:
             if relacja.get_accessor_name() not in sledzone:
@@ -240,7 +258,10 @@ class HistoriaWersjiMixin:
                 f"?version_id1={poprzednia.pk}&version_id2={wersja1.pk}"
             )
         context.update(extra_context or {})
-        return render(request, "reversion-compare/compare.html", context)
+        # Własna nazwa szablonu: nadpisanie „reversion-compare/compare.html”
+        # psuło porównanie adminów, które używają widoku biblioteki (np.
+        # szablony dbtemplates — inny kształt danych).
+        return render(request, "reversion/porownanie_wersji.html", context)
 
     def _aktualna_wersja_pk(self, object_id):
         """Numer najnowszej zapisanej wersji rekordu — to jego stan obecny
@@ -443,7 +464,11 @@ class HistoriaWersjiMixin:
             "wersja_podgladu": wersja,
             "wersja_aktualna": wersja.pk == aktualna_pk,
             "wersja_jak_aktualna": wersja.pk != aktualna_pk and bez_zmian,
+            "konflikty_przywrocenia": (
+                konflikty := self._konflikty_przywrocenia(obj, wersja)
+            ),
             "pokaz_przywroc": not bez_zmian
+            and not konflikty
             and self.has_change_permission(request, obj),
             **(extra_context or {}),
         }
@@ -477,6 +502,32 @@ class HistoriaWersjiMixin:
                 and _nalezy_do(v, obj, menedzer)
             )
         return wynik
+
+    def _konflikty_przywrocenia(self, obj, wersja):
+        """Pozycje list z ``wersja``, które w bazie należą TERAZ do innego
+        rekordu — np. wiersz autora przeniesiony w osobnym adminie autorstw
+        z tej publikacji do innej. Przywrócenie zapisałoby ten sam wiersz ze
+        starym rekordem nadrzędnym, czyli po cichu zabrało autora tamtej
+        publikacji. Zwraca opisy takich pozycji (pusta lista = brak)."""
+        konflikty = []
+        for akcesor in FOLLOW_REVERSION.get(self.model, ()):
+            menedzer = getattr(obj, akcesor)
+            model = menedzer.model
+            wersje = [
+                v
+                for v in self._wersje_rekordu_w_rewizji(obj, wersja)[1:]
+                if v.content_type.model_class() is model
+            ]
+            biezace = model._base_manager.in_bulk([v.object_id for v in wersje])
+            for v in wersje:
+                biezacy = (
+                    biezace.get(int(v.object_id)) if v.object_id.isdigit() else None
+                )
+                if biezacy is not None and not _obiekt_nalezy_do(
+                    biezacy, obj, menedzer
+                ):
+                    konflikty.append(v.object_repr)
+        return konflikty
 
     def _przywroc_wersje(self, request, obj, wersja, bez_zmian):
         """Przywróć ``wersja`` rekordu ``obj`` (przycisk „♻️ Przywróć tę
@@ -512,6 +563,18 @@ class HistoriaWersjiMixin:
             )
 
         zmienione = self._zmienione_przy_przywroceniu(obj, wersja)
+        konflikty = self._konflikty_przywrocenia(obj, wersja)
+        if konflikty:
+            self.message_user(
+                request,
+                "Nie przywrócono wersji: te pozycje należą teraz do innego "
+                f"rekordu: {'; '.join(konflikty)}. Popraw je ręcznie albo "
+                "najpierw przenieś je z powrotem.",
+                level=messages.ERROR,
+            )
+            return HttpResponseRedirect(
+                reverse(f"{nazwa}_history", args=(quote(obj.pk),))
+            )
         komentarz = f"Przywrócono wersję z {data}."
         if zmienione:
             komentarz += f" Zmieniono: {', '.join(zmienione)}."
