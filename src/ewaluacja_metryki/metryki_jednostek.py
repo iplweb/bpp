@@ -1,10 +1,14 @@
-"""Metryki jednostki — dane zestawienia PDF dla kierownika (FD#617).
+"""Metryki jednostki i wydziału — dane zestawienia PDF (FD#617).
 
 Raport ma być doradcą dla kierownika jednostki (np. kliniki): na bazie
 ``MetrykaAutora`` pokazuje, kto wypełnia sloty, kto pisze lepsze prace na tle
 jednostki, gdzie leży niewykorzystany potencjał i jak wygląda struktura
 punktacji prac. Wszystko liczone osobno dla każdej dyscypliny — średnie za slot
 w różnych dyscyplinach nie są porównywalne.
+
+To samo zestawienie da się zbudować dla całego wydziału (korzeń drzewa
+jednostek) — wtedy mediany i „realia” liczone są na tle wydziału, a dochodzi
+podsumowanie jednostek wydziału.
 
 Moduł nie zna HTML-a ani PDF-a: zwraca czyste struktury danych, które szablon
 (i generator SVG w ``metryki_jednostek_svg``) zamienia na wydruk.
@@ -59,7 +63,7 @@ KWADRANT_WSPARCIE = "wsparcie"
 KWADRANT_BRAK = "brak"
 
 OPIS_KWADRANTU = {
-    KWADRANT_FILAR: "Filar jednostki",
+    KWADRANT_FILAR: "Filar {dopelniacz}",
     KWADRANT_ILOSC: "Pełne sloty, słabsze prace",
     KWADRANT_POTENCJAL: "Dobre prace, niewykorzystane sloty",
     KWADRANT_WSPARCIE: "Wymaga wsparcia",
@@ -80,7 +84,7 @@ ZALECENIE_DLA_GRUPY = {
         "wyżej punktowane — każda lepsza praca wypiera słabszą ze slotu."
     ),
     KWADRANT_WSPARCIE: (
-        "Niskie wypełnienie i jakość poniżej mediany jednostki. Rozmowa "
+        "Niskie wypełnienie i jakość poniżej mediany {dopelniacz}. Rozmowa "
         "o planach publikacyjnych, współautorstwo z filarami."
     ),
     KWADRANT_BRAK: (
@@ -93,6 +97,27 @@ ZERO = Decimal("0")
 
 MIN_OSOB_NA_WYKRES = 3
 MIN_OSOB_NOWA_STRONA = 6
+# Na wykresie bąbelkowym podpisujemy najwyżej tylu osób (największe punkty).
+MAX_PODPISOW_WYKRESU = 30
+
+RODZAJ_JEDNOSTKA = "jednostka"
+RODZAJ_WYDZIAL = "wydzial"
+
+# Odmiana nazwy obiektu zestawienia w tekstach wniosków i szablonu.
+SLOWA = {
+    RODZAJ_JEDNOSTKA: {
+        "mianownik": "Jednostka",
+        "dopelniacz": "jednostki",
+        "miejscownik": "jednostce",
+        "odbiorca": "kierownika jednostki",
+    },
+    RODZAJ_WYDZIAL: {
+        "mianownik": "Wydział",
+        "dopelniacz": "wydziału",
+        "miejscownik": "wydziale",
+        "odbiorca": "władz wydziału",
+    },
+}
 
 
 def _d(wartosc) -> Decimal:
@@ -118,6 +143,7 @@ class WierszAutora:
     kwadrant: str
     brakujace_sloty: Decimal
     potencjal_punktow: Decimal
+    slowa: dict = field(default_factory=lambda: SLOWA[RODZAJ_JEDNOSTKA])
 
     @property
     def autor(self):
@@ -125,7 +151,7 @@ class WierszAutora:
 
     @property
     def opis_kwadrantu(self):
-        return OPIS_KWADRANTU[self.kwadrant]
+        return opis_kwadrantu(self.kwadrant, self.slowa)
 
 
 @dataclass
@@ -154,6 +180,7 @@ class GrupaDyscypliny:
     procent_slotow_slabych_prac: Decimal | None
     udzial_top3: Decimal | None
     wnioski: list[str] = field(default_factory=list)
+    slowa: dict = field(default_factory=lambda: SLOWA[RODZAJ_JEDNOSTKA])
 
     @property
     def wiersze_wg_sredniej(self):
@@ -180,6 +207,10 @@ class GrupaDyscypliny:
         return self.osoby_z_pracami >= MIN_OSOB_NA_WYKRES
 
     @property
+    def podpisane_wszystkie(self):
+        return self.osoby_z_pracami <= MAX_PODPISOW_WYKRESU
+
+    @property
     def mala(self):
         """Mała dyscyplina (1–2 osoby): zwarty układ — karty osób mówią
         wszystko, kafelki i tabela tylko by je powtarzały."""
@@ -198,7 +229,13 @@ class GrupaDyscypliny:
         for kwadrant, zalecenie in ZALECENIE_DLA_GRUPY.items():
             osoby = [w for w in self.wiersze if w.kwadrant == kwadrant]
             if osoby:
-                wynik.append((OPIS_KWADRANTU[kwadrant], zalecenie, osoby))
+                wynik.append(
+                    (
+                        opis_kwadrantu(kwadrant, self.slowa),
+                        zalecenie.format(**self.slowa),
+                        osoby,
+                    )
+                )
         return wynik
 
     @property
@@ -211,10 +248,48 @@ class GrupaDyscypliny:
 
 
 @dataclass
+class PodsumowanieJednostki:
+    """Jednostka w zestawieniu wydziału — sumy po wszystkich dyscyplinach."""
+
+    jednostka: object
+    liczba_autorow: int
+    slot_maksymalny: Decimal
+    slot_nazbierany: Decimal
+    punkty: Decimal
+    potencjal_punktow: Decimal
+
+    @property
+    def wypelnienie(self):
+        return _iloraz(self.slot_nazbierany * 100, self.slot_maksymalny)
+
+    @property
+    def status_wypelnienia(self):
+        return status_wypelnienia_procent(self.wypelnienie)
+
+    @property
+    def srednia(self):
+        return _iloraz(self.punkty, self.slot_nazbierany)
+
+
+@dataclass
 class MetrykiJednostki:
+    """Zestawienie jednostki albo — ``rodzaj == RODZAJ_WYDZIAL`` — wydziału
+    (wtedy ``jednostka`` to korzeń drzewa, a ``jednostki`` — podsumowanie
+    jednostek wydziału)."""
+
     jednostka: object
     okres: object
     grupy: list[GrupaDyscypliny]
+    rodzaj: str = RODZAJ_JEDNOSTKA
+    jednostki: list[PodsumowanieJednostki] = field(default_factory=list)
+
+    @property
+    def wydzial(self):
+        return self.rodzaj == RODZAJ_WYDZIAL
+
+    @property
+    def slowa(self):
+        return SLOWA[self.rodzaj]
 
     @property
     def liczba_autorow(self):
@@ -257,6 +332,11 @@ class MetrykiJednostki:
     @property
     def brakujace_sloty(self):
         return sum((g.brakujace_sloty for g in self.grupy), ZERO)
+
+
+def opis_kwadrantu(kwadrant, slowa) -> str:
+    """Nazwa grupy osób, np. „Filar jednostki” / „Filar wydziału”."""
+    return OPIS_KWADRANTU[kwadrant].format(**slowa)
 
 
 def status_wypelnienia_procent(procent: Decimal | None) -> str:
@@ -357,13 +437,13 @@ def rozklad_punktacji(prace) -> tuple[list[PrzedzialPunktow], Decimal | None]:
     return przedzialy, slabe / suma_slotow * 100
 
 
-def _wnioski(grupa: GrupaDyscypliny) -> list[str]:
+def _wnioski(grupa: GrupaDyscypliny, slowa: dict) -> list[str]:
     wnioski = []
     nazwa = grupa.dyscyplina.nazwa
 
     if grupa.wypelnienie is not None:
         wnioski.append(
-            f"Jednostka wypełnia {_fmt(grupa.wypelnienie)}% dostępnych slotów "
+            f"{slowa['mianownik']} wypełnia {_fmt(grupa.wypelnienie)}% dostępnych slotów "
             f"w dyscyplinie {nazwa} ({_fmt(grupa.slot_nazbierany, 2)} "
             f"z {_fmt(grupa.slot_maksymalny, 2)})."
         )
@@ -371,7 +451,8 @@ def _wnioski(grupa: GrupaDyscypliny) -> list[str]:
     if grupa.brakujace_sloty > 0 and grupa.potencjal_punktow > 0:
         wnioski.append(
             f"Niewykorzystane sloty: {_fmt(grupa.brakujace_sloty, 2)}. Przy medianie "
-            f"jakości jednostki to szacunkowo +{_fmt(grupa.potencjal_punktow)} pkt "
+            f"jakości {slowa['dopelniacz']} to szacunkowo "
+            f"+{_fmt(grupa.potencjal_punktow)} pkt "
             "— największy potencjał mają osoby z tabeli „Gdzie leży potencjał”."
         )
 
@@ -383,7 +464,7 @@ def _wnioski(grupa: GrupaDyscypliny) -> list[str]:
             kierunek = "powyżej" if roznica > 0 else "poniżej"
             porownanie = f"{_fmt(abs(roznica))}% {kierunek} średniej"
         wnioski.append(
-            f"Średnia za slot w jednostce ({_fmt(grupa.srednia, 1)} pkt) jest "
+            f"Średnia za slot w {slowa['miejscownik']} ({_fmt(grupa.srednia, 1)} pkt) jest "
             f"{porownanie} całej uczelni w tej dyscyplinie "
             f"({_fmt(grupa.srednia_uczelni, 1)} pkt)."
         )
@@ -394,7 +475,7 @@ def _wnioski(grupa: GrupaDyscypliny) -> list[str]:
         and grupa.udzial_top3 >= 50
     ):
         wnioski.append(
-            f"Trzy osoby dają {_fmt(grupa.udzial_top3)}% punktów jednostki — "
+            f"Trzy osoby dają {_fmt(grupa.udzial_top3)}% punktów {slowa['dopelniacz']} — "
             "wynik zależy od wąskiej grupy; odejście jednej z nich byłoby "
             "odczuwalne."
         )
@@ -427,7 +508,7 @@ def _srednia_uczelni(uczelnia, okres, dyscyplina_id) -> Decimal | None:
     return _iloraz(_d(agg["p"]), _d(agg["s"]))
 
 
-def _grupa(metryki, uczelnia, okres) -> GrupaDyscypliny:
+def _grupa(metryki, uczelnia, okres, slowa) -> GrupaDyscypliny:
     srednie_niezerowe = [
         _d(m.srednia_za_slot_nazbierana) for m in metryki if m.slot_nazbierany
     ]
@@ -459,6 +540,7 @@ def _grupa(metryki, uczelnia, okres) -> GrupaDyscypliny:
                 kwadrant=kwadrant,
                 brakujace_sloty=brakujace,
                 potencjal_punktow=potencjal,
+                slowa=slowa,
             )
         )
 
@@ -486,25 +568,76 @@ def _grupa(metryki, uczelnia, okres) -> GrupaDyscypliny:
         struktura=struktura,
         procent_slotow_slabych_prac=procent_slabych,
         udzial_top3=(top3 / punkty * 100) if punkty else None,
+        slowa=slowa,
     )
-    grupa.wnioski = _wnioski(grupa)
+    grupa.wnioski = _wnioski(grupa, slowa)
     return grupa
 
 
-def zbuduj_metryki_jednostki(jednostka, uczelnia, okres) -> MetrykiJednostki:
-    """Zbuduj raport dla ``jednostka`` w ``okres`` (zawężony do ``uczelnia``)."""
+def _zbuduj(obiekt, metryki, uczelnia, okres, rodzaj) -> MetrykiJednostki:
     metryki = scope_metryki(
-        MetrykaAutora.objects.filter(jednostka=jednostka).select_related(
-            "autor", "dyscyplina_naukowa"
-        ),
+        metryki.select_related("autor", "dyscyplina_naukowa", "jednostka"),
         uczelnia,
         okres,
     )
-
     wg_dyscypliny = defaultdict(list)
     for m in metryki:
         wg_dyscypliny[m.dyscyplina_naukowa_id].append(m)
 
-    grupy = [_grupa(lista, uczelnia, okres) for lista in wg_dyscypliny.values()]
+    slowa = SLOWA[rodzaj]
+    grupy = [_grupa(lista, uczelnia, okres, slowa) for lista in wg_dyscypliny.values()]
     grupy.sort(key=lambda g: (-g.punkty, g.dyscyplina.nazwa))
-    return MetrykiJednostki(jednostka=jednostka, okres=okres, grupy=grupy)
+    return MetrykiJednostki(jednostka=obiekt, okres=okres, grupy=grupy, rodzaj=rodzaj)
+
+
+def zbuduj_metryki_jednostki(jednostka, uczelnia, okres) -> MetrykiJednostki:
+    """Zbuduj raport dla ``jednostka`` w ``okres`` (zawężony do ``uczelnia``)."""
+    return _zbuduj(
+        jednostka,
+        MetrykaAutora.objects.filter(jednostka=jednostka),
+        uczelnia,
+        okres,
+        RODZAJ_JEDNOSTKA,
+    )
+
+
+def podsumowanie_jednostek(grupy) -> list[PodsumowanieJednostki]:
+    """Sumy wierszy wszystkich dyscyplin wg jednostki autora, od największej
+    liczby punktów. Potencjał liczony medianą WYDZIAŁU w danej dyscyplinie."""
+    wg_jednostki = defaultdict(list)
+    for grupa in grupy:
+        for w in grupa.wiersze:
+            wg_jednostki[w.metryka.jednostka_id].append(w)
+
+    wynik = [
+        PodsumowanieJednostki(
+            jednostka=wiersze[0].metryka.jednostka,
+            liczba_autorow=len({w.metryka.autor_id for w in wiersze}),
+            slot_maksymalny=sum((_d(w.metryka.slot_maksymalny) for w in wiersze), ZERO),
+            slot_nazbierany=sum((_d(w.metryka.slot_nazbierany) for w in wiersze), ZERO),
+            punkty=sum((w.punkty for w in wiersze), ZERO),
+            potencjal_punktow=sum((w.potencjal_punktow for w in wiersze), ZERO),
+        )
+        for wiersze in wg_jednostki.values()
+    ]
+    wynik.sort(key=lambda p: (-p.punkty, p.jednostka.nazwa))
+    return wynik
+
+
+def zbuduj_metryki_wydzialu(wydzial, uczelnia, okres) -> MetrykiJednostki:
+    """Zbuduj raport całego wydziału — ``wydzial`` to korzeń drzewa jednostek;
+    wchodzą metryki autorów z wszystkich jednostek tego drzewa."""
+    from bpp.models import Jednostka
+
+    # tree_id z bazy, nie z obiektu: MPTT przenumerowuje drzewa przy
+    # wstawianiu korzeni, więc wartość w pamięci bywa nieaktualna.
+    tree_id = Jednostka.objects.values_list("tree_id", flat=True).get(pk=wydzial.pk)
+    raport = _zbuduj(
+        wydzial,
+        MetrykaAutora.objects.filter(jednostka__tree_id=tree_id),
+        uczelnia,
+        okres,
+        RODZAJ_WYDZIAL,
+    )
+    raport.jednostki = podsumowanie_jednostek(raport.grupy)
+    return raport
