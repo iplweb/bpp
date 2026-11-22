@@ -116,6 +116,30 @@ def sledzone_relacje(model):
 #: pole spoza wersji dostaje wartość domyślną modelu — wolno tu wpisać
 #: wyłącznie pola, które baza i tak przelicza (trigger ``BEFORE``, denorm)
 #: albo które mogą być puste. Pilnuje tego test przywracania każdego modelu.
+#: Pola NIGDY nie zapisywane w wersjach (hasła, sekrety, tokeny) — przy
+#: przywróceniu wersji zostają bieżące wartości z bazy
+#: (``zachowaj_pola_wrazliwe``), więc przywrócenie danych użytkownika nie
+#: cofa mu hasła ani nie blokuje konta.
+POLA_WRAZLIWE = {
+    "bpp.bppuser": ("password", "last_login", "pbn_token", "pbn_token_updated"),
+    "oauth2_provider.application": ("client_secret",),
+}
+
+#: Pola, które ZOSTAJĄ w wersjach, ale nie mogą być pokazywane w porównaniu
+#: wersji: sekrety integracji uczelni. W wersji są zaszyfrowane
+#: (``EncryptedTextField``) i przywrócenie wersji je przywraca, ale wczytanie
+#: wersji do porównania odszyfrowuje wartość — porównanie pokazałoby tokeny
+#: każdemu, kto może oglądać historię uczelni.
+POLA_UKRYTE_W_POROWNANIU = {
+    "bpp.uczelnia": (
+        "pbn_app_token",
+        "clarivate_password",
+        "orcid_client_secret",
+        "dspace_api_password",
+    ),
+}
+
+
 POLA_POZA_WERSJA = {
     WybranaPublikacjaAutora: (),
     Autor: ("search", *POLA_KOSZA),
@@ -147,6 +171,7 @@ def zarejestruj_wersjonowanie(model, *, exclude=(), follow=()):
         return
     if hasattr(model, "deleted_objects"):
         exclude = (*exclude, *POLA_KOSZA)
+    exclude = (*exclude, *POLA_WRAZLIWE.get(model._meta.label_lower, ()))
     for akcesor in follow:
         powiazany = _relacja_odwrotna(model, akcesor)
         if not reversion.is_registered(powiazany):
@@ -266,6 +291,21 @@ def _zarejestruj_modele_bpp():
     # jest przebudowywane (``JednostkaAdmin.po_przywroceniu_wersji``).
     # Zatrudnienie autorów NIE jest śledzone (jak przy ``Autor``).
     zarejestruj_wersjonowanie(Jednostka, exclude=("search",))
+
+    # Jawnie, zanim zrobi to automatycznie ``VersionAdmin`` z inline'ów:
+    # - uczelnia BEZ wyliczanej liczby N (``LiczbaNDlaUczelni``) —
+    #   przywrócenie wersji nadpisałoby ją starymi wartościami,
+    # - tag (słowo kluczowe) BEZ powiązań z rekordami — wersja tagu
+    #   obejmowałaby jego wystąpienia we WSZYSTKICH publikacjach, a jej
+    #   przywrócenie usunęłoby słowo z publikacji, którym dodano je później.
+    from bpp.models import Uczelnia
+
+    zarejestruj_wersjonowanie(Uczelnia, follow=("ukryj_status_korekty_set",))
+
+    from django.apps import apps
+
+    if apps.is_installed("taggit"):
+        zarejestruj_wersjonowanie(apps.get_model("taggit", "Tag"))
 
 
 _zarejestruj_modele_bpp()

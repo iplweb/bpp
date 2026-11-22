@@ -10,7 +10,7 @@
     {% endif %}
     {# Zgłoszenie z kosza: tylko do odczytu, bez zwrotu i dodawania rekordu. #}
     {% if not original.deleted_at %}
-    {% if original.moze_zostac_zwrocony %}
+    {% if original.moze_zostac_zwrocony and moze_zwracac %}
         <li><a href="../zwroc/">Zwróć do autora</a></li>
     {% endif %}
     {% if original.status == 0 or original.status == 3 %}

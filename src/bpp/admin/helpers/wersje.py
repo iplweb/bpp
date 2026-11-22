@@ -28,6 +28,7 @@ Dokłada do widoków reversion:
   przebudowa drzewa jednostek).
 """
 
+import logging
 from contextlib import nullcontext
 from contextvars import ContextVar
 
@@ -44,10 +45,13 @@ from bpp.wersjonowanie import (
     FOLLOW_REVERSION,
     POLA_KOSZA,
     POLA_POZA_WERSJA,
+    POLA_UKRYTE_W_POROWNANIU,
     zapewnij_wersje_poczatkowa,
 )
 
 from .wersje_modele import POLA_WRAZLIWE
+
+logger = logging.getLogger(__name__)
 
 #: Ustawiane na czas przywracania wersji w adminie — receiver
 #: ``zachowaj_pola_wrazliwe`` przepisuje wtedy pola spoza wersji (hasła,
@@ -89,6 +93,18 @@ def _nalezy_do(wersja, obj, menedzer):
         stan.get(menedzer.content_type_field_name + "_id", "")
         or stan.get(menedzer.content_type_field_name)
     ) == str(menedzer.content_type.pk)
+
+
+def _obiekt_nalezy_do(biezacy, obj, menedzer):
+    """Czy BIEŻĄCY obiekt z bazy (pozycja listy) należy do ``obj``."""
+    pole_fk = getattr(menedzer, "field", None)  # relacja odwrotna FK
+    if pole_fk is not None:
+        return getattr(biezacy, pole_fk.attname) == obj.pk
+    return str(getattr(biezacy, menedzer.object_id_field_name)) == str(
+        obj.pk
+    ) and getattr(biezacy, menedzer.content_type_field_name + "_id") == (
+        menedzer.content_type.pk
+    )
 
 
 def podepnij_historie_wersji(site):
@@ -155,8 +171,13 @@ class HistoriaWersjiMixin:
         ``autorzy_set``)."""
         opts = self.model._meta
         sledzone = set(FOLLOW_REVERSION.get(self.model, ()))
-        wykluczone = set(POLA_POZA_POROWNANIEM) | set(
-            POLA_POZA_WERSJA.get(self.model, POLA_KOSZA)
+        wykluczone = (
+            set(POLA_POZA_POROWNANIEM)
+            | set(POLA_POZA_WERSJA.get(self.model, POLA_KOSZA))
+            # Stare wersje (sprzed wyłączenia) mogą jeszcze nieść sekrety,
+            # a sekrety integracji uczelni są w wersjach celowo (zaszyfrowane).
+            | set(POLA_WRAZLIWE.get(self.model._meta.label_lower, ()))
+            | set(POLA_UKRYTE_W_POROWNANIU.get(self.model._meta.label_lower, ()))
         )
         for relacja in opts.related_objects:
             if relacja.get_accessor_name() not in sledzone:
@@ -206,7 +227,10 @@ class HistoriaWersjiMixin:
             "app_label": opts.app_label,
             "title": f"Porównanie wersji: {obj}",
             "original": obj,
-            "compare_data": self.compare(obj, wersja1, wersja2)[0],
+            "compare_data": [
+                *self._wiersz_kosza(obj, wersja1, wersja2),
+                *self._porownanie_jak_w_formularzu(request, obj, wersja1, wersja2),
+            ],
             "version1": wersja1,
             "version2": wersja2,
             "wersje_porownania": [
@@ -234,7 +258,10 @@ class HistoriaWersjiMixin:
                 f"?version_id1={poprzednia.pk}&version_id2={wersja1.pk}"
             )
         context.update(extra_context or {})
-        return render(request, "reversion-compare/compare.html", context)
+        # Własna nazwa szablonu: nadpisanie „reversion-compare/compare.html”
+        # psuło porównanie adminów, które używają widoku biblioteki (np.
+        # szablony dbtemplates — inny kształt danych).
+        return render(request, "reversion/porownanie_wersji.html", context)
 
     def _aktualna_wersja_pk(self, object_id):
         """Numer najnowszej zapisanej wersji rekordu — to jego stan obecny
@@ -260,6 +287,68 @@ class HistoriaWersjiMixin:
             self.model, obj, wersja, aktualna, self.compare_exclude
         )
 
+    def _wiersz_kosza(self, obj, wersja1, wersja2):
+        """Wiersz „Kosz” w porównaniu wersji. Stan kosza NIE jest częścią
+        danych wersji (pola kosza są celowo wyłączone), więc bez tego
+        porównanie wersji sprzed i po przeniesieniu do kosza pokazywałoby
+        „brak różnic”. Stan i zdarzenia odczytujemy z rewizji kosza
+        (komentarze z ``receivers/soft_delete.py``)."""
+        if not hasattr(self.model, "deleted_objects"):
+            return []
+        from django.utils import formats, timezone
+        from django.utils.html import format_html, format_html_join
+
+        from bpp.receivers.soft_delete import (
+            KOMENTARZ_WERSJI_KOSZ,
+            KOMENTARZ_WERSJI_PRZYWROCENIE,
+        )
+
+        zdarzenia = [
+            v
+            for v in Version.objects.get_for_object(obj)
+            .select_related("revision__user")
+            .order_by("pk")
+            if v.revision.comment.startswith(
+                (KOMENTARZ_WERSJI_KOSZ, KOMENTARZ_WERSJI_PRZYWROCENIE)
+            )
+        ]
+
+        def stan(wersja):
+            wczesniejsze = [z for z in zdarzenia if z.pk <= wersja.pk]
+            w_koszu = bool(wczesniejsze) and wczesniejsze[
+                -1
+            ].revision.comment.startswith(KOMENTARZ_WERSJI_KOSZ)
+            return "🗑️ w koszu" if w_koszu else "poza koszem"
+
+        miedzy = [z for z in zdarzenia if wersja1.pk < z.pk <= wersja2.pk]
+        if not miedzy and stan(wersja1) == stan(wersja2):
+            return []
+
+        def opis(z):
+            kto = z.revision.user or "system"
+            kiedy = formats.date_format(
+                timezone.localtime(z.revision.date_created), "j E Y, H:i"
+            )
+            ikona = "🗑️" if z.revision.comment.startswith(KOMENTARZ_WERSJI_KOSZ) else "♻️"
+            return (ikona, z.revision.comment, kiedy, kto)
+
+        return [
+            {
+                "etykieta": "Kosz",
+                "stare": stan(wersja1),
+                "zmiana": format_html(
+                    "<ul>{}</ul>",
+                    format_html_join(
+                        "",
+                        '<li>{} {} <span class="bpp-przygaszony">— {}, {}</span></li>',
+                        (opis(z) for z in miedzy),
+                    ),
+                ),
+                "nowe": stan(wersja2),
+                "lista": False,
+            }
+        ]
+
     def _stan_kosza(self, request, obj):
         """Kontekst dla stron historii rekordu z kosza: czy jest w koszu,
         od kiedy i — gdy użytkownik może przywracać — adres przycisku
@@ -275,6 +364,36 @@ class HistoriaWersjiMixin:
                 f"admin:{self._nazwa_url_przywroc()}", args=[obj.pk]
             )
         return stan
+
+    def _kolejnosc_pol_formularza(self, request, obj):
+        """{model: [nazwy pól]} w kolejności z formularza admina — rekordu
+        (``fieldsets``) i jego inline'ów (autorzy itp.)."""
+        from django.contrib.admin.utils import flatten_fieldsets
+
+        kolejnosc = {}
+        try:
+            kolejnosc[self.model] = flatten_fieldsets(self.get_fieldsets(request, obj))
+            for inline in self.get_inline_instances(request, obj):
+                kolejnosc[inline.model] = flatten_fieldsets(
+                    inline.get_fieldsets(request, obj)
+                )
+        except (AttributeError, KeyError, TypeError, ValueError):
+            # Nietypowy formularz (np. dynamiczne pola) — porównanie zostaje
+            # w kolejności z modelu; nie blokujemy podglądu historii.
+            logger.exception("Brak kolejności pól formularza dla %s", self.model)
+        return kolejnosc
+
+    def _porownanie_jak_w_formularzu(self, request, obj, version1, version2):
+        from .porownanie_wersji import porownaj_wersje
+
+        return porownaj_wersje(
+            self.model,
+            obj,
+            version1,
+            version2,
+            self.compare_exclude,
+            kolejnosc=self._kolejnosc_pol_formularza(request, obj),
+        )
 
     def compare(self, obj, version1, version2):
         """Czytelne porównanie (``porownanie_wersji``) zamiast diffu
@@ -345,7 +464,11 @@ class HistoriaWersjiMixin:
             "wersja_podgladu": wersja,
             "wersja_aktualna": wersja.pk == aktualna_pk,
             "wersja_jak_aktualna": wersja.pk != aktualna_pk and bez_zmian,
+            "konflikty_przywrocenia": (
+                konflikty := self._konflikty_przywrocenia(obj, wersja)
+            ),
             "pokaz_przywroc": not bez_zmian
+            and not konflikty
             and self.has_change_permission(request, obj),
             **(extra_context or {}),
         }
@@ -380,6 +503,32 @@ class HistoriaWersjiMixin:
             )
         return wynik
 
+    def _konflikty_przywrocenia(self, obj, wersja):
+        """Pozycje list z ``wersja``, które w bazie należą TERAZ do innego
+        rekordu — np. wiersz autora przeniesiony w osobnym adminie autorstw
+        z tej publikacji do innej. Przywrócenie zapisałoby ten sam wiersz ze
+        starym rekordem nadrzędnym, czyli po cichu zabrało autora tamtej
+        publikacji. Zwraca opisy takich pozycji (pusta lista = brak)."""
+        konflikty = []
+        for akcesor in FOLLOW_REVERSION.get(self.model, ()):
+            menedzer = getattr(obj, akcesor)
+            model = menedzer.model
+            wersje = [
+                v
+                for v in self._wersje_rekordu_w_rewizji(obj, wersja)[1:]
+                if v.content_type.model_class() is model
+            ]
+            biezace = model._base_manager.in_bulk([v.object_id for v in wersje])
+            for v in wersje:
+                biezacy = (
+                    biezace.get(int(v.object_id)) if v.object_id.isdigit() else None
+                )
+                if biezacy is not None and not _obiekt_nalezy_do(
+                    biezacy, obj, menedzer
+                ):
+                    konflikty.append(v.object_repr)
+        return konflikty
+
     def _przywroc_wersje(self, request, obj, wersja, bez_zmian):
         """Przywróć ``wersja`` rekordu ``obj`` (przycisk „♻️ Przywróć tę
         wersję”). NIE jest to zapis formularza z podglądu — odtwarzamy
@@ -413,7 +562,22 @@ class HistoriaWersjiMixin:
                 reverse(f"{nazwa}_history", args=(quote(obj.pk),))
             )
 
-        komentarz = f"Przywrócono wersję z {data}"
+        zmienione = self._zmienione_przy_przywroceniu(obj, wersja)
+        konflikty = self._konflikty_przywrocenia(obj, wersja)
+        if konflikty:
+            self.message_user(
+                request,
+                "Nie przywrócono wersji: te pozycje należą teraz do innego "
+                f"rekordu: {'; '.join(konflikty)}. Popraw je ręcznie albo "
+                "najpierw przenieś je z powrotem.",
+                level=messages.ERROR,
+            )
+            return HttpResponseRedirect(
+                reverse(f"{nazwa}_history", args=(quote(obj.pk),))
+            )
+        komentarz = f"Przywrócono wersję z {data}."
+        if zmienione:
+            komentarz += f" Zmieniono: {', '.join(zmienione)}."
         do_przywrocenia = self._wersje_rekordu_w_rewizji(obj, wersja)
         token = _przywracanie_wersji.set(True)
         try:
@@ -449,14 +613,32 @@ class HistoriaWersjiMixin:
         self.message_user(
             request,
             format_html(
-                '♻️ Przywrócono wersję z {} rekordu „<a href="{}">{}</a>”.',
+                '♻️ Przywrócono wersję z {} rekordu „<a href="{}">{}</a>”.{}',
                 data,
                 url,
                 swiezy,
+                f" Zmieniono: {', '.join(zmienione)}." if zmienione else "",
             ),
             level=messages.SUCCESS,
         )
         return HttpResponseRedirect(url)
+
+    def _zmienione_przy_przywroceniu(self, obj, wersja):
+        """Etykiety pól i list, które przywrócenie ``wersja`` zmieni względem
+        wersji aktualnej — to samo porównanie co na stronie „Porównanie
+        wersji”, żeby wpis w historii mówił, CO wróciło, a nie tylko skąd."""
+        from .porownanie_wersji import porownaj_wersje
+
+        aktualna_pk = self._aktualna_wersja_pk(str(obj.pk))
+        if aktualna_pk is None:
+            return []
+        aktualna = Version.objects.select_related("revision").get(pk=aktualna_pk)
+        return [
+            wiersz["etykieta"]
+            for wiersz in porownaj_wersje(
+                self.model, obj, aktualna, wersja, self.compare_exclude
+            )
+        ]
 
     # --- podgląd wersji tylko do odczytu --------------------------------
 

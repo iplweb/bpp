@@ -1,0 +1,132 @@
+{% extends "admin/base_site.html" %}
+{% load i18n admin_urls %}
+{# FD#587: porównanie dwóch wersji rekordu pod Grappelli — tabela „pole / wersja starsza / zmiana / wersja nowsza”. #}
+
+{% block title %}Porównanie wersji: {{ original }} | {{ site_title|default:_('Django site admin') }}{% endblock %}
+
+{% block extrastyle %}
+    {{ block.super }}
+    {% include "reversion/_style_historii.html" %}
+{% endblock %}
+
+{% block breadcrumbs %}
+    <ul class="grp-horizontal-list">
+        <li><a href="{% url 'admin:index' %}">{% trans 'Home' %}</a></li>
+        <li><a href="{% url 'admin:app_list' app_label=opts.app_label %}">{{ opts.app_config.verbose_name }}</a></li>
+        <li><a href="{{ changelist_url }}">{{ opts.verbose_name_plural|capfirst }}</a></li>
+        <li><a href="{% url opts|admin_urlname:'change' original.pk|admin_urlquote %}">{{ original|truncatewords:"18" }}</a></li>
+        <li><a href="{{ history_url }}">Historia</a></li>
+        <li>Porównanie wersji</li>
+    </ul>
+{% endblock %}
+
+{% block object-tools %}
+    <ul class="grp-object-tools">
+        <li><a href="{{ history_url }}">Historia</a></li>
+    </ul>
+{% endblock %}
+
+{% block content_title %}<h1>Porównanie wersji: {{ original|truncatewords:"24" }}</h1>{% endblock %}
+
+{% block javascripts %}
+    {{ block.super }}
+    <script type="text/javascript">
+        // Kolumna „Zmiana”: klik w nagłówek zwija ją do strzałki „→”
+        // (kierunek: wersja starsza → nowsza) i chowa listę różnic; wybór
+        // zapamiętany w przeglądarce.
+        document.addEventListener("DOMContentLoaded", function () {
+            var KLUCZ = "bpp-porownanie-zmiana-zwinieta";
+            var tabela = document.querySelector("table.bpp-porownanie");
+            var przycisk = tabela && tabela.querySelector(".bpp-przelacz-zmiane");
+            if (!przycisk) { return; }
+            function ustaw(zwinieta) {
+                tabela.classList.toggle("bpp-zmiana-zwinieta", zwinieta);
+                przycisk.setAttribute("aria-expanded", zwinieta ? "false" : "true");
+            }
+            var zapamietane = null;
+            try { zapamietane = window.localStorage.getItem(KLUCZ); } catch (e) { zapamietane = null; }
+            ustaw(zapamietane === "1");
+            przycisk.addEventListener("click", function () {
+                var zwinieta = !tabela.classList.contains("bpp-zmiana-zwinieta");
+                ustaw(zwinieta);
+                try { window.localStorage.setItem(KLUCZ, zwinieta ? "1" : "0"); } catch (e) { /* tryb prywatny — bez zapamiętywania */ }
+            });
+        });
+    </script>
+{% endblock %}
+
+{% block content %}
+    <div class="g-d-c bpp-historia">
+        {% if rekord_w_koszu %}
+            <div class="bpp-kosz-ramka">
+                <div>
+                    <strong>🗑️ Rekord jest w koszu</strong> (od {{ w_koszu_od|date:"j E Y (l), H:i"|lower }}).
+                    Wcześniejsze wersje można przeglądać i porównywać, ale przywrócić dopiero po wyjęciu rekordu z kosza.
+                </div>
+                {% if kosz_przywroc_url %}
+                    <form method="post" action="{{ kosz_przywroc_url }}">{% csrf_token %}<button type="submit" class="grp-button grp-default">♻️ Przywróć z kosza</button></form>
+                {% else %}
+                    <span class="bpp-przygaszony">Nie masz uprawnień do przywracania z kosza.</span>
+                {% endif %}
+            </div>
+        {% endif %}
+        {% if compare_data %}
+            <table class="grp-table bpp-porownanie">
+                <thead>
+                    <tr>
+                        <td class="bpp-kol-pole bpp-naroznik" aria-hidden="true"></td>
+                        {% for wersja, nazwa, klasa in wersje_porownania %}
+                            {% if forloop.last %}<th scope="col" class="bpp-kol-zmiana-diff"><button type="button" class="bpp-przelacz-zmiane" aria-expanded="true" title="Zwiń / rozwiń kolumnę ze zmianami"><span class="bpp-zmiana-etykieta">Zmiana ◂</span><span class="bpp-zmiana-strzalka" aria-hidden="true">→</span></button></th>{% endif %}
+                            <th scope="col" class="bpp-naglowek-wersji {{ klasa }}">
+                                <div class="bpp-naglowek-nazwa">{{ nazwa }}{% if wersja.pk == aktualna_wersja_pk %} <span class="bpp-aktualna">wersja aktualna</span>{% endif %}{% if wersja.pk == najstarsza_wersja_pk %} <span class="bpp-najstarsza">wersja najstarsza</span>{% endif %}</div>
+                                <div><strong>{{ wersja.revision.date_created|date:"l, j E Y, H:i"|lower }}</strong>, {% if wersja.revision.user %}{{ wersja.revision.user.get_full_name|default:wersja.revision.user.get_username }}{% else %}bez użytkownika{% endif %}
+                                    {% with zrodlo=wersja.revision.zrodlo_zmiany %}{% if zrodlo %}<span class="bpp-zrodlo bpp-zrodlo-{{ zrodlo.zrodlo }}">{{ zrodlo.get_zrodlo_display }}{% if zrodlo.aplikacja_nazwa %}: {{ zrodlo.aplikacja_nazwa }}{% endif %}</span>{% endif %}{% endwith %}
+                                </div>
+                                <div class="bpp-naglowek-opis">{{ wersja.revision.comment|default:"(bez opisu zmiany)" }}</div>
+                            </th>
+                        {% endfor %}
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for wiersz in compare_data %}
+                        <tr>
+                            <th scope="row">{{ wiersz.etykieta }}</th>
+                            <td>{{ wiersz.stare }}</td>
+                            <td class="bpp-kol-zmiana-diff"><div class="bpp-zmiana-tresc">{{ wiersz.zmiana }}</div></td>
+                            <td>{{ wiersz.nowe }}</td>
+                        </tr>
+                    {% endfor %}
+                    {# Ostatni wiersz: przywracanie wersji pod jej kolumną. #}
+                    <tr class="bpp-wiersz-przywroc">
+                        <td class="bpp-kol-pole"></td>
+                        {% for wersja, nazwa, klasa in wersje_porownania %}
+                            {% if forloop.last %}<td class="bpp-kol-zmiana-diff"></td>{% endif %}
+                            <td class="bpp-komorka-przywroc">
+                                {% if wersja.pk == aktualna_wersja_pk %}
+                                    <span class="bpp-przygaszony">To jest wersja aktualna — nie ma czego przywracać.</span>
+                                {% elif rekord_w_koszu %}
+                                    <button type="button" class="grp-button bpp-przycisk-nieaktywny" disabled title="Rekord jest w koszu — najpierw przywróć go z kosza (przycisk na górze strony), potem przywracaj wersje">♻️ Przywróć tę wersję</button>
+                                {% elif forloop.first %}
+                                    <a class="grp-button grp-default" href="{{ save_url }}" title="Podgląd tej wersji z przyciskiem „Przywróć tę wersję”">♻️ Przywróć tę wersję</a>
+                                {% else %}
+                                    <a class="grp-button grp-default" href="{{ przywroc_nowsza_url }}" title="Podgląd tej wersji z przyciskiem „Przywróć tę wersję”">♻️ Przywróć tę wersję</a>
+                                {% endif %}
+                            </td>
+                        {% endfor %}
+                    </tr>
+                </tbody>
+            </table>
+        {% else %}
+            <div class="bpp-historia-pasek"><span class="bpp-historia-pomoc">Między tymi wersjami nie ma różnic w danych rekordu (zmieniły się tylko pola techniczne, np. data ostatniej zmiany).</span></div>
+        {% endif %}
+
+    </div>
+    {# Dolna belka przyklejona do ekranu (jak „Zapisz” w formularzach). #}
+    <footer class="grp-module grp-submit-row grp-fixed-footer bpp-belka-porownania">
+        <div>
+            {% if prev_url %}<div class="grp-float-left"><a class="grp-button" href="{{ prev_url }}">← Poprzednia zmiana</a></div>{% endif %}
+            <div><a class="grp-button grp-default" href="{% url opts|admin_urlname:'change' original.pk|admin_urlquote %}">✏️ Edytuj aktualny rekord</a></div>
+            {% if next_url %}<div><a class="grp-button" href="{{ next_url }}">Następna zmiana →</a></div>{% endif %}
+        </div>
+    </footer>
+{% endblock %}

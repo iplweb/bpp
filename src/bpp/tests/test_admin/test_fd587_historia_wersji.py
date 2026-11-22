@@ -424,7 +424,7 @@ def test_rekord_z_kosza_historia_i_porownanie_tylko_do_odczytu(
     tresc = porownanie.content.decode()
     assert "FD587</ins>" in tresc
     assert "bpp-nieaktywny" in tresc
-    assert "Najpierw przywróć rekord z kosza" in tresc
+    assert "najpierw przywróć go z kosza" in tresc
 
     res = admin_client.get(
         reverse("admin:bpp_wydawnictwo_ciagle_revision", args=(pk, starsza.pk))
@@ -469,7 +469,10 @@ def test_wersja_aktualna_oznaczona(admin_client, wydawnictwo_ciagle):
     assert 'class="bpp-kol-zmiana-diff"' in porownanie
     assert "Wersja A" not in porownanie
     # Nowsza wersja jest aktualna — nie ma czego przywracać.
-    assert "Przywróć wersję nowszą" not in porownanie
+    # Przycisk przywracania tylko pod wersją starszą (liczymy przyciski, nie
+    # wystąpienia tekstu — podpowiedź ``title`` też go zawiera).
+    assert porownanie.count("♻️ Przywróć tę wersję</a>") == 1
+    assert "To jest wersja aktualna — nie ma czego przywracać" in porownanie
 
 
 def test_komunikat_po_przywroceniu_linkuje_do_rekordu(admin_app, wydawnictwo_ciagle):
@@ -525,6 +528,8 @@ def test_podglad_wersji_tylko_do_odczytu(admin_client, wydawnictwo_ciagle):
     assert wydawnictwo_ciagle.tytul_oryginalny == starsza.field_dict["tytul_oryginalny"]
     najnowsza = Version.objects.get_for_object(wydawnictwo_ciagle).first()
     assert najnowsza.revision.comment.startswith("Przywrócono wersję z ")
+    # Wpis w historii mówi, CO wróciło — jak przy zwykłej edycji.
+    assert "Zmieniono: Tytuł oryginalny" in najnowsza.revision.comment
 
     # Wersja aktualna: nie ma czego przywracać — brak przycisku.
     aktualna = admin_client.get(
@@ -567,3 +572,189 @@ def test_przywrocenie_nie_cofa_innych_rekordow_z_tej_samej_rewizji(
     drugi.refresh_from_db()
     assert wydawnictwo_ciagle.tytul_oryginalny == wspolna.field_dict["tytul_oryginalny"]
     assert drugi.tytul_oryginalny == f"Nowy tytuł {drugi.pk}"
+
+
+def test_uczelnia_i_tag_bez_danych_wyliczanych_i_cudzych_powiazan():
+    """Wersja uczelni NIE obejmuje wyliczanej liczby N, a wersja tagu NIE
+    obejmuje jego wystąpień w publikacjach — przywrócenie wersji
+    nadpisałoby liczbę N albo usunęło słowo kluczowe z innych rekordów."""
+    from taggit.models import Tag
+
+    from bpp.models import Uczelnia
+    from bpp.wersjonowanie import sledzone_relacje
+
+    assert sledzone_relacje(Uczelnia) == ("ukryj_status_korekty_set",)
+    assert sledzone_relacje(Tag) == ()
+
+
+def test_porownanie_list_wg_kolejnosci_a_nie_alfabetu(
+    admin_client, wydawnictwo_ciagle, autor_jan_nowak, autor_jan_kowalski, jednostka
+):
+    """Autorzy w porównaniu są w kolejności z rekordu (``kolejnosc``), więc
+    zamiana kolejności jest widoczna — po bokach i jako zmiana pola."""
+    nowak = wydawnictwo_ciagle.dodaj_autora(autor_jan_nowak, jednostka, kolejnosc=1)
+    kowalski = wydawnictwo_ciagle.dodaj_autora(
+        autor_jan_kowalski, jednostka, kolejnosc=2
+    )
+    with reversion.create_revision():
+        wydawnictwo_ciagle.save()
+    nowak.kolejnosc, kowalski.kolejnosc = 3, 0
+    nowak.save()
+    kowalski.save()
+    with reversion.create_revision():
+        wydawnictwo_ciagle.save()
+    nowsza, starsza = Version.objects.get_for_object(wydawnictwo_ciagle)[:2]
+
+    tresc = admin_client.get(
+        reverse("admin:bpp_wydawnictwo_ciagle_compare", args=(wydawnictwo_ciagle.pk,)),
+        {"version_id1": starsza.pk, "version_id2": nowsza.pk},
+    ).content.decode()
+    tabela = tresc[tresc.index('class="grp-table bpp-porownanie"') :]
+    wiersz = tabela[tabela.index("Powiązania autorów") :]
+    stara, zmiana, nowa = wiersz.split("<td", 4)[1:4]
+    assert stara.index("Nowak") < stara.index("Kowalski")
+    assert nowa.index("Kowalski") < nowa.index("Nowak")
+    assert "Pozycja na liście" in zmiana
+
+
+def test_porownanie_pokazuje_przeniesienie_do_kosza(admin_client, wydawnictwo_ciagle):
+    """Stan kosza nie jest w danych wersji, więc porównanie wersji sprzed
+    i po przeniesieniu do kosza musi to pokazać osobnym wierszem „Kosz”
+    (a nie „brak różnic”)."""
+    with reversion.create_revision():
+        wydawnictwo_ciagle.save()
+    przed = Version.objects.get_for_object(wydawnictwo_ciagle).get()
+    wydawnictwo_ciagle.delete(reason="dubel")
+    po = Version.objects.get_for_object(wydawnictwo_ciagle).first()
+    assert po.pk != przed.pk
+
+    tresc = admin_client.get(
+        reverse("admin:bpp_wydawnictwo_ciagle_compare", args=(wydawnictwo_ciagle.pk,)),
+        {"version_id1": przed.pk, "version_id2": po.pk},
+    ).content.decode()
+    assert "nie ma różnic" not in tresc
+    assert ">Kosz<" in tresc
+    assert "Przeniesiono do kosza (powód: dubel)" in tresc
+    assert "🗑️ w koszu" in tresc
+    assert "poza koszem" in tresc
+    # Przywracanie wersji zablokowane — wyszarzony, ale prawdziwy przycisk.
+    assert "bpp-przycisk-nieaktywny" in tresc
+    assert "disabled" in tresc
+
+
+def test_porownanie_pola_w_kolejnosci_formularza(admin_client, wydawnictwo_ciagle):
+    """Pola w porównaniu idą w kolejności z formularza admina (fieldsets),
+    a nie z definicji modelu."""
+    from django.contrib import admin
+    from django.contrib.admin.utils import flatten_fieldsets
+    from django.test import RequestFactory
+
+    with reversion.create_revision():
+        wydawnictwo_ciagle.save()
+    wydawnictwo_ciagle.tytul_oryginalny = "Nowy tytuł FD587"
+    wydawnictwo_ciagle.strony = "1-2"
+    wydawnictwo_ciagle.uwagi = "Uwaga FD587"
+    with reversion.create_revision():
+        wydawnictwo_ciagle.save()
+    nowsza, starsza = Version.objects.get_for_object(wydawnictwo_ciagle)[:2]
+
+    tresc = admin_client.get(
+        reverse("admin:bpp_wydawnictwo_ciagle_compare", args=(wydawnictwo_ciagle.pk,)),
+        {"version_id1": starsza.pk, "version_id2": nowsza.pk},
+    ).content.decode()
+    tabela = tresc[tresc.index('class="grp-table bpp-porownanie"') :]
+
+    model_admin = admin.site._registry[Wydawnictwo_Ciagle]
+    request = RequestFactory().get("/")
+    request.user = baker.make("bpp.BppUser", is_superuser=True, is_staff=True)
+    w_formularzu = flatten_fieldsets(
+        model_admin.get_fieldsets(request, wydawnictwo_ciagle)
+    )
+    etykiety = {
+        "tytul_oryginalny": ">Tytuł oryginalny<",
+        "strony": ">Strony<",
+        "uwagi": ">Uwagi<",
+    }
+    oczekiwana = sorted(etykiety, key=w_formularzu.index)
+    w_tabeli = sorted(etykiety, key=lambda nazwa: tabela.index(etykiety[nazwa]))
+    assert w_tabeli == oczekiwana
+
+
+# --- Poprawki po recenzji (Codex) -----------------------------------------
+
+
+def test_sekrety_uczelni_niewidoczne_w_porownaniu(admin_client, uczelnia):
+    """Tokeny i hasła integracji uczelni są w wersjach zaszyfrowane, ale
+    porównanie wersji wczytuje je odszyfrowane — nie mogą się tam pokazać."""
+    uczelnia.pbn_app_token = "TAJNY-TOKEN-STARY"
+    with reversion.create_revision():
+        uczelnia.save()
+    uczelnia.pbn_app_token = "TAJNY-TOKEN-NOWY"
+    uczelnia.nazwa_dopelniacz_field = "uczelni po zmianie"
+    with reversion.create_revision():
+        uczelnia.save()
+    nowsza, starsza = Version.objects.get_for_object(uczelnia)[:2]
+    assert nowsza.field_dict["pbn_app_token"] == "TAJNY-TOKEN-NOWY"  # odszyfrowane
+
+    tresc = admin_client.get(
+        reverse("admin:bpp_uczelnia_compare", args=(uczelnia.pk,)),
+        {"version_id1": starsza.pk, "version_id2": nowsza.pk},
+    ).content.decode()
+    assert "TAJNY-TOKEN" not in tresc
+    assert "uczelni po zmianie" in tresc
+
+
+def test_przywrocenie_nie_zabiera_autora_przeniesionego_do_innej_publikacji(
+    admin_client, wydawnictwo_ciagle, autor_jan_nowak, jednostka
+):
+    """Wiersz autora przeniesiony (w osobnym adminie autorstw) z publikacji A
+    do B: przywrócenie starej wersji A NIE może go zabrać publikacji B."""
+    wiersz = wydawnictwo_ciagle.dodaj_autora(autor_jan_nowak, jednostka)
+    with reversion.create_revision():
+        wydawnictwo_ciagle.save()
+    stara = Version.objects.get_for_object(wydawnictwo_ciagle).get()
+    with reversion.create_revision():
+        wydawnictwo_ciagle.save()
+
+    publikacja_b = baker.make(
+        Wydawnictwo_Ciagle,
+        rok=wydawnictwo_ciagle.rok,
+        charakter_formalny=wydawnictwo_ciagle.charakter_formalny,
+        jezyk=wydawnictwo_ciagle.jezyk,
+        typ_kbn=wydawnictwo_ciagle.typ_kbn,
+        status_korekty=wydawnictwo_ciagle.status_korekty,
+    )
+    Wydawnictwo_Ciagle_Autor.objects.filter(pk=wiersz.pk).update(rekord=publikacja_b)
+
+    url = reverse(
+        "admin:bpp_wydawnictwo_ciagle_revision",
+        args=(wydawnictwo_ciagle.pk, stara.pk),
+    )
+    podglad = admin_client.get(url).content.decode()
+    assert "Tej wersji nie można przywrócić" in podglad
+    assert "♻️ Przywróć tę wersję" not in podglad
+
+    res = admin_client.post(url)
+    assert res.status_code == 302
+    wiersz.refresh_from_db()
+    assert wiersz.rekord_id == publikacja_b.pk
+
+
+def test_porownanie_szablonow_dbtemplates_dziala(admin_client):
+    """Admin szablonów (dbtemplates) używa widoku porównania biblioteki —
+    szablon porównania BPP nie może go nadpisywać (puste wiersze)."""
+    from dbtemplates.models import Template
+
+    szablon = baker.make(Template, name="fd587.html", content="Stara treść")
+    with reversion.create_revision():
+        szablon.save()
+    szablon.content = "Nowa treść szablonu"
+    with reversion.create_revision():
+        szablon.save()
+    nowsza, starsza = Version.objects.get_for_object(szablon)[:2]
+
+    tresc = admin_client.get(
+        reverse("admin:dbtemplates_template_compare", args=(szablon.pk,)),
+        {"version_id1": starsza.pk, "version_id2": nowsza.pk},
+    ).content.decode()
+    assert "Nowa" in tresc and "Stara" in tresc

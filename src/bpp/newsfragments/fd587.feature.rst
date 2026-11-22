@@ -19,7 +19,11 @@ listach pozycje dodane, usunięte i zmienione (np. „Afiliuje: tak → nie”).
 Kliknięcie daty pokazuje rekord w stanie z tej wersji (tylko do podglądu,
 bez edycji) wraz z pozycjami (np. autorami dopisanymi później), które
 przywrócenie usunie lub przywróci; przycisk „♻️ Przywróć tę wersję”
-przywraca rekord do tego stanu. Hasła
+przywraca rekord do tego stanu, a wpis w historii
+wymienia przywrócone pola (np. „Przywrócono wersję z …. Zmieniono: Tytuł
+oryginalny, Strony.”). Zgłoszenia publikacji mają historię także dla zgłoszenia
+z formularza na stronie, poprawki zgłaszającego, zwrotu do autora
+i importu. Hasła
 i tokeny użytkowników nie są zapisywane w historii ani cofane przy
 przywracaniu. Wersje zapisują się od chwili aktualizacji i są trzymane bez
 limitu czasu; starsze zmiany widać w tabeli „Wcześniejsza historia”, bez
@@ -35,3 +39,7 @@ plakietkę „wersja aktualna”, a podgląd wersji o tej samej treści co
 aktualna mówi wprost, że zapis niczego nie zmieni. Jedną akcją masową na publikacjach można teraz
 zmienić najwyżej 5000 rekordów (wcześniej 20000); przy większej liczbie
 wystarczy zawęzić listę filtrami.
+Przy okazji: gdy formularz w module redagowania ma błędy, a pierwsze pole
+z błędem jest poza ekranem, komunikat „Prosimy naprawić poniższe błędy”
+ma link „Przejdź do pierwszego błędu”, który rozwija sekcję, przewija do
+pola i ustawia w nim kursor.

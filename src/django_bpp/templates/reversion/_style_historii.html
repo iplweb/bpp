@@ -74,7 +74,84 @@
         background: #6c757d;
         white-space: nowrap;
     }
+    /* Nagłówek tabeli porównania: opis wersji nad jej kolumną */
+    table.bpp-porownanie th.bpp-naglowek-wersji {
+        text-transform: none;
+        letter-spacing: 0;
+        font-weight: normal;
+        line-height: 17px;
+        white-space: normal;
+    }
+    table.bpp-porownanie th.bpp-naglowek-wersji.bpp-wersja-a { border-top: 3px solid #c0392b; }
+    table.bpp-porownanie th.bpp-naglowek-wersji.bpp-wersja-b { border-top: 3px solid #2e8b57; }
+    .bpp-naglowek-nazwa { font-weight: bold; font-size: 13px; margin-bottom: 2px; }
+    .bpp-naglowek-opis { color: var(--bpp-tekst-przygaszony, #777); font-size: 11px; }
+    /* Pozycje list (autorzy itp.) w kolumnach bocznych */
+    table.bpp-porownanie ol > li.bpp-pozycja { margin: 0 0 8px; }
+    table.bpp-porownanie ul.bpp-pola-pozycji { list-style: none; padding-left: 0; margin: 2px 0 0; font-size: 11px; line-height: 16px; }
+    .bpp-etykieta-pola { color: var(--bpp-tekst-przygaszony, #777); }
+    li.bpp-pole-zmienione { background: #fff3b0; color: #5c4400; border-radius: 2px; padding: 0 3px; font-weight: bold; }
+    li.bpp-pole-zmienione .bpp-etykieta-pola { color: inherit; }
+    .bpp-znacznik-usunieta, .bpp-znacznik-dodana, .bpp-znacznik-zmiana {
+        display: inline-block;
+        padding: 0 6px;
+        border-radius: 8px;
+        font-size: 10px;
+        font-weight: bold;
+        color: #fff;
+        vertical-align: middle;
+    }
+    .bpp-znacznik-usunieta { background: #c0392b; }
+    .bpp-znacznik-dodana { background: #2e8b57; }
+    .bpp-znacznik-zmiana { background: #b8860b; }
+    /* Zwijana kolumna „Zmiana” w porównaniu */
+    .bpp-przelacz-zmiane {
+        all: unset;
+        cursor: pointer;
+        font: inherit;
+        color: inherit;
+        text-decoration: underline dotted;
+    }
+    .bpp-przelacz-zmiane:focus-visible { outline: 2px solid #309bbf; }
+    .bpp-zmiana-strzalka { display: none; font-size: 18px; line-height: 1; text-decoration: none; }
+    table.bpp-porownanie.bpp-zmiana-zwinieta .bpp-kol-zmiana-diff { width: 28px; padding-left: 4px; padding-right: 4px; text-align: center; }
+    table.bpp-porownanie.bpp-zmiana-zwinieta td.bpp-kol-zmiana-diff > * { display: none; }
+    table.bpp-porownanie.bpp-zmiana-zwinieta td.bpp-kol-zmiana-diff::before { content: "→"; color: var(--bpp-tekst-przygaszony, #888); font-size: 16px; }
+    table.bpp-porownanie.bpp-zmiana-zwinieta .bpp-zmiana-etykieta { display: none; }
+    table.bpp-porownanie.bpp-zmiana-zwinieta .bpp-zmiana-strzalka { display: inline; }
+    /* Okruszki na stronach historii: długi tytuł rekordu skracany
+       wielokropkiem, a strzałka-separator (tło linku w prawym marginesie)
+       zawsze widoczna — wcześniej tekst ucinał się w pół słowa i nachodził
+       na „Historia”. */
+    #grp-breadcrumbs > ul li a {
+        display: inline-block;
+        max-width: 40vw;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+        vertical-align: bottom;
+    }
     .bpp-nieaktywny { opacity: .45; cursor: not-allowed; pointer-events: none; }
+    /* Nieaktywny przycisk: nadal wygląda jak przycisk, tylko wyszarzony. */
+    button.bpp-przycisk-nieaktywny,
+    button.bpp-przycisk-nieaktywny:hover {
+        width: auto;
+        min-width: 0;
+        display: inline-flex;
+        align-items: center;
+        height: 30px;
+        padding: 0 14px;
+        line-height: normal;
+        white-space: nowrap;
+        border: 1px solid #9aa5ad;
+        border-radius: 3px;
+        background: #c9d1d6 !important;
+        background-image: none !important;
+        color: #5b6770 !important;
+        font-weight: bold;
+        cursor: not-allowed;
+        box-shadow: none;
+    }
 
     /* Porównanie wersji */
     .bpp-wersje { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin: 0 0 14px; }
@@ -90,14 +167,86 @@
     .bpp-wersja-a { border-top: 3px solid #c0392b; }
     .bpp-wersja-b { border-top: 3px solid #2e8b57; }
     table.bpp-porownanie { width: 100%; table-layout: fixed; }
-    table.bpp-porownanie th.bpp-kol-pole { width: 16%; }
+    table.bpp-porownanie .bpp-kol-pole { width: 16%; }
+    /* Lewa górna komórka (nad nazwami pól) „znika”: bez tła i bez ramki
+       z lewej i z góry — ale z kreską POD nią, nad pierwszym polem. Dlatego
+       tabela traci zewnętrzną ramkę z lewej i z góry, a odtwarzają ją
+       komórki: nagłówki wersji (góra) i pierwsza kolumna danych (lewa). */
+    table.bpp-porownanie {
+        border-top: 0;
+        border-left: 0;
+        border-top-left-radius: 0;
+    }
+    table.bpp-porownanie thead .bpp-naroznik {
+        background: transparent !important;
+        background-image: none !important;
+        border-top: 0 !important;
+        border-left: 0 !important;
+        border-bottom: 1px solid var(--grp-table-border-color, #d4d4d4) !important;
+        box-shadow: none !important;
+    }
+    table.bpp-porownanie thead th {
+        border-top: 1px solid var(--grp-table-border-color, #d4d4d4);
+    }
+    table.bpp-porownanie tbody tr > :first-child {
+        border-left: 1px solid var(--grp-table-border-color, #d4d4d4) !important;
+    }
     table.bpp-porownanie .bpp-kol-zmiana-diff { width: 28%; background: var(--bpp-tlo-pow-2, #fafafa); }
     table.bpp-porownanie td, table.bpp-porownanie th { vertical-align: top; font-size: 12px; line-height: 18px; word-wrap: break-word; overflow-wrap: anywhere; white-space: pre-line; }
     table.bpp-porownanie td ul { margin: 0; padding-left: 16px; list-style: disc; white-space: normal; }
     table.bpp-porownanie td ul ul { list-style: circle; }
+    table.bpp-porownanie td ol { margin: 0; padding-left: 20px; list-style: decimal; white-space: normal; }
+    table.bpp-porownanie td.bpp-kol-zmiana-diff > ul { list-style: none; padding-left: 0; }
     table.bpp-porownanie del { background: #ffd7d5; color: #82071e; text-decoration: line-through; padding: 0 1px; border-radius: 2px; }
     table.bpp-porownanie ins { background: #ccffd8; color: #055d20; text-decoration: none; padding: 0 1px; border-radius: 2px; }
     .bpp-bez-zmian { margin: 4px 0 0; color: var(--bpp-tekst-przygaszony, #888); font-size: 11px; }
-    .bpp-porownanie-nawigacja { display: flex; flex-wrap: wrap; gap: 8px; margin: 14px 0; }
-    .bpp-porownanie-nawigacja .grp-button { width: auto; min-width: 0; white-space: nowrap; padding: 0 14px; display: inline-block; }
+    /* Nawigacja pod tabelą: poprzednia zmiana z lewej, edycja i historia
+       pośrodku, następna zmiana z prawej. */
+    .bpp-porownanie-nawigacja {
+        display: grid;
+        grid-template-columns: 1fr auto 1fr;
+        align-items: center;
+        gap: 8px;
+        margin: 14px 0;
+    }
+    .bpp-nawigacja-lewa { justify-self: start; }
+    .bpp-nawigacja-srodek { justify-self: center; display: flex; gap: 8px; }
+    .bpp-nawigacja-prawa { justify-self: end; }
+    table.bpp-porownanie tr.bpp-wiersz-przywroc td { vertical-align: middle; padding-top: 8px; padding-bottom: 8px; white-space: normal; }
+    table.bpp-porownanie tr.bpp-wiersz-przywroc td.bpp-komorka-przywroc { text-align: center; }
+    /* Dolna belka porównania: tekst przycisków wyśrodkowany w pionie, a treść
+       strony z zapasem na dole, żeby belka nie zasłaniała ostatniego wiersza. */
+    .bpp-belka-porownania .grp-button {
+        display: inline-flex;
+        align-items: center;
+        height: 30px;
+        line-height: normal;
+        padding: 0 14px;
+        width: auto;
+    }
+    .bpp-historia { padding-bottom: 60px; }
+    table.bpp-porownanie tr.bpp-wiersz-przywroc .grp-button {
+        display: inline-flex;
+        align-items: center;
+        height: 30px;
+        padding: 0 14px;
+        line-height: normal;
+        width: auto;
+    }
+    /* Przyciski pod porównaniem i w pasku historii: tekst wyśrodkowany
+       w pionie (domyślny line-height Grappelli spycha go do góry). */
+    .bpp-porownanie-nawigacja .grp-button,
+    .bpp-historia-pasek .grp-button {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        box-sizing: border-box;
+        height: 30px;
+        line-height: normal;
+        width: auto;
+        min-width: 0;
+        white-space: nowrap;
+        padding: 0 14px;
+        vertical-align: middle;
+    }
 </style>

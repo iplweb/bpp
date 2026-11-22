@@ -347,13 +347,15 @@ def oznacz_jako_zaimportowane(session, record):
     (prosta droga do duplikatu). Pole jest ``unique``, ale ``null=True``,
     więc wiele ``NULL``-i współistnieje bez konfliktu.
 
-    Bez własnego ``transaction.atomic()``: pojedynczy ``UPDATE`` jest
-    atomowy sam z siebie, a wołający (``tasks.create_publication_task``)
-    i tak dokłada swój blok — zagnieżdżenie tworzyłoby tylko zbędny
-    savepoint.
+    Oznaczenie i jego wpis w historii zgłoszenia (FD#587) idą w jednej,
+    własnej transakcji — poza zatwierdzeniem sesji importu
+    (``tasks._oznacz_zgloszenie_nie_wywracajac_importu`` woła to już po
+    utworzeniu rekordu i łapie błędy, żeby nie wywrócić importu).
     """
     from django.contrib.contenttypes.models import ContentType
+    from django.db import transaction
 
+    from bpp.wersjonowanie import zmiana_rekordu
     from zglos_publikacje.models import Zgloszenie_Publikacji
 
     if not session.zgloszenie_id:
@@ -377,22 +379,35 @@ def oznacz_jako_zaimportowane(session, record):
         return False
 
     teraz = timezone.now()
-    zaktualizowane = (
-        Zgloszenie_Publikacji.objects.filter(pk=session.zgloszenie_id)
-        .exclude(status__in=_wykluczone_statusy())
-        .update(
-            status=Zgloszenie_Publikacji.Statusy.ZAIMPORTOWANY,
-            zaimportowano=teraz,
-            zaimportowal_id=session.created_by_id,
-            content_type=ContentType.objects.get_for_model(record),
-            object_id=record.pk,
-            kod_do_edycji=None,
-            # ``.update()`` omija ``auto_now``, a ``Meta.ordering`` sortuje po
-            # tym polu — bez jawnego ustawienia świeżo zaimportowane
-            # zgłoszenie zostawałoby ze starą datą na dole listy.
-            ostatnio_zmieniony=teraz,
+    # Historia zgłoszenia (FD#587): wersja „przed” i „po” oznaczeniu —
+    # z operatorem, który uruchomił import. Gdy warunkowy UPDATE nic nie
+    # zmieni, wpisu nie ma (``pomin``).
+    # Jedna transakcja na oznaczenie i jego historię: bez niej awaria zapisu
+    # wersji zostawiłaby zgłoszenie oznaczone, ale bez historii — a ponowienie
+    # już by jej nie uzupełniło (status ZAIMPORTOWANY wyklucza kolejny zapis).
+    with (
+        transaction.atomic(),
+        zmiana_rekordu(
+            session.created_by, zgl, f"Zaimportowano jako rekord: {record}"
+        ) as zmiana,
+    ):
+        zaktualizowane = (
+            Zgloszenie_Publikacji.objects.filter(pk=session.zgloszenie_id)
+            .exclude(status__in=_wykluczone_statusy())
+            .update(
+                status=Zgloszenie_Publikacji.Statusy.ZAIMPORTOWANY,
+                zaimportowano=teraz,
+                zaimportowal_id=session.created_by_id,
+                content_type=ContentType.objects.get_for_model(record),
+                object_id=record.pk,
+                kod_do_edycji=None,
+                # ``.update()`` omija ``auto_now``, a ``Meta.ordering`` sortuje
+                # po tym polu — bez jawnego ustawienia świeżo zaimportowane
+                # zgłoszenie zostawałoby ze starą datą na dole listy.
+                ostatnio_zmieniony=teraz,
+            )
         )
-    )
+        zmiana.pomin = not zaktualizowane
 
     if not zaktualizowane:
         # Status czytamy ŚWIEŻO — ``zgl.status`` niesie stan sprzed pracy

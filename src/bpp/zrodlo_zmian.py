@@ -20,7 +20,7 @@ ZRODLA_ZMIAN = (
     (ZRODLO_STRONA, "strona (np. edycja profilu)"),
     (ZRODLO_NARZEDZIE, "import lub narzędzie"),
     (ZRODLO_API, "API / MCP"),
-    (ZRODLO_SYSTEM, "system (zadanie w tle, polecenie)"),
+    (ZRODLO_SYSTEM, "system"),
 )
 
 _zrodlo_zmian = ContextVar("zrodlo_zmian", default=None)

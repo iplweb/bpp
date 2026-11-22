@@ -7,7 +7,6 @@
 ul.grp-object-tools li a {
     display: inline-block !important;
     padding: 5px 12px !important;
-    padding-left: 35px !important;
     text-decoration: none !important;
     font-weight: normal !important;
     font-size: 12px !important;
@@ -20,6 +19,32 @@ ul.grp-object-tools li a {
     /* Grappelli renders these at 0.5 opacity; any translucency lowers the */
     /* text contrast below WCAG AA, so keep them fully opaque. */
     opacity: 1 !important;
+}
+
+/* Miejsce na ikonę z lewej TYLKO dla przycisków, które ikonę mają (niżej  */
+/* `::before`, plus sprite'y Grappelli: dodawanie i „zobacz na stronie”).   */
+/* Wcześniej każdy przycisk dostawał 35 px pustego miejsca, więc przyciski  */
+/* bez ikony miały z lewej pustą dziurę.                                    */
+ul.grp-object-tools li a[href*="/add/"],
+ul.grp-object-tools li a[href*="/export/"],
+ul.grp-object-tools li a[href*="/pobierz-z-crossref/"],
+ul.grp-object-tools li a[href*="/history/"],
+ul.grp-object-tools li a[href*="_autor/"],
+ul.grp-object-tools li a[href$="/change/"],
+ul.grp-object-tools li a#dyncol-button,
+ul.grp-object-tools li a[target="_blank"],
+ul.grp-object-tools li a.grp-viewsite-link {
+    padding-left: 35px !important;
+}
+
+/* Edycja rekordu (np. „Edytuj rekord” na stronach historii) - ✏️ */
+ul.grp-object-tools li a[href$="/change/"]::before {
+    content: "✏️";
+    position: absolute;
+    left: 8px;
+    top: 50%;
+    transform: translateY(-50%);
+    font-size: 16px;
 }
 
 /* Icons for different link types in grp-object-tools */

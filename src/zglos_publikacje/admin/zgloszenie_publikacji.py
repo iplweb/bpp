@@ -3,11 +3,13 @@ import sys
 import uuid
 from functools import update_wrapper
 
+import reversion
 from django.conf import settings
 from django.contrib import admin, messages
 from django.contrib.admin import helpers
 from django.contrib.admin.templatetags.admin_urls import add_preserved_filters
 from django.contrib.auth import get_permission_codename
+from django.core.exceptions import PermissionDenied
 from django.db import transaction
 from django.http import Http404, HttpResponseRedirect
 from django.shortcuts import render
@@ -24,6 +26,7 @@ from bpp.admin.helpers.fieldsets import MODEL_Z_OPLATA_ZA_PUBLIKACJE
 from bpp.admin.helpers.mixins import BppSoftDeleteAdminMixin
 from bpp.admin.helpers.wersje import HistoriaWersjiMixin
 from bpp.util import zaloguj_polkniety_wyjatek
+from bpp.wersjonowanie import zapewnij_wersje_poczatkowa
 from bpp.zglaszanie_bledow import capture_exception
 from import_common.normalization import extract_doi_from_url
 from zglos_publikacje.models import (
@@ -176,6 +179,15 @@ class Zgloszenie_PublikacjiAdmin(
     def has_change_permission(self, request, obj=None):
         return False
 
+    def moze_zwracac(self, request):
+        """„Zwróć do autora” zmienia status zgłoszenia i wysyła zgłaszającemu
+        nowy link do edycji — wymaga uprawnienia ``change`` do zgłoszeń
+        (formularz zgłoszenia nie jest edytowalny, więc pytamy wprost)."""
+        opts = self.model._meta
+        return request.user.has_perm(
+            f"{opts.app_label}.{get_permission_codename('change', opts)}"
+        )
+
     def moze_przywracac(self, request):
         """Przywracanie z kosza = ``delete`` + ``change`` (jak wszędzie).
 
@@ -225,6 +237,7 @@ class Zgloszenie_PublikacjiAdmin(
         # mógł stanąć w pasku akcji nad tabelą (blok object-tools), a nie w
         # readonly wierszu tabeli (Freshdesk #430).
         extra_context = extra_context or {}
+        extra_context["moze_zwracac"] = self.moze_zwracac(request)
         obj = self.get_object(request, object_id)
         if obj is not None:
             # Zgłoszenie z kosza jest tylko do odczytu: bez importera, zwrotu
@@ -312,9 +325,14 @@ class Zgloszenie_PublikacjiAdmin(
     @transaction.atomic
     def zwroc_view(self, request, id, form_url="", extra_context=None):
         opts = Zgloszenie_Publikacji._meta
-        # ``objects`` — zgłoszenia z kosza nie zwracamy (najpierw „Przywróć").
-        obj = Zgloszenie_Publikacji.objects.filter(pk=id).first()
-        if obj is None:
+        # Sam dostęp do panelu (``admin_view``) nie wystarcza: zwrot zmienia
+        # zgłoszenie i wysyła e-mail z linkiem do edycji.
+        if not self.moze_zwracac(request):
+            raise PermissionDenied
+        # Przez ``get_object`` (zakres admina), a zgłoszenia z kosza nie
+        # zwracamy (najpierw „Przywróć").
+        obj = self.get_object(request, id)
+        if obj is None or obj.deleted_at is not None:
             raise Http404("Zgłoszenie nie istnieje albo jest w koszu")
         form_class = ZwrocEmailForm
 
@@ -324,11 +342,18 @@ class Zgloszenie_PublikacjiAdmin(
             form = form_class(request.POST, request.FILES, instance=obj)
             form_validated = form.is_valid()
             if form_validated:
-                new_object = self.save_form(request, form, change=True)
-                new_object.status = Zgloszenie_Publikacji.Statusy.WYMAGA_ZMIAN
-                new_object.kod_do_edycji = uuid.uuid4()
-                self.save_model(request, new_object, form, not add)
                 change_message = f"Rekord został zwrócony, przyczyna {form.cleaned_data['przyczyna_zwrotu']}"
+                # Zwrot jako wersja w historii (FD#587): stan sprzed zwrotu
+                # i po nim, z przyczyną w opisie zmiany.
+                zapewnij_wersje_poczatkowa(Zgloszenie_Publikacji.objects.get(pk=obj.pk))
+                with transaction.atomic(), reversion.create_revision():
+                    new_object = self.save_form(request, form, change=True)
+                    new_object.status = Zgloszenie_Publikacji.Statusy.WYMAGA_ZMIAN
+                    new_object.kod_do_edycji = uuid.uuid4()
+                    self.save_model(request, new_object, form, not add)
+                    reversion.add_to_revision(new_object)
+                    reversion.set_user(request.user)
+                    reversion.set_comment(change_message)
                 self.log_change(request, new_object, change_message)
 
                 def _():
