@@ -362,7 +362,7 @@
             klucz: "ikona_menu_animacja",
             typ: "wybor",
             grupa: "Menu",
-            etykieta: "Po otwarciu menu",
+            etykieta: "Po otwarciu menu na telefonie",
             opcje: [
                 ["x", "Ikona zmienia się w „X”"],
                 ["brak", "Ikona bez zmian"],

@@ -23,6 +23,7 @@ from django.contrib import messages
 from django.core.exceptions import PermissionDenied, ValidationError
 from django.core.files.base import ContentFile
 from django.core.management import call_command
+from django.db.models.fields.json import KT
 from django.http import Http404, HttpResponse, HttpResponseRedirect, JsonResponse
 from django.shortcuts import get_object_or_404, render
 from django.urls import NoReverseMatch, reverse
@@ -162,16 +163,30 @@ def _zapisz_favicon(request, uczelnia, plik):
 
 
 def _historia(uczelnia):
-    """Lista ostatnich „Zastosuj” (bez konfigów — te pobiera się osobno)."""
+    """Lista ostatnich „Zastosuj” (bez konfigów — te pobiera się osobno).
+
+    Do rozróżnienia wpisów: kolor paska, kolor główny i tryb kolorów — tylko
+    te klucze z JSON-a (pełny konfig może mieć obrazki po kilkaset KB).
+    """
+    wersje = (
+        MotywWersja.objects.filter(uczelnia=uczelnia)
+        .annotate(
+            k_naglowek=KT("konfig__kolor_naglowka"),
+            k_glowny=KT("konfig__kolor_glowny"),
+            k_tryb=KT("konfig__tryb_kolorow"),
+        )
+        .select_related("zastosowal")
+        .defer("konfig")
+    )
     return [
         {
             "id": w.pk,
             "kiedy": localtime(w.zastosowano).strftime("%d.%m.%Y %H:%M"),
             "kto": str(w.zastosowal or ""),
+            "kolory": [k for k in (w.k_naglowek, w.k_glowny) if k],
+            "tryb": w.k_tryb or "",
         }
-        for w in MotywWersja.objects.filter(uczelnia=uczelnia).select_related(
-            "zastosowal"
-        )
+        for w in wersje
     ]
 
 
@@ -366,7 +381,9 @@ def konfigurator_wygladu_zastosuj(request):
 
     MotywWersja.zapisz(uczelnia, konfig, motyw_przed, request.user, VERSION)
     _przebuduj_strony_bledu(uczelnia)
-    return JsonResponse({"ok": True})
+    # Aktualna historia (z identyfikatorami) — konfigurator od razu pokazuje
+    # „Wczytaj” przy nowym wpisie, bez przeładowania strony.
+    return JsonResponse({"ok": True, "historia": _historia(uczelnia)})
 
 
 def _przebuduj_strony_bledu(uczelnia):

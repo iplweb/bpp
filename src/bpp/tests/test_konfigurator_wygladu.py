@@ -927,3 +927,16 @@ def test_grupa_administracja_ma_konfigurator(staff_user, uczelnia):
     assert c.login(username=STAFF_USERNAME, password=STAFF_PASSWORD)
     assert c.get(reverse("bpp:konfigurator_wygladu")).status_code == 200
     assert reverse("bpp:konfigurator_wygladu") in c.get("/").content.decode()
+
+
+@pytest.mark.django_db
+def test_zastosuj_odsyla_historie_z_identyfikatorami(superuser_client, uczelnia):
+    for kolor in ("#123456", "#654321"):
+        res = _zastosuj(superuser_client, konfig={**KONFIG, "kolor_glowny": kolor})
+        assert res.status_code == 200, res.content
+    historia = res.json()["historia"]
+    assert len(historia) == 2
+    assert all(w["id"] for w in historia)
+    # Najnowszy pierwszy, z próbkami kolorów do rozróżnienia wpisów.
+    assert "#654321" in historia[0]["kolory"]
+    assert "#123456" in historia[1]["kolory"]
