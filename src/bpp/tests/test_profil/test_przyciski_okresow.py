@@ -38,7 +38,7 @@ def _prace(autor, jednostka, lata):
 
 
 def _przyciski_okresow(tresc):
-    return re.findall(r'class="button hollow autor-page__okres-btn"[^>]*>([^<]*)<', tresc)
+    return re.findall(r'class="autor-page__okres-btn"[^>]*>([^<]*)<', tresc)
 
 
 def test_liczby_prac_autora(

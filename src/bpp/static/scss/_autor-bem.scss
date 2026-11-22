@@ -29,23 +29,15 @@
   // "Zobacz sieć powiązań" obok siebie, wyśrodkowane, z odstępem.
   // Flex + gap daje odstęp w poziomie ORAZ pionie (gdy zawiną się na
   // wąskim ekranie) — czego samo margin-left nie zapewniało.
-  // Dwa rzędy: duże przyciski (wszystkie prace, sieć powiązań), a POD nimi
-  // mniejsze przyciski zakresów lat z podpisem — mały przycisk między dwoma
-  // dużymi wyglądał źle.
+  // Jeden rząd: „Pokaż wszystkie prace” (przycisk dzielony ze strzałką ▾
+  // rozwijającą zakresy lat) i „Zobacz sieć powiązań”.
   &__quick-actions {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 0.75rem;
-    margin-bottom: 30px;
-  }
-
-  &__glowne-akcje {
     display: flex;
     flex-wrap: wrap;
     justify-content: center;
     align-items: center;
     gap: 0.75rem;
+    margin-bottom: 30px;
   }
 
   // Formularze przycisków prac (wszystkie / okresy) nie tworzą własnego
@@ -63,6 +55,7 @@
     border-radius: 6px;
     box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
     transition: all 0.2s ease;
+    margin: 0;
 
     &:hover,
     &:focus {
@@ -71,28 +64,86 @@
     }
   }
 
-  // Zakresy lat („2022–2025 (34)”) obok „Pokaż wszystkie prace”:
-  // na komputerze w tym samym rzędzie, na telefonie cały rząd pod głównym
-  // przyciskiem, zawijany.
-  &__okresy {
-    display: flex;
-    flex-wrap: wrap;
-    justify-content: center;
-    align-items: center;
-    gap: 0.5rem;
+  // Przycisk dzielony: część główna + strzałka, sklejone w jeden przycisk.
+  &__split {
+    display: inline-flex;
+    align-items: stretch;
+    position: relative;
   }
 
-  &__okresy-etykieta {
-    font-size: 0.95rem;
-    opacity: 0.8;
-    margin-right: 0.25rem;
+  &__split-glowny {
+    border-top-right-radius: 0;
+    border-bottom-right-radius: 0;
+  }
+
+  &__split-strzalka {
+    display: flex;
+    align-items: center;
+    box-sizing: border-box;
+    padding-left: 14px;
+    padding-right: 14px;
+    border-top-left-radius: 0;
+    border-bottom-left-radius: 0;
+    border-left: 1px solid rgba(255, 255, 255, 0.45);
+    list-style: none;
+    cursor: pointer;
+    user-select: none;
+
+    &::-webkit-details-marker {
+      display: none;
+    }
+  }
+
+  // <details> tylko trzyma strzałkę; lista jest pozycjonowana względem
+  // całego przycisku dzielonego, więc nie zmienia wysokości strzałki.
+  &__okresy {
+    display: flex;
+    align-items: stretch;
+
+    &[open] .autor-page__split-strzalka {
+      background: #229954;
+    }
+  }
+
+  // Rozwinięta lista zakresów lat pod przyciskiem.
+  &__okresy-lista {
+    position: absolute;
+    top: calc(100% + 4px);
+    right: 0;
+    z-index: 20;
+    min-width: 100%;
+    padding: 6px 0;
+    background: #fff;
+    border: 1px solid #d6d6d6;
+    border-radius: 6px;
+    box-shadow: 0 6px 18px rgba(0, 0, 0, 0.15);
+    text-align: left;
+  }
+
+  &__okresy-naglowek {
+    padding: 4px 16px 6px;
+    font-size: 0.8rem;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    opacity: 0.6;
   }
 
   &__okres-btn {
-    padding: 10px 16px;
+    display: block;
+    width: 100%;
+    padding: 8px 16px;
     font-size: 0.95rem;
-    border-radius: 6px;
+    text-align: left;
     white-space: nowrap;
+    color: inherit;
+    background: none;
+    border: 0;
+    cursor: pointer;
+
+    &:hover,
+    &:focus {
+      background: #eaf6ee;
+    }
   }
 
   // Grid with gap
