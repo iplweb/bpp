@@ -963,6 +963,12 @@
     background: #f8f9fa;
 }
 
+// Foundation daje polom readonly kursor „zakaz” (textarea[readonly]) — tu
+// kliknięcie kopiuje BibTeX do schowka (praca_tabela_mono.html).
+.praca-mono__bibtex-textarea[readonly] {
+    cursor: copy;
+}
+
 // Additional info section
 .praca-mono__additional-info {
     margin-top: 30px;
