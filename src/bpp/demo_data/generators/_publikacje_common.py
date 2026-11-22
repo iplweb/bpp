@@ -136,3 +136,25 @@ def charaktery_wg(charaktery: list, *, charakter_ogolny: str, charakter_sloty=No
     ]
     publikacje = [c for c in pasujace if c.publikacja]
     return publikacje or pasujace or charaktery
+
+
+#: Języki publikacji uczelni demo z wagami. Prawdziwa uczelnia publikuje
+#: prawie wyłącznie po polsku i angielsku, czasem po niemiecku — reszta
+#: słownika (setki języków z PBN) zostaje nieużywana. Dzięki temu na danych
+#: demo widać filtr „używane w rekordach” i akcję „Ukryj nieużywane”
+#: w słownikach.
+WAGI_JEZYKOW: tuple[tuple[str, int], ...] = (("pol.", 14), ("ang.", 5), ("niem.", 1))
+
+
+def jezyki_uczelni(jezyki: list) -> list:
+    """Lista do ``rng.choice`` z powtórzeniami odzwierciedlającymi
+    ``WAGI_JEZYKOW``. Gdy w słowniku nie ma żadnego z tych języków
+    (minimalne słowniki w testach), zwraca wszystkie."""
+    po_skrocie = {j.skrot: j for j in jezyki}
+    wazone = [
+        po_skrocie[skrot]
+        for skrot, waga in WAGI_JEZYKOW
+        if skrot in po_skrocie
+        for _ in range(waga)
+    ]
+    return wazone or jezyki

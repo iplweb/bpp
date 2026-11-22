@@ -233,6 +233,44 @@ W tej samej sekcji ustawisz **etykietę linku do profilu w portalu uczelni**
 pracowników Twojej uczelni). Pokazuje się ona przy linku z pola „Adres profilu w portalu
 uczelni" w rekordzie autora; gdy jest pusta, link opisany jest jako „Profil
 w portalu uczelni".
+## Ukrywanie nieużywanych pozycji słowników
+
+Słowniki takie jak **Języki**, **Charaktery formalne**, **Typy KBN**
+i **Charakter PBN** (menu „Dane systemowe”) mają często setki
+pozycji, z których uczelnia używa kilkunastu — reszta tylko wydłuża listy
+wyboru przy wprowadzaniu rekordów.
+
+Na liście każdego z tych słowników jest filtr **„używane w rekordach”**
+(wartości „używane” / „nieużywane”). Pozycja jest „używana”, gdy wskazuje
+na nią cokolwiek w bazie: publikacja (także przez pole „Język
+alternatywny” czy „Język oryginalny”), patent, praca dyplomowa, rekord
+w koszu, konfiguracja itp. Podrzędne pozycje w drzewie charakterów
+formalnych nie czynią nadrzędnej „używaną”.
+
+Na tych listach są trzy akcje:
+
+- **„Ukryj nieużywane”** — chowa z list wyboru **tylko nieużywane**
+  spośród zaznaczonych: odznacza „Widoczny” (języki) albo zaznacza „Ukryj
+  na listach wyboru” (pozostałe słowniki). Można bezpiecznie zaznaczyć
+  całą listę; używane pozycje zostaną pominięte, a komunikat poda, ile ich
+  było. Najwygodniej: wybierz filtr „nieużywane”, zaznacz wszystko,
+  uruchom akcję,
+- **„Ukryj zaznaczone”** — chowa wszystkie zaznaczone, także używane.
+  Jeśli wśród nich są używane, komunikat to zaznaczy: rekord z ukrytym
+  językiem może nie dać się zapisać w formularzu, dopóki nie wybierze się
+  w nim innego języka,
+- **„Pokaż zaznaczone”** — z powrotem pokazuje zaznaczone pozycje na
+  listach wyboru.
+
+Ukryta pozycja znika z list wyboru przy wprowadzaniu nowych rekordów,
+ale zostaje w bazie. Każda zmiana trafia do „Historii” pozycji (przycisk
+„Historia” w formularzu słownika) z wpisem „Ukryto nieużywaną pozycję
+słownika (akcja masowa)”, „Ukryto pozycję słownika (akcja masowa)” albo
+„Pokazano pozycję słownika (akcja masowa)” — z nazwą użytkownika i datą.
+Słowniki nie mają zapisywanych wersji, więc pomyłkę cofa się akcją
+„Pokaż zaznaczone”, nie przyciskiem przywracania. Akcje wymagają
+uprawnienia do edycji danego słownika.
+
 ## Sposób kalkulacji dyscyplin
 
 1.  Dyscyplina i subdyscyplina naukowa przypisana autorowi na dany rok zawiera się w rekordzie `Autor_Dyscyplina`.
