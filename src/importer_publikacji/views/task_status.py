@@ -61,7 +61,16 @@ class ImportTaskStatusView(ImporterPermissionMixin, View):
             if is_htmx
             else "importer_publikacji/step_task_status.html"
         )
-        return render(request, template, {"session": session})
+        ctx = {"session": session}
+        if session.last_failed_stage == "create":
+            # FD#623: tworzenie rekordu odrzucone z powodu dyscyplin autorów
+            # — pokaż listę z odnośnikami; po poprawce „Spróbuj ponownie".
+            from ..dyscypliny import autorzy_z_niezgodna_dyscyplina
+
+            ctx["autorzy_niezgodna_dyscyplina"] = autorzy_z_niezgodna_dyscyplina(
+                session
+            )
+        return render(request, template, ctx)
 
     def _redirect_to_continue(self, session, is_htmx):
         url = session.get_continue_url()

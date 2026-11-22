@@ -23,7 +23,7 @@ from bpp.models import (
     Wydawnictwo_Zwarte,
 )
 
-from ..dyscypliny import przypisz_brakujace_dyscypliny
+from ..dyscypliny import przypisz_brakujace_dyscypliny, waliduj_dyscypliny_sesji
 from ..historia import komunikat_utworzenia, zapisz_utworzenie
 from ..models import ImportedAuthor, ImportSession
 from .helpers import _detect_language
@@ -405,6 +405,9 @@ def _create_publication(session, user=None):
     # Twardy guard afiliacji — przed jakimkolwiek zapisem do bazy (transakcja
     # atomowa i tak by wycofała, ale tu odmawiamy zanim cokolwiek powstanie).
     waliduj_afiliacje_sesji(session)
+    # FD#623: autor z przypisaniem na rok pracy do INNEJ dyscypliny niż
+    # wybrana — czytelny komunikat zamiast błędu walidacji z ``dodaj_autora``.
+    waliduj_dyscypliny_sesji(session)
 
     normalized_data = session.normalized_data
 

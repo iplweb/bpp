@@ -1,0 +1,43 @@
+{% load importer_tags %}
+{# FD#623: autorzy przypisani na rok pracy do innej dyscypliny niz wybrana #}
+{# Linki do autora otwieraja sie w nowej karcie - po poprawce operator ponawia #}
+<div class="callout warning" role="alert" id="autorzy-niezgodna-dyscyplina">
+    <h5><span class="fi-alert"></span> Nie można utworzyć pracy — dyscypliny autorów</h5>
+    <p>
+        Poniżsi autorzy mają na rok {{ session.normalized_data.year }}
+        przypisane dyscypliny, ale nie tę, którą wybrano w imporcie.
+        Dane importu są zachowane — nic nie zostało zapisane.
+    </p>
+    <ul>
+        {% for ia in autorzy_niezgodna_dyscyplina %}
+            <li>
+                {% with url=ia.matched_autor|admin_change_url %}
+                    {% if url %}
+                        <a href="{{ url }}" target="_blank" rel="noopener">{{ ia.matched_autor }}</a>
+                    {% else %}
+                        {{ ia.matched_autor }}
+                    {% endif %}
+                {% endwith %}
+                — wybrana dyscyplina: <strong>{{ ia.matched_dyscyplina }}</strong>;
+                przypisane na rok {{ session.normalized_data.year }}:
+                {% for d in ia.dyscypliny_na_rok %}{{ d }}{% if not forloop.last %}, {% endif %}{% empty %}brak{% endfor %}
+            </li>
+        {% endfor %}
+    </ul>
+    <p>
+        Możesz:
+    </p>
+    <ul>
+        <li>
+            zmienić dyscyplinę autora na jedną z przypisanych w kroku
+            <a href="{% url 'importer_publikacji:authors' session.pk %}">„Autorzy”</a>, albo
+        </li>
+        <li>
+            poprawić przypisanie dyscyplin autora (odnośnik przy nazwisku otwiera
+            się w nowej karcie, sekcja dyscyplin autora),
+        </li>
+    </ul>
+    <p>
+        a następnie {% if retry_hint %}kliknąć <strong>Spróbuj ponownie</strong>{% else %}kliknąć ponownie <strong>Utwórz publikację</strong>{% endif %}.
+    </p>
+</div>

@@ -12,6 +12,10 @@
         </div>
     {% endif %}
 
+    {% if autorzy_niezgodna_dyscyplina %}
+        {% include "importer_publikacji/partials/_autorzy_niezgodna_dyscyplina.html" %}
+    {% endif %}
+
     <div class="callout secondary">
         <h6>Dane publikacji</h6>
         <table>
