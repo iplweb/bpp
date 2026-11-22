@@ -20,8 +20,6 @@
             <span class="fi-graph-trend"></span> Metryki ewaluacyjne autorów
         </h1>
 
-        <!-- Disclaimer komunikat -->
-        {% include "ewaluacja_metryki/disclaimer.html" %}
 
 
         {% if not autor_only_mode %}
@@ -149,6 +147,9 @@
                         </a>
                         <a href="{% url 'ewaluacja_metryki:statystyki' %}" class="button success">
                             <span class="fi-graph-bar"></span> Statystyki
+                        </a>
+                        <a href="{% url 'ewaluacja_metryki:metryki_jednostek' %}" class="button">
+                            <span class="fi-page-pdf"></span> Metryki jednostek (PDF) <span class="label warning" title="Wersja testowa">beta</span>
                         </a>
                         {% endif %}
                     </div>
@@ -846,11 +847,11 @@
 
         <div class="row">
             <div class="medium-12 columns">
-                {# Okres wybiera się w górnej belce strony; tu tylko informacja. #}
+                {# Okres wybiera się na pasku okresu strony; tu tylko informacja. #}
                 <p>
                     <span class="fi-calendar"></span>
                     Okres ewaluacji: <strong>{{ okres_ewaluacji }}</strong>
-                    (zmienisz go w górnej belce strony)
+                    (zmienisz go na pasku okresu strony)
                 </p>
             </div>
         </div>

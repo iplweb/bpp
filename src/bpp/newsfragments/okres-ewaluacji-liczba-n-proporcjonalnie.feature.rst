@@ -1,0 +1,1 @@
+Liczba N okresu ewaluacji, który jeszcze trwa (np. 2026–2030), jest średnią tylko z lat, które minęły albo trwają — w 2026 r. z samego 2026 (osoba na pełnym etacie wnosi najwyżej 1) — zamiast dzielenia przez wszystkie lata okresu; kolumna „Liczba N - koniec” pokazuje wtedy rok bieżący.

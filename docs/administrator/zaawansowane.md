@@ -145,6 +145,28 @@ przez Microsoft lub ORCID nie są ruszane. Uruchomienie drugi raz jest
 bezpieczne. Wymuszenie dla pojedynczego użytkownika można też dodać i usunąć
 w panelu administracyjnym („Enforced password changes").
 
+## Przeliczenie zapisanej punktacji dyscyplin i slotów {#przeliczenie-punktacji-dyscyplin}
+
+Punkty dla dyscyplin i sloty (PKd, PKdAut, slot) są liczone przy zapisie rekordu
+i przechowywane w bazie — z nich korzystają raporty slotów, metryki ewaluacyjne
+i optymalizacja. Gdy zmieni się sposób liczenia (np. w wersji z poprawką FD#618:
+zaokrąglanie √(k/m) i k/m do czterech miejsc przed mnożeniem), zapisane wartości
+trzeba przeliczyć:
+
+```bash
+python src/manage.py przelicz_punktacje_dyscyplin --dry-run   # ile rekordów
+python src/manage.py przelicz_punktacje_dyscyplin
+```
+
+Domyślnie komenda przelicza tylko artykuły, monografie i rozdziały, które mają
+slot mniejszy niż 1 (liczone z √(k/m) albo k/m) — tylko na nie wpływa zmiana
+zaokrąglania. `--wszystkie` przelicza wszystkie rekordy, `--od-roku`/`--do-roku`
+zawężają lata. Każdy rekord jest przeliczany w osobnej transakcji: strona działa
+normalnie w trakcie, komendę można przerwać i uruchomić ponownie. Orientacyjnie
+trwa to 25–60 ms na rekord (dla dużej bazy z kilkunastoma tysiącami rekordów
+od 2017 r. — kilkanaście do kilkudziesięciu minut). Po przeliczeniu warto ponownie
+wygenerować metryki ewaluacyjne i wyniki optymalizacji, jeśli były liczone wcześniej.
+
 ## Limity eksportu publikacji autora dla niezalogowanych
 
 Eksport publikacji autora do BibTeX/RIS jest generowany w tle przez

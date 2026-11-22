@@ -1,11 +1,10 @@
+from django.contrib.contenttypes.fields import GenericForeignKey
 from django.db import connection, models, transaction
 
 from snapshot_odpiec.core import (
     przypiecia_apply_to_database_queries,
     przypiecia_copy_from_database_queries,
 )
-
-from django.contrib.contenttypes.fields import GenericForeignKey
 
 
 class SnapshotOdpiecManager(models.Manager):
@@ -23,13 +22,23 @@ class SnapshotOdpiecManager(models.Manager):
 
 
 class SnapshotOdpiec(models.Model):
-    objects = SnapshotOdpiecManager()
-
     created_on = models.DateTimeField(auto_now_add=True, editable=False)
     owner = models.ForeignKey(
         "bpp.BppUser", on_delete=models.PROTECT, null=True, blank=True
     )
-    comment = models.TextField(null=True, blank=True)
+    # null=True historycznie (zmiana wymagałaby migracji danych bez zysku)
+    comment = models.TextField(null=True, blank=True)  # noqa: DJ001
+    okres = models.ForeignKey(
+        "ewaluacja_common.OkresEwaluacji",
+        on_delete=models.PROTECT,
+        null=True,
+        blank=True,
+        verbose_name="okres ewaluacji",
+        help_text="Snapshot obejmuje tylko prace z lat tego okresu. Puste = "
+        "snapshot sprzed podziału na okresy (wszystkie lata).",
+    )
+
+    objects = SnapshotOdpiecManager()
 
     def apply(self):
         with connection.cursor() as cursor:

@@ -1,0 +1,415 @@
+{% load metryki_jednostek_tags humanize %}<!DOCTYPE html>
+{# Metryki jednostki (FD#617) — goły szablon dla WeasyPrint i podglądu HTML. #}
+{# Nie rozszerza base.html: bez menu, JS-a i zbundlowanego CSS-a, który WeasyPrint #}
+{# musiałby dociągać po HTTP (por. FD#405). Wykresy to inline SVG, font Inter z dysku. #}
+<html lang="pl">
+<head>
+    <meta charset="utf-8">
+    <title>Metryki jednostki — {{ raport.jednostka.nazwa }} — {{ raport.okres }}</title>
+    <style>
+        {{ fonty }}
+
+        @page {
+            size: A4;
+            margin: 24mm 19mm 22mm 19mm;
+            @top-left {
+                content: string(jednostka);
+                font: 600 7pt "Inter", "DejaVu Sans", sans-serif;
+                color: #6b6a65; vertical-align: bottom; padding-bottom: 4mm;
+            }
+            @top-right {
+                content: "Metryki ewaluacyjne · {{ raport.okres }}";
+                font: 7pt "Inter", "DejaVu Sans", sans-serif;
+                color: #6b6a65; vertical-align: bottom; padding-bottom: 4mm;
+            }
+            @bottom-left {
+                content: "Poufne — imienne oceny pracowników";
+                font: 7pt "Inter", "DejaVu Sans", sans-serif;
+                color: #8a8983; vertical-align: top; padding-top: 4mm;
+            }
+            @bottom-right {
+                content: counter(page) " / " counter(pages);
+                font: 7pt "Inter", "DejaVu Sans", sans-serif;
+                color: #8a8983; vertical-align: top; padding-top: 4mm;
+            }
+        }
+        @page :first {
+            @top-left { content: none; }
+            @top-right { content: none; }
+        }
+
+        html { font-size: 8.8pt; }
+        body {
+            font-family: "Inter", "DejaVu Sans", Arial, sans-serif;
+            color: #1f1f1d;
+            line-height: 1.45;
+            margin: 0 auto;
+            max-width: 172mm;
+            font-feature-settings: "tnum";
+        }
+        p { margin: 0 0 .4em; }
+
+        /* --- Strona tytułowa ------------------------------------------------ */
+        .naglowek { margin-bottom: 7mm; }
+        .naglowek .etykieta {
+            font-size: 7.5pt; font-weight: 700; letter-spacing: .14em;
+            text-transform: uppercase; color: #2a78d6;
+        }
+        .naglowek .beta {
+            display: inline-block; margin-left: 2.5mm; padding: .4mm 2mm;
+            border-radius: 1.2mm; background: #fdf0d2; color: #7a5300;
+            letter-spacing: .06em; font-size: 6.6pt; vertical-align: .3mm;
+        }
+        .naglowek h1 {
+            font-size: 22pt; line-height: 1.15; font-weight: 700;
+            margin: 2mm 0 2.5mm; string-set: jednostka content();
+        }
+        .naglowek .meta { color: #52514e; font-size: 9pt; }
+        .naglowek .meta span + span::before { content: "·"; margin: 0 .5em; color: #b5b4ac; }
+        .linia { height: 2.2pt; width: 18mm; background: #2a78d6; margin-top: 5mm; }
+
+        .poufne {
+            margin-top: 8mm; padding: 3.5mm 4.5mm; border-radius: 2mm;
+            background: #fbf3f2; color: #7a2b28; font-size: 7.6pt;
+        }
+
+        /* --- Sekcje ---------------------------------------------------------- */
+        h2 {
+            font-size: 15pt; font-weight: 700; line-height: 1.2;
+            margin: 0 0 1mm; break-after: avoid;
+        }
+        .sekcja { margin-top: 11mm; }
+        .sekcja.nowa-strona { break-before: page; margin-top: 0; }
+        .sekcja .podtytul { color: #6b6a65; font-size: 8.5pt; margin-bottom: 5mm; }
+        h3 {
+            font-size: 7.6pt; font-weight: 700; letter-spacing: .1em;
+            text-transform: uppercase; color: #52514e;
+            margin: 8mm 0 2.5mm; padding-bottom: 1.2mm;
+            border-bottom: .6pt solid #e1e0d9; break-after: avoid;
+        }
+        .objasnienie { color: #6b6a65; font-size: 7.6pt; margin-bottom: 2.5mm; }
+        .blok { break-inside: avoid; }
+
+        /* --- Kafelki --------------------------------------------------------- */
+        .kpi { display: flex; gap: 3mm; }
+        .kpi > div {
+            flex: 1; background: #f6f5f1; border-radius: 2.5mm;
+            padding: 4mm 3mm 3.5mm; text-align: center;
+            display: flex; flex-direction: column; justify-content: center;
+        }
+        .kpi .liczba { font-size: 17pt; font-weight: 700; line-height: 1.1; margin: 0 0 1.5mm; }
+        .kpi .opis { font-size: 7.4pt; color: #52514e; line-height: 1.35; }
+        .kpi svg { display: block; margin: 0 auto 1.5mm; }
+
+        /* --- Wnioski --------------------------------------------------------- */
+        .wnioski {
+            margin: 0; padding: 3.5mm 4.5mm 3.5mm 9mm; border-radius: 2.5mm;
+            background: #eef4fc; break-inside: avoid;
+        }
+        .wnioski li { margin: 1.2mm 0; }
+        .wnioski li::marker { color: #2a78d6; }
+
+        /* --- Karty osób ------------------------------------------------------ */
+        /* inline-block, nie flex: WeasyPrint nie dzieli kontenera flex między */
+        /* strony i cała siatka przeskakiwała na kolejną stronę */
+        /* orphans/widows 1: siatka może zacząć się już jednym rzędem na dole */
+        /* strony, zamiast przeskakiwać w całości i zostawiać pół pustej strony */
+        .karty { font-size: 0; orphans: 1; widows: 1; }
+        .karta {
+            display: inline-block; vertical-align: top; box-sizing: border-box;
+            width: 32.4%; margin: 0 1.4% 2mm 0; padding: 2.5mm 2.5mm 2mm;
+            border: .6pt solid #e1e0d9; border-radius: 2mm;
+            font-size: 8.8pt; break-inside: avoid;
+        }
+        .karta:nth-child(3n) { margin-right: 0; }
+        .karta .nazwisko {
+            font-weight: 600; font-size: 8.2pt; margin-bottom: 1.5mm;
+            white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+        }
+        .karta table { width: 100%; border-collapse: collapse; }
+        .karta td { padding: 0; border: 0; vertical-align: middle; }
+        .karta .pod { text-align: center; font-size: 6.4pt; color: #6b6a65; width: 15mm; }
+        .karta .pod svg { display: block; margin: 0 auto .5mm; }
+        .karta .dane { font-size: 6.9pt; color: #52514e; line-height: 1.4; padding-left: 1.5mm; }
+
+        /* --- Tabele ---------------------------------------------------------- */
+        table.dane-tab { width: 100%; border-collapse: collapse; font-size: 8pt; }
+        .dane-tab thead { display: table-header-group; }
+        .dane-tab tr { break-inside: avoid; }
+        .dane-tab th {
+            font-size: 6.8pt; font-weight: 700; letter-spacing: .04em;
+            text-transform: uppercase; color: #6b6a65; text-align: left;
+            padding: 1.5mm 1.5mm; border-bottom: .8pt solid #1f1f1d;
+        }
+        .dane-tab td { padding: 1.4mm 1.5mm; border-bottom: .5pt solid #ecebe6; vertical-align: top; }
+        .dane-tab tbody tr:nth-child(even) td { background: #faf9f6; }
+        .dane-tab .l { text-align: right; white-space: nowrap; }
+        .dane-tab .slabe { color: #8a8983; }
+        .rodzaj { color: #8a8983; font-size: 7pt; }
+        .dane-tab td.osoba { white-space: nowrap; }
+        .dane-tab td.grupa { font-size: 7.2pt; color: #52514e; padding-left: 4.5mm; text-indent: -3.5mm; }
+
+        .status { white-space: nowrap; font-weight: 600; }
+        .status-dobry { color: #006300; }
+        .status-sredni { color: #8a5d00; }
+        .status-slaby { color: #b02a2a; }
+        .status-brak { color: #8a8983; font-weight: 400; }
+        .kropka {
+            display: inline-block; width: 2.2mm; height: 2.2mm; border-radius: 50%;
+            margin-right: 1.3mm; vertical-align: .1mm;
+        }
+
+        /* --- Struktura punktacji -------------------------------------------- */
+        .legenda-struktury { margin-top: 2.5mm; font-size: 7.6pt; color: #52514e; }
+        .legenda-struktury span.poz { display: inline-block; margin: 0 4.5mm 1.2mm 0; white-space: nowrap; }
+
+        /* --- Zalecenia ------------------------------------------------------- */
+        .zalecenie {
+            break-inside: avoid; padding: 2.5mm 0 2.5mm 4mm; margin-bottom: 1.5mm;
+            border-left: 2.2pt solid #e1e0d9;
+        }
+        .zalecenie .tytul { font-weight: 700; }
+        .zalecenie .osoby { color: #6b6a65; font-size: 7.6pt; margin-top: .8mm; }
+
+        .metoda {
+            margin-top: 12mm; padding-top: 3mm; border-top: .6pt solid #e1e0d9;
+            font-size: 7pt; color: #6b6a65; break-inside: avoid;
+        }
+        .metoda strong { color: #52514e; }
+    </style>
+</head>
+<body>
+
+{# ===== Strona tytułowa ===== #}
+<div class="naglowek">
+    <div class="etykieta">Metryki ewaluacyjne jednostki <span class="beta">beta · wersja testowa</span></div>
+    <h1>{{ raport.jednostka.nazwa }}</h1>
+    <div class="meta">
+        <span>okres ewaluacji {{ raport.okres }}</span>
+        <span>{{ raport.liczba_autorow }} os. z metrykami</span>
+        {% if raport.wiele_dyscyplin %}<span>{{ raport.grupy|length }} dyscypliny</span>{% endif %}
+        <span>stan na {{ wygenerowano|date:"j E Y" }}</span>
+    </div>
+    <div class="linia"></div>
+</div>
+
+{% if raport.wiele_dyscyplin %}
+    <div class="kpi">
+        <div>
+            {% pierscien_jednostki raport.wypelnienie raport.wypelnienie|floatformat:"0"|add:"%" raport.status_wypelnienia %}
+            <div class="opis">wypełnienie slotów<br>{{ raport.slot_nazbierany|floatformat:1 }} z {{ raport.slot_maksymalny|floatformat:1 }}</div>
+        </div>
+        <div>
+            <div class="liczba">{{ raport.punkty|floatformat:0|intcomma }}</div>
+            <div class="opis">punktów nazbieranych<br>we wszystkich dyscyplinach</div>
+        </div>
+        <div>
+            <div class="liczba">+{{ raport.potencjal_punktow|floatformat:0|intcomma }}</div>
+            <div class="opis">szacowany potencjał<br>{{ raport.brakujace_sloty|floatformat:1 }} wolnych slotów</div>
+        </div>
+    </div>
+
+    <h3>Dyscypliny w jednostce</h3>
+    <table class="dane-tab">
+        <thead><tr>
+            <th>Dyscyplina</th><th class="l">Osoby</th><th class="l">Wypełnienie</th>
+            <th class="l">Punkty</th><th class="l">Pkt / slot</th><th class="l">Uczelnia</th><th class="l">Potencjał</th>
+        </tr></thead>
+        <tbody>
+        {% for g in raport.grupy %}
+            <tr>
+                <td>{{ g.dyscyplina.nazwa }}</td>
+                <td class="l">{{ g.liczba_autorow }}</td>
+                <td class="l"><span class="status status-{{ g.status_wypelnienia }}">{{ g.wypelnienie|floatformat:0 }}%</span></td>
+                <td class="l">{{ g.punkty|floatformat:0|intcomma }}</td>
+                <td class="l">{{ g.srednia|floatformat:1|default:"—" }}</td>
+                <td class="l slabe">{{ g.srednia_uczelni|floatformat:1|default:"—" }}</td>
+                <td class="l">+{{ g.potencjal_punktow|floatformat:0|intcomma }}</td>
+            </tr>
+        {% endfor %}
+        </tbody>
+    </table>
+{% endif %}
+
+<div class="poufne">
+    <strong>Wersja testowa.</strong> To nowe zestawienie — układ, wnioski i progi ocen mogą
+    się jeszcze zmienić; kluczowe wartości warto porównać z metrykami autorów w BPP.<br>
+    <strong>Dokument poufny.</strong> Zawiera imienne oceny pracowników — przeznaczony dla
+    kierownika jednostki i osób odpowiedzialnych za ewaluację. Liczby pochodzą z ostatniego
+    przeliczenia metryk ewaluacyjnych w BPP i są tak dokładne, jak dane wprowadzone do systemu.
+</div>
+
+{# ===== Dyscypliny ===== #}
+{% for grupa in raport.grupy %}
+<section class="sekcja{% if not forloop.first and grupa.duza %} nowa-strona{% endif %}">
+    <h2>{{ grupa.dyscyplina.nazwa }}</h2>
+    <div class="podtytul">
+        {{ grupa.liczba_autorow }} os. w dyscyplinie, {{ grupa.osoby_z_pracami }} z pracami zaliczonymi do ewaluacji{% if grupa.mala %}
+        · wypełnienie slotów <strong class="status status-{{ grupa.status_wypelnienia }}">{{ grupa.wypelnienie|floatformat:0 }}%</strong>
+        · {{ grupa.punkty|floatformat:0|intcomma }} pkt
+        · {{ grupa.srednia|floatformat:1|default:"—" }} pkt / slot{% if grupa.srednia_uczelni %} (uczelnia {{ grupa.srednia_uczelni|floatformat:1 }}){% endif %}{% endif %}
+    </div>
+
+    {% if not grupa.mala %}
+    <div class="kpi">
+        <div>
+            {% pierscien_jednostki grupa.wypelnienie grupa.wypelnienie|floatformat:"0"|add:"%" grupa.status_wypelnienia %}
+            <div class="opis">wypełnienie slotów<br>{{ grupa.slot_nazbierany|floatformat:2 }} z {{ grupa.slot_maksymalny|floatformat:2 }}</div>
+        </div>
+        <div>
+            <div class="liczba">{{ grupa.punkty|floatformat:0|intcomma }}</div>
+            <div class="opis">punktów nazbieranych</div>
+        </div>
+        <div>
+            <div class="liczba">{{ grupa.srednia|floatformat:1|default:"—" }}</div>
+            <div class="opis">średnio punktów za slot{% if grupa.srednia_uczelni %}<br>uczelnia: {{ grupa.srednia_uczelni|floatformat:1 }}{% endif %}</div>
+        </div>
+        <div>
+            <div class="liczba">+{{ grupa.potencjal_punktow|floatformat:0|intcomma }}</div>
+            <div class="opis">szacowany potencjał<br>{{ grupa.brakujace_sloty|floatformat:2 }} wolnych slotów</div>
+        </div>
+    </div>
+    {% endif %}
+
+    {% if grupa.wnioski %}
+        <div class="blok">
+            <h3>Najważniejsze wnioski</h3>
+            <ul class="wnioski">
+                {% for w in grupa.wnioski %}<li>{{ w }}</li>{% endfor %}
+            </ul>
+        </div>
+    {% endif %}
+
+    <h3>Sloty i punkty — każda osoba</h3>
+    {% if not grupa.mala or forloop.first %}<p class="objasnienie">
+        Lewe kółko — wypełnienie slotów: zielone od 90%, żółte 50–89%, czerwone poniżej 50%.
+        Prawe kółko — punkty nazbierane; pełne ma osoba z największą liczbą punktów w jednostce.
+    </p>{% endif %}
+    <div class="karty">
+        {% for w in grupa.wiersze %}
+            <div class="karta">
+                <div class="nazwisko">{{ w.autor.nazwisko }} {{ w.autor.imiona }}</div>
+                <table><tr>
+                    <td class="pod">{{ w|pierscien_wypelnienia }}sloty</td>
+                    <td class="pod">{{ w|pierscien_punktow }}punkty</td>
+                    <td class="dane">
+                        sloty {{ w.metryka.slot_nazbierany|floatformat:"-2" }} / {{ w.metryka.slot_maksymalny|floatformat:"-2" }}<br>
+                        {{ w.srednia|floatformat:1 }} pkt / slot<br>
+                        <span class="status status-{{ w.status_jakosci }}">{% if w.status_jakosci == "dobry" %}▲ jakość wysoka{% elif w.status_jakosci == "sredni" %}■ jakość typowa{% elif w.status_jakosci == "slaby" %}▼ jakość niska{% else %}brak prac{% endif %}</span>
+                    </td>
+                </tr></table>
+            </div>
+        {% endfor %}
+    </div>
+
+    {% if grupa.pokaz_wykres %}
+        <div class="blok">
+            <h3>Kto wypełnia sloty, a kto pisze lepsze prace</h3>
+            <p class="objasnienie">
+                Bąbel to osoba: w prawo — pełniejsze sloty, w górę — wyżej punktowane prace,
+                wielkość — punkty nazbierane. Linie przerywane: 80% wypełnienia i mediana jakości
+                w tej jednostce — podział jest zeskalowany do realiów jednostki, nie uczelni.
+            </p>
+            {{ grupa|wykres_babelkowy }}
+        </div>
+    {% endif %}
+
+    {% if not grupa.mala %}
+    <h3>Lista efektywności</h3>
+    <table class="dane-tab">
+        <thead>
+        <tr>
+            <th class="l">#</th>
+            <th>Osoba</th>
+            <th class="l">Prace</th>
+            <th class="l">Sloty</th>
+            <th class="l">Wypełn.</th>
+            <th class="l">Punkty</th>
+            <th class="l">Pkt / slot</th>
+            <th class="l">Mediana</th>
+            <th>Grupa</th>
+        </tr>
+        </thead>
+        <tbody>
+        {% for w in grupa.wiersze_wg_sredniej %}
+            <tr>
+                <td class="l slabe">{{ forloop.counter }}</td>
+                <td class="osoba">{{ w.autor.nazwisko }} {{ w.autor.imiona }}{% if w.metryka.rodzaj_autora %} <span class="rodzaj">{{ w.metryka.rodzaj_autora }}</span>{% endif %}</td>
+                <td class="l">{{ w.metryka.prace_nazbierane|length }}</td>
+                <td class="l">{{ w.metryka.slot_nazbierany|floatformat:2 }} / {{ w.metryka.slot_maksymalny|floatformat:2 }}</td>
+                <td class="l"><span class="status status-{{ w.status_wypelnienia }}">{{ w.wypelnienie|floatformat:0 }}%</span></td>
+                <td class="l">{{ w.punkty|floatformat:0 }}</td>
+                <td class="l">{{ w.srednia|floatformat:1 }}</td>
+                <td class="l">
+                    {% if w.wzgledna_jakosc is not None %}<span class="status status-{{ w.status_jakosci }}">{% if w.status_jakosci == "dobry" %}▲{% elif w.status_jakosci == "slaby" %}▼{% else %}■{% endif %} {% widthratio w.wzgledna_jakosc 1 100 %}%</span>{% else %}<span class="slabe">—</span>{% endif %}
+                </td>
+                <td class="grupa"><span class="kropka" style="background: {% if w.kwadrant == 'filar' %}#0ca30c{% elif w.kwadrant == 'potencjal' %}#2a78d6{% elif w.kwadrant == 'ilosc' %}#fab219{% elif w.kwadrant == 'wsparcie' %}#d03b3b{% else %}#b5b4ac{% endif %}"></span>{{ w.opis_kwadrantu }}</td>
+            </tr>
+        {% endfor %}
+        </tbody>
+    </table>
+    <p class="objasnienie" style="margin-top: 2mm">
+        Kolejność od najwyższej średniej za slot. „Mediana” — średnia osoby jako procent mediany
+        jednostki w tej dyscyplinie (100% = typowa osoba). Rodzaj: N — w liczbie N, D — doktorant,
+        B — badawczy spoza N, Z — inny zatrudniony.
+    </p>
+    {% endif %}
+
+    {% if grupa.procent_slotow_slabych_prac is not None %}
+        <div class="blok">
+            <h3>Struktura punktacji prac w slotach</h3>
+            <p class="objasnienie">Jaka część wypełnionych slotów to prace z danego przedziału punktów — im więcej ciemnego, tym lepiej.</p>
+            {{ grupa|pasek_struktury }}
+            <div class="legenda-struktury">
+                {% legenda_struktury grupa as legenda %}
+                {% for przedzial, kolor in legenda %}
+                    <span class="poz"><span class="kropka" style="background: {{ kolor }}"></span>{{ przedzial.etykieta }} pkt — <strong>{{ przedzial.procent_slotow|floatformat:0 }}%</strong> ({{ przedzial.liczba_prac }})</span>
+                {% endfor %}
+            </div>
+        </div>
+    {% endif %}
+
+    {% if grupa.wiersze_wg_potencjalu %}
+        <div class="blok">
+            <h3>Gdzie leży potencjał</h3>
+            <p class="objasnienie">
+                Osoby z największą liczbą wolnych slotów. Szacunek zakłada prace na poziomie mediany
+                jednostki ({{ grupa.mediana_sredniej|floatformat:1 }} pkt / slot).
+            </p>
+            <table class="dane-tab">
+                <thead><tr><th>Osoba</th><th class="l">Wolne sloty</th><th class="l">Szac. punkty</th><th>Grupa</th></tr></thead>
+                <tbody>
+                {% for w in grupa.wiersze_wg_potencjalu %}
+                    <tr>
+                        <td>{{ w.autor.nazwisko }} {{ w.autor.imiona }}</td>
+                        <td class="l">{{ w.brakujace_sloty|floatformat:2 }}</td>
+                        <td class="l"><strong>+{{ w.potencjal_punktow|floatformat:0 }}</strong></td>
+                        <td>{{ w.opis_kwadrantu }}</td>
+                    </tr>
+                {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    {% endif %}
+
+    <h3>Zalecenia</h3>
+    {% for opis, zalecenie, osoby in grupa.zalecenia_wg_grup %}
+        <div class="zalecenie">
+            <span class="tytul">{{ opis }}</span> · {{ osoby|length }} os.<br>
+            {{ zalecenie }}
+            <div class="osoby">{% for w in osoby %}{{ w.autor.nazwisko }} {{ w.autor.imiona }}{% if not forloop.last %}, {% endif %}{% endfor %}</div>
+        </div>
+    {% endfor %}
+</section>
+{% endfor %}
+
+<div class="metoda">
+    <strong>Jak liczono.</strong> Dane z metryk ewaluacyjnych BPP (algorytm wyboru najlepszych
+    prac do slotów). Wypełnienie slotów — sloty nazbierane jako procent maksymalnego slotu osoby.
+    Jakość — średnia punktów za slot na tle mediany osób z pracami w tej jednostce i dyscyplinie:
+    ▲ co najmniej 110% mediany, ▼ co najwyżej 90%. Potencjał — wolne sloty × mediana jednostki;
+    to szacunek, nie prognoza. Wygenerowano {{ wygenerowano|date:"j E Y, H:i" }} w BPP {{ wersja }}{% if uzytkownik.is_authenticated %} przez {{ uzytkownik.get_username }}{% endif %}.
+</div>
+
+</body>
+</html>

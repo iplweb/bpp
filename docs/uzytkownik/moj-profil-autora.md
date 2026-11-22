@@ -87,6 +87,14 @@ publikacjami”** (adres `/bpp/profil/edycja/wybrane-publikacje/`). Można tam:
     uczelnia włączyła tę sekcję w układzie strony autora (patrz
     [instrukcja administratora — układ podstrony autora](../administrator/ogolna.md#układ-podstrony-autora-profil-autora)).
 
+## Metryki jednostek (dla kierowników) {#metryki-jednostek}
+
+Jeśli kierujesz jednostką (albo administrator dał Ci wgląd w wybrane
+jednostki), na stronie **Mój profil** zobaczysz blok **„Metryki jednostek”**
+z listą Twoich jednostek. Przy każdej: **„PDF”** pobiera zestawienie,
+**„podgląd”** otwiera je w przeglądarce. Co jest w zestawieniu i jak je
+czytać — [Metryki jednostek](../redaktor/metryki-jednostek.md).
+
 ## Czego nie zmienisz samodzielnie
 
 Pozostałe dane na stronie autora — m.in. jednostka i historia zatrudnienia,

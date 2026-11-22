@@ -1,28 +1,23 @@
-{# Przełącznik okresu ewaluacji w górnej belce (ewaluacja_common.okres). #}
-{# Każdy okres to osobny przycisk POST — wybór jest zapamiętywany dla użytkownika. #}
-<!-- djlint:disable=H025 -->
-<li class="has-submenu wybor-okresu">
-    <a href="#" data-toggle aria-haspopup="menu" title="Okres ewaluacji, dla którego liczone są dane">
-        <i class="fi-calendar" aria-hidden="true"></i> okres {{ okres_ewaluacji|default:"—" }}
-    </a>
-    <div class="menu-columns-wrapper" data-submenu>
-        <form method="post" action="{% url "ewaluacja_common:wybierz_okres" %}">
-            {% csrf_token %}
-            <input type="hidden" name="next" value="{{ request.get_full_path }}"/>
-            <ul class="menu vertical column-1">
-                {% for okres in okresy_ewaluacji %}
-                    <li>
-                        <button type="submit" name="okres" value="{{ okres.pk }}"
-                                class="wybor-okresu__opcja{% if okres.pk == okres_ewaluacji.pk %} wybor-okresu__opcja--aktywna{% endif %}">
-                            {% if okres.pk == okres_ewaluacji.pk %}<i class="fi-check"></i>{% endif %}
-                            {{ okres }}
-                        </button>
-                    </li>
-                {% empty %}
-                    <li>Brak zdefiniowanych okresów ewaluacji.</li>
-                {% endfor %}
-            </ul>
-        </form>
+{# Pasek wyboru okresu ewaluacji pod breadcrumbs (ewaluacja_common.okres). #}
+{# Na całą szerokość ekranu: od wybranego okresu zależy wszystko poniżej. #}
+{# Okres jest w adresie strony (ewaluacja_common.url_okres) — każdy okres #}
+{# to zwykły link do tej samej strony w innym okresie; adres można wysłać. #}
+<nav class="pasek-okresu" aria-label="Okres ewaluacji">
+    <div class="pasek-okresu__formularz">
+        <span class="pasek-okresu__etykieta">
+            <i class="fi-calendar" aria-hidden="true"></i> Okres ewaluacji
+        </span>
+        <span class="pasek-okresu__opcje" role="group" aria-label="Wybierz okres ewaluacji">
+            {% for okres, adres in linki_okresow %}
+                <a href="{{ adres }}"
+                   class="pasek-okresu__opcja{% if okres.pk == okres_ewaluacji.pk %} pasek-okresu__opcja--aktywna{% endif %}"
+                   {% if okres.pk == okres_ewaluacji.pk %}aria-current="page"{% endif %}>
+                    {{ okres }}
+                </a>
+            {% empty %}
+                <span>Brak zdefiniowanych okresów ewaluacji.</span>
+            {% endfor %}
+        </span>
+        <span class="pasek-okresu__opis">dane na tej stronie dotyczą wybranego okresu</span>
     </div>
-</li>
-<!-- djlint:enable=H025 -->
+</nav>

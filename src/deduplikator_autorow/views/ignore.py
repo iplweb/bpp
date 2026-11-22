@@ -17,7 +17,7 @@ from pbn_api.models import Scientist
 from pbn_downloader_app.freshness import is_pbn_people_data_fresh
 
 from ..models import IgnoredAuthor, IgnoredScientist
-from .helpers import get_running_scan, group_required
+from .helpers import get_running_scan, group_required, okres_pk_dla_skanu
 
 
 @group_required(GR_WPROWADZANIE_DANYCH)
@@ -139,7 +139,9 @@ def _trigger_rescan_after_reset(request, reset_label):
             f"({pbn_stale_message}); wyniki mogą być nieaktualne.",
         )
 
-    scan_for_duplicates.delay(user_id=request.user.pk)
+    scan_for_duplicates.delay(
+        user_id=request.user.pk, okres_pk=okres_pk_dla_skanu(request)
+    )
     messages.success(
         request,
         f"{reset_label}. Uruchomiono nowe skanowanie duplikatów w tle — "

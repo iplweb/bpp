@@ -16,11 +16,27 @@ from queryset_sequence import QuerySetSequence
 from bpp.const import GR_WPROWADZANIE_DANYCH
 from bpp.models import Uczelnia
 from bpp.util import sanitize_xlsx_row, zaloguj_polkniety_wyjatek
+from ewaluacja_common.okres import okres_dla_request
 from pbn_wysylka_oswiadczen.models import PbnWysylkaLog, PbnWysylkaOswiadczenTask
 from pbn_wysylka_oswiadczen.queries import get_publications_queryset
 from pbn_wysylka_oswiadczen.tasks import wysylka_oswiadczen_task
 
 logger = logging.getLogger(__name__)
+
+
+def lata_z_okresu(request, dane):
+    """``(rok_od, rok_do)`` z parametrów żądania, przycięte do okresu
+    ewaluacji wybranego na pasku okresu (domyślnie: cały okres)."""
+    okres = okres_dla_request(request)
+
+    def rok(nazwa, domyslny):
+        try:
+            wartosc = int(dane.get(nazwa, domyslny))
+        except (TypeError, ValueError):
+            return domyslny
+        return min(max(wartosc, okres.rok_od), okres.rok_do)
+
+    return rok("rok_od", okres.rok_od), rok("rok_do", okres.rok_do)
 
 
 def group_required(group_name):
@@ -58,8 +74,7 @@ class PbnWysylkaOswiadczenMainView(TemplateView):
         context = super().get_context_data(**kwargs)
 
         # Default parameters
-        rok_od = int(self.request.GET.get("rok_od", 2022))
-        rok_do = int(self.request.GET.get("rok_do", 2025))
+        rok_od, rok_do = lata_z_okresu(self.request, self.request.GET)
         tytul = self.request.GET.get("tytul", "").strip()
         tylko_odpiete = self.request.GET.get("tylko_odpiete", "").lower() == "true"
 
@@ -111,8 +126,7 @@ class PublicationListView(TemplateView):
         context = super().get_context_data(**kwargs)
 
         # Parameters
-        rok_od = int(self.request.GET.get("rok_od", 2022))
-        rok_do = int(self.request.GET.get("rok_do", 2025))
+        rok_od, rok_do = lata_z_okresu(self.request, self.request.GET)
         tytul = self.request.GET.get("tytul", "").strip()
         tylko_odpiete = self.request.GET.get("tylko_odpiete", "").lower() == "true"
         page = int(self.request.GET.get("page", 1))
@@ -219,8 +233,7 @@ class StartTaskView(View):
         PbnWysylkaOswiadczenTask.cleanup_stale_running_tasks()
 
         # Get parameters
-        rok_od = int(request.POST.get("rok_od", 2022))
-        rok_do = int(request.POST.get("rok_do", 2025))
+        rok_od, rok_do = lata_z_okresu(request, request.POST)
         tytul = request.POST.get("tytul", "").strip()
         resume_mode = request.POST.get("resume_mode", "false").lower() == "true"
 
@@ -394,8 +407,7 @@ class ExcelExportView(View):
 
     def get(self, request):
         # Get filter parameters
-        rok_od = int(request.GET.get("rok_od", 2022))
-        rok_do = int(request.GET.get("rok_do", 2025))
+        rok_od, rok_do = lata_z_okresu(request, request.GET)
         tytul = request.GET.get("tytul", "").strip()
         tylko_odpiete = request.GET.get("tylko_odpiete", "").lower() == "true"
 

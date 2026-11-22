@@ -13,6 +13,7 @@ from import_sqlite.core.author_names import split_name
 from import_sqlite.reader import RawRecord
 
 SZCZEGOLY_MAX = 512
+KOMENTARZ_IMPORTU = "Import patentów z pliku SQLite (import_sqlite)."
 
 
 @dataclass
@@ -132,11 +133,13 @@ def resolve_inventor(nazwisko_zrodlowe, decyzja, ctx):
     WYŁĄCZNIE od ``skupia_pracownikow`` jednostki (obca ma je False).
     """
     from bpp.models import Autor
+    from bpp.wersjonowanie import zarejestruj_utworzenie
 
     if decyzja == "NOWY":
         given, family = split_name(nazwisko_zrodlowe)
         autor = Autor.objects.create(imiona=given, nazwisko=family)
         autor.dodaj_jednostke(ctx.obca_jednostka)
+        zarejestruj_utworzenie(None, autor, KOMENTARZ_IMPORTU)
         jednostka = ctx.obca_jednostka
     else:
         autor = Autor.objects.get(pk=int(decyzja))
@@ -217,6 +220,18 @@ def apply_patent(pd: PatentData, decisions: dict, ctx: "ImportContext") -> tuple
                     kolejnosc=kolejnosc,
                     afiliuje=afiliuje,
                 )
+
+            from bpp.wersjonowanie import zarejestruj_utworzenie, zmiana_rekordu
+
+            if created:
+                zarejestruj_utworzenie(None, patent, KOMENTARZ_IMPORTU)
+            else:
+                # Patent nie jest wersjonowany (brak stanu „sprzed" do
+                # zapisania), więc wystarczy wpis po fakcie — pusty blok.
+                with zmiana_rekordu(
+                    None, patent, f"Zaktualizowano. {KOMENTARZ_IMPORTU}"
+                ):
+                    pass
     except ValidationError as e:
         return ("WSTRZYMANY", f"ValidationError: {e}")
 

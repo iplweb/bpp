@@ -29,7 +29,7 @@ class OkresEwaluacji(models.Model):
     nowelizacji ustawy (projekt z 2026 r. wydłuża okres z 4 do 5 lat).
     Okresy definiujemy MY — w adminie są tylko do odczytu (bez dodawania,
     edycji i usuwania); zmiana przepisów = migracja danych w wydaniu.
-    Użytkownik przełącza okres w górnej belce stron ewaluacji; wybór jest
+    Użytkownik przełącza okres na pasku okresu pod ścieżką nawigacji stron ewaluacji; wybór jest
     zapamiętywany na stałe (``WybranyOkresEwaluacji``). Bez wyboru — okres,
     w którym mieści się bieżący rok (``ewaluacja_common.okres.okres_domyslny``).
     """
@@ -56,12 +56,26 @@ class OkresEwaluacji(models.Model):
         return f"{self.rok_od}–{self.rok_do}"
 
     @property
+    def slug(self):
+        """Okres w adresie URL stron ewaluacji, np. ``2026-2030``."""
+        return f"{self.rok_od}-{self.rok_do}"
+
+    @property
     def lata(self):
         return list(range(self.rok_od, self.rok_do + 1))
 
     @property
     def liczba_lat(self):
         return self.rok_do - self.rok_od + 1
+
+    def ostatni_rok_liczenia(self, dzis=None):
+        """Ostatni rok okresu, za który liczymy liczbę N: rok bieżący dla
+        okresu trwającego, ``rok_do`` dla zakończonego (``rok_od - 1``, gdy
+        okres się jeszcze nie zaczął — wtedy nie ma lat do liczenia)."""
+        from django.utils import timezone
+
+        biezacy = (dzis or timezone.localdate()).year
+        return max(min(self.rok_do, biezacy), self.rok_od - 1)
 
     def zawiera(self, rok):
         return self.rok_od <= rok <= self.rok_do

@@ -7,6 +7,7 @@ from typing import TYPE_CHECKING
 from django.db import transaction
 
 from bpp.util import pbar
+from bpp.wersjonowanie import zmiana_rekordu
 from pbn_api.models import Publisher
 from pbn_integrator.utils.django_imports import _ensure_django_imports, matchuj_wydawce
 from pbn_integrator.utils.threaded_page_getter import (
@@ -50,6 +51,15 @@ def pobierz_wydawcow_wszystkich(client: PBNClient):
 
 
 @transaction.atomic
+def _powiaz_wydawce(wydawca, publisher_pk):
+    """Ustaw wydawcy ``pbn_uid`` — z wpisem w historii (admin „Historia")."""
+    with zmiana_rekordu(
+        None, wydawca, f"Powiązano z wydawcą PBN {publisher_pk} (integracja)."
+    ):
+        wydawca.pbn_uid_id = publisher_pk
+        wydawca.save()
+
+
 def integruj_wydawcow():
     """Integrate BPP publishers with PBN publishers."""
     _ensure_django_imports()
@@ -65,8 +75,7 @@ def integruj_wydawcow():
         if w is not None:
             if w.pbn_uid_id is None and w.pbn_uid_id != elem.pk:
                 print(f"Przypisuje Wydawca PBN {elem} -> wydawca BPP {w}")
-                w.pbn_uid_id = elem.pk
-                w.save()
+                _powiaz_wydawce(w, elem.pk)
 
     # Dopasuj wszystkich
     for elem in pbar(
@@ -77,5 +86,4 @@ def integruj_wydawcow():
         if w is not None:
             if w.pbn_uid_id is None and w.pbn_uid_id != elem.pk:
                 print(f"Przypisuje Wydawca PBN {elem} -> wydawca BPP {w}")
-                w.pbn_uid_id = elem.pk
-                w.save()
+                _powiaz_wydawce(w, elem.pk)

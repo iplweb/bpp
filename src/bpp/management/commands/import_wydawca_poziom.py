@@ -5,6 +5,7 @@ from django.core.management import BaseCommand
 
 from bpp.models import Wydawca
 from bpp.models.wydawca import Poziom_Wydawcy
+from bpp.wersjonowanie import zarejestruj_utworzenie
 from pbn_integrator.kosz import pomin_jesli_koliduje
 
 logger = logging.getLogger("django")
@@ -17,7 +18,12 @@ def _wydawca_spoza_kosza(nazwa):
         Wydawca, "import_wydawca_poziom", nazwa, skad="pliku", nazwa=nazwa
     ):
         return None
-    return Wydawca.objects.get_or_create(nazwa=nazwa)[0]
+    w, utworzono = Wydawca.objects.get_or_create(nazwa=nazwa)
+    if utworzono:
+        zarejestruj_utworzenie(
+            None, w, "Utworzono poleceniem manage.py import_wydawca_poziom."
+        )
+    return w
 
 
 def _dodatkowi_wydawcy(w, przypisuj_dodatkowych):
@@ -34,6 +40,18 @@ def _dodatkowi_wydawcy(w, przypisuj_dodatkowych):
         if przypisuj_dodatkowych:
             dodatkowi.append(dw)
     return dodatkowi
+
+
+def _ustaw_poziom(w, poziom):
+    for rok in [2017, 2018, 2019, 2020]:
+        try:
+            pw = w.poziom_wydawcy_set.get(rok=rok)
+            if pw.poziom != poziom:
+                pw.poziom = poziom
+                pw.save()
+
+        except Poziom_Wydawcy.DoesNotExist:
+            w.poziom_wydawcy_set.create(rok=rok, poziom=poziom)
 
 
 class Command(BaseCommand):
@@ -86,12 +104,4 @@ class Command(BaseCommand):
                 wydawcy_do_przypisania += _dodatkowi_wydawcy(w, przypisuj_dodatkowych)
 
             for w in wydawcy_do_przypisania:
-                for rok in [2017, 2018, 2019, 2020]:
-                    try:
-                        pw = w.poziom_wydawcy_set.get(rok=rok)
-                        if pw.poziom != poziom:
-                            pw.poziom = poziom
-                            pw.save()
-
-                    except Poziom_Wydawcy.DoesNotExist:
-                        w.poziom_wydawcy_set.create(rok=rok, poziom=poziom)
+                _ustaw_poziom(w, poziom)

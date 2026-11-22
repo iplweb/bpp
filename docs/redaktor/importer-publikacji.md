@@ -211,6 +211,42 @@ Przerwany import możesz w każdej chwili dokończyć (**„Powrót do listy”*
 potem **„Importy w toku / ostatnie”**) albo porzucić przyciskiem
 **„Anuluj import”**.
 
+## Lista „Sesje importu”: filtry i zapamiętany widok
+
+Przycisk **„Importy w toku / ostatnie”** otwiera listę **„Sesje importu”**.
+Nad tabelą są filtry: **„Data od”**, **„Data do”**, **„Tytuł”**, **„DOI”**,
+**„Źródło”**, **„Utworzył”**, **„Zmodyfikował”** oraz:
+
+- **„Status”** — można zaznaczyć kilka statusów naraz (np. „Błąd importu”
+  i „Zakończono”). Poza zwykłymi etapami importu („Pobrano dane”,
+  „Dopasowano źródło”, „Punktacja”…) jest tu też **„Anulowano”** (bez
+  zaznaczenia tego statusu anulowane importy są ukryte, jak dotąd) oraz
+  **„Utknięte”** — importy, w których pobieranie danych albo tworzenie
+  rekordu od kilku minut nie robi postępu;
+- przycisk **„Tylko błędy importu”** — jednym kliknięciem zostawia na
+  liście tylko importy zakończone błędem; drugie kliknięcie wyłącza filtr;
+- **„Etap błędu”** — „Pobieranie danych” albo „Tworzenie rekordu”, czyli
+  etap, na którym import się nie powiódł (ten sam etap widać w tabeli pod
+  czerwoną etykietą „Błąd importu”; po najechaniu na etykietę widać treść
+  błędu);
+- **„Rekord wynikowy”** — „Z rekordem” (import utworzył publikację)
+  albo „Bez rekordu”. W kolumnie **„Rekord”** są odnośniki **„Pokaż”**
+  (strona publikacji w BPP) i **„Edytuj”** (moduł redagowania). Jeśli
+  utworzoną publikację później usunięto, w kolumnie widać „usunięty”,
+  a import nadal liczy się jako „Z rekordem”.
+
+Przycisk **„Reset”** czyści filtry (sortowanie zostaje). Kliknięcie
+nagłówka kolumny zmienia sortowanie.
+
+Lista pamięta ustawienia. Filtry i sortowanie są w adresie strony, więc
+odświeżenie (F5) i przycisk „Wstecz” w przeglądarce pokazują ten sam
+widok, a adres można zapisać w zakładkach. Ostatni zestaw jest też
+zapamiętany na czas zalogowania: gdy wrócisz na listę przyciskiem
+„Importy w toku / ostatnie”, zobaczysz ten sam widok z komunikatem
+*„Pokazuję zapamiętane filtry i sortowanie z Twojej ostatniej wizyty na
+tej liście: …”*. Przycisk **„Wyczyść”** w komunikacie przywraca widok
+domyślny.
+
 ## Co może pójść nie tak
 
 ### „Potencjalne duplikaty w BPP”

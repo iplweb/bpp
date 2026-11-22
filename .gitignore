@@ -239,3 +239,9 @@ demo_data_manifest_*.json
 
 # Profil pamieci workerow xdist (per maszyna, pytest-xdist-memory)
 .pytest-xdist-memory.json
+# Najlepsze -n per maszyna (make xdist-bench) + logi benchmarku
+.pytest-xdist-bench.json
+.pytest-xdist-bench-logs/
+
+# Added by ggshield
+.cache_ggshield

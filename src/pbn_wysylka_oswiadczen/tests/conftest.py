@@ -3,6 +3,18 @@
 import pytest
 
 
+@pytest.fixture(autouse=True)
+def okres_domyslny_2022_2025(monkeypatch):
+    """Okres domyślny = 2022–2025: dane testowe tej aplikacji leżą w latach
+    2022–2025, a lata wysyłki są przycinane do okresu z paska okresu."""
+    from ewaluacja_common import okres as okres_common
+
+    oryginal = okres_common.okres_domyslny
+    monkeypatch.setattr(
+        okres_common, "okres_domyslny", lambda rok=None: oryginal(rok or 2024)
+    )
+
+
 @pytest.fixture
 def publication_with_pbn_uid(
     uczelnia,

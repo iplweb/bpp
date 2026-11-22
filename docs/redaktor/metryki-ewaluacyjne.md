@@ -19,7 +19,7 @@ Ta strona prowadzi po kolei przez:
 - [przeliczenie metryk](#przeliczenie-metryk),
 - [czytanie tabeli](#tabela-metryk) i [filtry oraz eksport do Excela](#filtry-i-eksport),
 - [szczegóły jednego autora](#szczegoly-autora) — w tym odpinanie dyscypliny,
-- [statystyki zbiorcze](#statystyki),
+- [statystyki zbiorcze](#statystyki) i [metryki jednostek w PDF](metryki-jednostek.md),
 - [typowe pytania](#typowe-pytania) i [co może pójść nie tak](#co-moze-pojsc-nie-tak).
 
 Pojęcia **punkty MNiSW**, **PKDaut** i **slot** wyjaśnia strona
@@ -59,12 +59,12 @@ Menu **ewaluacja → metryki ewaluacyjne**.
 
 ![Menu „ewaluacja” z pozycją „metryki ewaluacyjne”](../images/redaktor/metryki-ewaluacyjne/01-menu-ewaluacja.png)
 
-Przy pierwszym wejściu nad tabelą pojawia się żółta ramka **„Ważna
-informacja o charakterze prezentowanych danych”**. Przypomina, że to
-wskaźniki orientacyjne, a nie wynik ewaluacji ministerialnej. Krzyżyk
-w prawym rogu ją chowa; w tej przeglądarce wróci po 14 dniach.
-
-![Zastrzeżenie o charakterze danych z krzyżykiem do zamknięcia](../images/redaktor/metryki-ewaluacyjne/02-zastrzezenie.png)
+Pod ścieżką nawigacji jest pasek **Okres ewaluacji** — kliknij okres
+(np. 2022–2025 albo 2026–2030), a cała strona pokaże dane tego okresu.
+Okres jest też w adresie strony, np.
+`/ewaluacja_metryki/2026-2030/`: taki link można wysłać komuś innemu
+i otworzy się u niego dokładnie ten okres. To samo dotyczy liczby N,
+optymalizacji, snapshotów odpięć i wydruku oświadczeń.
 
 ## Przeliczenie metryk {#przeliczenie-metryk}
 
@@ -275,6 +275,15 @@ Każda sekcja ma własny przycisk **„Export XLSX”**.
 
 ![Statystyki globalne i tabela „Top 20 autorów PKDaut/slot” z przyciskiem „Export XLSX”](../images/redaktor/metryki-ewaluacyjne/10-statystyki.png)
 
+## Metryki jednostek (PDF) {#metryki-jednostek}
+
+Z metryk autorów BPP składa też zestawienie PDF dla kierownika jednostki —
+kółka z wypełnieniem slotów i punktami każdej osoby, wykres „kto wypełnia
+sloty, a kto pisze lepsze prace”, potencjał i zalecenia. Menu **ewaluacja →
+metryki jednostek (PDF)** albo przycisk **„Metryki jednostek (PDF)”** nad
+tabelą. Kto je widzi, jak nadać dostęp kierownikom i jak je czytać —
+[Metryki jednostek](metryki-jednostek.md).
+
 ## Typowe pytania {#typowe-pytania}
 
 **Dlaczego autor ma średnią 200, a wykorzystanie tylko 38%?**
@@ -360,6 +369,7 @@ poprawność bazy”**.
 
 ## Zobacz też
 
+- [Metryki jednostek — zestawienie PDF dla kierownika](metryki-jednostek.md)
 - [Gdzie sprawdzić punkty i sloty](../uzytkownik/punkty-i-sloty.md) —
   punkty MNiSW, PKDaut i sloty na stronach autora i pracy
 - [Obliczanie slotów](sloty.md) — rodzaje autorów i progi algorytmu slotów

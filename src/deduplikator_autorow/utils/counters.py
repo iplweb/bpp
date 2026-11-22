@@ -37,6 +37,7 @@ def get_latest_usable_scan():
                 DuplicateScanRun.Status.PARTIAL_COMPLETED,
             ]
         )
+        .select_related("okres")
         .order_by("-finished_at")
         .first()
     )

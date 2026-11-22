@@ -29,6 +29,23 @@ z niedozwolonych znaczników. Konfigurację integracji uczelni (PBN, Clarivate,
 ORCID, DSpace) wraz z danymi dostępowymi widzi i zmienia wyłącznie
 superużytkownik.
 
+## Wgląd w metryki jednostek (bez grupy) {#metryki-jednostek}
+
+Zestawienie PDF [„Metryki jednostek”](../redaktor/metryki-jednostek.md)
+zawiera imienne oceny pracowników. Poza grupą „wprowadzanie danych” (która
+widzi wszystkie jednostki) dostęp do niego daje się **bez żadnej grupy**:
+
+- **kierownik jednostki** widzi swoją jednostkę automatycznie — wystarczy,
+  że jego konto jest powiązane z autorem, a autor ma w jednostce funkcję
+  „kierownik” w bieżących datach,
+- innym osobom administrator wskazuje jednostki w edycji użytkownika
+  (**Administracja → Użytkownicy**):
+  sekcja **„Metryki jednostek”**, pole **„Metryki jednostek — jednostki do
+  wglądu”** (z podjednostkami).
+
+To pole nie daje innych uprawnień. Szczegóły:
+[Kto widzi metryki jednostek](../redaktor/metryki-jednostek.md#kto-widzi).
+
 ## Zalecenia
 
 - **Nadawaj grupy uprzywilejowane tylko zaufanym osobom**, tak samo jak
@@ -56,6 +73,26 @@ superużytkownik.
       oraz które pola — **bez** poprzedniej treści. Jeżeli potrzebny jest
       pełny ślad zmian, rozważ dopisanie tych modeli do
       `DJANGO_EASY_AUDIT_REGISTERED_CLASSES`.
+    - Rekordy utworzone poza formularzami panelu — przez importery (PBN,
+      importer publikacji, import pracowników, importer autorów PBN,
+      import patentów), przycisk „Toż” i niektóre polecenia `manage.py` —
+      też mają wpis „dodano” w historii, z opisem, skąd pochodzą. Autorem
+      wpisu jest osoba, która uruchomiła import.
+    - Zmiany istniejących rekordów robione poza formularzami — scalanie
+      autorów, przemapowania źródeł i prac autora (oraz ich cofnięcia),
+      aktualizacje z importu pracowników, POLON-u i importu dyscyplin,
+      ustawienia z porównania z CrossRef i modułu rozbieżności, powiązania
+      z PBN — mają wpis „zmieniono” z opisem operacji. U autorów taka
+      zmiana zapisuje też wersję, więc można ją cofnąć przyciskiem
+      „Historia”. Usunięcie duplikatu przy scalaniu zostawia wpis
+      „usunięto”.
+- **Konta `system-user-…`.** Gdy import uruchomiono poleceniem
+  `manage.py` (bez zalogowanej osoby), wpisy historii są przypisywane
+  kontu `system-user-<login>`, gdzie `<login>` to login systemowy, z którego
+  uruchomiono polecenie (np. `system-user-biblio`). Konto powstaje
+  automatycznie przy pierwszym takim rekordzie, jest nieaktywne i nie ma
+  hasła — nie da się na nie zalogować. Nie usuwaj go: usunięcie skasuje
+  powiązane wpisy historii.
 
 ## Przegląd członków grup
 

@@ -14,6 +14,7 @@ from django.template.loader import render_to_string
 from django.utils import timezone
 
 from bpp.models import Autor_Dyscyplina, Autorzy, Uczelnia
+from oswiadczenia.templatetags.oswiadczenia_tags import szablony_oswiadczenia
 
 
 @functools.cache
@@ -175,7 +176,7 @@ def build_queryset_for_task(task, uczelnia=None):
 def render_declaration_html(decl, uczelnia):
     """Render a single declaration to full HTML document."""
     html_content = render_to_string(
-        "oswiadczenia/tresc_jednego_oswiadczenia.html",
+        szablony_oswiadczenia(decl["rekord"].rok),
         {
             "autor": decl["autor"],
             "object": decl["rekord"],
@@ -322,7 +323,7 @@ def generate_docx_sequential(zf, declarations, uczelnia, task):
 def render_declaration_content_only(decl, uczelnia):
     """Render a single declaration content (without full HTML wrapper)."""
     return render_to_string(
-        "oswiadczenia/tresc_jednego_oswiadczenia.html",
+        szablony_oswiadczenia(decl["rekord"].rok),
         {
             "autor": decl["autor"],
             "object": decl["rekord"],

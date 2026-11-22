@@ -29,17 +29,38 @@ SHARED_ZRODLO_PREFIKSY: tuple[str, ...] = (
     "Studia",
 )
 
+# Przypadki: {topic} — dopełniacz („stresu oksydacyjnego”), {subject} — biernik
+# jak po „na” („jakość życia”), {context} — miejscownik po „w” („warunkach
+# polowych”).
 SHARED_TYTUL_TEMPLATES: tuple[str, ...] = (
     "Analiza wpływu {topic} na {subject} w {context}",
-    "Badania {topic} w kontekście {subject}",
     "Wpływ {topic} na {subject}",
-    "{topic}: studium przypadku {subject}",
+    "Badania {topic} w {context}",
+    "Rola {topic} w {context}",
     "Metodologia {topic} w {context}",
-    "Modelowanie {topic} z wykorzystaniem {subject}",
     "Perspektywy rozwoju {topic} w {context}",
-    "{topic} jako narzędzie {subject}",
     "Optymalizacja {topic} w {context}",
-    "Przegląd literatury: {topic} a {subject}",
+    "Ocena wpływu {topic} na {subject}",
+    "Modelowanie wpływu {topic} na {subject}",
+    "Przegląd literatury dotyczącej {topic}",
+    "Nowe podejście do badań {topic} w {context}",
+    "Analiza porównawcza {topic} w {context}",
+    "Czynniki wpływające na {subject} w {context}",
+    "Ewolucja {topic} w {context}: przegląd systematyczny",
+    "Historia {topic} w {context}",
+    "Ilościowa ocena {topic} w {context}",
+    "Wybrane aspekty {topic} w {context}",
+    "Uwagi o oddziaływaniu {topic} na {subject}",
+    "Długoterminowy wpływ {topic} na {subject} w {context}",
+    "Między teorią a praktyką: badania {topic} w {context}",
+    "Pilotażowe badanie {topic} w {context}",
+    "Statystyczna analiza {topic} i jej wpływu na {subject}",
+    "Interdyscyplinarne spojrzenie na problem {topic}",
+    "Studium przypadku: rola {topic} w {context}",
+    "Weryfikacja hipotezy o wpływie {topic} na {subject}",
+    "Zmienność {topic} w {context}",
+    "Doświadczenia z badań {topic} w {context}",
+    "Czy nasilenie {topic} wpływa na {subject}? Wyniki badań w {context}",
 )
 
 
@@ -71,3 +92,7 @@ class Theme:
     jednostka_prefiksy: tuple[str, ...] = SHARED_JEDNOSTKA_PREFIKSY
     zrodlo_prefiksy: tuple[str, ...] = SHARED_ZRODLO_PREFIKSY
     tytul_templates: tuple[str, ...] = SHARED_TYTUL_TEMPLATES
+    # Autorzy (imiona, nazwisko) tworzeni zawsze jako pierwsi (i nigdy
+    # losowani drugi raz) — skrypty zrzutów ekranu do dokumentacji
+    # odwołują się do nich po nazwisku:
+    autorzy_obowiazkowi: tuple[tuple[str, str], ...] = ()

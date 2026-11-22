@@ -9,6 +9,7 @@ from pbn_client.const import DELETED
 from bpp import const
 from bpp.models import Wydawca
 from bpp.models.wydawca import Poziom_Wydawcy
+from bpp.wersjonowanie import zarejestruj_utworzenie, zmiana_rekordu
 from pbn_api.models import Publisher
 from pbn_integrator.utils import zapisz_mongodb
 
@@ -34,6 +35,7 @@ def _utworz_nowego_wydawce(publisher, points_to_poziom_map, verbosity):
     nowy_wydawca = Wydawca.objects.create(
         nazwa=publisher.publisherName, pbn_uid=publisher
     )
+    zarejestruj_utworzenie(None, nowy_wydawca, "Zaimportowano z PBN.")
     if verbosity > 1:
         print(f"1 Tworze nowego wydawce z MNISWID, {publisher.publisherName}")
 
@@ -140,8 +142,13 @@ def importuj_jednego_wydawce(publisher, verbosity=1):
                     f"0 ZWERYFIKUJ FONETYCZNE DOPASOWANIE: "
                     f"{publisher.publisherName} do {nw.nazwa}"
                 )
-            nw.pbn_uid = publisher
-            nw.save()
+            with zmiana_rekordu(
+                None,
+                nw,
+                f"Powiązano z wydawcą PBN {publisher.pk} (import wydawców).",
+            ):
+                nw.pbn_uid = publisher
+                nw.save()
             has_wydawca = True
 
     if not has_wydawca:

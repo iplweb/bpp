@@ -218,6 +218,16 @@ ewaluacji zakończone pomyślnie! Przeliczono … dyscyplin.”
     odpinanie ma adnotację „Snapshot przed optymalizacją z odpinaniem.
     Suma punktów: …”. Kliknij go i potwierdź **„Tak, zaaplikuj snapshot”** —
     pojawi się komunikat „Zaaplikowano snapshot odpięć nr …”.
+
+    Snapshoty są zapisywane osobno dla każdego okresu ewaluacji: snapshot
+    obejmuje tylko prace z lat okresu wybranego na pasku **Okres ewaluacji**,
+    więc jego zaaplikowanie nie zmienia przypięć prac z innego okresu. Lista
+    snapshotów pokazuje snapshoty wybranego okresu oraz starsze snapshoty
+    sprzed podziału na okresy (kolumna **Okres**: „wszystkie lata”) — te
+    przywracają przypięcia prac ze wszystkich lat. Reset przypięć i odpinanie
+    też działają tylko na pracach z lat wybranego okresu. Patenty nie biorą
+    udziału w przypięciach i odpięciach — reset ani odpinanie ich nie
+    zmieniają.
     Uwaga: snapshot nadpisuje **wszystkie** ręczne przypięcia i odpięcia
     zrobione po jego utworzeniu. Przycisk **„Resetuj przypięcia”** w tabeli
     wyników działa inaczej — przypina z powrotem wszystkie prace z lat

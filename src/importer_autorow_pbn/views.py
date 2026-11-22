@@ -15,6 +15,11 @@ from django.views.generic import DetailView, ListView, TemplateView, View
 
 from bpp.models import Autor, Tytul, Uczelnia
 from bpp.util import zaloguj_polkniety_wyjatek
+from bpp.wersjonowanie import (
+    zarejestruj_utworzenie,
+    zmiana_rekordu,
+    zmiany_rekordow,
+)
 from import_common.core import matchuj_autora
 from pbn_api.models import Scientist
 from pbn_downloader_app.freshness import is_pbn_people_data_fresh
@@ -341,8 +346,16 @@ def link_scientist(request, scientist_id):
             }
         )
 
-    # Link the scientist to autor
-    with transaction.atomic():
+    # Link the scientist to autor (z wpisem w historii autora)
+    with (
+        transaction.atomic(),
+        zmiana_rekordu(
+            request.user,
+            autor,
+            f"Powiązano z naukowcem PBN {scientist_id} (importer autorów PBN).",
+        ) as zmiana,
+    ):
+        zmiana.pomin = autor.pbn_uid_id == scientist_id
         autor.pbn_uid_id = scientist_id
         autor.save()
 
@@ -376,20 +389,34 @@ def link_all_scientists(request):
     linked_count = 0
     errors = []
 
-    with transaction.atomic():
-        for scientist in scientists:
-            # Get match from cache
-            autor = cached_matches.get(scientist.pk)
-            if autor:
-                # Check if autor already has a different PBN UID
-                if autor.pbn_uid_id and autor.pbn_uid_id != scientist.pk:
-                    errors.append(f"{scientist} - autor już powiązany z innym PBN UID")
-                    continue
+    do_powiazania = []
+    for scientist in scientists:
+        # Get match from cache
+        autor = cached_matches.get(scientist.pk)
+        if autor:
+            # Check if autor already has a different PBN UID
+            if autor.pbn_uid_id and autor.pbn_uid_id != scientist.pk:
+                errors.append(f"{scientist} - autor już powiązany z innym PBN UID")
+                continue
+            do_powiazania.append((scientist, autor))
 
-                # Link the scientist to autor
-                autor.pbn_uid_id = scientist.pk
-                autor.save()
-                linked_count += 1
+    # Historia autorów hurtowo: wersje początkowe przed zmianą, potem wersja
+    # i wpis LogEntry dla każdego faktycznie zmienionego autora.
+    zmieniani = [a.pk for s, a in do_powiazania if a.pbn_uid_id != s.pk]
+    with (
+        transaction.atomic(),
+        zmiany_rekordow(
+            request.user,
+            Autor,
+            zmieniani,
+            "Powiązano z naukowcem PBN (importer autorów PBN, powiąż wszystkich).",
+        ),
+    ):
+        for scientist, autor in do_powiazania:
+            # Link the scientist to autor
+            autor.pbn_uid_id = scientist.pk
+            autor.save()
+            linked_count += 1
 
     if linked_count > 0:
         messages.success(
@@ -494,6 +521,11 @@ def create_all_unmatched_scientists(request):
                 autor = Autor.objects.create(**autor_data)
                 employment_data = view._get_employment_data(scientist)
                 _create_autor_jednostka(autor, employment_data)
+                zarejestruj_utworzenie(
+                    request.user,
+                    autor,
+                    f"Utworzono z naukowca PBN {scientist.pk} (importer autorów PBN).",
+                )
                 created_count += 1
             except Exception:
                 # Loguj pełne szczegóły do Rollbara i logu (standard dev), ale

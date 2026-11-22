@@ -91,17 +91,30 @@ mają w tej pracy punkty.
 
 ## Wydruk wielu oświadczeń naraz {#wydruk-masowy}
 
-1. W górnym menu **ewaluacja** kliknij **wydruk oświadczeń 2022-25**.
+1. W górnym menu **ewaluacja** kliknij **wydruk oświadczeń**.
 
-    ![Menu „ewaluacja”: wydruk oświadczeń 2022-25](../images/redaktor/oswiadczenia/04-menu-wydruk.png)
+    ![Menu „ewaluacja”: wydruk oświadczeń](../images/redaktor/oswiadczenia/04-menu-wydruk.png)
 
-2. Lista pokazuje wszystkie pary „autor — praca” z wpisaną dyscypliną, za
-   lata 2022–2025. Zawęź ją polami **Rok od**, **Rok do**, **Autor**
+2. Pod ścieżką nawigacji, na pasku **Okres ewaluacji**, wybierz okres
+   (np. 2022–2025 albo 2026–2030). Lista pokazuje wszystkie pary
+   „autor — praca” z wpisaną dyscypliną z lat tego okresu. Zawęź ją polami
+   **Rok od**, **Rok do** (tylko w obrębie okresu), **Autor**
    (fragment imienia lub nazwiska), **Tytuł**, **Dyscyplina**
    i **Przypięta** (tak / nie / wszystkie), potem kliknij **Filtruj**.
    **Resetuj** czyści filtry.
 
-    ![Wydruk oświadczeń 2022-2025: filtry, przyciski pobierania, lista z kolumną „Alt. dyscyplina”](../images/redaktor/oswiadczenia/05-wydruk-lista.png)
+    ![Wydruk oświadczeń: filtry, przyciski pobierania, lista z kolumną „Alt. dyscyplina”](../images/redaktor/oswiadczenia/05-wydruk-lista.png)
+
+    Treść oświadczenia („upoważniam do wykazania na potrzeby ewaluacji
+    jakości działalności naukowej za lata …”) podaje lata okresu, do którego
+    należy praca — dla pracy z 2027 r. „2026-2030”, dla pracy z 2024 r.
+    „2022-2025”. Prace z okresu 2026–2030 drukują się z osobnego szablonu
+    treści (`oswiadczenia/tresc_jednego_oswiadczenia_2026_2030.html`,
+    w panelu administracyjnym: **Szablony**). Na start ma treść jak dla
+    2022–2025, lata „2026-2030” i adnotację **„[stara podstawa prawna]”**
+    przy podstawie prawnej — administrator uzupełnia ją, gdy będzie
+    obowiązujący tekst dla nowego okresu, bez ruszania treści oświadczeń
+    za 2022–2025.
 
     Kolumna **Alt. dyscyplina** pokazuje drugą dyscyplinę autora, jeśli ją
     ma. W kolumnie **Akcje** zielona drukarka drukuje jedno oświadczenie,
@@ -164,8 +177,9 @@ wyboru publikacji” na stronie wysyłki tak sugeruje.
 
     ![Menu „PBN”: autoryzuj PBN API i wysyłka oświadczeń do PBN](../images/redaktor/oswiadczenia/07-menu-pbn.png)
 
-2. W panelu **Parametry** wpisz zakres lat (**Rok od**, **Rok do**;
-   domyślnie 2022–2025) i ewentualnie fragment tytułu (**Tytul
+2. Na pasku **Okres ewaluacji** (pod ścieżką nawigacji) wybierz okres.
+   W panelu **Parametry** wpisz zakres lat (**Rok od**, **Rok do**;
+   domyślnie cały wybrany okres, tylko w jego obrębie) i ewentualnie fragment tytułu (**Tytul
    (zawiera)**), kliknij **Odswiez**. Pod spodem zobaczysz, ile prac
    (z PBN UID, czyli już wysłanych do PBN) obejmie wysyłka i ile mają
    oświadczeń. Na dole strony, w **Podglad publikacji**, jest lista tych

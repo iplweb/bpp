@@ -1,0 +1,11 @@
+# ggshield / GitGuardian config. Add false positives with
+# `ggshield secret ignore --last-found` right after a scan flags them.
+version: 2
+secret:
+  ignored_matches:
+  # Demo account password (local dev stack only) used for docs screenshots.
+  - match: 5a3f4024d3c574bbae0bbe8e9208c037ca2c00efd9eadc46e7fd09b1f1e837db
+    name: Generic Password - bin/docs-screenshots.py (DEMO_PASSWORD)
+  # Deliberately wrong login/password used to screenshot the Axes lockout.
+  - match: 3d4cf40f5a9c257170253f4a9aeffea19cf5fe6d14763faa2c680500cf09ff79
+    name: Username Password - bin/docs-screenshots.py (lockout demo)

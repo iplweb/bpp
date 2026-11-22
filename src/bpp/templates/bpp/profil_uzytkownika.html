@@ -94,6 +94,54 @@
             </div>
         {% endif %}
 
+        {% if metryki_jednostek_dostep or metryki_jednostek_wszystkie %}
+            <h3><span class="fi-page-pdf"></span> Metryki jednostek <span class="label warning" title="Wersja testowa">beta</span></h3>
+            {% include "ewaluacja_metryki/_metryki_jednostek_beta.html" %}
+            {% if metryki_jednostek_wszystkie %}
+                <p>
+                    Zestawienia PDF dla kierowników jednostek — wypełnienie slotów,
+                    punkty i wnioski dla każdej osoby w jednostce.
+                </p>
+                <a href="{% url 'ewaluacja_metryki:metryki_jednostek' %}" class="button">
+                    <span class="fi-page-pdf"></span> Metryki wszystkich jednostek
+                </a>
+            {% elif metryki_jednostek %}
+                <p>
+                    Zestawienia PDF jednostek, do których masz wgląd — wypełnienie slotów,
+                    punkty i wnioski dla każdej osoby. Zawierają imienne oceny pracowników.
+                </p>
+                <table class="hover">
+                    <thead>
+                        <tr><th>Jednostka</th><th>Osoby</th><th></th></tr>
+                    </thead>
+                    <tbody>
+                        {% for j in metryki_jednostek %}
+                            <tr>
+                                <td>{{ j.jednostka__nazwa }}</td>
+                                <td>{{ j.liczba_autorow }}</td>
+                                <td>
+                                    <a class="button small margin-0" href="{% url 'ewaluacja_metryki:metryki_jednostki' j.jednostka_id %}">
+                                        <span class="fi-download"></span> PDF
+                                    </a>
+                                    <a class="button small secondary margin-0" target="_blank" href="{% url 'ewaluacja_metryki:metryki_jednostki' j.jednostka_id %}?format=html">
+                                        <span class="fi-eye"></span> podgląd
+                                    </a>
+                                </td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            {% else %}
+                <div class="callout secondary">
+                    <p>
+                        <span class="fi-info"></span>
+                        Masz wgląd w metryki jednostek, ale w wybranym okresie ewaluacji
+                        żadna z nich nie ma jeszcze przeliczonych metryk.
+                    </p>
+                </div>
+            {% endif %}
+        {% endif %}
+
         <h3>Ustawienia wyświetlania</h3>
         <form method="post" class="callout">
             {% csrf_token %}

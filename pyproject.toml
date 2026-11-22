@@ -204,7 +204,7 @@ dependencies = [
     # gate w dekoracje.
     "django-pg-baseline>=0.3.2",
     "django-site-blog>=0.2.2",
-    "django-first-run-wizard>=0.2.1",
+    "django-first-run-wizard>=0.3.0",
     "uvicorn-worker>=0.4.0",
     "mozilla-django-oidc>=5.0.2,<6",
     "babel>=2.17",

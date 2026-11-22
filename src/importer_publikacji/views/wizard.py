@@ -10,6 +10,7 @@ from django.http import (
     HttpResponseBadRequest,
     HttpResponseRedirect,
     JsonResponse,
+    QueryDict,
 )
 from django.shortcuts import get_object_or_404, render
 from django.urls import reverse
@@ -39,10 +40,12 @@ from .authors import (
     _create_single_author,
     _create_unmatched_authors,
     _orcid_settable_qs,
+    _ustaw_orcid_autora,
 )
 from .helpers import (
     BATCH_DETAIL,
     SESSIONS_PARTIAL,
+    SESSIONS_SAVED_VIEW_KEY,
     STEP_DONE,
     STEP_FETCH,
     STEP_LANDING,
@@ -51,6 +54,7 @@ from .helpers import (
     _landing_context,
     _push_url,
     _render_full_page,
+    _sessions_filters_description,
     _sessions_list_context,
     _with_breadcrumbs_oob,
 )
@@ -74,13 +78,70 @@ class SessionListView(ImporterPermissionMixin, View):
     ``standalone=True`` w kontekście, żeby partial doklejał link powrotny
     (przy embedowaniu w kroku fetch tego klucza nie ma, więc link nie
     dubluje się tam, gdzie i tak już jesteśmy na stronie importera).
+
+    Filtry i sortowanie (FD#615) są w adresie URL (odświeżenie i „Wstecz”
+    pokazują ten sam widok), a ostatni zestaw jest też zapamiętany w sesji
+    użytkownika: wejście na listę bez parametrów (link z paska importów,
+    okruszki) przywraca go i pokazuje komunikat z przyciskiem „Wyczyść”.
     """
 
+    # Żądania HTMX z tych elementów zmieniają widok listy „w miejscu” —
+    # podmieniamy bieżący wpis historii zamiast dokładać nowy, żeby
+    # „Wstecz” nie przechodził po kolejnych zmianach filtrów.
+    _ZMIANA_W_MIEJSCU = ("session-filter-form", "session-filter-wyczysc")
+
+    @staticmethod
+    def _parametry_widoku(request):
+        """Parametry listy i informacja, czy pochodzą z zapamiętanego widoku."""
+        params = request.GET
+        if "wyczysc" in params:
+            request.session.pop(SESSIONS_SAVED_VIEW_KEY, None)
+            return QueryDict(), False
+        if not params:
+            zapamietane = request.session.get(SESSIONS_SAVED_VIEW_KEY)
+            if zapamietane:
+                return QueryDict(zapamietane), True
+        return params, False
+
+    @staticmethod
+    def _zapamietaj_widok(request, ctx, przywrocono):
+        """Zapisz bieżący widok w sesji albo — przy przywróceniu — przygotuj
+        komunikat; niepoprawny zapamiętany zestaw usuń."""
+        form = ctx["filter_form"]
+        if przywrocono:
+            opis = _sessions_filters_description(form, ctx["sort"])
+            if opis and form.is_valid():
+                ctx["przywrocone_filtry"] = opis
+            else:
+                # Zapamiętany zestaw przestał być poprawny (np. usunięty
+                # użytkownik w filtrze „Utworzył”) — nie trzymamy go dalej.
+                request.session.pop(SESSIONS_SAVED_VIEW_KEY, None)
+        elif form.is_valid():
+            if ctx["sessions_querystring"]:
+                request.session[SESSIONS_SAVED_VIEW_KEY] = ctx["sessions_querystring"]
+            else:
+                request.session.pop(SESSIONS_SAVED_VIEW_KEY, None)
+
     def get(self, request):
-        ctx = _sessions_list_context(request)
+        params, przywrocono = self._parametry_widoku(request)
+        ctx = _sessions_list_context(request, params)
+        self._zapamietaj_widok(request, ctx, przywrocono)
+        querystring = ctx["sessions_querystring"]
+
+        url = reverse("importer_publikacji:sessions")
+        if querystring:
+            url = f"{url}?{querystring}"
         ctx["standalone"] = True
+        ctx["sessions_url"] = url
+
         if _is_htmx_partial(request):
-            return render(request, SESSIONS_PARTIAL, ctx)
+            response = render(request, SESSIONS_PARTIAL, ctx)
+            if request.headers.get("HX-Trigger") in self._ZMIANA_W_MIEJSCU:
+                response["HX-Replace-Url"] = url
+            else:
+                response["HX-Push-Url"] = url
+            return response
+        ctx["sessions_full_page"] = True
         return _render_full_page(request, SESSIONS_PARTIAL, ctx)
 
 
@@ -1074,8 +1135,7 @@ class AuthorSetOrcidView(ImporterPermissionMixin, View):
         ):
             return HttpResponseBadRequest("Warunki ustawienia ORCID nie są spełnione.")
 
-        imported.matched_autor.orcid = imported.orcid
-        imported.matched_autor.save(update_fields=["orcid"])
+        _ustaw_orcid_autora(imported, request.user)
 
         return render(
             request,
@@ -1093,9 +1153,8 @@ class AuthorsSetOrcidsView(ImporterPermissionMixin, View):
             pk=session_id,
         )
         settable = _orcid_settable_qs(session)
-        for imported in settable.select_related("matched_autor"):
-            imported.matched_autor.orcid = imported.orcid
-            imported.matched_autor.save(update_fields=["orcid"])
+        for imported in settable.select_related("matched_autor", "session"):
+            _ustaw_orcid_autora(imported, request.user)
 
         return _render_authors_step(request, session)
 

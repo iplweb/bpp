@@ -11,7 +11,7 @@ from ewaluacja_common.okres import ustaw_okres
 @login_required
 @require_POST
 def wybierz_okres(request):
-    """Zapamiętaj okres ewaluacji wybrany w górnej belce (sesja + na stałe
+    """Zapamiętaj okres ewaluacji wybrany na pasku okresu pod ścieżką nawigacji (sesja + na stałe
     dla użytkownika) i wróć na stronę, z której przyszło żądanie."""
     try:
         pk = int(request.POST.get("okres", ""))

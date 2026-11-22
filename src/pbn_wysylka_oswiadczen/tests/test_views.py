@@ -328,3 +328,13 @@ def test_log_list_view_with_filters():
     context = view.get_context_data()
     assert context["page_obj"].paginator.count == 1
     assert context["page_obj"].object_list[0].status == "error"
+
+
+@pytest.mark.django_db
+def test_lata_wysylki_z_okresu_z_paska(admin_client):
+    """Domyślne lata = okres z paska; lata spoza okresu przycinane."""
+    res = admin_client.get("/pbn-wysylka-oswiadczen/2026-2030/")
+    assert (res.context["rok_od"], res.context["rok_do"]) == (2026, 2030)
+    res = admin_client.get("/pbn-wysylka-oswiadczen/2026-2030/?rok_od=2022&rok_do=2027")
+    assert (res.context["rok_od"], res.context["rok_do"]) == (2026, 2027)
+    assert 'class="pasek-okresu"' in res.content.decode()

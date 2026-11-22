@@ -20,6 +20,18 @@ nav.sticky-header {
     -webkit-backdrop-filter: blur(8px);
 }
 
+// Wcięcie pozycji podmenu po najechaniu myszą. Tekst przesuwa się w prawo
+// o $shift, ale o tyle samo maleje prawy padding — suma paddingów (a więc
+// szerokość pozycji liczona do `width: max-content`) się nie zmienia.
+// Wcześniej rósł tylko padding-left i najdłuższa pozycja rozciągała całe
+// rozwijane menu o kilka pikseli. Oba paddingi mają to samo przejście, więc
+// suma jest stała także w trakcie animacji.
+// Pilnuje tego test src/integration_tests/test_top_bar_menu_hover.py.
+@mixin menu-hover-indent($padding-x, $shift: 4px) {
+    padding-left: $padding-x + $shift;
+    padding-right: $padding-x - $shift;
+}
+
 .top-bar {
     // Dropdown menu animations
     .dropdown.menu {
@@ -122,12 +134,13 @@ nav.sticky-header {
                 font-size: 0.95rem;  // Larger font size
                 font-weight: 400;  // Normal weight but still readable
                 line-height: 1.6;  // Better line spacing
-                transition: background-color 0.2s ease, color 0.2s ease, padding-left 0.2s ease;
+                transition: background-color 0.2s ease, color 0.2s ease,
+                            padding-left 0.2s ease, padding-right 0.2s ease;
 
                 &:hover {
                     background-color: rgba($primary-color, 0.08);  // Lighter hover background
                     color: $primary-color;
-                    padding-left: 28px;  // Subtle indent on hover
+                    @include menu-hover-indent(24px);
                 }
 
                 // Icons in menu items
@@ -264,7 +277,7 @@ nav.sticky-header {
                     &:hover {
                         background-color: rgba($primary-color, 0.08);
                         color: $primary-color;
-                        padding-left: 28px;  // Subtle indent on hover
+                        @include menu-hover-indent(24px);
                     }
                 }
             }
@@ -861,24 +874,4 @@ html.global-search-scrollbar-gutter {
             0 1px 0 rgba(255, 255, 255, 0.5) inset,
             0 0 1px rgba(0, 0, 0, 0.15);
     }
-}
-
-// Przełącznik okresu ewaluacji (ewaluacja_common/_wybor_okresu.html):
-// opcje to przyciski POST, wyglądające jak pozycje menu.
-.wybor-okresu__opcja {
-  display: block;
-  width: 100%;
-  padding: 0.5rem 1rem;
-  text-align: left;
-  color: inherit;
-  cursor: pointer;
-
-  &:hover,
-  &:focus {
-    background: rgba(0, 0, 0, 0.05);
-  }
-}
-
-.wybor-okresu__opcja--aktywna {
-  font-weight: 600;
 }

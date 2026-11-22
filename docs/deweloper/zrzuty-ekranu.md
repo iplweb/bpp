@@ -112,9 +112,14 @@ pomocy wyświetla go w małym okienku, więc:
     uv run python src/manage.py create_demo_data --motyw wiedzmin --bez-prefiksu \
         --wydzialow 4 --jednostek-na-wydzial 3 --autorow 120 \
         --ile-ciaglych 600 --ile-zwartych 300 --zrodel 20 --wydawcow 8 \
-        --seed 42 --yes-i-am-sure --confirm-db bpp
+        --seed 42 --bez-dodatkow --yes-i-am-sure --confirm-db bpp
     uv run python src/manage.py denorm_flush
     ```
+
+    `--bez-dodatkow` trzyma dane takie, jak przy istniejących zrzutach
+    (celowe duplikaty mogłyby np. przenieść pracę Yennefer na jej
+    „duplikat”). Do zrzutów ekranów PBN, deduplikatorów czy
+    dwudyscyplinowców pomiń tę flagę — patrz [Dane demo](dane-demo.md).
 
     `.run-site-env.sh` eksportuje tylko `DATABASE_URL`/`PG*`, a ustawienia
     BPP czytają `DJANGO_BPP_DB_*` — stąd drugi `export`.

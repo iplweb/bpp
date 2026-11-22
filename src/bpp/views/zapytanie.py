@@ -302,12 +302,8 @@ EXAMPLES = [
                 "model": MODEL_REKORD,
                 "label": "Rekord",
                 "items": [
-                    (
-                        "Audyt ewaluacyjny — tylko recenzowane, z DOI, "
-                        "w okresie 2022–2025, min. 70 pkt",
-                        'recenzowana = True and doi != "" and '
-                        "rok in (2022, 2023, 2024, 2025) and punkty_kbn >= 70",
-                    ),
+                    # Tu (na początku) `examples_z_okresami` wstawia audyt
+                    # ewaluacyjny — po jednym przykładzie na okres ewaluacji.
                     (
                         "Grupowanie (rok OR + charakter OR) × punktacja",
                         "(rok = 2024 or rok = 2025) and "
@@ -392,6 +388,39 @@ EXAMPLES = [
         ],
     },
 ]
+
+
+def przyklady_okresow_ewaluacji():
+    """Przykłady „audyt ewaluacyjny” — po jednym na każdy okres ewaluacji
+    z bazy (np. 2022–2025 i 2026–2030), żeby można było wybrać stary albo
+    nowy okres. Pary ``(opis, zapytanie)`` jak w ``EXAMPLES``."""
+    from ewaluacja_common.models import OkresEwaluacji
+
+    return [
+        (
+            "Audyt ewaluacyjny — tylko recenzowane, z DOI, "
+            f"w okresie {okres}, min. 70 pkt",
+            'recenzowana = True and doi != "" and '
+            f"rok in ({', '.join(str(rok) for rok in okres.lata)}) "
+            "and punkty_kbn >= 70",
+        )
+        for okres in OkresEwaluacji.objects.all()
+    ]
+
+
+def examples_z_okresami():
+    """``EXAMPLES`` uzupełnione o przykłady dla okresów ewaluacji (poziom
+    „Zaawansowane”, model Rekord — na początku listy)."""
+    przyklady = przyklady_okresow_ewaluacji()
+    wynik = []
+    for level in EXAMPLES:
+        groups = []
+        for group in level["groups"]:
+            if level["level"] == 3 and group["model"] == MODEL_REKORD:
+                group = {**group, "items": przyklady + list(group["items"])}
+            groups.append(group)
+        wynik.append({**level, "groups": groups})
+    return wynik
 
 
 # Presety pivota autorskiego — skróty do gotowych tabel krzyżowych w sekcji
@@ -529,7 +558,7 @@ class ZapytanieView(WprowadzanieDanychOrSuperuserMixin, FormView):
 
     def get_context_data(self, **kwargs):
         ctx = super().get_context_data(**kwargs)
-        ctx.setdefault("examples", EXAMPLES)
+        ctx.setdefault("examples", examples_z_okresami())
         # model_key nie jest jeszcze w kontekscie przed pierwszym szukaniem
         # (render_results go dokłada) — spadamy do GET-a/domyślnego modelu,
         # żeby pasek "Postać wyniku" pokazywał sensowne opcje od pierwszego

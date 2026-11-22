@@ -13,6 +13,7 @@ from bpp.models import (
     Wydawnictwo_Ciagle_Tytul,
 )
 from bpp.util import safe_tytul_html
+from bpp.wersjonowanie import zarejestruj_utworzenie
 from pbn_api.client import PBNClient
 from pbn_api.models import Publication
 from pbn_integrator.kosz import pomin_jesli_w_koszu
@@ -118,6 +119,7 @@ def importuj_artykul(
         )
 
     ret.save()
+    zarejestruj_utworzenie(None, ret, "Zaimportowano z PBN.")
     utworz_autorow(ret, pbn_json, client, default_jednostka, inconsistency_callback)
     pbn_json.pop("type")
 

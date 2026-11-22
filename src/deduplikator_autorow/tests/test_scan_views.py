@@ -7,6 +7,7 @@ from model_bakery import baker
 
 from bpp.const import GR_WPROWADZANIE_DANYCH
 from deduplikator_autorow.models import IgnoredScientist
+from ewaluacja_common.okres import okres_domyslny
 
 
 def _login_user_with_group(client):
@@ -42,7 +43,11 @@ def test_start_scan_warns_but_runs_with_stale_pbn_people_data(client, mocker):
 
     assert response.status_code == 302
     assert response["Location"] == reverse("deduplikator_autorow:duplicate_authors")
-    assert apply_async.call_args.kwargs["kwargs"] == {"user_id": user.pk}
+    # Skan dostaje okres z paska okresu (tu: domyślny — brak wyboru).
+    assert apply_async.call_args.kwargs["kwargs"] == {
+        "user_id": user.pk,
+        "okres_pk": okres_domyslny().pk,
+    }
 
     messages = _messages(response)
     assert any(
@@ -103,7 +108,7 @@ def test_reset_ignored_scientists_warns_but_triggers_rescan_on_stale_pbn(
 
     assert response.status_code == 302
     assert IgnoredScientist.objects.count() == 0
-    delay.assert_called_once_with(user_id=user.pk)
+    delay.assert_called_once_with(user_id=user.pk, okres_pk=okres_domyslny().pk)
 
     messages = _messages(response)
     assert any(

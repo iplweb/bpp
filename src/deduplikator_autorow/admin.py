@@ -488,7 +488,11 @@ class DuplicateScanRunAdmin(DynamicAdminFilterMixin, admin.ModelAdmin):
             return
 
         # Start new scan
-        scan_for_duplicates.delay(user_id=request.user.pk)
+        from .views.helpers import okres_pk_dla_skanu
+
+        scan_for_duplicates.delay(
+            user_id=request.user.pk, okres_pk=okres_pk_dla_skanu(request)
+        )
         self.message_user(
             request,
             "Nowe skanowanie duplikatów zostało uruchomione w tle.",

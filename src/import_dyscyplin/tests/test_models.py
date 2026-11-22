@@ -204,3 +204,23 @@ def test_Import_Dyscyplin_integruj_dyscypliny_zmiana_dyscypliny(
 def test_Import_Dyscyplin_Row_serialize_dict():
     x = Import_Dyscyplin_Row(nazwisko="foo", imiona="bar", original={})
     assert x.serialize_dict()["nazwisko"] == "foo"
+
+
+def test_Import_Dyscyplin_integracja_zapisuje_historie_autora(
+    import_dyscyplin, id_row_2, autor_jan_nowak, testowe_dyscypliny
+):
+    from django.contrib.admin.models import CHANGE, LogEntry
+    from reversion.models import Version
+
+    import_dyscyplin.integruj_dyscypliny()
+    import_dyscyplin._integruj_wiersze()
+
+    wpis = LogEntry.objects.get(
+        content_type__model="autor", object_id=str(autor_jan_nowak.pk)
+    )
+    assert wpis.action_flag == CHANGE
+    assert wpis.user == import_dyscyplin.owner
+    assert wpis.change_message.startswith(
+        f"Import dyscyplin nr {import_dyscyplin.pk}: nowe przypisanie"
+    )
+    assert Version.objects.get_for_object(autor_jan_nowak).count() == 2

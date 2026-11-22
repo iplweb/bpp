@@ -38,7 +38,7 @@
                 <p><strong>Snapshot ID:</strong> {{ info.snapshot_id }}</p>
             {% endif %}
 
-            {% if info.reset_ciagle or info.reset_zwarte or info.reset_patent %}
+            {% if info.reset_ciagle or info.reset_zwarte %}
                 <h5>Status resetowania przypięć:</h5>
                 <table style="width: 100%; margin-bottom: 1rem;">
                     <thead>
@@ -58,12 +58,6 @@
                         <tr>
                             <td>Wydawnictwa zwarte</td>
                             <td><span class="label success">{{ info.reset_zwarte|intcomma }}</span></td>
-                        </tr>
-                        {% endif %}
-                        {% if info.reset_patent %}
-                        <tr>
-                            <td>Patenty</td>
-                            <td><span class="label success">{{ info.reset_patent|intcomma }}</span></td>
                         </tr>
                         {% endif %}
                         {% if info.total_reset %}
@@ -120,10 +114,6 @@
                         <td>Wydawnictwa zwarte</td>
                         <td>{{ result.reset_zwarte|intcomma }}</td>
                     </tr>
-                    <tr>
-                        <td>Patenty</td>
-                        <td>{{ result.reset_patent|intcomma }}</td>
-                    </tr>
                     <tr style="font-weight: bold; background-color: #f4f4f4; border-top: 2px solid #333;">
                         <td><strong>RAZEM</strong></td>
                         <td><strong>{{ result.total_reset|intcomma }}</strong></td>
@@ -135,7 +125,7 @@
                 <p><span class="fi-info"></span> <strong>Ważne:</strong>
                 Utworzono snapshot nr {{ result.snapshot_id }} przed zmianami.
                 W razie potrzeby możesz go przywrócić w module
-                <a href="/snapshot_odpiec/">Snapshoty odpięć</a>.</p>
+                <a href="{% url 'snapshot_odpiec:index' %}">Snapshoty odpięć</a>.</p>
             </div>
         {% endif %}
     </div>

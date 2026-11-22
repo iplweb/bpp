@@ -9,6 +9,7 @@ from django.shortcuts import redirect, render
 
 from bpp.models import Uczelnia
 from ewaluacja_common.okres import okres_dla_request
+from raport_slotow.uczelnia_helper import uczelnia_dla_odczytu
 
 logger = logging.getLogger(__name__)
 
@@ -26,7 +27,9 @@ def _format_estimated_time(seconds):
         return "< 1 min"
 
 
-def _handle_unpinning_task_in_progress(context, task_info, current_stage, current_step):
+def _handle_unpinning_task_in_progress(
+    request, context, task_info, current_stage, current_step
+):
     """Handle unpinning task that is still in progress."""
     from ewaluacja_metryki.models import StatusGenerowania
 
@@ -37,7 +40,9 @@ def _handle_unpinning_task_in_progress(context, task_info, current_stage, curren
     context["info"]["step"] = current_step
 
     # Check if metrics generation is running and add real progress
-    status = StatusGenerowania.get_or_create()
+    status = StatusGenerowania.get_or_create(
+        uczelnia=uczelnia_dla_odczytu(request), okres=okres_dla_request(request)
+    )
     if status.w_trakcie and current_stage == "unknown":
         # Metrics are still running, update stage info
         context["info"]["stage"] = "metrics"
@@ -146,7 +151,9 @@ def analyze_unpinning_opportunities(request):
         )
 
     # Sprawdź czy przeliczanie metryk już trwa
-    status = StatusGenerowania.get_or_create()
+    status = StatusGenerowania.get_or_create(
+        uczelnia=uczelnia_dla_odczytu(request), okres=okres_dla_request(request)
+    )
 
     if status.w_trakcie:
         messages.info(
@@ -232,7 +239,7 @@ def unpinning_combined_status(request, task_id):
     # Jeśli zadanie się nie zakończyło
     if not task.ready():
         _handle_unpinning_task_in_progress(
-            context, task_info, current_stage, current_step
+            request, context, task_info, current_stage, current_step
         )
 
     # Sprawdź czy zadanie zakończyło się błędem

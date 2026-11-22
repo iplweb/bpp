@@ -93,11 +93,57 @@ class Command(BaseCommand):
             "na końcu generowania.",
         )
 
+        parser.add_argument(
+            "--dwudyscyplinowcow",
+            type=int,
+            default=8,
+            help="Ilu autorów w dwóch dyscyplinach (60/40, pseudonim "
+            "„dwudyscyplinowy”) dodać; 0 — żadnego.",
+        )
+        parser.add_argument(
+            "--bez-rzadkich-typow",
+            action="store_true",
+            help="Bez prac doktorskich/habilitacyjnych, patentów, konferencji, "
+            "serii wydawniczych, grantów i nagród.",
+        )
+        parser.add_argument(
+            "--bez-brudow",
+            action="store_true",
+            help="Bez celowych duplikatów i rozbieżności oraz bez skanów "
+            "deduplikatorów na końcu.",
+        )
+        parser.add_argument(
+            "--bez-pbn",
+            action="store_true",
+            help="Bez lokalnego lustra danych PBN (i porównań BPP↔PBN).",
+        )
+        parser.add_argument(
+            "--bez-dodatkow",
+            action="store_true",
+            help="Bez dodatków: dwudyscyplinowców, rzadszych typów, brudów "
+            "i lustra PBN (np. dla zrzutów ekranu do dokumentacji).",
+        )
+        parser.add_argument(
+            "--konta-demo",
+            action="store_true",
+            help="Załóż konta admin/admin, redaktor/redaktor, raporty/raporty, "
+            "user/user (istniejących nie zmienia). Hasła są jawne — tylko dla "
+            "instancji demonstracyjnych.",
+        )
+
     def handle(self, *args, **options):
         manifest_out = options.get("manifest_out")
         if not manifest_out:
             ts = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
             manifest_out = f"demo_data_manifest_{ts}.json"
+
+        if options["bez_dodatkow"]:
+            options.update(
+                dwudyscyplinowcow=0,
+                bez_rzadkich_typow=True,
+                bez_brudow=True,
+                bez_pbn=True,
+            )
 
         opts = CreateOptions(
             wydzialow=options["wydzialow"],
@@ -127,6 +173,11 @@ class Command(BaseCommand):
             polon_bez_blednych_wierszy=options.get("polon_bez_blednych_wierszy", False),
             bez_ewaluacji=options["bez_ewaluacji"],
             zgloszen=options["zgloszen"],
+            dwudyscyplinowcow=options["dwudyscyplinowcow"],
+            bez_rzadkich_typow=options["bez_rzadkich_typow"],
+            bez_brudow=options["bez_brudow"],
+            bez_pbn=options["bez_pbn"],
+            konta_demo=options["konta_demo"],
             uzytkownik=options.get("uzytkownik"),
         )
         # BaseCommand ma self.stdout (OutputWrapper) ale NIE ma self.stdin —

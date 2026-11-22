@@ -1,4 +1,4 @@
-"""Track 3 (audyt uczelnia 2026-06-04): wydruk oświadczeń 2022-25 zawężony do
+"""Track 3 (audyt uczelnia 2026-06-04): wydruk oświadczeń zawężony do
 uczelni oglądającego.
 
 ``get_base_queryset`` / ``build_queryset_for_task`` budowały qs ``Autorzy`` tylko
@@ -16,7 +16,7 @@ from bpp.models import (
     Uczelnia,
     Wydawnictwo_Ciagle,
 )
-from oswiadczenia.views import WydrukOswiadczen2022View
+from oswiadczenia.views import WydrukOswiadczenView
 
 
 @pytest.fixture
@@ -63,8 +63,12 @@ def test_wydruk_oswiadczen_zaweza_do_uczelni_ogladajacego(
 
     request = rf.get("/")
     request._uczelnia = uczelnia1
+    # Prace z 2023 r. — okres 2022–2025 (domyślny to okres bieżącego roku).
+    from ewaluacja_common.models import OkresEwaluacji
 
-    view = WydrukOswiadczen2022View()
+    request._okres_ewaluacji = OkresEwaluacji.objects.get(rok_od=2022)
+
+    view = WydrukOswiadczenView()
     view.request = request
 
     autor_ids = set(view.get_queryset().values_list("autor_id", flat=True))

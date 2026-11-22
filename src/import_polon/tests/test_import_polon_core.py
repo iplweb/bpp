@@ -130,6 +130,17 @@ def test_analyze_excel_file_import_polon(
             stanislaw_dyscyplinazn.autor_dyscyplina_set.get(rok=ROK).rodzaj_autora
             == rodzaj_autora_n
         )
+
+        # Zmiany trafiają do historii autora (LogEntry + wersja).
+        from django.contrib.admin.models import CHANGE, LogEntry
+        from reversion.models import Version
+
+        wpis = LogEntry.objects.get(
+            content_type__model="autor", object_id=str(artur_dyscyplinazn.pk)
+        )
+        assert wpis.action_flag == CHANGE
+        assert wpis.change_message.startswith(f"Import POLON nr {ipp.pk}")
+        assert Version.objects.get_for_object(artur_dyscyplinazn).count() == 2
     denorms.flush()
 
 

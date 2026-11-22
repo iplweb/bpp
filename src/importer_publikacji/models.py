@@ -370,6 +370,38 @@ class ImportSession(models.Model):
         now = now or timezone.now()
         return (now - self.modified).total_seconds() > timeout
 
+    @classmethod
+    def stalled_q(cls, *, now=None):
+        """Warunek ``Q`` odpowiadający :meth:`is_stalled` — do filtrowania
+        listy sesji po pseudo-statusie „utknięte” (FD#615)."""
+        from datetime import timedelta
+
+        timeout = getattr(settings, "IMPORTER_STALL_TIMEOUT", DEFAULT_STALL_TIMEOUT)
+        now = now or timezone.now()
+        return models.Q(
+            status__in=cls._INFLIGHT_STATUSES,
+            modified__lt=now - timedelta(seconds=timeout),
+        )
+
+    @property
+    def created_record_admin_url(self):
+        """Adres edycji rekordu wynikowego w module redagowania albo ``None``.
+
+        Liczony z typu zawartości (bez pobierania samego rekordu), więc na
+        liście sesji wystarczy ``select_related`` na typie."""
+        if not self.created_record_id or self.created_record_content_type is None:
+            return None
+        from django.urls import NoReverseMatch, reverse
+
+        ct = self.created_record_content_type
+        try:
+            return reverse(
+                f"admin:{ct.app_label}_{ct.model}_change",
+                args=[self.created_record_id],
+            )
+        except NoReverseMatch:
+            return None  # model bez admina — zostaje sam link „Pokaż”
+
     def mark_stalled(self):
         """Przełącz zawieszoną sesję na IMPORT_FAILED z user-safe komunikatem.
 

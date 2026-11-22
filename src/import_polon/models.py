@@ -64,8 +64,12 @@ def _uruchom_import(parent, p, analyze):
     właściwy przebieg, żeby błąd był WIDOCZNY: surowy traceback na stderr
     (konsola celery/run-site) + rollbar (konwencja bg-tasków), po czym
     re-raise — liveops i tak zapisze traceback do bazy i pokaże błąd w UI."""
+    from bpp.wersjonowanie import jako_uzytkownik
+
     try:
-        wynik = analyze(parent.plik.path, parent, p)
+        # Autor wpisów historii zmienianych rekordów = właściciel importu.
+        with jako_uzytkownik(parent.owner):
+            wynik = analyze(parent.plik.path, parent, p)
     except Exception:
         import sys
         import traceback as _traceback

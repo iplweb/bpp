@@ -26,7 +26,7 @@ from ewaluacja_common.models import OkresEwaluacji
 from ewaluacja_liczba_n.models import LiczbaNDlaUczelni
 from ewaluacja_liczba_n.utils import (
     oblicz_dyscypliny_nieraportowane,
-    oblicz_liczby_n_dla_ewaluacji_2022_2025,
+    oblicz_liczby_n_dla_okresu,
 )
 from import_polon.core.import_polon import analyze_file_import_polon
 from import_polon.models import ImportPlikuPolon, WierszImportuPlikuPolon
@@ -60,6 +60,10 @@ def _importuj(plik, uczelnia, rok):
     return import_model, wynik["statystyki"]
 
 
+# Słownik z baseline; test transakcyjny na tym samym workerze go wymiata.
+@pytest.mark.usefixtures(
+    "rodzaj_autora_n", "rodzaj_autora_b", "rodzaj_autora_d", "rodzaj_autora_z"
+)
 @pytest.mark.django_db
 def test_e2e_plik_polon_import_i_liczba_n(slowniki, tmp_path):
     plik = tmp_path / "polon.xlsx"
@@ -124,7 +128,7 @@ def test_e2e_plik_polon_import_i_liczba_n(slowniki, tmp_path):
     # Okres jawnie: domyślny zależy od bieżącego roku (od 2026 → 2026–2030),
     # a plik POL-on pokrywa lata 2022–2025.
     okres = OkresEwaluacji.objects.get(rok_od=LATA[0])
-    oblicz_liczby_n_dla_ewaluacji_2022_2025(uczelnia, okres=okres)
+    oblicz_liczby_n_dla_okresu(uczelnia, okres=okres)
 
     liczba_n = {
         o.dyscyplina_naukowa.nazwa: o.liczba_n

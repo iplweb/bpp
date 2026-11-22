@@ -1,18 +1,18 @@
 {% extends "base.html" %}
 
 {% block title %}
-    Wydruk oświadczeń 2022-2025
+    Wydruk oświadczeń
 {% endblock %}
 
 {% block breadcrumbs %}
     {{ block.super }}
-    <li class="current">Wydruk oświadczeń 2022-2025</li>
+    <li class="current">Wydruk oświadczeń</li>
 {% endblock %}
 
 {% block content %}
     <div class="row">
         <div class="medium-12 columns">
-            <h1>Wydruk oświadczeń 2022-2025</h1>
+            <h1>Wydruk oświadczeń</h1>
         </div>
     </div>
     <div class="row">
@@ -21,13 +21,13 @@
                 <div class="row">
                     <div class="medium-2 columns">
                         <label>Rok od:
-                            <input type="number" name="rok_od" value="{{ rok_od }}" min="2022" max="2025"
+                            <input type="number" name="rok_od" value="{{ rok_od }}" min="{{ okres_ewaluacji.rok_od }}" max="{{ okres_ewaluacji.rok_do }}"
                                    style="width: 80px;">
                         </label>
                     </div>
                     <div class="medium-2 columns">
                         <label>Rok do:
-                            <input type="number" name="rok_do" value="{{ rok_do }}" min="2022" max="2025"
+                            <input type="number" name="rok_do" value="{{ rok_do }}" min="{{ okres_ewaluacji.rok_od }}" max="{{ okres_ewaluacji.rok_do }}"
                                    style="width: 80px;">
                         </label>
                     </div>
@@ -66,7 +66,7 @@
                         <button type="submit" class="button">
                             <span class="fi-filter"></span> Filtruj
                         </button>
-                        <a href="{% url 'oswiadczenia:wydruk-2022-25' %}" class="button secondary">
+                        <a href="{% url 'oswiadczenia:wydruk' %}" class="button secondary">
                             <span class="fi-x"></span> Resetuj
                         </a>
                     </div>
@@ -112,7 +112,7 @@
                 <div class="medium-6 columns">
                     <fieldset style="border: 1px solid #ccc; padding: 0.5rem; margin-bottom: 0.5rem;">
                         <legend style="font-weight: bold; padding: 0 0.5rem;">Jeden plik</legend>
-                        <a href="{% url 'oswiadczenia:wydruk-2022-25-export' %}{% if filter_query_string %}?{{ filter_query_string }}{% endif %}"
+                        <a href="{% url 'oswiadczenia:wydruk-export' %}{% if filter_query_string %}?{{ filter_query_string }}{% endif %}"
                            class="button success">
                             <span class="fi-download"></span> XLSX
                         </a>

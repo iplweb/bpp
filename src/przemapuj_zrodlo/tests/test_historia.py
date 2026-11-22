@@ -1,0 +1,43 @@
+"""Przemapowanie źródła (i jego cofnięcie) zapisuje historię każdej pracy."""
+
+import pytest
+from django.contrib.admin.models import CHANGE, LogEntry
+from django.urls import reverse
+from model_bakery import baker
+
+from bpp.models import Wydawnictwo_Ciagle, Zrodlo
+
+
+def _wpisy(praca):
+    return LogEntry.objects.filter(
+        content_type__model="wydawnictwo_ciagle", object_id=str(praca.pk)
+    ).order_by("pk")
+
+
+@pytest.mark.django_db
+def test_przemapowanie_i_cofniecie_zrodla_w_historii_prac(admin_client, admin_user):
+    zrodlo_z = baker.make(Zrodlo, nazwa="Stare czasopismo", pbn_uid=None)
+    zrodlo_do = baker.make(Zrodlo, nazwa="Nowe czasopismo", pbn_uid=None)
+    prace = baker.make(Wydawnictwo_Ciagle, zrodlo=zrodlo_z, _quantity=2)
+
+    resp = admin_client.post(
+        reverse("przemapuj_zrodlo:przemapuj", args=[zrodlo_z.slug]),
+        {"zrodlo_docelowe": zrodlo_do.pk, "potwierdzenie": "on"},
+    )
+    assert resp.status_code == 302
+    for praca in prace:
+        wpis = _wpisy(praca).get()
+        assert wpis.action_flag == CHANGE
+        assert wpis.user == admin_user
+        assert "Stare czasopismo" in wpis.change_message
+        assert "Nowe czasopismo" in wpis.change_message
+
+    from przemapuj_zrodlo.models import PrzemapowaZrodla
+
+    przemapowanie = PrzemapowaZrodla.objects.get()
+    admin_client.post(reverse("przemapuj_zrodlo:cofnij", args=[przemapowanie.pk]))
+    for praca in prace:
+        assert Wydawnictwo_Ciagle.objects.get(pk=praca.pk).zrodlo == zrodlo_z
+        wpisy = list(_wpisy(praca))
+        assert len(wpisy) == 2
+        assert wpisy[1].change_message.startswith("Cofnięto przemapowanie")

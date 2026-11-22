@@ -15,6 +15,7 @@ from crossref_bpp.core import Komparator, StatusPorownania
 from import_common.normalization import normalize_doi
 
 from ..historia import (
+    komunikat_orcid,
     komunikat_utworzenia,
     komunikat_zatrudnienia,
     zapisz_utworzenie,
@@ -249,6 +250,17 @@ def _prefill_dyscypliny_z_zgloszen(session):
         if not imported.matched_jednostka_id and zpa.jednostka_id:
             imported.matched_jednostka = zpa.jednostka
         imported.save()
+
+
+@transaction.atomic
+def _ustaw_orcid_autora(imported, user):
+    """Przepisz ORCID z danych dostawcy dopasowanemu autorowi BPP — z wpisem
+    w historii autora (inaczej ORCID zmieniałby się bez śladu)."""
+    autor = imported.matched_autor
+    zapewnij_wersje_poczatkowa(autor)
+    autor.orcid = imported.orcid
+    autor.save(update_fields=["orcid"])
+    zapisz_zmiane(user, autor, komunikat_orcid(imported.session, imported.orcid))
 
 
 @transaction.atomic

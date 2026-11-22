@@ -22,7 +22,7 @@
             <h4><span class="fi-alert"></span> Brak danych liczby N!</h4>
             <p>Przed uruchomieniem optymalizacji musisz najpierw policzyć liczbę N dla uczelni.</p>
             <p>
-                <a href="/ewaluacja_liczba_n/" class="button warning">
+                <a href="{% url 'ewaluacja_liczba_n:index' %}" class="button warning">
                     <span class="fi-graph-bar"></span> Przejdź do modułu Liczba N
                 </a>
                 lub uruchom polecenie: <code>python src/manage.py przelicz_n</code>
@@ -74,7 +74,7 @@
         </div>
 
         <div class="button-group ewaluacja-optymalizacja__button-group--spaced">
-            <a href="/snapshot_odpiec/" class="button secondary">
+            <a href="{% url 'snapshot_odpiec:index' %}" class="button secondary">
                 <span class="fi-camera"></span> Snapshoty odpięć
             </a>
             <a href="{% url 'ewaluacja_optymalizacja:capacity-analysis-list' %}"
@@ -146,7 +146,7 @@
             {% endif %}
         </div>
 
-        <form id="bulk-optimization-form" method="POST" action="{% url 'ewaluacja_optymalizacja:bulk-start' %}">
+        <form id="bulk-optimization-form" method="post" action="{% url 'ewaluacja_optymalizacja:bulk-start' %}">
             {% csrf_token %}
             <fieldset class="ewaluacja-optymalizacja__fieldset">
                 <legend class="ewaluacja-optymalizacja__legend">Konfiguracja solvera:</legend>

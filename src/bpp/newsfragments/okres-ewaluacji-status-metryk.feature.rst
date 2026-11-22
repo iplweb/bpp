@@ -1,0 +1,1 @@
+Generowanie metryk ewaluacyjnych za jeden okres nie blokuje już innego okresu: metryki pozostałych okresów można w tym czasie przeglądać, filtrować i generować, a informacja „Wizualizacja wygenerowana w dniu …” jest pokazywana osobno dla każdego okresu.
