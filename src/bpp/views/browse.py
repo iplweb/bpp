@@ -70,7 +70,11 @@ from bpp.multiseek_registry import (
 from bpp.multiseek_registry.fields.constants import UNION_NONE
 from bpp.nazwy import lemat
 from bpp.permissions import moze_wprowadzac_dane
-from bpp.punkty_ewaluacji import punkty_ewaluacji_wydawcy, punkty_ewaluacji_zrodla
+from bpp.punkty_ewaluacji import (
+    okresy_ewaluacji_strony,
+    punkty_ewaluacji_wydawcy,
+    punkty_ewaluacji_zrodla,
+)
 from bpp.rekord_usuniety import (
     RekordUsunietyDetailMixin,
     kosz_modelu,
@@ -1069,7 +1073,9 @@ class ZrodloView(RekordUsunietyDetailMixin, DetailView):
                 context["wykresy"] = {"wykresy": wykresy}
                 context["szukaj_pola"] = [("zrodlo", self.object.pk)]
                 context["szukaj_tytul"] = str(self.object)
-        context["ewaluacja"] = punkty_ewaluacji_zrodla(self.object)
+        context["okresy_ewaluacji_ramki"] = okresy_ewaluacji_strony(
+            punkty_ewaluacji_zrodla, self.object
+        )
         # Sekcje „Najczęściej publikujący autorzy” / „Jednostki” + chipy typów.
         context["typy"] = TYPY
         context.update(sekcje_zrodla(self.object, getattr(self, "request", None)))
@@ -1171,7 +1177,9 @@ class WydawcaView(RekordUsunietyDetailMixin, DetailView):
         # Sekcje autorów/jednostek, znaczek poziomu, chipy typów publikacji.
         context["typy"] = TYPY
         context.update(sekcje_wydawcy(wydawca, request))
-        context["ewaluacja"] = punkty_ewaluacji_wydawcy(wydawca)
+        context["okresy_ewaluacji_ramki"] = okresy_ewaluacji_strony(
+            punkty_ewaluacji_wydawcy, wydawca
+        )
         return context
 
 

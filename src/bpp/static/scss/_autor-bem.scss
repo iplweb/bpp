@@ -1138,6 +1138,18 @@
 
 // Ramka „Ewaluacja 2022–2025” na stronach źródła i wydawcy: ile punktów
 // daje publikacja jednego autora (bpp.punkty_ewaluacji).
+// Poprzednie okresy ewaluacji na stronie źródła/wydawcy — zwinięte.
+.punkty-ewaluacji__poprzedni {
+  margin-bottom: 1rem;
+
+  > summary {
+    cursor: pointer;
+    font-size: 0.9rem;
+    opacity: 0.8;
+    margin-bottom: 0.5rem;
+  }
+}
+
 .callout.punkty-ewaluacji {
   border-left: 4px solid #b8860b;
   background: #fffaf0;
