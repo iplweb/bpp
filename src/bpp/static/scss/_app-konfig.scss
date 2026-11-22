@@ -297,7 +297,9 @@ nav.sticky-header {
     color: $primary-color !important;
   }
 } @else if $cfg-kafle-styl == "obrys" {
-  .uczelnia__tile {
+  .uczelnia__tile,
+  .browse-tile:hover > .uczelnia__tile,
+  .browse-tile:focus-visible > .uczelnia__tile {
     background: $white;
     border: 2px solid $primary-color;
   }
@@ -309,6 +311,13 @@ nav.sticky-header {
   .uczelnia__tile {
     background: $primary-color;
     border-color: $primary-color;
+  }
+
+  // Hover: kafel ciemnieje, tekst zostaje czytelny (nie białe tło).
+  .browse-tile:hover > .uczelnia__tile,
+  .browse-tile:focus-visible > .uczelnia__tile {
+    background: mix(#000, $primary-color, 15%);
+    border-color: mix(#000, $primary-color, 15%);
   }
 
   .uczelnia__tile-icon,

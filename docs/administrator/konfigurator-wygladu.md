@@ -93,7 +93,7 @@ także po zamknięciu karty.
 
 W sekcji **Ikona strony** można wgrać ikonę PNG (najlepiej kwadrat, co
 najmniej 64×64 px) albo ICO, do 1 MB, i zobaczyć ją na makiecie karty
-przeglądarki. Ikona zapisuje się razem z „Zastosuj” — w ustawieniach
+przeglądarki. Ikona zapisuje się razem z „Zastosuj dla wszystkich” — w ustawieniach
 uczelni i w ikonach strony.
 
 ## Zapisanie motywu bez stosowania
@@ -102,7 +102,7 @@ uczelni i w ikonach strony.
 strony. Konfigurator wczyta je przy następnym otwarciu, a superużytkownik
 może je potem zastosować. Przycisk jest zawsze dostępny; staje się głównym,
 gdy kompilator motywów jest chwilowo niedostępny albo ustawienia przygotowuje
-osoba bez prawa „Zastosuj”.
+osoba bez prawa „Zastosuj dla wszystkich”.
 
 ## Przymiarka na całej stronie
 
@@ -125,12 +125,12 @@ działa od razu, bez budowania motywu.
 ## Strona błędu
 
 Gdy BPP chwilowo nie działa, serwer pokazuje statyczną stronę błędu.
-Po każdym „Zastosuj” jest ona przebudowywana w nowym motywie, więc także
+Po każdym „Zastosuj dla wszystkich” jest ona przebudowywana w nowym motywie, więc także
 wtedy odwiedzający widzą wygląd uczelni.
 
 ## Zastosowanie i powrót
 
-**Zastosuj na tej stronie** zapisuje ustawienia i przełącza uczelnię na
+**Zastosuj dla wszystkich** zapisuje ustawienia i przełącza uczelnię na
 motyw „Własny (z konfiguratora wyglądu)”. Zmianę widzą od razu wszyscy
 odwiedzający.
 

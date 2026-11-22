@@ -129,6 +129,23 @@
     // tylko przy danej wartości innego pola.
     var SCHEMAT = [
         {
+            klucz: "tryb_kolorow",
+            typ: "wybor",
+            grupa: "Kolory",
+            etykieta: "Tryb kolorów",
+            opis:
+                "Automatyczny: strona ma wersję jasną i ciemną, a przeglądarka " +
+                "wybiera tę, którą odwiedzający ustawił w systemie. Wersja " +
+                "ciemna powstaje sama z wybranych kolorów. Wysoki kontrast " +
+                "zapewnia przycisk dostępności UserWay.",
+            opcje: [
+                ["jasny", "Jasny"],
+                ["ciemny", "Ciemny"],
+                ["automatyczny", "Automatyczny (jak w systemie odwiedzającego)"],
+            ],
+            domyslnie: "automatyczny",
+        },
+        {
             klucz: "kolor_naglowka",
             typ: "kolor",
             grupa: "Kolory",
@@ -164,23 +181,6 @@
                 ["szare", "Jasnoszare (białe karty na szarym tle)"],
             ],
             domyslnie: "biale",
-        },
-        {
-            klucz: "tryb_kolorow",
-            typ: "wybor",
-            grupa: "Kolory",
-            etykieta: "Tryb kolorów",
-            opis:
-                "Automatyczny: strona ma wersję jasną i ciemną, a przeglądarka " +
-                "wybiera tę, którą odwiedzający ustawił w systemie. Wersja " +
-                "ciemna powstaje sama z wybranych kolorów. Wysoki kontrast " +
-                "zapewnia przycisk dostępności UserWay.",
-            opcje: [
-                ["jasny", "Jasny"],
-                ["ciemny", "Ciemny"],
-                ["automatyczny", "Automatyczny (jak w systemie odwiedzającego)"],
-            ],
-            domyslnie: "automatyczny",
         },
         {
             klucz: "tlo_tresci",

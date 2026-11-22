@@ -570,14 +570,31 @@
     var trybPodgladu = "jasny";
     var elTrybPodgladu = document.getElementById("tryb-podgladu");
 
+    var elWersjeOpis = document.getElementById("wersje-opis");
+    var elWersjeObie = document.getElementById("wersje-obie");
+
+    // Obie wersje (tryb automatyczny): przełącznik podglądu jasna/ciemna.
+    // Jedna wersja: przyciski wyłączone, zaznaczona jedyna wersja i przycisk
+    // dodający drugą (przejście na tryb automatyczny).
     function pokazPrzelacznikTrybu() {
-        elTrybPodgladu.hidden = stan.tryb_kolorow !== "automatyczny";
-        elTrybPodgladu.querySelectorAll("button").forEach(function (b) {
-            b.setAttribute("aria-pressed", String(b.dataset.tryb === trybPodgladu));
+        var obie = stan.tryb_kolorow === "automatyczny";
+        var widoczna = obie ? trybPodgladu : stan.tryb_kolorow;
+        elTrybPodgladu.querySelectorAll("button[data-tryb]").forEach(function (b) {
+            b.disabled = !obie;
+            b.setAttribute("aria-pressed", String(b.dataset.tryb === widoczna));
         });
+        elWersjeOpis.textContent = obie
+            ? "Strona ma obie wersje — odwiedzający dostaje tę z ustawień swojego systemu."
+            : "Strona ma tylko wersję " + (widoczna === "ciemny" ? "ciemną." : "jasną.");
+        elWersjeObie.hidden = obie;
     }
 
-    elTrybPodgladu.querySelectorAll("button").forEach(function (b) {
+    elWersjeObie.addEventListener("click", function () {
+        ustaw("tryb_kolorow", "automatyczny");
+        zbudujFormularz();
+    });
+
+    elTrybPodgladu.querySelectorAll("button[data-tryb]").forEach(function (b) {
         b.addEventListener("click", function () {
             trybPodgladu = b.dataset.tryb;
             pokazPrzelacznikTrybu();
@@ -984,7 +1001,7 @@
                 zapiszWPamieci();
                 zbudujFormularz();
                 zaplanujKompilacje();
-                ustawStatus("Wczytano motyw z " + w.kiedy + ". Kliknij „Zastosuj”, żeby przywrócić go na stronie.");
+                ustawStatus("Wczytano motyw z " + w.kiedy + ". Kliknij „Zastosuj dla wszystkich”, żeby przywrócić go na stronie.");
             })
             .catch(function (blad) {
                 ustawStatus("Nie udało się wczytać wersji: " + blad.message, true);
@@ -1013,7 +1030,7 @@
     // --- Favicon ---------------------------------------------------------------------
 
     var MAKS_FAVICON = 1024 * 1024; // jak MAKS_ROZMIAR_FAVICON w pliki_uczelni.py
-    var nowyFavicon = null; // data URL czekający na „Zastosuj”
+    var nowyFavicon = null; // data URL czekający na „Zastosuj dla wszystkich”
     var elFaviconBlad = document.getElementById("favicon-blad");
     var elFaviconCofnij = document.getElementById("favicon-cofnij");
 
@@ -1063,7 +1080,7 @@
                 );
                 nowyFavicon = url;
                 pokazFavicon();
-                ustawStatus("Nowa ikona zapisze się po kliknięciu „Zastosuj”.");
+                ustawStatus("Nowa ikona zapisze się po kliknięciu „Zastosuj dla wszystkich”.");
             });
         });
     });
@@ -1085,7 +1102,7 @@
 
     var elZapisz = document.getElementById("zapisz");
 
-    // Bez kompilatora (albo bez prawa „Zastosuj”) proponujemy zapisanie
+    // Bez kompilatora (albo bez prawa „Zastosuj dla wszystkich”) proponujemy zapisanie
     // motywu — strona się nie zmienia, motyw czeka na zastosowanie.
     function ustawPrzyciski() {
         var moznaZastosowac = serwer.mozna_zastosowac && serwer.kompilator_dostepny;
@@ -1110,7 +1127,7 @@
             uwaga.textContent =
                 "Jest zapisany, jeszcze niezastosowany motyw" +
                 (serwer.roboczy.kto ? " (" + serwer.roboczy.kto + ", " + serwer.roboczy.kiedy + ")" : "") +
-                ". „Zastosuj” włączy go na stronie.";
+                ". „Zastosuj dla wszystkich” włączy go na stronie.";
         }
     }
 
@@ -1129,7 +1146,7 @@
         // przeglądarka zablokowałaby ją jako wyskakujące okno.
         var karta = window.open("about:blank", "_blank");
         ustawStatus("Buduję motyw do przymiarki…");
-        wstrzymajRamki(); // jak przy „Zastosuj” — wolne połączenie dla zapytania
+        wstrzymajRamki(); // jak przy „Zastosuj dla wszystkich” — wolne połączenie dla zapytania
         pobierzJson(serwer.adres_przymierz, {
             method: "POST",
             credentials: "same-origin",
@@ -1260,7 +1277,7 @@
     });
 
     // Motyw zapisany w starszej wersji BPP nie zawiera stylów nowych
-    // elementów stron — przypominamy o ponownym „Zastosuj”.
+    // elementów stron — przypominamy o ponownym „Zastosuj dla wszystkich”.
     function pokazUwageOWersji() {
         var uwaga = document.getElementById("uwaga-wersja");
         var nieaktualny =
@@ -1273,7 +1290,7 @@
                 "Motyw zbudowano w wersji BPP " + serwer.zapisany_w_wersji +
                 ", a strona działa już na wersji " + serwer.wersja_bpp +
                 ". Zwykle przebudowuje się sam przy aktualizacji; jeśli ten " +
-                "komunikat nie znika, kliknij „Zastosuj”.";
+                "komunikat nie znika, kliknij „Zastosuj dla wszystkich”.";
         }
     }
 

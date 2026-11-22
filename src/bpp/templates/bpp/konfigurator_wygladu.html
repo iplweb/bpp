@@ -64,6 +64,12 @@
         .obraz-wybor .obraz-opis { flex: 1; color: #555; }
         .kolor input:disabled { opacity: 0.4; }
         .uklad-podgladow[hidden] { display: none; }
+        .wersje-kolorow { display: flex; flex-wrap: wrap; gap: 0.4rem; align-items: center; flex-basis: 100%; padding: 0.5rem 0.75rem; background: #fff; border: 1px solid var(--ramka); border-radius: 8px; }
+        .wersje-kolorow .wersje-etykieta { font-weight: 600; }
+        .wersje-kolorow button[aria-pressed="true"] { border-color: var(--akcent); box-shadow: inset 0 0 0 1px var(--akcent); background: #eff6ff; font-weight: 600; }
+        .wersje-kolorow button[disabled] { opacity: 0.45; cursor: not-allowed; }
+        .wersje-kolorow .wersje-opis { color: var(--szary); font-size: 0.85rem; }
+        .wersje-kolorow [hidden] { display: none; }
         .uklad-podgladow { display: flex; gap: 0.3rem; align-items: center; font-size: 0.85rem; color: var(--szary); white-space: nowrap; }
         .uklad-podgladow button { padding: 0.25rem 0.6rem; font-size: 0.85rem; }
         .uklad-podgladow button[aria-pressed="true"] { border-color: var(--akcent); box-shadow: inset 0 0 0 1px var(--akcent); background: #eff6ff; font-weight: 600; }
@@ -176,13 +182,13 @@
         <h1>Konfigurator wyglądu</h1>
         <p class="wstep">
             Wybierz kolory i styl. Podgląd po prawej pokazuje prawdziwe strony
-            tej bazy. Gdy wygląd Ci odpowiada, kliknij „Zastosuj” — zmiana od
+            tej bazy. Gdy wygląd Ci odpowiada, kliknij „Zastosuj dla wszystkich” — zmiana od
             razu obejmie całą stronę.
         </p>
         {# Akcje na górze, przyklejone — widoczne przy przewijaniu długiej listy sekcji. #}
         <div class="akcje">
             <div class="przyciski">
-                <button type="button" class="glowny" id="zastosuj" hidden>Zastosuj na tej stronie</button>
+                <button type="button" class="glowny" id="zastosuj" hidden>Zastosuj dla wszystkich</button>
                 <button type="button" id="zapisz" hidden>Zapisz w bazie</button>
                 <button type="button" id="przymierz" hidden>Przymierz (tylko ja)</button>
                 <button type="button" id="wroc-do-zapisanego" hidden>Wróć do zastosowanych</button>
@@ -214,7 +220,7 @@
             <div class="opis">
                 Ikonka na karcie przeglądarki i w zakładkach. PNG (najlepiej
                 kwadrat, co najmniej 64×64 px) albo ICO, do 1 MB. Zapisuje się
-                razem z „Zastosuj”.
+                razem z „Zastosuj dla wszystkich”.
             </div>
             <div class="karta-przegladarki" aria-hidden="true">
                 <img id="favicon-podglad" alt="" width="16" height="16">
@@ -236,7 +242,7 @@
             <div class="sekcja-tresc">
                 <div class="opis">
                     Ostatnie zastosowane motywy. „Wczytaj” wstawia ustawienia do
-                    edytora — żeby przywrócić je na stronie, kliknij „Zastosuj”.
+                    edytora — żeby przywrócić je na stronie, kliknij „Zastosuj dla wszystkich”.
                 </div>
                 <ol class="historia-lista" id="historia-lista"></ol>
                 <p class="opis-maly" id="historia-pusta">Nie zastosowano jeszcze żadnego motywu.</p>
@@ -277,12 +283,14 @@
 
     <main class="podglady">
         <div class="podglady-naglowek">
-            <p>Podglądy są „żywe” — można w nie klikać. Kliknij „Powiększ”, żeby obejrzeć stronę w pełnym rozmiarze.</p>
-            <div class="uklad-podgladow" id="tryb-podgladu" role="group" aria-label="Wariant trybu automatycznego" hidden>
-                Podgląd:
-                <button type="button" data-tryb="jasny">jasny</button>
-                <button type="button" data-tryb="ciemny">ciemny</button>
+            <div class="wersje-kolorow" id="tryb-podgladu" role="group" aria-label="Wersja kolorystyczna na podglądach">
+                <span class="wersje-etykieta">Podgląd wersji:</span>
+                <button type="button" data-tryb="jasny">Jasna</button>
+                <button type="button" data-tryb="ciemny">Ciemna</button>
+                <span class="wersje-opis" id="wersje-opis"></span>
+                <button type="button" id="wersje-obie" hidden>Dodaj drugą wersję (jasna + ciemna)</button>
             </div>
+            <p>Podglądy są „żywe” — można w nie klikać. Kliknij „Powiększ”, żeby obejrzeć stronę w pełnym rozmiarze.</p>
             <div class="uklad-podgladow" role="group" aria-label="Układ podglądów">
                 Układ:
                 <button type="button" data-kolumny="1">1 kolumna</button>
