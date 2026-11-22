@@ -3,11 +3,11 @@
 import logging
 import sys
 
-import rollbar
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.shortcuts import get_object_or_404, redirect
 
+from bpp.zglaszanie_bledow import capture_exception
 from ewaluacja_common.okres import okres_dla_request
 
 from ..models import OptimizationRun
@@ -96,7 +96,7 @@ def _generate_author_sedn_workbook(author_result, run):
             if hasattr(original, "pbn_uid_id") and original.pbn_uid_id:
                 pbn_uid = original.pbn_uid_id
         except Exception:
-            rollbar.report_exc_info(sys.exc_info())
+            capture_exception(sys.exc_info())
             logger.debug("Błąd pobierania pbn_uid", exc_info=True)
 
         # Pobierz RODZAJ z charakter_formalny.rodzaj_pbn

@@ -136,16 +136,16 @@ def test_awaria_bazy_w_bramce_daje_503_nie_wyciekajacy_wyjatek(monkeypatch):
     przed falą naprawczą anonimowe żądanie na ``/mcp`` wcale nie dotykało
     bazy w warstwie routingu. Ma dać kontrolowane 503, tak jak awaria startu
     menedżera (B3), z zgłoszeniem do Rollbara."""
-    mock_rollbar = Mock()
+    mock_zgloszenie = Mock()
     monkeypatch.setattr(routing, "uczelnia_hosta", _wybuchaj_baza)
-    monkeypatch.setattr(routing, "rollbar", mock_rollbar)
+    monkeypatch.setattr(routing, "capture_exception", mock_zgloszenie)
 
     router = RouterHttp(_mcp, _django, StartMcp(_AtrapaLifespanu()))
     status, _, tresc = uruchom(lambda: wywolaj(router, zbuduj_scope("/mcp")))
 
     assert status == 503
     assert "MCP" not in tresc
-    mock_rollbar.report_exc_info.assert_called_once()
+    mock_zgloszenie.assert_called_once()
 
 
 def test_awaria_bazy_w_bramce_zglaszana_raz_na_epizod_nie_na_zadanie(monkeypatch):
@@ -153,9 +153,9 @@ def test_awaria_bazy_w_bramce_zglaszana_raz_na_epizod_nie_na_zadanie(monkeypatch
     dostać JEDNO zgłoszenie na epizod awarii, a nie jedno na każde odrzucone
     żądanie w pętli — inaczej martwa baza sama wyczerpałaby kwotę Rollbara
     (tak jak `BppError` przed B2, zmierzone: 4 zgłoszenia na 4 wywołania)."""
-    mock_rollbar = Mock()
+    mock_zgloszenie = Mock()
     monkeypatch.setattr(routing, "uczelnia_hosta", _wybuchaj_baza)
-    monkeypatch.setattr(routing, "rollbar", mock_rollbar)
+    monkeypatch.setattr(routing, "capture_exception", mock_zgloszenie)
 
     router = RouterHttp(_mcp, _django, StartMcp(_AtrapaLifespanu()))
 
@@ -164,7 +164,7 @@ def test_awaria_bazy_w_bramce_zglaszana_raz_na_epizod_nie_na_zadanie(monkeypatch
             await wywolaj(router, zbuduj_scope("/mcp"))
 
     uruchom(scenariusz)
-    mock_rollbar.report_exc_info.assert_called_once()
+    mock_zgloszenie.assert_called_once()
 
 
 def test_awaria_bazy_w_bramce_zglaszana_ponownie_po_odzyskaniu(monkeypatch):
@@ -183,9 +183,9 @@ def test_awaria_bazy_w_bramce_zglaszana_ponownie_po_odzyskaniu(monkeypatch):
     resetowana tylko przy bearerze, uciszałaby tu monitoring na zawsze po
     pierwszej awarii (patrz uzasadnienie rozdziału flag w
     ``RouterHttp.__init__``)."""
-    mock_rollbar = Mock()
+    mock_zgloszenie = Mock()
     monkeypatch.setattr(routing, "uczelnia_hosta", _wybuchaj_baza)
-    monkeypatch.setattr(routing, "rollbar", mock_rollbar)
+    monkeypatch.setattr(routing, "capture_exception", mock_zgloszenie)
 
     router = RouterHttp(_mcp, _django, StartMcp(_AtrapaLifespanu()))
 
@@ -200,7 +200,7 @@ def test_awaria_bazy_w_bramce_zglaszana_ponownie_po_odzyskaniu(monkeypatch):
         await wywolaj(router, zbuduj_scope("/mcp"))
 
     uruchom(scenariusz)
-    assert mock_rollbar.report_exc_info.call_count == 2
+    assert mock_zgloszenie.call_count == 2
 
 
 def test_awaria_bramki_uczelni_zglaszana_ponownie_przy_ruchu_wylacznie_anonimowym(
@@ -218,9 +218,9 @@ def test_awaria_bramki_uczelni_zglaszana_ponownie_przy_ruchu_wylacznie_anonimowy
     Z osobną flagą bramki uczelni (resetowaną przy KAŻDYM jej powodzeniu,
     także anonimowym) Rollbar musi dostać TRZY zgłoszenia — po jednym na
     epizod."""
-    mock_rollbar = Mock()
+    mock_zgloszenie = Mock()
     monkeypatch.setattr(routing, "uczelnia_hosta", _wybuchaj_baza)
-    monkeypatch.setattr(routing, "rollbar", mock_rollbar)
+    monkeypatch.setattr(routing, "capture_exception", mock_zgloszenie)
 
     router = RouterHttp(_mcp, _django, StartMcp(_AtrapaLifespanu()))
 
@@ -235,7 +235,7 @@ def test_awaria_bramki_uczelni_zglaszana_ponownie_przy_ruchu_wylacznie_anonimowy
             monkeypatch.setattr(routing, "uczelnia_hosta", _wybuchaj_baza)
 
     uruchom(scenariusz)
-    assert mock_rollbar.report_exc_info.call_count == 3
+    assert mock_zgloszenie.call_count == 3
 
 
 async def _wybuchaj_redis(_host):
@@ -253,16 +253,16 @@ def test_awaria_redis_w_bramce_daje_503_tak_jak_awaria_bazy(monkeypatch):
     jako gołe 500 — mimo że to dokładnie ten sam epizod „infrastruktura pod
     /mcp nie odpowiada", który ``except BladBazy`` miał obsłużyć. Musi dać
     to samo kontrolowane 503 + zgłoszenie, co awaria bazy."""
-    mock_rollbar = Mock()
+    mock_zgloszenie = Mock()
     monkeypatch.setattr(routing, "uczelnia_hosta", _wybuchaj_redis)
-    monkeypatch.setattr(routing, "rollbar", mock_rollbar)
+    monkeypatch.setattr(routing, "capture_exception", mock_zgloszenie)
 
     router = RouterHttp(_mcp, _django, StartMcp(_AtrapaLifespanu()))
     status, _, tresc = uruchom(lambda: wywolaj(router, zbuduj_scope("/mcp")))
 
     assert status == 503
     assert "MCP" not in tresc
-    mock_rollbar.report_exc_info.assert_called_once()
+    mock_zgloszenie.assert_called_once()
 
 
 def test_awaria_redis_w_bramce_zglaszana_raz_na_epizod_nie_na_zadanie(monkeypatch):
@@ -274,9 +274,9 @@ def test_awaria_redis_w_bramce_zglaszana_raz_na_epizod_nie_na_zadanie(monkeypatc
     przypadki: rate-limitowany except da JEDNO zgłoszenie (jak dla
     ``BladBazy`` — patrz ``test_awaria_bazy_w_bramce_zglaszana_raz_na_epizod_
     nie_na_zadanie``), a sama ogólna siatka dałaby TRZY."""
-    mock_rollbar = Mock()
+    mock_zgloszenie = Mock()
     monkeypatch.setattr(routing, "uczelnia_hosta", _wybuchaj_redis)
-    monkeypatch.setattr(routing, "rollbar", mock_rollbar)
+    monkeypatch.setattr(routing, "capture_exception", mock_zgloszenie)
 
     router = RouterHttp(_mcp, _django, StartMcp(_AtrapaLifespanu()))
 
@@ -285,7 +285,7 @@ def test_awaria_redis_w_bramce_zglaszana_raz_na_epizod_nie_na_zadanie(monkeypatc
             await wywolaj(router, zbuduj_scope("/mcp"))
 
     uruchom(scenariusz)
-    mock_rollbar.report_exc_info.assert_called_once()
+    mock_zgloszenie.assert_called_once()
 
 
 async def _wybuchaj_niespodziewanie(_host):
@@ -306,16 +306,16 @@ def test_niespodziewany_wyjatek_w_obsludze_daje_503_i_trafia_do_rollbara(
     bezpieczeństwa w ``__call__`` (``except Exception``) ma złapać WSZYSTKO,
     co nie trafiło do węższych except-ów — zaraportować i odpowiedzieć
     kontrolowanym 503, a nie połknąć po cichu jako gołe 500."""
-    mock_rollbar = Mock()
+    mock_zgloszenie = Mock()
     monkeypatch.setattr(routing, "uczelnia_hosta", _wybuchaj_niespodziewanie)
-    monkeypatch.setattr(routing, "rollbar", mock_rollbar)
+    monkeypatch.setattr(routing, "capture_exception", mock_zgloszenie)
 
     router = RouterHttp(_mcp, _django, StartMcp(_AtrapaLifespanu()))
     status, _, tresc = uruchom(lambda: wywolaj(router, zbuduj_scope("/mcp")))
 
     assert status == 503
     assert "MCP" not in tresc
-    mock_rollbar.report_exc_info.assert_called_once()
+    mock_zgloszenie.assert_called_once()
 
 
 async def _wybuchaj_timeout_redisa(_host):
@@ -357,9 +357,9 @@ def test_awaria_bazy_w_bramce_bearera_daje_503_i_zglasza_raz_na_epizod(monkeypat
     uczelni jest tu celowo zdrowa — inaczej żądanie nie doszłoby do bearera
     i test niczego by nie dowodził o warstwie, którą deklaruje sprawdzać.
     """
-    mock_rollbar = Mock()
+    mock_zgloszenie = Mock()
     monkeypatch.setattr(routing, "uczelnia_hosta", _zdrowa_uczelnia)
-    monkeypatch.setattr(routing, "rollbar", mock_rollbar)
+    monkeypatch.setattr(routing, "capture_exception", mock_zgloszenie)
     monkeypatch.setattr(
         auth, "zweryfikuj_token", _wybuchajacy_token(OperationalError("baza leży"))
     )
@@ -372,7 +372,7 @@ def test_awaria_bazy_w_bramce_bearera_daje_503_i_zglasza_raz_na_epizod(monkeypat
     wyniki = uruchom(scenariusz)
     assert [status for status, _, _ in wyniki] == [503, 503, 503]
     assert all("MCP" not in tresc for _, _, tresc in wyniki)
-    mock_rollbar.report_exc_info.assert_called_once()
+    mock_zgloszenie.assert_called_once()
 
 
 def test_ruch_mieszany_anon_bearer_nie_resetuje_flagi_zadaniem_anonimowym(
@@ -394,9 +394,9 @@ def test_ruch_mieszany_anon_bearer_nie_resetuje_flagi_zadaniem_anonimowym(
     zostają te same, ale zgłoszenie do Rollbara ma polecieć raz na epizod,
     nie raz na żądanie z bearerem.
     """
-    mock_rollbar = Mock()
+    mock_zgloszenie = Mock()
     monkeypatch.setattr(routing, "uczelnia_hosta", _zdrowa_uczelnia)
-    monkeypatch.setattr(routing, "rollbar", mock_rollbar)
+    monkeypatch.setattr(routing, "capture_exception", mock_zgloszenie)
     monkeypatch.setattr(
         auth, "zweryfikuj_token", _wybuchajacy_token(OperationalError("baza leży"))
     )
@@ -412,7 +412,7 @@ def test_ruch_mieszany_anon_bearer_nie_resetuje_flagi_zadaniem_anonimowym(
 
     wyniki = uruchom(scenariusz)
     assert [status for status, _, _ in wyniki] == [200, 503, 200, 503, 200, 503]
-    mock_rollbar.report_exc_info.assert_called_once()
+    mock_zgloszenie.assert_called_once()
 
 
 def test_timeout_redisa_tez_jest_awaria_infrastruktury_a_nie_hałasem(monkeypatch):
@@ -425,9 +425,9 @@ def test_timeout_redisa_tez_jest_awaria_infrastruktury_a_nie_hałasem(monkeypatc
     bezpieczeństwa, czyli jedno zgłoszenie na żądanie. Trzy żądania odróżniają
     te dwa przypadki: 1 zgłoszenie = rate-limitowany except, 3 = sama siatka.
     """
-    mock_rollbar = Mock()
+    mock_zgloszenie = Mock()
     monkeypatch.setattr(routing, "uczelnia_hosta", _wybuchaj_timeout_redisa)
-    monkeypatch.setattr(routing, "rollbar", mock_rollbar)
+    monkeypatch.setattr(routing, "capture_exception", mock_zgloszenie)
 
     router = RouterHttp(_mcp, _django, StartMcp(_AtrapaLifespanu()))
 
@@ -436,4 +436,4 @@ def test_timeout_redisa_tez_jest_awaria_infrastruktury_a_nie_hałasem(monkeypatc
 
     wyniki = uruchom(scenariusz)
     assert [status for status, _, _ in wyniki] == [503, 503, 503]
-    mock_rollbar.report_exc_info.assert_called_once()
+    mock_zgloszenie.assert_called_once()

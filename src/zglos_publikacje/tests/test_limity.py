@@ -272,9 +272,7 @@ def test_laczny_rozmiar_w_limicie():
 
 @override_settings(ZGLOS_MAX_LACZNY_ROZMIAR_MB=1)
 def test_pliki_w_limicie_przycina_do_lacznego_rozmiaru(monkeypatch):
-    monkeypatch.setattr(
-        "zglos_publikacje.views.rollbar.report_message", lambda *a, **k: None
-    )
+    monkeypatch.setattr("zglos_publikacje.views.capture_message", lambda *a, **k: None)
     pliki = [_plik(f"p{i}.pdf", 400 * 1024) for i in range(3)]
     wynik = Zgloszenie_PublikacjiWizard()._pliki_w_limicie(pliki)
     assert [f.name for f in wynik] == ["p0.pdf", "p1.pdf"]

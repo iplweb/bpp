@@ -70,7 +70,7 @@ class InitialSetup(ImportStepBase):
             zaloguj_polkniety_wyjatek(
                 "Nie udało się zintegrować krajów z PBN",
                 logger=logger,
-                do_rollbar=False,  # Rollbar już w handle_error
+                do_monitoringu=False,  # zgłoszenie już w handle_error
             )
             self.handle_pbn_error(e, "Nie udało się zintegrować krajów")
 
@@ -85,7 +85,7 @@ class InitialSetup(ImportStepBase):
             zaloguj_polkniety_wyjatek(
                 "Nie udało się pobrać/zsynchronizować dyscyplin z PBN",
                 logger=logger,
-                do_rollbar=False,  # Rollbar już w handle_error
+                do_monitoringu=False,  # zgłoszenie już w handle_error
             )
             self.handle_pbn_error(e, "Nie udało się pobrać dyscyplin")
 
@@ -102,7 +102,7 @@ class InitialSetup(ImportStepBase):
             zaloguj_polkniety_wyjatek(
                 "Nie udało się pobrać instytucji z POLON",
                 logger=logger,
-                do_rollbar=False,  # Rollbar już w handle_error
+                do_monitoringu=False,  # zgłoszenie już w handle_error
             )
             self.handle_pbn_error(e, "Nie udało się pobrać instytucji")
         finally:

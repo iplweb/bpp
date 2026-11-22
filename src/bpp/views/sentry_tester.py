@@ -1,5 +1,5 @@
 """Views for previewing error pages (403, 500) and triggering test
-exceptions for Rollbar verification.
+exceptions for error-monitoring verification (Rollbar / Sentry).
 """
 
 from functools import wraps
@@ -29,7 +29,7 @@ def test_403_view(request):
 
 
 def test_exception_view(request):
-    """Trigger an uncaught exception to verify Rollbar reporting."""
+    """Trigger an uncaught exception to verify Rollbar / Sentry reporting."""
     raise Exception("Celowe wywołanie błedu. ")
 
 

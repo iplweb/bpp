@@ -7,7 +7,7 @@ from pbn_client.utils import mask_secret
 
 from bpp.models import BppUser, Uczelnia
 from pbn_api.client import BppPBNClient, RequestsTransport
-from pbn_api.reporting import rollbar_reporter
+from pbn_api.reporting import bpp_reporter
 
 
 def komunikat_bledu(exc):
@@ -167,7 +167,7 @@ class PBNBaseCommand(BaseCommand):
                 "PBN_CLIENT_HTTP_TIMEOUT",
                 pbn_defaults.PBN_CLIENT_HTTP_TIMEOUT,
             ),
-            reporter=rollbar_reporter,
+            reporter=bpp_reporter,
         )
         if verbose:
             # Tokeny maskowane (uwaga #4) — verbose zostaje w CI/logach.

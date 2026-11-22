@@ -1,7 +1,6 @@
 import sys
 import traceback
 
-import rollbar
 from braces.views import GroupRequiredMixin
 from django.contrib import messages
 from django.http import HttpResponseRedirect
@@ -11,6 +10,7 @@ from django.views.generic import TemplateView
 
 from bpp.const import GR_WPROWADZANIE_DANYCH
 from bpp.models import Autor_Dyscyplina, Uczelnia
+from bpp.zglaszanie_bledow import capture_exception
 from ewaluacja_common.okres import okres_dla_request
 
 from ..forms import SankcjeFormSet
@@ -114,7 +114,7 @@ class ObliczLiczbeNView(GroupRequiredMixin, View):
             )
         except Autor_Dyscyplina.DoesNotExist:
             traceback.print_exc()
-            rollbar.report_exc_info(sys.exc_info())
+            capture_exception(sys.exc_info())
             messages.error(
                 request,
                 "Błąd: Nie znaleziono danych Autor_Dyscyplina dla niektórych "
@@ -123,7 +123,7 @@ class ObliczLiczbeNView(GroupRequiredMixin, View):
             )
         except NotImplementedError:
             traceback.print_exc()
-            rollbar.report_exc_info()
+            capture_exception()
             messages.error(
                 request,
                 "Błąd: Wykryto niespójność w danych - autor ma przypisane udziały "
@@ -132,7 +132,7 @@ class ObliczLiczbeNView(GroupRequiredMixin, View):
             )
         except Exception as e:
             traceback.print_exc()
-            rollbar.report_exc_info(sys.exc_info())
+            capture_exception(sys.exc_info())
             messages.error(
                 request,
                 f"Błąd podczas obliczania liczby N: {str(e)}. "

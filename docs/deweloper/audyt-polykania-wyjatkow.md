@@ -23,7 +23,7 @@ Minimum: pełny traceback w logach (`logger.exception`) + Rollbar tam, gdzie to
 `src/bpp/util/wyjatki.py`:
 
 ```python
-def zaloguj_polkniety_wyjatek(komunikat, *, logger=None, do_rollbar=True):
+def zaloguj_polkniety_wyjatek(komunikat, *, logger=None, do_monitoringu=True):
     """Woła się WEWNĄTRZ bloku except. Loguje pełny traceback + (opcjonalnie)
     raportuje do Rollbara. Rollbar best-effort (gdy nieskonfigurowany — sam log)."""
 ```
@@ -35,9 +35,9 @@ w 30+ plikach jest jednolity i łatwy do review.
 
 1. **BaseException → Exception** wszędzie, gdzie nie ma intencji łapania
    `KeyboardInterrupt`/`SystemExit` (czyli wszędzie tutaj) + logowanie.
-2. **Web/admin/task/model/importer:** `do_rollbar=True` (domyślnie).
+2. **Web/admin/task/model/importer:** `do_monitoringu=True` (domyślnie).
 3. **Management commands / dev-utils** (`playwright_util`, `compare_dbtemplates`):
-   logujemy (`do_rollbar=False` — bez szumu w monitoringu, ale log jest).
+   logujemy (`do_monitoringu=False` — bez szumu w monitoringu, ale log jest).
 4. **`except (X.DoesNotExist, Exception)`** — rozbić: zostawić wąską klauzulę
    jako cichy control-flow, a `Exception` osobno z logowaniem.
 5. Komunikat po polsku, konkretny: co robiliśmy, gdy padło.

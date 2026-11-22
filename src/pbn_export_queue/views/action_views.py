@@ -3,7 +3,6 @@
 import logging
 import sys
 
-import rollbar
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.mixins import LoginRequiredMixin
@@ -15,6 +14,7 @@ from django.views.decorators.http import require_POST
 
 from bpp.const import GR_WPROWADZANIE_DANYCH
 from bpp.util import zaloguj_polkniety_wyjatek
+from bpp.zglaszanie_bledow import capture_exception
 from pbn_api.exceptions import AlreadyEnqueuedError
 from pbn_export_queue.models import (
     OperacjaNaWpisieZablokowana,
@@ -186,7 +186,7 @@ def resend_all_waiting(request):
             continue
         except Exception:
             # Log the error but continue processing other items
-            rollbar.report_exc_info(sys.exc_info())
+            capture_exception(sys.exc_info())
             continue
 
     msg = (
@@ -249,7 +249,7 @@ def resend_all_errors(request):
             continue
         except Exception:
             # Log the error but continue processing other items
-            rollbar.report_exc_info(sys.exc_info())
+            capture_exception(sys.exc_info())
             continue
 
     msg = (
@@ -305,7 +305,7 @@ def wake_up_queue(request):
             continue
         except Exception:
             # Log the error but continue processing other items
-            rollbar.report_exc_info(sys.exc_info())
+            capture_exception(sys.exc_info())
             continue
 
     msg = f"Obudzono wysyłkę dla {count} rekordów które nigdy nie były wysyłane."
@@ -423,7 +423,7 @@ def _get_ids_matching_title(queryset, search_query):
                 "Błąd podczas dopasowywania tytułu rekordu do zapytania "
                 f"wyszukiwania (PBN_Export_Queue pk={item.pk}) — pomijam pozycję",
                 logger=logger,
-                do_rollbar=True,
+                do_monitoringu=True,
             )
     return ids_from_title
 
@@ -508,7 +508,7 @@ def resend_filtered(request):
             skipped += 1
             continue
         except Exception:
-            rollbar.report_exc_info(sys.exc_info())
+            capture_exception(sys.exc_info())
             continue
 
     msg = f"Przygotowano i zlecono ponowna wysylke {count} rekordow."

@@ -119,7 +119,7 @@ class Command(BaseCommand):
                     f"Zapis wyników optymalizacji dyscypliny "
                     f"'{dyscyplina_nazwa}' do bazy nie powiódł się",
                     logger=logger,
-                    do_rollbar=False,
+                    do_monitoringu=False,
                 )
                 self.stdout.write(
                     self.style.ERROR(f"Error saving {dyscyplina_nazwa}: {e}")

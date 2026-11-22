@@ -13,10 +13,10 @@ import datetime
 import importlib
 import logging
 
-import rollbar
 from django.conf import settings
 from lxml import etree
 
+from bpp.zglaszanie_bledow import capture_exception
 from cerif_export import const, identyfikatory
 from cerif_export.kontekst import KontekstSerializacji, Kursor
 from cerif_export.oai import bledy, tokeny
@@ -317,7 +317,7 @@ def _get_record(zadanie, argumenty):
 
     # GetRecord dotyczy jednego rekordu — pominięcie go dałoby odpowiedź
     # niezgodną ze schematem, więc tutaj błąd serializacji propaguje się
-    # (po zgłoszeniu do Rollbara), inaczej niż przy harveście listowym.
+    # (po zgłoszeniu do monitoringu), inaczej niż przy harveście listowym.
     serializuj = serializer_dla(identyfikatory.slug_dla(obiekt))
     element = _bezpiecznie(
         lambda: serializuj(obiekt, kontekst),
@@ -611,13 +611,13 @@ def _bezpiecznie(wywolanie, opis, pomijaj=True):
     Świadome odstępstwo od wzorca „report + raise" z ``CLAUDE.md``: harvest
     całego korpusu nie może umierać na jednym zepsutym wierszu, bo agregator
     dostanie 500 zamiast dziesiątek tysięcy poprawnych rekordów. Wyjątek nie
-    jest połykany — idzie do Rollbara i do logu. W testach ustawienie
+    jest połykany — idzie do monitoringu i do logu. W testach ustawienie
     ``CERIF_EXPORT_PRZERYWAJ_NA_BLEDZIE`` przywraca twarde podniesienie.
     """
     try:
         return wywolanie()
     except Exception:
-        rollbar.report_exc_info()
+        capture_exception()
         logger.exception("Eksport CERIF: błąd serializacji rekordu %s", opis)
         if not pomijaj or getattr(settings, "CERIF_EXPORT_PRZERYWAJ_NA_BLEDZIE", False):
             raise

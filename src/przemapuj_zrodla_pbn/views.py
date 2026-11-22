@@ -1,7 +1,6 @@
 import logging
 import sys
 
-import rollbar
 from django.contrib import messages
 from django.contrib.postgres.search import TrigramSimilarity
 from django.db import models, transaction
@@ -17,6 +16,7 @@ from bpp.wersjonowanie import (
     zarejestruj_utworzenie,
     zmiany_rekordow,
 )
+from bpp.zglaszanie_bledow import capture_exception
 from pbn_api.models import Journal
 from pbn_export_queue.models import PBN_Export_Queue
 
@@ -598,7 +598,7 @@ def _obsluz_confirm(request, zrodlo, form):
             return redirect("przemapuj_zrodla_pbn:lista_skasowanych_zrodel")
 
     except Exception as e:
-        rollbar.report_exc_info(sys.exc_info())
+        capture_exception(sys.exc_info())
         messages.error(request, f"Wystąpił błąd podczas przemapowania: {str(e)}")
 
     return None
@@ -764,7 +764,7 @@ def usun_zrodlo(request, zrodlo_id):
             messages.error(request, e.args[0])
             return redirect("przemapuj_zrodla_pbn:lista_skasowanych_zrodel")
         except Exception as e:
-            rollbar.report_exc_info(sys.exc_info())
+            capture_exception(sys.exc_info())
             messages.error(request, f"Wystąpił błąd podczas usuwania: {str(e)}")
             return redirect("przemapuj_zrodla_pbn:lista_skasowanych_zrodel")
 

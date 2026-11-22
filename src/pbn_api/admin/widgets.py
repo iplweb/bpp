@@ -30,7 +30,7 @@ class PrettyJSONWidget(widgets.Textarea):
                 "Nie udało się sformatować JSON w widżecie PrettyJSONWidget "
                 "— pokazuję wartość surową",
                 logger=logger,
-                do_rollbar=True,
+                do_monitoringu=True,
             )
             return super().format_value(value)
 

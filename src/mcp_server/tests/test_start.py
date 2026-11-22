@@ -121,7 +121,7 @@ def test_anulowanie_nie_jest_zapamietane_jako_trwaly_blad():
 
     from mcp_server import start as modul_start
 
-    mock_rollbar = Mock()
+    mock_zgloszenie = Mock()
     app = _AplikacjaZLifespanem()
     start = StartMcp(app)
 
@@ -136,12 +136,12 @@ def test_anulowanie_nie_jest_zapamietane_jako_trwaly_blad():
         return start._blad, start.zywy
 
     with pytest.MonkeyPatch.context() as mp:
-        mp.setattr(modul_start, "rollbar", mock_rollbar)
+        mp.setattr(modul_start, "capture_exception", mock_zgloszenie)
         blad, zywy = uruchom(scenariusz)
 
     assert blad is None, "anulowanie zostało zapamiętane jako trwały błąd"
     assert zywy is False, "po anulowaniu żądania mają dostawać 503"
-    mock_rollbar.report_exc_info.assert_not_called()
+    mock_zgloszenie.assert_not_called()
 
 
 def test_blad_startu_jest_raportowany_do_rollbara(monkeypatch):
@@ -154,8 +154,8 @@ def test_blad_startu_jest_raportowany_do_rollbara(monkeypatch):
 
     from mcp_server import start as modul_start
 
-    mock_rollbar = Mock()
-    monkeypatch.setattr(modul_start, "rollbar", mock_rollbar)
+    mock_zgloszenie = Mock()
+    monkeypatch.setattr(modul_start, "capture_exception", mock_zgloszenie)
 
     app = _AplikacjaZLifespanem(blad=RuntimeError("brak Redisa"))
     start = StartMcp(app)
@@ -169,7 +169,7 @@ def test_blad_startu_jest_raportowany_do_rollbara(monkeypatch):
                 await start.zapewnij()
 
     uruchom(scenariusz)
-    mock_rollbar.report_exc_info.assert_called_once()
+    mock_zgloszenie.assert_called_once()
 
 
 def test_wiele_rownoleglych_zapewnij_wchodzi_raz():

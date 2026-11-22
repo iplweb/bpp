@@ -5,7 +5,7 @@ from django.urls import reverse
 from model_bakery import baker
 
 from bpp.models import Uczelnia
-from pbn_api.reporting import rollbar_reporter
+from pbn_api.reporting import bpp_reporter
 
 
 def test_Uczelnia_wydzialy(uczelnia):
@@ -89,7 +89,7 @@ def test_uczelnia_pbn_client_injects_bpp_transport_policy(uczelnia):
     client = uczelnia.pbn_client("user-token")
 
     assert client.transport.timeout == (1.0, 9.0)
-    assert client.transport.reporter is rollbar_reporter
+    assert client.transport.reporter is bpp_reporter
 
 
 @pytest.mark.django_db

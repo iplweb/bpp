@@ -291,7 +291,7 @@ class PBNExportQueueDetailView(
                     f"{content_type.app_label}.{content_type.model} "
                     f"(object_id={self.object.object_id}) — pomijam link",
                     logger=logger,
-                    do_rollbar=True,
+                    do_monitoringu=True,
                 )
 
     def _add_clipboard_data(self, context, sent_data):

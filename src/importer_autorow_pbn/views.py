@@ -528,14 +528,14 @@ def create_all_unmatched_scientists(request):
                 )
                 created_count += 1
             except Exception:
-                # Loguj pełne szczegóły do Rollbara i logu (standard dev), ale
+                # Loguj pełne szczegóły do monitoringu i logu (standard dev), ale
                 # NIGDY nie wyciekaj surowego tekstu wyjątku do klienta (hardening
                 # brancha — bez str(e) w komunikacie).
                 zaloguj_polkniety_wyjatek(
                     f"Tworzenie nowego Autora z niezmatchowanego naukowca PBN "
                     f"(scientist={scientist}, mongoId={scientist.pk})",
                     logger=logger,
-                    do_rollbar=True,
+                    do_monitoringu=True,
                 )
                 errors.append(
                     f"{scientist} - błąd podczas tworzenia autora "

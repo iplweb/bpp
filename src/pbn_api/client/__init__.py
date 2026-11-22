@@ -94,8 +94,8 @@ class BppPBNClient(PBNClient, PublicationSyncMixin, DisciplinesMixin):
     def __init__(self, transport, uczelnia):
         reporter = getattr(transport, "reporter", None)
         if reporter is None or reporter is default_reporter:
-            from pbn_api.reporting import rollbar_reporter
+            from pbn_api.reporting import bpp_reporter
 
-            transport.reporter = rollbar_reporter
+            transport.reporter = bpp_reporter
         super().__init__(transport)
         self.uczelnia = uczelnia

@@ -7,7 +7,7 @@ from datetime import datetime, timedelta
 from itertools import chain
 from time import sleep
 
-import rollbar
+from bpp.zglaszanie_bledow import capture_exception
 
 from .simulation import simulate_discipline_swap
 
@@ -349,7 +349,7 @@ def _run_parallel_analysis(  # noqa: C901
                             total_analyzed += result.result.get("analyzed_count", 0)
                             total_found += len(result.result.get("opportunities", []))
                 except Exception:
-                    rollbar.report_exc_info(sys.exc_info())
+                    capture_exception(sys.exc_info())
                     logger.debug(
                         "Błąd przetwarzania wyniku analizy chord", exc_info=True
                     )

@@ -9,9 +9,8 @@ import sys
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from typing import TYPE_CHECKING
 
-import rollbar
-
 from bpp.models import Rekord
+from bpp.zglaszanie_bledow import capture_exception
 from pbn_api.models import OswiadczenieInstytucji, Publication
 from pbn_integrator.utils.multiprocessing_utils import (
     _bede_uzywal_bazy_danych_z_multiprocessing_z_django,
@@ -210,12 +209,12 @@ def _integruj_publikacje_threaded(  # noqa: C901
 
         except Exception as e:
             # Catch-all w wątku roboczym — błąd MUSI zostawić ślad (pełny
-            # traceback + Rollbar), inaczej cały batch znika po cichu.
+            # traceback + monitoring błędów), inaczej cały batch znika po cichu.
             with _print_lock:
                 logger.exception("Błąd w batchu integracji %s", batch_no)
-            rollbar.report_exc_info(
+            capture_exception(
                 sys.exc_info(),
-                extra_data={"batch_no": batch_no, "phase": "integruj_single_part"},
+                extra={"batch_no": batch_no, "phase": "integruj_single_part"},
             )
             return batch_no, False, str(e)
 
@@ -268,9 +267,9 @@ def _integruj_publikacje_threaded(  # noqa: C901
                         logger.exception(
                             "Nieoczekiwany błąd przy odbiorze batcha %s", batch_no
                         )
-                    rollbar.report_exc_info(
+                    capture_exception(
                         sys.exc_info(),
-                        extra_data={
+                        extra={
                             "batch_no": batch_no,
                             "phase": "integruj_future_result",
                         },

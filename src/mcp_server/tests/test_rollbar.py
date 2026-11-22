@@ -48,8 +48,8 @@ def _wywolaj_djangoql_schema(monkeypatch, funkcja, oczekiwany_wyjatek):
     ``djangoql_schema`` nie potrzebuje ani ``ctx``, ani klienta HTTP — to
     najlżejsze narzędzie do wywołania bez stawiania pełnego żądania.
     """
-    mock_rollbar = Mock()
-    monkeypatch.setattr(aplikacja, "rollbar", mock_rollbar)
+    mock_zgloszenie = Mock()
+    monkeypatch.setattr(aplikacja, "capture_exception", mock_zgloszenie)
     monkeypatch.setattr(bpp_tools, "djangoql_schema", funkcja)
 
     mcp_app, _ = build_application()
@@ -60,15 +60,15 @@ def _wywolaj_djangoql_schema(monkeypatch, funkcja, oczekiwany_wyjatek):
             await serwer.call_tool("djangoql_schema", {"model": "rekord"})
 
     uruchom(scenariusz)
-    return mock_rollbar
+    return mock_zgloszenie
 
 
 def test_wyjatek_narzedzia_trafia_do_rollbara(monkeypatch):
     """Wywołanie narzędzia, które rzuca wyjątek, musi zawołać
     ``rollbar.report_exc_info`` — bez tego awarie narzędzi są niewidoczne
     w monitoringu (patrz docstring modułu)."""
-    mock_rollbar = Mock()
-    monkeypatch.setattr(aplikacja, "rollbar", mock_rollbar)
+    mock_zgloszenie = Mock()
+    monkeypatch.setattr(aplikacja, "capture_exception", mock_zgloszenie)
     # djangoql_schema nie potrzebuje ani ``ctx``, ani klienta HTTP — najlżejsze
     # narzędzie do wywołania bez stawiania pełnego żądania/klienta w procesie.
     monkeypatch.setattr(bpp_tools, "djangoql_schema", _wybuchaj)
@@ -82,13 +82,13 @@ def test_wyjatek_narzedzia_trafia_do_rollbara(monkeypatch):
 
     uruchom(scenariusz)
 
-    mock_rollbar.report_exc_info.assert_called_once()
+    mock_zgloszenie.assert_called_once()
 
 
 def test_narzedzie_bez_wyjatku_nie_raportuje(monkeypatch):
     """Kontrolny brzeg: powodzenie NIE ma trafiać do Rollbara."""
-    mock_rollbar = Mock()
-    monkeypatch.setattr(aplikacja, "rollbar", mock_rollbar)
+    mock_zgloszenie = Mock()
+    monkeypatch.setattr(aplikacja, "capture_exception", mock_zgloszenie)
 
     mcp_app, _ = build_application()
     serwer = mcp_app.state.serwer_mcp
@@ -98,7 +98,7 @@ def test_narzedzie_bez_wyjatku_nie_raportuje(monkeypatch):
 
     uruchom(scenariusz)
 
-    mock_rollbar.report_exc_info.assert_not_called()
+    mock_zgloszenie.assert_not_called()
 
 
 def test_bpperror_nie_trafia_do_rollbara(monkeypatch):
@@ -110,10 +110,10 @@ def test_bpperror_nie_trafia_do_rollbara(monkeypatch):
     z internetu wyczerpuje kwotę Rollbara jednym ``curl``-em w pętli i topi
     realne alerty.
     """
-    mock_rollbar = _wywolaj_djangoql_schema(
+    mock_zgloszenie = _wywolaj_djangoql_schema(
         monkeypatch, _rzucajacy_bpperror(status=404), ToolError
     )
-    mock_rollbar.report_exc_info.assert_not_called()
+    mock_zgloszenie.assert_not_called()
 
 
 def test_bpperror_dociera_do_modelu_jako_zwykly_toolerror(monkeypatch):
@@ -129,8 +129,8 @@ def test_bpperror_dociera_do_modelu_jako_zwykly_toolerror(monkeypatch):
     404 nieistniejącej encji. ``UnexpectedToolError`` dziedziczy po
     ``ToolError``, stąd samo ``pytest.raises(ToolError)`` tego nie łapało.
     """
-    mock_rollbar = Mock()
-    monkeypatch.setattr(aplikacja, "rollbar", mock_rollbar)
+    mock_zgloszenie = Mock()
+    monkeypatch.setattr(aplikacja, "capture_exception", mock_zgloszenie)
     monkeypatch.setattr(bpp_tools, "djangoql_schema", _rzucajacy_bpperror(404))
 
     mcp_app, _ = build_application()
@@ -145,16 +145,16 @@ def test_bpperror_dociera_do_modelu_jako_zwykly_toolerror(monkeypatch):
 
     assert not isinstance(blad, UnexpectedToolError), repr(blad)
     assert "nie znaleziono encji" in str(blad)
-    mock_rollbar.report_exc_info.assert_not_called()
+    mock_zgloszenie.assert_not_called()
 
 
 def test_bpperror_bez_statusu_nie_trafia_do_rollbara(monkeypatch):
     """Błąd domenowy bez statusu HTTP (walidacja argumentu, przekroczony
     budżet czasu) też jest komunikatem, nie awarią."""
-    mock_rollbar = _wywolaj_djangoql_schema(
+    mock_zgloszenie = _wywolaj_djangoql_schema(
         monkeypatch, _rzucajacy_bpperror(status=None), ToolError
     )
-    mock_rollbar.report_exc_info.assert_not_called()
+    mock_zgloszenie.assert_not_called()
 
 
 def test_bpperror_5xx_z_prawdziwego_klienta_nie_trafia_do_rollbara(monkeypatch):
@@ -182,8 +182,8 @@ def test_bpperror_5xx_z_prawdziwego_klienta_nie_trafia_do_rollbara(monkeypatch):
     odróżnieniu od ``djangoql_schema``) go potrzebuje (``_client(ctx)`` w
     zainstalowanym ``bpp-mcp``), więc poleciałby ``ValueError`` niezwiązany
     z tezą tego testu."""
-    mock_rollbar = Mock()
-    monkeypatch.setattr(aplikacja, "rollbar", mock_rollbar)
+    mock_zgloszenie = Mock()
+    monkeypatch.setattr(aplikacja, "capture_exception", mock_zgloszenie)
 
     def odpowiedz_503(request):
         return httpx.Response(503, json={"error": "statement_timeout"})
@@ -226,7 +226,7 @@ def test_bpperror_5xx_z_prawdziwego_klienta_nie_trafia_do_rollbara(monkeypatch):
             dane_zadania.reset(zeton)
 
     uruchom(scenariusz)
-    mock_rollbar.report_exc_info.assert_not_called()
+    mock_zgloszenie.assert_not_called()
 
 
 def test_adnotacje_tylko_do_odczytu_przetrwaly_wrapper():

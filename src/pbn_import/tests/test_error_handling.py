@@ -87,17 +87,17 @@ def test_rollbar_called_with_context():
 
     step = TestStep(session, client=None)
 
-    with patch("pbn_import.utils.base.rollbar.report_exc_info") as mock_rollbar:
+    with patch("pbn_import.utils.base.capture_exception") as mock_zgloszenie:
         try:
             raise RuntimeError("Test error")
         except RuntimeError as e:
             step.handle_error(e, "test context")
 
-        assert mock_rollbar.called
-        call_args = mock_rollbar.call_args
-        assert call_args[1]["extra_data"]["step"] == "test_step"
-        assert call_args[1]["extra_data"]["session_id"] == session.id
-        assert call_args[1]["extra_data"]["context"] == "test context"
+        assert mock_zgloszenie.called
+        call_args = mock_zgloszenie.call_args
+        assert call_args[1]["extra"]["step"] == "test_step"
+        assert call_args[1]["extra"]["session_id"] == session.id
+        assert call_args[1]["extra"]["context"] == "test context"
 
 
 @pytest.mark.django_db
@@ -118,7 +118,7 @@ def test_handle_pbn_error_authorization():
 
     step = TestStep(session, client=None)
 
-    with patch("pbn_import.utils.base.rollbar.report_exc_info") as mock_rollbar:
+    with patch("pbn_import.utils.base.capture_exception") as mock_zgloszenie:
         with pytest.raises(Exception, match="403 Forbidden"):
             try:
                 raise Exception("403 Forbidden")
@@ -126,9 +126,9 @@ def test_handle_pbn_error_authorization():
                 step.handle_pbn_error(e, "auth test")
 
         # Should have reported to Rollbar
-        assert mock_rollbar.called
-        call_args = mock_rollbar.call_args
-        assert call_args[1]["extra_data"]["error_type"] == "authorization"
+        assert mock_zgloszenie.called
+        call_args = mock_zgloszenie.call_args
+        assert call_args[1]["extra"]["error_type"] == "authorization"
 
         # Should have created a critical log entry
         log = ImportLog.objects.filter(session=session, level="critical").first()
@@ -156,14 +156,14 @@ def test_handle_pbn_error_non_auth():
 
     step = TestStep(session, client=None)
 
-    with patch("pbn_import.utils.base.rollbar.report_exc_info") as mock_rollbar:
+    with patch("pbn_import.utils.base.capture_exception") as mock_zgloszenie:
         try:
             raise ValueError("Regular error")
         except ValueError as e:
             step.handle_pbn_error(e, "pbn test")
 
         # Should have reported to Rollbar via handle_error
-        assert mock_rollbar.called
+        assert mock_zgloszenie.called
 
         # Should have created an error log entry (not critical)
         log = ImportLog.objects.filter(session=session, level="error").first()
@@ -287,7 +287,7 @@ def test_import_step_base_call_logs_and_reraises_run_error(django_user_model):
         def run(self):
             raise RuntimeError("run failed")
 
-    with patch("pbn_import.utils.base.rollbar.report_exc_info"):
+    with patch("pbn_import.utils.base.capture_exception"):
         with pytest.raises(RuntimeError, match="run failed"):
             FailingStep(session).__call__()
 

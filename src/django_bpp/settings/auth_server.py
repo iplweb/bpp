@@ -38,6 +38,11 @@ from django_bpp.settings.production import (  # noqa: F401
     ROLLBAR,
     # Critical shared settings (Django reads these from module namespace)
     SECRET_KEY,
+    # Sentry / GlitchTip (bpp.sentry_config, wołane z BppConfig.ready)
+    SENTRY_DSN,
+    SENTRY_ENVIRONMENT,
+    SENTRY_SEND_DEFAULT_PII,
+    SENTRY_TRACES_SAMPLE_RATE,
     SESSION_COOKIE_HTTPONLY,
     SESSION_COOKIE_SECURE,
     SESSION_EXPIRE_AT_BROWSER_CLOSE,

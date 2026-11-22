@@ -286,7 +286,7 @@ MAKS_EKSPORT_AUTORA = 5000
 
 
 #: Komunikat pokazywany publicznie, gdy generowanie eksportu się nie powiedzie.
-#: Szczegóły wyjątku trafiają wyłącznie do logu i Rollbara.
+#: Szczegóły wyjątku trafiają wyłącznie do logu i monitoringu błędów.
 KOMUNIKAT_BLEDU_EKSPORTU_AUTORA = (
     "Nie udało się wygenerować pliku. Spróbuj ponownie później."
 )
@@ -365,7 +365,7 @@ def generuj_eksport_autora(self, task_id: str):
         return {"status": "success", "task_id": str(task_id)}
     except Exception:
         # Status zadania jest publiczny (UUID) — nie pokazujemy treści wyjątku.
-        # Szczegóły: log tutaj, Rollbar przez sygnał ``task_failure``
+        # Szczegóły: log tutaj, monitoring przez sygnał ``task_failure``
         # (``django_bpp.celery_tasks``) po ponownym zgłoszeniu wyjątku niżej.
         logger.exception("Błąd generowania eksportu autora (zadanie %s)", task_id)
         task.status = "failed"

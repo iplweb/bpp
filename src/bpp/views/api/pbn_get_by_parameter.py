@@ -1,13 +1,13 @@
 import logging
 import sys
 
-import rollbar
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.http import JsonResponse
 from django.views.generic.base import View
 
 from bpp.models import Uczelnia
 from bpp.views.api.const import API_BRAK_PARAMETRU
+from bpp.zglaszanie_bledow import capture_exception
 from import_common.normalization import normalize_doi, normalize_isbn
 from pbn_api.exceptions import NeedsPBNAuthorisationException, PraceSerwisoweException
 from pbn_api.models import Publication
@@ -85,8 +85,8 @@ class GetPBNPublicationsByBase(LoginRequiredMixin, View):
             )
 
         except Exception:
-            # Zgłoś nieznany typ błędu do Sentry / Rollbar
-            rollbar.report_exc_info(sys.exc_info())
+            # Zgłoś nieznany typ błędu do monitoringu (Rollbar/Sentry)
+            capture_exception(sys.exc_info())
 
             # Generyczny komunikat dla klienta — szczegóły w logach serwera
             return JsonResponse(

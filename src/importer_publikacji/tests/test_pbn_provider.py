@@ -25,7 +25,7 @@ from pbn_api.exceptions import (
     HttpException,
     PraceSerwisoweException,
 )
-from pbn_api.reporting import rollbar_reporter
+from pbn_api.reporting import bpp_reporter
 
 SAMPLE_PBN_UID = "5e709189878c28a04737dc6f"
 
@@ -41,7 +41,7 @@ def test_get_pbn_client_injects_django_timeout_and_bpp_reporter():
     client = _get_pbn_client(uczelnia)
 
     assert client.transport.timeout == (3.0, 7.0)
-    assert client.transport.reporter is rollbar_reporter
+    assert client.transport.reporter is bpp_reporter
 
 
 SAMPLE_PBN_ARTICLE = {

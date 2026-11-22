@@ -94,7 +94,7 @@ class ScientistAdmin(BaseMongoDBAdmin):
                 f"Nie udało się sparsować daty zatrudnienia '{date_str}' "
                 f"(parametr {prefix}) przy tworzeniu autora z PBN",
                 logger=logger,
-                do_rollbar=True,
+                do_monitoringu=True,
             )
 
     def _add_employment_params(self, params, employment_data):
@@ -294,7 +294,7 @@ class ScientistAdmin(BaseMongoDBAdmin):
                             f"(UUID {discipline_uuid}, rok {year}) przy tworzeniu "
                             "autora z PBN — dyscyplina pominięta",
                             logger=logger,
-                            do_rollbar=True,
+                            do_monitoringu=True,
                         )
 
         return disciplines

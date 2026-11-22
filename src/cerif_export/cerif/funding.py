@@ -45,7 +45,7 @@ class NieznanyTypFinansowania(ValueError):
 
     ``Type`` jest w sekwencji obowiązkowy, więc rekord bez niego (ale
     z resztą elementów) byłby niepoprawny wobec XSD. Warstwa OAI łapie ten
-    wyjątek, zgłasza go do Rollbara i pomija jeden rekord — to jedyna
+    wyjątek, zgłasza go do monitoringu i pomija jeden rekord — to jedyna
     reakcja lepsza od wypuszczenia dokumentu, który agregator odrzuci
     w całości.
     """

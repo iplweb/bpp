@@ -3,7 +3,6 @@ import sys
 import uuid
 from functools import update_wrapper
 
-import rollbar
 from django.conf import settings
 from django.contrib import admin, messages
 from django.contrib.admin import helpers
@@ -23,6 +22,7 @@ from bpp.admin.helpers.djangoql import BppDjangoQLSearchMixin
 from bpp.admin.helpers.fieldsets import MODEL_Z_OPLATA_ZA_PUBLIKACJE
 from bpp.admin.helpers.mixins import BppSoftDeleteAdminMixin
 from bpp.util import zaloguj_polkniety_wyjatek
+from bpp.zglaszanie_bledow import capture_exception
 from import_common.normalization import extract_doi_from_url
 from zglos_publikacje.models import (
     Zgloszenie_Publikacji,
@@ -273,7 +273,7 @@ class Zgloszenie_PublikacjiAdmin(
             zaloguj_polkniety_wyjatek(
                 f"Budowanie linku do odpowiednika w BPP (zgłoszenie pk={obj.pk})",
                 logger=logger,
-                do_rollbar=False,
+                do_monitoringu=False,
             )
             return None, None
 
@@ -344,7 +344,7 @@ class Zgloszenie_PublikacjiAdmin(
                         )
                         sent_okay = True
                     except Exception:
-                        rollbar.report_exc_info(sys.exc_info())
+                        capture_exception(sys.exc_info())
 
                         messages.add_message(
                             request,
@@ -582,7 +582,7 @@ class Zgloszenie_PublikacjiAdmin(
             zaloguj_polkniety_wyjatek(
                 f"Ustalanie wydziału pierwszego autora zgłoszenia (pk={obj.pk})",
                 logger=logger,
-                do_rollbar=False,
+                do_monitoringu=False,
             )
 
     wydzial_pierwszego_autora.short_description = "Wydział pierwszego autora"

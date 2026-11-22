@@ -1,0 +1,1 @@
+Błędy serwera mogą być zgłaszane do GlitchTip (serwera zgodnego z Sentry) — równolegle z Rollbarem albo zamiast niego. Wystarczy ustawić ``SENTRY_DSN`` (opcjonalnie ``SENTRY_ENVIRONMENT``, ``SENTRY_TRACES_SAMPLE_RATE``, ``SENTRY_SEND_DEFAULT_PII``); bez tej zmiennej wszystko działa jak dotąd. Wyłączenie Rollbara sprowadza się do usunięcia ``ROLLBAR_ACCESS_TOKEN``.

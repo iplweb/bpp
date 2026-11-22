@@ -333,7 +333,7 @@ Przykłady użycia:
                 "Nie udało się pobrać/zwalidować domyślnej jednostki "
                 f"(jednostka={options.get('jednostka')!r})",
                 logger=logger,
-                do_rollbar=False,
+                do_monitoringu=False,
             )
             self.stderr.write(self.style.ERROR(str(e)))
             return

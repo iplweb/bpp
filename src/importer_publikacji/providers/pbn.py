@@ -49,7 +49,7 @@ def _get_pbn_client(uczelnia):
     from pbn_client.transport import RequestsTransport
 
     from pbn_api.client import PBNClient
-    from pbn_api.reporting import rollbar_reporter
+    from pbn_api.reporting import bpp_reporter
 
     if not uczelnia or not all(
         [
@@ -68,7 +68,7 @@ def _get_pbn_client(uczelnia):
             "PBN_CLIENT_HTTP_TIMEOUT",
             pbn_defaults.PBN_CLIENT_HTTP_TIMEOUT,
         ),
-        reporter=rollbar_reporter,
+        reporter=bpp_reporter,
     )
     return PBNClient(transport)
 

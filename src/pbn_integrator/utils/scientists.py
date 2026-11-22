@@ -8,7 +8,6 @@ import sys
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from typing import TYPE_CHECKING
 
-import rollbar
 from django.db import IntegrityError, transaction
 from django.db.models import Q
 from pbn_client.const import DELETED
@@ -16,6 +15,7 @@ from pbn_client.const import DELETED
 from bpp.models import Autor, Autor_Dyscyplina, Tytul, Uczelnia
 from bpp.util import pbar
 from bpp.wersjonowanie import zarejestruj_utworzenie, zmiana_rekordu
+from bpp.zglaszanie_bledow import capture_exception
 from pbn_api.models import Scientist
 from pbn_integrator.utils.constants import CPU_COUNT
 from pbn_integrator.utils.django_imports import _ensure_django_imports
@@ -88,7 +88,7 @@ def _zapisz_osobe_z_instytucji(person):
     Returns:
         True if saved successfully, False if the person was skipped — brak
         ``polonUuid`` (tylko log) albo błąd integralności, np. kolizja
-        ``personId`` (log + Rollbar). Import całej kadry leci dalej.
+        ``personId`` (log + monitoring błędów). Import całej kadry leci dalej.
     """
     from pbn_api.models.institution import Institution
     from pbn_api.models.osoba_z_instytucji import OsobaZInstytucji
@@ -146,11 +146,11 @@ def _zapisz_osobe_z_instytucji(person):
         #    nie poprawka techniczna),
         #  - NOT NULL na polach, które PBN przysłał jako null,
         #  - każdy inny błąd integralności.
-        # Dlatego do Rollbara idzie treść naruszonego ograniczenia — bez niej
+        # Dlatego do monitoringu idzie treść naruszonego ograniczenia — bez niej
         # wszystkie te przypadki wyglądają w raporcie identycznie.
-        rollbar.report_exc_info(
+        capture_exception(
             sys.exc_info(),
-            extra_data={
+            extra={
                 "personId": person.get("personId"),
                 "polonUuid": polon_uuid,
                 "firstName": person.get("firstName"),
@@ -160,7 +160,7 @@ def _zapisz_osobe_z_instytucji(person):
         )
         logger.info(
             f"UWAGA: Błąd integralności dla osoby {person.get('personId')} "
-            f"(polonUuid {polon_uuid}): {e}. Pomijam wpis (zalogowano do Rollbar)."
+            f"(polonUuid {polon_uuid}): {e}. Pomijam wpis (zgłoszono do monitoringu błędów)."
         )
         return False
 
@@ -232,12 +232,12 @@ def pobierz_ludzi_z_uczelni(
             try:
                 future.result()
             except Exception:
-                # Catch-all w wątku — pełny traceback + Rollbar, żeby błąd
+                # Catch-all w wątku — pełny traceback + monitoring błędów, żeby błąd
                 # przetwarzania naukowca nie zniknął bez śladu.
                 logger.exception("Błąd przetwarzania naukowca")
-                rollbar.report_exc_info(
+                capture_exception(
                     sys.exc_info(),
-                    extra_data={"phase": "integruj_scientists_future_result"},
+                    extra={"phase": "integruj_scientists_future_result"},
                 )
 
     from pbn_api.models.institution import Institution

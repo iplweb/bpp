@@ -270,7 +270,7 @@ def test_run_cancelled_before_steps_does_not_execute(_post, session):
     assert "zrodla" not in result["results"]
 
 
-@patch("pbn_import.utils.import_manager.rollbar")
+@patch("pbn_import.utils.import_manager.capture_exception")
 @patch.object(ImportManager, "_run_post_import_commands")
 def test_run_required_step_error_marks_failed(_post, _rollbar, session):
     manager = make_manager(session, client=MagicMock())

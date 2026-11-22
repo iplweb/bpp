@@ -6,7 +6,6 @@ import logging
 import sys
 from typing import TYPE_CHECKING
 
-import rollbar
 from django_pbn_client.download import download_to_model
 from django_pbn_client.persistence import (
     download_pbn_objects,
@@ -15,6 +14,7 @@ from django_pbn_client.persistence import (
 )
 
 from bpp.util import pbar
+from bpp.zglaszanie_bledow import capture_exception
 from pbn_api.exceptions import HttpException
 from pbn_api.models import (
     Institution,
@@ -113,9 +113,9 @@ def zapisz_publikacje_instytucji(elem, klass, client=None, **extra):
                 elem["publicationId"],
                 elem,
             )
-            rollbar.report_exc_info(
+            capture_exception(
                 sys.exc_info(),
-                extra_data={
+                extra={
                     "publicationId": elem["publicationId"],
                     "elem": elem,
                 },
@@ -135,9 +135,9 @@ def zapisz_publikacje_instytucji(elem, klass, client=None, **extra):
                 elem["institutionId"],
                 elem,
             )
-            rollbar.report_exc_info(
+            capture_exception(
                 sys.exc_info(),
-                extra_data={
+                extra={
                     "institutionId": elem["institutionId"],
                     "elem": elem,
                 },
@@ -157,9 +157,9 @@ def zapisz_publikacje_instytucji(elem, klass, client=None, **extra):
                 elem["insPersonId"],
                 elem,
             )
-            rollbar.report_exc_info(
+            capture_exception(
                 sys.exc_info(),
-                extra_data={
+                extra={
                     "insPersonId": elem["insPersonId"],
                     "elem": elem,
                 },
@@ -226,9 +226,9 @@ def zapisz_oswiadczenie_instytucji(elem, klass, client=None, **extra):
                 elem["publicationId"],
                 elem,
             )
-            rollbar.report_exc_info(
+            capture_exception(
                 sys.exc_info(),
-                extra_data={
+                extra={
                     "publicationId": elem["publicationId"],
                     "elem": elem,
                 },
@@ -247,9 +247,9 @@ def zapisz_oswiadczenie_instytucji(elem, klass, client=None, **extra):
                 elem["institutionId"],
                 elem,
             )
-            rollbar.report_exc_info(
+            capture_exception(
                 sys.exc_info(),
-                extra_data={
+                extra={
                     "institutionId": elem["institutionId"],
                     "elem": elem,
                 },
@@ -268,9 +268,9 @@ def zapisz_oswiadczenie_instytucji(elem, klass, client=None, **extra):
                 elem["personId"],
                 elem,
             )
-            rollbar.report_exc_info(
+            capture_exception(
                 sys.exc_info(),
-                extra_data={
+                extra={
                     "personId": elem["personId"],
                     "elem": elem,
                 },

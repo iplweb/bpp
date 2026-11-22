@@ -240,7 +240,7 @@ class PublicationAdmin(
                 "Nie udało się utworzyć klienta PBN przy imporcie publikacji "
                 f"(uczelnia pk={uczelnia.pk})",
                 logger=logger,
-                do_rollbar=True,
+                do_monitoringu=True,
             )
             self.message_user(
                 request, f"Nie można utworzyć klienta PBN: {e}", level=messages.ERROR
@@ -305,7 +305,7 @@ class PublicationAdmin(
                 "Błąd podczas pobierania/integracji oświadczeń instytucji dla "
                 f"publikacji PBN {publication.pk} — import publikacji się powiódł",
                 logger=logger,
-                do_rollbar=True,
+                do_monitoringu=True,
             )
             self.message_user(
                 request,
@@ -400,7 +400,7 @@ class PublicationAdmin(
                 f"Błąd podczas importu publikacji PBN {publication.pk} do BPP "
                 f"(force={force})",
                 logger=logger,
-                do_rollbar=True,
+                do_monitoringu=True,
             )
             self.message_user(
                 request, f"Błąd podczas importu: {str(e)}", level=messages.ERROR

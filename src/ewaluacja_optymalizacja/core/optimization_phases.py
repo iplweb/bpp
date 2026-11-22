@@ -134,7 +134,7 @@ def _calculate_optimality_gap(solver) -> tuple[float | None, float | None]:
         zaloguj_polkniety_wyjatek(
             "Obliczanie luki optymalności (optimality gap) z wyników solvera",
             logger=logger,
-            do_rollbar=True,
+            do_monitoringu=True,
         )
     return None, None
 

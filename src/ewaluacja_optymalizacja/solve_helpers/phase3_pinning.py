@@ -123,6 +123,6 @@ def handle_phase3_pinning(
                 f"fazie 3 dla dyscypliny '{dyscyplina_obj.nazwa}' nie powiodło "
                 "się",
                 logger=logger,
-                do_rollbar=True,
+                do_monitoringu=True,
             )
             stdout.write(style.ERROR(f"Error during re-run: {e}"))

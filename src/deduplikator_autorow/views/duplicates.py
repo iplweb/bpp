@@ -8,7 +8,6 @@ autocomplete used by the search bar.
 import sys
 import traceback
 
-import rollbar
 from django.contrib import messages
 from django.http import JsonResponse
 from django.shortcuts import redirect, render
@@ -17,6 +16,7 @@ from django.views.decorators.http import require_http_methods
 from bpp.const import GR_WPROWADZANIE_DANYCH
 from bpp.models import Autor
 from bpp.models.cache import Rekord
+from bpp.zglaszanie_bledow import capture_exception
 from pbn_downloader_app.freshness import is_pbn_people_data_fresh
 from pbn_downloader_app.models import PbnDownloadTask
 
@@ -380,7 +380,7 @@ def mark_non_duplicate(request):
         return _respond(False, "Nie znaleziono autora o podanym ID.", status=404)
     except Exception:
         traceback.print_exc()
-        rollbar.report_exc_info(sys.exc_info())
+        capture_exception(sys.exc_info())
         return _respond(
             False,
             "Wystąpił wewnętrzny błąd podczas oznaczania autora. Spróbuj ponownie później.",
@@ -501,7 +501,7 @@ def mark_candidate_not_duplicate(request):
         return _respond(False, "Nie znaleziono kandydata o podanym ID.", status=404)
     except Exception:
         traceback.print_exc()
-        rollbar.report_exc_info(sys.exc_info())
+        capture_exception(sys.exc_info())
         return _respond(
             False, "Wystąpił wewnętrzny błąd podczas oznaczania kandydata.", status=500
         )

@@ -35,7 +35,7 @@ def _ustal_glownego_autora(osoba_z_instytucji: OsobaZInstytucji):
             "Ustalanie głównego autora z BPP dla OsobaZInstytucji "
             f"(pk={osoba_z_instytucji.pk}) w analizie duplikatów",
             logger=logger,
-            do_rollbar=True,
+            do_monitoringu=True,
         )
         return None
     return glowny_autor or None

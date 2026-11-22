@@ -1,6 +1,6 @@
-import rollbar
 from django.apps import apps
 
+from bpp.zglaszanie_bledow import capture_exception
 from django_bpp.celery_tasks import app
 from dspace_api.eksport import eksportuj_rekord
 
@@ -12,5 +12,5 @@ def queue_dspace_export_batch(app_label, model_name, record_ids, user_id=None):
         try:
             eksportuj_rekord(rec)
         except Exception:
-            rollbar.report_exc_info()
+            capture_exception()
             raise

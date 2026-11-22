@@ -86,7 +86,7 @@ class BasePBNExportQueueListView(
                     "Błąd podczas dopasowywania tytułu rekordu do zapytania "
                     f"wyszukiwania (PBN_Export_Queue pk={item.pk}) — pomijam pozycję",
                     logger=logger,
-                    do_rollbar=True,
+                    do_monitoringu=True,
                 )
 
         return matching_ids

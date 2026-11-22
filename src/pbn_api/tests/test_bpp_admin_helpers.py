@@ -144,7 +144,7 @@ def test_sprobuj_wyslac_do_pbn_validation_error_czytelny_komunikat_bez_rollbar(
 ):
     req = rf.get("/")
 
-    report = mocker.patch("bpp.admin.helpers.pbn_api.common.rollbar.report_exc_info")
+    report = mocker.patch("bpp.admin.helpers.pbn_api.common.capture_exception")
     pbn_client.transport.return_values[PBN_POST_PUBLICATION_NO_STATEMENTS_URL] = (
         PBNValidationError(
             400,
@@ -172,7 +172,7 @@ def test_sprobuj_wyslac_do_pbn_validation_error_escapuje_html(
 ):
     req = rf.get("/")
 
-    mocker.patch("bpp.admin.helpers.pbn_api.common.rollbar.report_exc_info")
+    mocker.patch("bpp.admin.helpers.pbn_api.common.capture_exception")
     pbn_client.transport.return_values[PBN_POST_PUBLICATION_NO_STATEMENTS_URL] = (
         PBNValidationError(
             400,
@@ -583,7 +583,7 @@ def test_sprobuj_wyslac_do_pbn_will_not_export_czytelny_komunikat_bez_rollbar(
     """
     req = rf.get("/")
 
-    report = mocker.patch("bpp.admin.helpers.pbn_api.common.rollbar.report_exc_info")
+    report = mocker.patch("bpp.admin.helpers.pbn_api.common.capture_exception")
     mocker.patch.object(pbn_client, "sync_publication", side_effect=wyjatek)
 
     with middleware(req):
@@ -612,7 +612,7 @@ def test_sprobuj_wyslac_do_pbn_will_not_export_escapuje_html(
     """
     req = rf.get("/")
 
-    mocker.patch("bpp.admin.helpers.pbn_api.common.rollbar.report_exc_info")
+    mocker.patch("bpp.admin.helpers.pbn_api.common.capture_exception")
     mocker.patch.object(
         pbn_client,
         "sync_publication",

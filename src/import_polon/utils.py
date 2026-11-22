@@ -1,7 +1,7 @@
 import os.path
 import sys
 
-import rollbar
+from bpp.zglaszanie_bledow import capture_exception
 
 # Znak wstawiany w miejsce wyciętego środka nazwy pliku.
 WIELOKROPEK = "…"
@@ -62,9 +62,9 @@ def read_excel_or_csv_dataframe_guess_encoding(fn, header=0, nrows=None):
             return pd.read_excel(fn, header=0, nrows=nrows).replace({np.nan: None})
         except ValueError as e:
             if "Excel file format cannot be determined" in str(e):
-                rollbar.report_exc_info(
+                capture_exception(
                     sys.exc_info(),
-                    extra_data={"context": "read_excel_or_csv", "file": fn},
+                    extra={"context": "read_excel_or_csv", "file": fn},
                 )
                 raise ValueError(
                     "Plik nie jest rozpoznawany jako prawidłowy plik Excel. "
@@ -74,9 +74,9 @@ def read_excel_or_csv_dataframe_guess_encoding(fn, header=0, nrows=None):
             raise
         except Exception as e:
             if "not supported" in str(e).lower():
-                rollbar.report_exc_info(
+                capture_exception(
                     sys.exc_info(),
-                    extra_data={"context": "read_excel_or_csv", "file": fn},
+                    extra={"context": "read_excel_or_csv", "file": fn},
                 )
                 raise ValueError(
                     "Format pliku nie jest obsługiwany. Proszę użyć pliku Excel (.xlsx, .xls) lub CSV."
