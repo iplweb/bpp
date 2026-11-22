@@ -51,9 +51,14 @@ def deklaracje_fontow():
 
 def jednostki_z_metrykami(request):
     """Jednostki widoczne dla użytkownika, które mają metryki w wybranym
-    okresie — z liczbą autorów i sumą punktów (lista wyboru, profil)."""
+    okresie — z liczbą autorów i sumą punktów (lista wyboru, profil).
+
+    Jednostki obce (``skupia_pracownikow=False``) pomijamy — to nie są
+    jednostki uczelni, raport metryk nie ma dla nich sensu."""
     qs = scope_metryki(
-        MetrykaAutora.objects.filter(jednostka__isnull=False),
+        MetrykaAutora.objects.filter(
+            jednostka__isnull=False, jednostka__skupia_pracownikow=True
+        ),
         uczelnia_dla_odczytu(request),
         okres_dla_request(request),
     )
@@ -162,7 +167,9 @@ class MetrykiJednostkiView(DostepDoMetrykJednostekMixin, View):
     template_name = "ewaluacja_metryki/metryki_jednostki_pdf.html"
 
     def get(self, request, jednostka_pk):
-        jednostka = get_object_or_404(Jednostka, pk=jednostka_pk)
+        jednostka = get_object_or_404(
+            Jednostka, pk=jednostka_pk, skupia_pracownikow=True
+        )
         # Przed sprawdzeniem metryk: bez wglądu 403, a nie 404 — nie zdradzamy,
         # czy jednostka ma metryki.
         if not moze_ogladac_metryki_jednostki(request.user, jednostka):

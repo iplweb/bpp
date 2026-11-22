@@ -424,24 +424,25 @@ def test_lista_jednostek_wyszukiwanie_q(client, klinika, okres_2022):
 
 
 @pytest.mark.django_db
-def test_lista_i_raport_jednostki_z_ujemnym_pk(client, klinika, okres_2022):
-    """Jednostka z ujemnym pk (np. ``-1``) nie wywraca listy jednostek
-    (``NoReverseMatch`` z ``<int:…>``) i ma działający raport."""
+def test_jednostka_obca_poza_metrykami_jednostek(client, klinika, okres_2022):
+    """Jednostka obca (``skupia_pracownikow=False``) nie trafia na listę
+    „Metryki jednostek” i nie ma raportu."""
     jednostka, dyscyplina, _ = klinika
-    ujemna = baker.make(
-        Jednostka, pk=-1, nazwa="Jednostka Ujemna", uczelnia=jednostka.uczelnia
+    obca = baker.make(
+        Jednostka,
+        nazwa="Jednostka Obca",
+        skupia_pracownikow=False,
+        uczelnia=jednostka.uczelnia,
     )
-    _metryka(ujemna, dyscyplina, okres_2022, "Ujemny", 4, 4, 400)
+    _metryka(obca, dyscyplina, okres_2022, "Spoza", 4, 4, 400)
     _uzytkownik(client, is_superuser=True, is_staff=True)
     wybierz_okres(client, okres_2022)
 
-    url = reverse("ewaluacja_metryki:metryki_jednostki", args=[-1])
-    assert url.endswith("/jednostki/-1/")
-
     res = client.get(reverse("ewaluacja_metryki:metryki_jednostek"))
     assert res.status_code == 200
-    assert url in res.content.decode()
+    tresc = res.content.decode()
+    assert "Klinika Testowa" in tresc
+    assert "Jednostka Obca" not in tresc
 
-    html = client.get(url, {"format": "html"})
-    assert html.status_code == 200
-    assert "Jednostka Ujemna" in html.content.decode()
+    url = reverse("ewaluacja_metryki:metryki_jednostki", args=[obca.pk])
+    assert client.get(url, {"format": "html"}).status_code == 404
