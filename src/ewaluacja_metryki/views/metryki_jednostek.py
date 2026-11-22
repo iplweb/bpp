@@ -64,9 +64,14 @@ def uzywa_wydzialow(request) -> bool:
 
 def jednostki_z_metrykami(request):
     """Jednostki widoczne dla użytkownika, które mają metryki w wybranym
-    okresie — z liczbą autorów i sumą punktów (lista wyboru, profil)."""
+    okresie — z liczbą autorów i sumą punktów (lista wyboru, profil).
+
+    Jednostki obce (``skupia_pracownikow=False``) pomijamy — to nie są
+    jednostki uczelni, raport metryk nie ma dla nich sensu."""
     qs = scope_metryki(
-        MetrykaAutora.objects.filter(jednostka__isnull=False),
+        MetrykaAutora.objects.filter(
+            jednostka__isnull=False, jednostka__skupia_pracownikow=True
+        ),
         uczelnia_dla_odczytu(request),
         okres_dla_request(request),
     )
@@ -131,9 +136,12 @@ def filtruj_jednostki(wiersze, fraza):
 
 def wydzialy_z_metrykami(request):
     """Wydziały (korzenie drzew jednostek) widoczne dla użytkownika, które
-    mają metryki w wybranym okresie — z liczbą autorów, jednostek i punktów."""
+    mają metryki w wybranym okresie — z liczbą autorów, jednostek i punktów.
+    Jednostki obce (``skupia_pracownikow=False``) pomijamy."""
     qs = scope_metryki(
-        MetrykaAutora.objects.filter(jednostka__isnull=False),
+        MetrykaAutora.objects.filter(
+            jednostka__isnull=False, jednostka__skupia_pracownikow=True
+        ),
         uczelnia_dla_odczytu(request),
         okres_dla_request(request),
     )
@@ -297,6 +305,10 @@ class ZestawienieMetrykView(DostepDoMetrykJednostekMixin, View):
 class MetrykiJednostkiView(ZestawienieMetrykView):
     nazwa_url = "ewaluacja_metryki:metryki_jednostki"
     przedrostek_pliku = "metryki_jednostki"
+
+    def pobierz_obiekt(self, request, pk):
+        # Jednostka obca nie ma zestawienia metryk (nie ma jej też na liście).
+        return get_object_or_404(Jednostka, pk=pk, skupia_pracownikow=True)
 
     def zbuduj(self, obiekt, uczelnia, okres):
         return zbuduj_metryki_jednostki(obiekt, uczelnia, okres)
