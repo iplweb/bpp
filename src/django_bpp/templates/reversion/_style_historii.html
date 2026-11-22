@@ -148,12 +148,28 @@
     .bpp-wersja-b { border-top: 3px solid #2e8b57; }
     table.bpp-porownanie { width: 100%; table-layout: fixed; }
     table.bpp-porownanie .bpp-kol-pole { width: 16%; }
-    /* Pusta komórka nad kolumną z nazwami pól — niewidoczna. */
+    /* Lewa górna komórka (nad nazwami pól) „znika”: bez tła i bez ramki
+       z lewej i z góry — ale z kreską POD nią, nad pierwszym polem. Dlatego
+       tabela traci zewnętrzną ramkę z lewej i z góry, a odtwarzają ją
+       komórki: nagłówki wersji (góra) i pierwsza kolumna danych (lewa). */
+    table.bpp-porownanie {
+        border-top: 0;
+        border-left: 0;
+        border-top-left-radius: 0;
+    }
     table.bpp-porownanie thead .bpp-naroznik {
         background: transparent !important;
         background-image: none !important;
-        border: none !important;
+        border-top: 0 !important;
+        border-left: 0 !important;
+        border-bottom: 1px solid var(--grp-table-border-color, #d4d4d4) !important;
         box-shadow: none !important;
+    }
+    table.bpp-porownanie thead th {
+        border-top: 1px solid var(--grp-table-border-color, #d4d4d4);
+    }
+    table.bpp-porownanie tbody tr > :first-child {
+        border-left: 1px solid var(--grp-table-border-color, #d4d4d4) !important;
     }
     table.bpp-porownanie .bpp-kol-zmiana-diff { width: 28%; background: var(--bpp-tlo-pow-2, #fafafa); }
     table.bpp-porownanie td, table.bpp-porownanie th { vertical-align: top; font-size: 12px; line-height: 18px; word-wrap: break-word; overflow-wrap: anywhere; white-space: pre-line; }
