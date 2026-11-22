@@ -1,0 +1,13 @@
+// Motyw „Pomarańczowo-granatowy (MWSL)”, zawsze ciemny (niezależnie od ustawień systemu).
+// Mechanizm: _tryb-ciemny.scss.
+@import "app-mwsl-baza";
+@import "tryb-ciemny";
+
+// `screen` — wydruk zawsze jasny.
+@media screen {
+  @include bpp-tryb-ciemny($primary-color, $drugi: $secondary-color);
+}
+
+// Print styles — MUSZA byc ostatnie: Foundation (foundation-print-styles
+// wyzej) emituje wlasny blok @media print i chcemy byc za nim w kaskadzie.
+@import "print";

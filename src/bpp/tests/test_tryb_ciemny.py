@@ -13,7 +13,11 @@ from django.contrib.staticfiles import finders
 KORZEN = Path(__file__).resolve().parents[3]
 SCSS = KORZEN / "src" / "bpp" / "static" / "scss"
 
-CIEMNE_WARIANTY = ["app-blue-auto", "app-blue-ciemny"]
+CIEMNE_WARIANTY = [
+    f"app-{kolor}-{wariant}"
+    for kolor in ("blue", "green", "orange", "vizja", "mwsl", "uafm")
+    for wariant in ("auto", "ciemny")
+]
 
 
 def _motywy():
