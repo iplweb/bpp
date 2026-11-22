@@ -137,6 +137,86 @@
   }
 }
 
+// Formularz pivota jako schemat tabeli (2×2): narożnik | kolumny,
+// wiersze | komórka.
+.multiseek-pivot-schemat {
+  display: grid;
+  grid-template-columns: minmax(12rem, max-content) minmax(16rem, max-content);
+  grid-template-areas:
+    "naroznik kolumny"
+    "wiersze komorka";
+  border: 1px solid var(--bpp-ramka, #ccc);
+  border-radius: 4px;
+  overflow: hidden;
+
+  label {
+    margin: 0;
+  }
+
+  > * {
+    padding: 0.5rem 0.75rem;
+  }
+}
+
+.multiseek-pivot-schemat__naroznik {
+  grid-area: naroznik;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--bpp-tlo-pow-2, #eee);
+  border-right: 1px solid var(--bpp-ramka, #ccc);
+  border-bottom: 1px solid var(--bpp-ramka, #ccc);
+  color: var(--bpp-tekst-przygaszony, #999);
+  font-size: 1.5rem;
+}
+
+.multiseek-pivot-schemat__kolumny,
+.multiseek-pivot-schemat__wiersze {
+  background: var(--bpp-tlo-pow-2, #f4f4f4);
+}
+
+.multiseek-pivot-schemat__kolumny {
+  grid-area: kolumny;
+  border-bottom: 1px solid var(--bpp-ramka, #ccc);
+}
+
+.multiseek-pivot-schemat__wiersze {
+  grid-area: wiersze;
+  border-right: 1px solid var(--bpp-ramka, #ccc);
+}
+
+.multiseek-pivot-schemat__komorka {
+  grid-area: komorka;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  background: var(--bpp-tlo-pow, #fff);
+
+  label {
+    font-weight: normal;
+  }
+}
+
+@media screen and (max-width: 39.9375em) {
+  .multiseek-pivot-schemat {
+    grid-template-columns: 1fr;
+    grid-template-areas:
+      "kolumny"
+      "wiersze"
+      "komorka";
+    width: 100%;
+  }
+
+  .multiseek-pivot-schemat__naroznik {
+    display: none;
+  }
+
+  .multiseek-pivot-schemat__wiersze {
+    border-right: none;
+    border-bottom: 1px solid var(--bpp-ramka, #ccc);
+  }
+}
+
 .multiseek-pivot-scroll {
   overflow-x: auto;
 }
