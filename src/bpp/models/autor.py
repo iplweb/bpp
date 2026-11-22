@@ -37,9 +37,11 @@ from bpp.models.soft_delete import (
     BppUnikalnoscZKoszemMixin,
     dopisz_znacznik_zmiany,
     operacja_kosza,
+    powiazania_w_koszu,
     raise_if_has_protected_children,
     relacje_przychodzace,
     sprawdz_stan_kosza,
+    sprawdz_wskazania_przed_przywroceniem,
     zapisz_przywrocenie,
 )
 from bpp.models.soft_delete_context import soft_delete_context
@@ -244,8 +246,10 @@ class AutorDeletedManager(DeletedManager):
 
 #: Relacje przychodzące do ``Autor``, które NIE blokują kosza. Wszystkie
 #: inne (autorstwa, doktoraty — także jako promotor — habilitacje, projekty,
-#: redakcje źródeł, autorzy zgłoszeń, konto użytkownika, …) blokują: rekord
-#: wskazywany przez żywy rekord nie trafia do kosza. Lista jest JAWNA, a guard
+#: redakcje źródeł, autorzy zgłoszeń, konto użytkownika, …) blokują, o ile
+#: pochodzą od ŻYWEGO rekordu: autorstwo publikacji z kosza czy autor
+#: zgłoszenia z kosza nie blokuje (przywrócenie tamtego rekordu odmówi,
+#: dopóki autor jest w koszu). Lista jest JAWNA, a guard
 #: wyprowadzany generycznie z ``_meta`` (``relacje_przychodzace``) — nowa
 #: relacja jest chroniona domyślnie.
 #:
@@ -307,11 +311,13 @@ class Autor(
 ):
     """Autor (osoba) w bibliografii.
 
-    Soft-delete (kosz) obejmuje WYŁĄCZNIE autora bez prac — duplikaty,
-    literówki, husk po scaleniu. ``delete()`` odmawia (``ProtectedError``),
-    gdy wskazuje na niego jakikolwiek rekord (autorstwo — także w koszu —
-    doktorat, promotorstwo, habilitacja, projekt, redakcja źródła, zgłoszenie,
-    konto użytkownika; ``POMIJANE_RELACJE_KOSZA_AUTORA``).
+    Soft-delete (kosz) obejmuje WYŁĄCZNIE autora bez żywych prac —
+    duplikaty, literówki, husk po scaleniu, autor, którego prace są już
+    w koszu. ``delete()`` odmawia (``ProtectedError``), gdy wskazuje na niego
+    jakikolwiek ŻYWY rekord (autorstwo, doktorat, promotorstwo, habilitacja,
+    projekt, redakcja źródła, zgłoszenie, konto użytkownika;
+    ``POMIJANE_RELACJE_KOSZA_AUTORA``). Rekordy z kosza nie blokują — ich
+    ``restore()`` odmawia, dopóki autor jest w koszu.
     Dane kadrowe autora (``Autor_Jednostka``, ``Autor_Dyscyplina``,
     ``Autor_Absencja``, udziały do liczby N) NIE są ruszane — zostają przy
     autorze w koszu i wracają z nim. Pola kosza nie są wersjonowane przez
@@ -774,12 +780,18 @@ class Autor(
         return ret
 
     def sprawdz_czy_mozna_do_kosza(self, *args, **kwargs):
-        """Guard: autor z jakąkolwiek pracą (także w koszu) → ``ProtectedError``."""
+        """Guard: autor wskazywany przez żywy rekord → ``ProtectedError``."""
         raise_if_has_protected_children(
             self,
             _relacje_chronione_autora(),
             label="autora",
         )
+
+    def powiazania_w_koszu(self):
+        """Powiązania od rekordów z kosza (``[GrupaBlokady]``) — np. prace
+        w koszu; ich przywrócenie będzie wymagało najpierw przywrócenia
+        autora."""
+        return powiazania_w_koszu(self, _relacje_chronione_autora())
 
     def delete(self, *args, user=None, reason="", **kwargs):
         """Soft-delete autora — DOZWOLONY wyłącznie dla autora bez prac.
@@ -798,22 +810,22 @@ class Autor(
         sami.
 
         Konsekwencja jest zamierzona: skasowanie autora NIE rusza jego
-        autorstw (spec §1, §10.1). Autor z autorstwami i tak tu nie dojdzie
-        — zatrzyma go guard.
+        autorstw (spec §1, §10.1). Autor z ŻYWYMI autorstwami i tak tu nie
+        dojdzie — zatrzyma go guard; autorstwa publikacji z kosza zostają
+        przy nim (ich przywrócenie odmówi, dopóki autor jest w koszu).
 
         ``user``/``reason`` trafiają do ``SoftDeleteLog`` (faza 06) przez
         thread-local ``soft_delete_context``.
 
-        Kontekst zakładamy PO guardzie, nie przed: gdy guard rzuci
-        ``ProtectedError``, żaden sygnał nie poleci, więc nie ma czego
-        atrybuować. (Poprawność nie zależy od tej kolejności — context
-        manager sprząta w ``finally`` — ale węższy zakres jest uczciwszy.)
+        Guard leci PO blokadzie wiersza autora (``sprawdz_stan_kosza``, ``FOR
+        UPDATE``): równoległe przywrócenie publikacji z tym autorem trzyma
+        jego wiersz ``FOR SHARE`` (``sprawdz_wskazania_przed_przywroceniem``),
+        więc guard czeka na jego commit i widzi już żywą publikację.
         """
-        self.sprawdz_czy_mozna_do_kosza()
-
         txid = kwargs.pop("transaction_id", None) or uuid.uuid4()
         with soft_delete_context(user=user, reason=reason), transaction.atomic():
             sprawdz_stan_kosza(self, ma_byc_w_koszu=False)
+            self.sprawdz_czy_mozna_do_kosza()
             self.deleted_at = timezone.now()
             self.restored_at = None
             self.transaction_id = txid
@@ -836,10 +848,12 @@ class Autor(
         jak polecieć (inwariant z docstringu ``bpp/models/soft_delete.py``).
 
         Nie przywracamy niczego „razem z autorem": jego skasowanie niczego
-        nie zabrało, więc nie ma czego wskrzeszać.
+        nie zabrało, więc nie ma czego wskrzeszać. Prace autora z kosza
+        zostają w koszu — użytkownik przywraca je osobno.
         """
         with soft_delete_context(user=user), transaction.atomic():
             sprawdz_stan_kosza(self, ma_byc_w_koszu=True)
+            sprawdz_wskazania_przed_przywroceniem(self)
             txid = self.transaction_id
             self.deleted_at = None
             self.restored_at = timezone.now()

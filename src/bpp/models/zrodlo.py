@@ -61,6 +61,11 @@ class Redakcja_Zrodla(models.Model):
     """Informacja o tym, że ktoś jest redaktorem danego źródła - w latach,
     od - do."""
 
+    #: Redakcja żyje ze źródłem: jest „w koszu" razem z nim (nie blokuje
+    #: kosza redaktora), a przywrócenie źródła sprawdza, czy redaktor nie
+    #: jest w koszu (``bpp.models.soft_delete._pole_rodzica``).
+    POLE_RODZICA_KOSZA = "zrodlo"
+
     zrodlo = models.ForeignKey("bpp.Zrodlo", CASCADE)
     od_roku = YearField()
     do_roku = YearField(null=True, blank=True)
@@ -145,8 +150,9 @@ def issn_norm_expr(field: str):
 
 
 class Zrodlo(BppSoftDeleteSlownikMixin, LinkDoPBNMixin, ModelZAdnotacjami, ModelZISSN):
-    """Źródło (czasopismo). Kosz: tylko źródło bez publikacji (także
-    w koszu); punktacja, dyscypliny i redakcja zostają przy nim."""
+    """Źródło (czasopismo). Kosz: tylko źródło bez żywych publikacji
+    (publikacje z kosza nie blokują); punktacja, dyscypliny i redakcja
+    zostają przy nim."""
 
     #: Dane „przy źródle", logi, wiersze importów, deduplikacja.
     pomijane_relacje_kosza = frozenset(

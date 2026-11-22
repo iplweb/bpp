@@ -254,6 +254,26 @@ $$;
 
 
 --
+-- Name: bpp_autor_kosz_autorzy_mat(); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.bpp_autor_kosz_autorzy_mat() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+BEGIN
+    IF NEW.deleted_at IS NOT NULL THEN
+        DELETE FROM bpp_autorzy_mat WHERE autor_id = NEW.id;
+    ELSE
+        INSERT INTO bpp_autorzy_mat ("rekord_id", "id", "autor_id", "jednostka_id", "kolejnosc", "typ_odpowiedzialnosci_id", "zapisany_jako", "zatrudniony", "afiliuje", "dyscyplina_naukowa_id", "upowaznienie_pbn", "profil_orcid", "kierunek_studiow_id", "oswiadczenie_ken", "przypieta", "data_oswiadczenia")
+      SELECT "rekord_id", "id", "autor_id", "jednostka_id", "kolejnosc", "typ_odpowiedzialnosci_id", "zapisany_jako", "zatrudniony", "afiliuje", "dyscyplina_naukowa_id", "upowaznienie_pbn", "profil_orcid", "kierunek_studiow_id", "oswiadczenie_ken", "przypieta", "data_oswiadczenia" FROM bpp_autorzy
+      WHERE autor_id = NEW.id
+      ON CONFLICT (id) DO UPDATE SET "rekord_id" = EXCLUDED."rekord_id", "autor_id" = EXCLUDED."autor_id", "jednostka_id" = EXCLUDED."jednostka_id", "kolejnosc" = EXCLUDED."kolejnosc", "typ_odpowiedzialnosci_id" = EXCLUDED."typ_odpowiedzialnosci_id", "zapisany_jako" = EXCLUDED."zapisany_jako", "zatrudniony" = EXCLUDED."zatrudniony", "afiliuje" = EXCLUDED."afiliuje", "dyscyplina_naukowa_id" = EXCLUDED."dyscyplina_naukowa_id", "upowaznienie_pbn" = EXCLUDED."upowaznienie_pbn", "profil_orcid" = EXCLUDED."profil_orcid", "kierunek_studiow_id" = EXCLUDED."kierunek_studiow_id", "oswiadczenie_ken" = EXCLUDED."oswiadczenie_ken", "przypieta" = EXCLUDED."przypieta", "data_oswiadczenia" = EXCLUDED."data_oswiadczenia";
+    END IF;
+    RETURN NULL;
+END $$;
+
+
+--
 -- Name: bpp_autor_ustaw_jednostka_aktualna(); Type: FUNCTION; Schema: public; Owner: -
 --
 
@@ -311,6 +331,25 @@ BEGIN
     RETURN NEW;
 END;
 $$;
+
+
+--
+-- Name: bpp_autorzy_mat_bez_autora_z_kosza(); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.bpp_autorzy_mat_bez_autora_z_kosza() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+BEGIN
+    IF NEW.autor_id IS NOT NULL AND EXISTS (
+        SELECT 1 FROM bpp_autor
+        WHERE id = NEW.autor_id AND deleted_at IS NOT NULL
+    ) THEN
+        DELETE FROM bpp_autorzy_mat WHERE id = NEW.id;
+        RETURN NULL;
+    END IF;
+    RETURN NEW;
+END $$;
 
 
 --
@@ -16712,6 +16751,38 @@ COPY public.django_countdown_sitecountdown (id, countdown_time, message, long_de
 --
 
 COPY public.django_migrations (id, app, name, applied) FROM stdin;
+1168	bpp	0507_zrodlo_issn_norm_indexes	2000-01-01 00:00:00+00
+1104	import_polon	0017_liveops	2000-01-01 00:00:00+00
+190	bpp	0109_rekordview	2000-01-01 00:00:00+00
+657	ewaluacja2021	0005_auto_20211028_0039	2000-01-01 00:00:00+00
+658	ewaluacja2021	0006_auto_20211110_0000	2000-01-01 00:00:00+00
+659	ewaluacja2021	0007_auto_20211110_0002	2000-01-01 00:00:00+00
+660	ewaluacja2021	0008_auto_20211122_0103	2000-01-01 00:00:00+00
+661	ewaluacja2021	0009_zamowienienaraport_status	2000-01-01 00:00:00+00
+662	ewaluacja2021	0010_django32	2000-01-01 00:00:00+00
+663	ewaluacja2021	0011_nullbooleanfield	2000-01-01 00:00:00+00
+664	ewaluacja2021	0012_liczbandlauczelni_2022_2025_and_more	2000-01-01 00:00:00+00
+665	ewaluacja2021	0013_alter_iloscudzialowdlaautora_ilosc_udzialow_and_more	2000-01-01 00:00:00+00
+666	ewaluacja2021	0014_iloscudzialowzarok	2000-01-01 00:00:00+00
+667	ewaluacja2021	0015_dyscyplina_nie_raportowana	2000-01-01 00:00:00+00
+668	ewaluacja2021	0016_alter_iloscudzialowdlaautora_2022_2025_unique_together_and_more	2000-01-01 00:00:00+00
+669	ewaluacja2021	0017_alter_liczbandlauczelni_dyscyplina_naukowa_and_more	2000-01-01 00:00:00+00
+670	ewaluacja2021	0018_move_files_to_protected	2000-01-01 00:00:00+00
+671	ewaluacja2021	0019_remove_null_from_string_fields	2000-01-01 00:00:00+00
+672	ewaluacja2021	0020_delete_ewaluacja2021_models	2000-01-01 00:00:00+00
+991	bpp	0448_rodzajjednostki	2000-01-01 00:00:00+00
+371	bpp	0278_autorzy_profil_orcid	2000-01-01 00:00:00+00
+487	bpp	0380_rekord_wydawca	2000-01-01 00:00:00+00
+592	deduplikator_zrodel	0001_initial	2000-01-01 00:00:00+00
+674	ewaluacja_liczba_n	0002_rename_dyscyplinanieraportowana_2022_2025_dyscyplinanieraportowana_and_more	2000-01-01 00:00:00+00
+675	ewaluacja_liczba_n	0003_add_liczba_n_to_dyscyplina_nieraportowana	2000-01-01 00:00:00+00
+676	ewaluacja_liczba_n	0004_add_ilosc_udzialow_za_calosc	2000-01-01 00:00:00+00
+765	import_polon	0001_initial	2000-01-01 00:00:00+00
+677	ewaluacja_liczba_n	0005_iloscudzialowdlaautorazarok_autor_dyscyplina	2000-01-01 00:00:00+00
+678	ewaluacja_liczba_n	0006_alter_iloscudzialowdlaautorazacalosc_unique_together_and_more	2000-01-01 00:00:00+00
+679	ewaluacja_liczba_n	0007_alter_iloscudzialowdlaautorazacalosc_komentarz	2000-01-01 00:00:00+00
+848	pbn_export_queue	0005_reclassify_old_validation_errors	2000-01-01 00:00:00+00
+1216	ewaluacja_metryki	0015_statusgenerowania_reset_sekwencji	2000-01-01 00:00:00+00
 180	bpp	0099_nagrody	2000-01-01 00:00:00+00
 105	bpp	0028_openaccess	2000-01-01 00:00:00+00
 630	dspace_api	0001_initial	2000-01-01 00:00:00+00
@@ -16993,7 +17064,6 @@ COPY public.django_migrations (id, app, name, applied) FROM stdin;
 744	import_dyscyplin	0015_auto_20190326_0553	2000-01-01 00:00:00+00
 1166	bpp	0505_wydawca_slug_dane	2000-01-01 00:00:00+00
 1167	bpp	0506_wydawca_slug_unique	2000-01-01 00:00:00+00
-1168	bpp	0507_zrodlo_issn_norm_indexes	2000-01-01 00:00:00+00
 1169	bpp	0508_uczelnia_help_texty_pbn_profil	2000-01-01 00:00:00+00
 1170	zglos_publikacje	0028_obslugujacy_verbose_name	2000-01-01 00:00:00+00
 1171	nowe_raporty	0003_opis_bibliograficzny_link	2000-01-01 00:00:00+00
@@ -17089,6 +17159,7 @@ COPY public.django_migrations (id, app, name, applied) FROM stdin;
 452	bpp	0345_alter_wydzial_opis	2000-01-01 00:00:00+00
 653	ewaluacja2021	0001_initial	2000-01-01 00:00:00+00
 1017	ewaluacja_liczba_n	0010_merge_20260604_1952	2000-01-01 00:00:00+00
+928	sessions	0001_initial	2000-01-01 00:00:00+00
 899	raport_slotow	0020_fix_do_roku_default_modulowa_funkcja	2000-01-01 00:00:00+00
 900	reversion	0001_squashed_0004_auto_20160611_1202	2000-01-01 00:00:00+00
 901	reversion	0002_add_index_on_version_for_content_type_and_db	2000-01-01 00:00:00+00
@@ -17183,7 +17254,6 @@ COPY public.django_migrations (id, app, name, applied) FROM stdin;
 1000	bpp	0457_faza_b_i4	2000-01-01 00:00:00+00
 1002	bpp	0444_charakter_formalny_ukryty_charakter_pbn_ukryty_and_more	2000-01-01 00:00:00+00
 647	easyaudit	0014_auto_20200513_0008	2000-01-01 00:00:00+00
-928	sessions	0001_initial	2000-01-01 00:00:00+00
 1007	bpp	0463_faza_b_iv2_multiseek_values	2000-01-01 00:00:00+00
 1008	bpp	0464_rodzajjednostki_autor_moze_afiliowac	2000-01-01 00:00:00+00
 1009	bpp	0454_merge_20260706_0727	2000-01-01 00:00:00+00
@@ -17299,7 +17369,6 @@ COPY public.django_migrations (id, app, name, applied) FROM stdin;
 1097	bpp	0468_faza_c_drop_legacy_markery	2000-01-01 00:00:00+00
 1098	bpp	0469_faza_c_czysc_contenttype_wydzial	2000-01-01 00:00:00+00
 476	bpp	0369_wyd_zwarte_nadrzedne_w_pbn	2000-01-01 00:00:00+00
-1104	import_polon	0017_liveops	2000-01-01 00:00:00+00
 1105	pbn_api	0078_deduplikacja_publikacji_instytucji	2000-01-01 00:00:00+00
 1106	pbn_api	0079_constraint_publikacja_instytucji	2000-01-01 00:00:00+00
 1107	raport_slotow	0022_liveops	2000-01-01 00:00:00+00
@@ -17380,6 +17449,7 @@ COPY public.django_migrations (id, app, name, applied) FROM stdin;
 59	pbn_api	0025_auto_20210809_0149	2000-01-01 00:00:00+00
 60	pbn_api	0026_auto_20210816_0815	2000-01-01 00:00:00+00
 61	pbn_api	0027_przemapuj_rok_publikacji	2000-01-01 00:00:00+00
+193	bpp	0112_fix_refresh_cache	2000-01-01 00:00:00+00
 62	pbn_api	0028_gist_idx_publications	2000-01-01 00:00:00+00
 63	pbn_api	0029_indeksy_gist_inne_tabele	2000-01-01 00:00:00+00
 64	pbn_api	0030_auto_20210818_2343	2000-01-01 00:00:00+00
@@ -17490,10 +17560,8 @@ COPY public.django_migrations (id, app, name, applied) FROM stdin;
 187	bpp	0106_pokazuj_uczelnia	2000-01-01 00:00:00+00
 188	bpp	0107_poprawki_wydajnosci	2000-01-01 00:00:00+00
 189	bpp	0108_bpp_nowe_sumy_view_bug	2000-01-01 00:00:00+00
-190	bpp	0109_rekordview	2000-01-01 00:00:00+00
 191	bpp	0110_uczelnia_pokazuj_praca_recenzowana	2000-01-01 00:00:00+00
 192	bpp	0111_autorzy_afiliacja_zatrudniony	2000-01-01 00:00:00+00
-193	bpp	0112_fix_refresh_cache	2000-01-01 00:00:00+00
 194	bpp	0113_auto_20171111_0035	2000-01-01 00:00:00+00
 195	bpp	0114_auto_20171111_0036	2000-01-01 00:00:00+00
 196	bpp	0115_auto_20171111_0038	2000-01-01 00:00:00+00
@@ -17894,35 +17962,7 @@ COPY public.django_migrations (id, app, name, applied) FROM stdin;
 654	ewaluacja2021	0002_auto_20211026_1137	2000-01-01 00:00:00+00
 655	ewaluacja2021	0003_auto_20211027_2320	2000-01-01 00:00:00+00
 656	ewaluacja2021	0004_importmaksymalnychslotow_ostatnia_zmiana	2000-01-01 00:00:00+00
-657	ewaluacja2021	0005_auto_20211028_0039	2000-01-01 00:00:00+00
-658	ewaluacja2021	0006_auto_20211110_0000	2000-01-01 00:00:00+00
-659	ewaluacja2021	0007_auto_20211110_0002	2000-01-01 00:00:00+00
-660	ewaluacja2021	0008_auto_20211122_0103	2000-01-01 00:00:00+00
-661	ewaluacja2021	0009_zamowienienaraport_status	2000-01-01 00:00:00+00
-662	ewaluacja2021	0010_django32	2000-01-01 00:00:00+00
-663	ewaluacja2021	0011_nullbooleanfield	2000-01-01 00:00:00+00
-664	ewaluacja2021	0012_liczbandlauczelni_2022_2025_and_more	2000-01-01 00:00:00+00
-665	ewaluacja2021	0013_alter_iloscudzialowdlaautora_ilosc_udzialow_and_more	2000-01-01 00:00:00+00
-666	ewaluacja2021	0014_iloscudzialowzarok	2000-01-01 00:00:00+00
-667	ewaluacja2021	0015_dyscyplina_nie_raportowana	2000-01-01 00:00:00+00
-668	ewaluacja2021	0016_alter_iloscudzialowdlaautora_2022_2025_unique_together_and_more	2000-01-01 00:00:00+00
-669	ewaluacja2021	0017_alter_liczbandlauczelni_dyscyplina_naukowa_and_more	2000-01-01 00:00:00+00
-670	ewaluacja2021	0018_move_files_to_protected	2000-01-01 00:00:00+00
-671	ewaluacja2021	0019_remove_null_from_string_fields	2000-01-01 00:00:00+00
-672	ewaluacja2021	0020_delete_ewaluacja2021_models	2000-01-01 00:00:00+00
-991	bpp	0448_rodzajjednostki	2000-01-01 00:00:00+00
-371	bpp	0278_autorzy_profil_orcid	2000-01-01 00:00:00+00
-487	bpp	0380_rekord_wydawca	2000-01-01 00:00:00+00
-592	deduplikator_zrodel	0001_initial	2000-01-01 00:00:00+00
-674	ewaluacja_liczba_n	0002_rename_dyscyplinanieraportowana_2022_2025_dyscyplinanieraportowana_and_more	2000-01-01 00:00:00+00
-675	ewaluacja_liczba_n	0003_add_liczba_n_to_dyscyplina_nieraportowana	2000-01-01 00:00:00+00
-676	ewaluacja_liczba_n	0004_add_ilosc_udzialow_za_calosc	2000-01-01 00:00:00+00
-765	import_polon	0001_initial	2000-01-01 00:00:00+00
-677	ewaluacja_liczba_n	0005_iloscudzialowdlaautorazarok_autor_dyscyplina	2000-01-01 00:00:00+00
-678	ewaluacja_liczba_n	0006_alter_iloscudzialowdlaautorazacalosc_unique_together_and_more	2000-01-01 00:00:00+00
-679	ewaluacja_liczba_n	0007_alter_iloscudzialowdlaautorazacalosc_komentarz	2000-01-01 00:00:00+00
-848	pbn_export_queue	0005_reclassify_old_validation_errors	2000-01-01 00:00:00+00
-1216	ewaluacja_metryki	0015_statusgenerowania_reset_sekwencji	2000-01-01 00:00:00+00
+1217	bpp	0525_autorzy_mat_bez_autora_z_kosza	2000-01-01 00:00:00+00
 \.
 
 
@@ -20002,7 +20042,7 @@ SELECT pg_catalog.setval('public.django_countdown_sitecountdown_id_seq', 1, fals
 -- Name: django_migrations_id_seq; Type: SEQUENCE SET; Schema: public; Owner: -
 --
 
-SELECT pg_catalog.setval('public.django_migrations_id_seq', 1216, true);
+SELECT pg_catalog.setval('public.django_migrations_id_seq', 1217, true);
 
 
 --
@@ -32862,6 +32902,13 @@ CREATE CONSTRAINT TRIGGER bpp_autor_jednostka_jedno_podstawowe_trig AFTER INSERT
 
 
 --
+-- Name: bpp_autor bpp_autor_kosz_autorzy_mat; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER bpp_autor_kosz_autorzy_mat AFTER UPDATE OF deleted_at ON public.bpp_autor FOR EACH ROW WHEN ((old.deleted_at IS DISTINCT FROM new.deleted_at)) EXECUTE FUNCTION public.bpp_autor_kosz_autorzy_mat();
+
+
+--
 -- Name: bpp_autor bpp_autor_kosz_straznik; Type: TRIGGER; Schema: public; Owner: -
 --
 
@@ -32873,6 +32920,13 @@ CREATE TRIGGER bpp_autor_kosz_straznik BEFORE DELETE OR UPDATE ON public.bpp_aut
 --
 
 CREATE TRIGGER bpp_autor_ustaw_jednostka_aktualna_trigger AFTER INSERT OR DELETE OR UPDATE ON public.bpp_autor_jednostka FOR EACH ROW EXECUTE FUNCTION public.bpp_autor_ustaw_jednostka_aktualna();
+
+
+--
+-- Name: bpp_autorzy_mat bpp_autorzy_mat_bez_autora_z_kosza; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER bpp_autorzy_mat_bez_autora_z_kosza BEFORE INSERT ON public.bpp_autorzy_mat FOR EACH ROW EXECUTE FUNCTION public.bpp_autorzy_mat_bez_autora_z_kosza();
 
 
 --

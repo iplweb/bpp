@@ -9,6 +9,7 @@
 <div class="g-d-c">
   {% if kosz_blokada %}
     {% include "admin/bpp/kosz_blokada.html" %}
+    {% include "admin/bpp/kosz_powiazania_w_koszu.html" %}
     <div class="grp-module grp-submit-row grp-fixed-footer">
       <ul>
         <li class="grp-float-left"><a href="{% add_preserved_filters object_url %}" class="grp-button grp-cancel-link">Wróć do rekordu</a></li>
@@ -30,6 +31,7 @@
         {% endif %}
         {% include "admin/bpp/kosz_pole_powod.html" with pomoc="Trafi do dziennika operacji kosza i do historii rekordu." %}
       </fieldset>
+      {% include "admin/bpp/kosz_powiazania_w_koszu.html" %}
       <div class="grp-module grp-submit-row grp-fixed-footer">
         <ul>
           <li class="grp-float-left"><a href="{% add_preserved_filters object_url %}" class="grp-button grp-cancel-link">{% trans "No, take me back" %}</a></li>
