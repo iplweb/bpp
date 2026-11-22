@@ -7,9 +7,14 @@ strony raportuje:
 * **plamy** — widoczne elementy większe niż 40×40 px, których wyliczone
   tło (``background-color`` albo kolor z gradientu w ``background-image``)
   ma luminancję względną powyżej progu (domyślnie 0.8),
-* **kontrast** — elementy z własnym tekstem, których kolor tekstu ma
+* **kontrast** — elementy z własnym tekstem (także tekst SVG — `fill`), których kolor tekstu ma
   współczynnik kontrastu z efektywnym tłem poniżej 4.5:1 (3:1 dla dużego
   tekstu) — próg WCAG AA.
+
+Dodatkowo najeżdża myszą na pierwszy wiersz kilku tabel i mierzy go
+w stanie ``:hover`` (wpisy z prefiksem ``HOVER``). Tło wykresów SVG
+(``rect`` z jasnym ``fill``) liczy się jako plama. Zawartości ``<canvas>``
+skrypt nie ocenia (piksele zależą od biblioteki rysującej).
 
 Użycie (z działającym ``run-site``, motyw uczelni ustawiony np. na
 ``app-blue-ciemny``)::
@@ -65,6 +70,10 @@ STRONY_STALE = [
     ("raport-slotow", "/raport_slotow/raport-slotow-uczelnia/"),
     ("ranking-autorow", "/bpp/raporty/ranking-autorow/wybierz/"),
     ("ewaluacja-metryki", "/ewaluacja_metryki/"),
+    ("metryki-statystyki", "/ewaluacja_metryki/statystyki/"),
+    ("metryki-kola", "/ewaluacja_metryki/?widok=kola"),
+    ("metryki-pkdaut", "/ewaluacja_metryki/?widok=pkdaut"),
+    ("metryki-mapa-ciepla", "/ewaluacja_metryki/?widok=mapa_ciepla"),
     ("zgloszenie", "/zglos_publikacje/nowe_zgloszenie/"),
 ]
 
@@ -76,6 +85,24 @@ STRONY_ODKRYWANE = [
     ("wydawca", "/bpp/wydawcy/", r"^/bpp/wydawca/[^/]+/$"),
     ("rok", "/bpp/lata/", r"^/bpp/rok/\d+/$"),
     ("publikacja", "/multiseek/results/", r"^/bpp/rekord/"),
+]
+
+# Strony odkrywane z dodatkowym warunkiem: (nazwa, lista, regex, selektor,
+# który musi być na stronie docelowej). Szczegóły metryki — autor z pracami
+# wybranymi (wiersze tr.success); optymalizacja — link ze szczegółów.
+STRONY_Z_WARUNKIEM = [
+    (
+        "metryki-szczegoly",
+        "/ewaluacja_metryki/",
+        r"^/ewaluacja_metryki/(?:[^/]+/)?szczegoly/[^/]+/[^/]+/$",
+        "tr.success",
+    ),
+    (
+        "optymalizuj-publikacje",
+        "@metryki-szczegoly",
+        r"^/ewaluacja_optymalizuj_publikacje/[^/?#]+/?$",
+        None,
+    ),
 ]
 
 
@@ -91,12 +118,69 @@ def odkryj(page, baza, lista, wzorzec):
     return None
 
 
-def audytuj(page, prog, min_rozmiar):
-    return page.evaluate(JS_AUDYT, [prog, min_rozmiar])
+def odkryj_z_warunkiem(page, baza, lista, wzorzec, warunek, limit=15):
+    page.goto(baza + lista, wait_until="networkidle")
+    hrefy = page.eval_on_selector_all(
+        "a[href]", "els => els.map(e => e.getAttribute('href'))"
+    )
+    kandydaci = []
+    for h in hrefy:
+        h = re.sub(r"^https?://[^/]+", "", h or "")
+        if re.match(wzorzec, h) and h not in kandydaci:
+            kandydaci.append(h)
+    for h in kandydaci[:limit]:
+        if warunek is None:
+            return h
+        page.goto(baza + h, wait_until="networkidle")
+        if page.locator(warunek).count():
+            return h
+    return None
 
 
-def zbadaj(page, nazwa, sciezka, a, raport, wyjscie, full_page=True):
+def audytuj(page, prog, min_rozmiar, korzen=None):
+    return page.evaluate(JS_AUDYT, [prog, min_rozmiar, korzen])
+
+
+# Wiersze tabel w stanie :hover — najeżdżamy myszą na pierwszy wiersz
+# kilku pierwszych tabel i mierzymy tylko ten wiersz.
+JS_OZNACZ_WIERSZE = """(ile) => {
+  const wiersze = [];
+  for (const t of document.querySelectorAll("table")) {
+    const tr = [...t.querySelectorAll("tbody tr")].find(
+      (w) => w.getBoundingClientRect().height > 0 && w.cells.length > 1);
+    if (!tr) continue;
+    tr.setAttribute("data-audyt-wiersz", String(wiersze.length));
+    wiersze.push(wiersze.length);
+    if (wiersze.length >= ile) break;
+  }
+  return wiersze;
+}"""
+
+
+def audytuj_hover(page, prog, ile=3):
+    wynik = {"plamy": [], "kontrast": []}
+    for i in page.evaluate(JS_OZNACZ_WIERSZE, ile):
+        selektor = f'[data-audyt-wiersz="{i}"]'
+        try:
+            page.hover(selektor, timeout=2000)
+        except PlaywrightError:
+            continue  # wiersz przykryty (np. lepki nagłówek) — pomijamy
+        page.wait_for_timeout(250)
+        w = audytuj(page, prog, 20, selektor)
+        for klucz in ("plamy", "kontrast"):
+            for x in w[klucz]:
+                x["element"] = "HOVER " + x["element"]
+                wynik[klucz].append(x)
+    page.mouse.move(0, 0)
+    return wynik
+
+
+def zbadaj(page, nazwa, sciezka, a, raport, wyjscie, full_page=True, hover=True):
     wynik = audytuj(page, a.prog, a.min_rozmiar)
+    if hover:
+        h = audytuj_hover(page, a.prog)
+        wynik["plamy"] += h["plamy"]
+        wynik["kontrast"] += h["kontrast"]
     raport[nazwa] = {"sciezka": sciezka, **wynik}
     print(
         f"{nazwa:20s} plamy={len(wynik['plamy']):3d} "
@@ -181,8 +265,27 @@ class Przebieg:
     def chce(self, nazwa):
         return not self.wybrane or nazwa in self.wybrane
 
-    def zbadaj(self, page, nazwa, sciezka, full_page=True):
-        zbadaj(page, nazwa, sciezka, self.a, self.raport, self.wyjscie, full_page)
+    def zbadaj(self, page, nazwa, sciezka, full_page=True, hover=True):
+        zbadaj(
+            page, nazwa, sciezka, self.a, self.raport, self.wyjscie, full_page, hover
+        )
+
+    def strony_z_warunkiem(self, page):
+        wynik = []
+        znalezione = {}
+        for nazwa, lista, wzorzec, warunek in STRONY_Z_WARUNKIEM:
+            if lista.startswith("@"):
+                lista = znalezione.get(lista[1:])
+                if not lista:
+                    continue
+            sciezka = odkryj_z_warunkiem(page, self.baza, lista, wzorzec, warunek)
+            if sciezka:
+                znalezione[nazwa] = sciezka
+                if self.chce(nazwa):
+                    wynik.append((nazwa, sciezka))
+            else:
+                print(f"!! nie znalazłem strony {nazwa} na {lista}")
+        return wynik
 
     def strony(self, page):
         strony = list(STRONY_STALE)
@@ -194,6 +297,7 @@ class Przebieg:
                 strony.append((nazwa, sciezka))
             else:
                 print(f"!! nie znalazłem strony {nazwa} na {lista}")
+        strony += self.strony_z_warunkiem(page)
         for nazwa, sciezka in strony:
             if self.chce(nazwa):
                 page.goto(self.baza + sciezka, wait_until="networkidle")
@@ -212,7 +316,7 @@ class Przebieg:
                 print(f"!! {nazwa}: interakcja nie powiodła się: {e}")
                 continue
             page.wait_for_timeout(800)
-            self.zbadaj(page, nazwa, sciezka, full_page=False)
+            self.zbadaj(page, nazwa, sciezka, full_page=False, hover=False)
 
     def menu(self, page):
         # Rozwinięte menu górne (na telefonie — hamburger).
@@ -228,7 +332,7 @@ class Przebieg:
             if element.count():
                 element.hover()
         page.wait_for_timeout(500)
-        self.zbadaj(page, "menu", "/ (menu)", full_page=False)
+        self.zbadaj(page, "menu", "/ (menu)", full_page=False, hover=False)
 
     def logowanie(self, przegladarka):
         # Strona logowania — bez sesji.

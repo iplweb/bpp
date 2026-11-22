@@ -14,15 +14,15 @@
 {% block extrahead %}
 <style>
     .history-card {
-        border: 1px solid #ddd;
+        border: 1px solid var(--bpp-ramka, #ddd);
         border-radius: 8px;
         padding: 20px;
         margin-bottom: 20px;
-        background: #f9f9f9;
+        background: var(--bpp-tlo-pow-2, #f9f9f9);
     }
 
     .change-item {
-        background: white;
+        background: var(--bpp-tlo-pow, white);
         padding: 15px;
         margin: 10px 0;
         border-left: 4px solid #667eea;
@@ -37,20 +37,20 @@
     }
 
     .value-before {
-        background: #ffe5e5;
+        background: var(--bpp-tlo-blad, #ffe5e5);
         padding: 10px;
         border-radius: 4px;
     }
 
     .value-after {
-        background: #e5ffe5;
+        background: var(--bpp-tlo-sukces, #e5ffe5);
         padding: 10px;
         border-radius: 4px;
     }
 
     .change-arrow {
         font-size: 1.5em;
-        color: #667eea;
+        color: var(--bpp-tekst-przygaszony, #667eea);
         text-align: center;
         padding: 10px;
     }

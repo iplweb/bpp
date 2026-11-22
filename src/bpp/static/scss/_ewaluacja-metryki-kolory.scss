@@ -1,0 +1,14 @@
+// =============================================================================
+// Metryki ewaluacyjne — kolory, które muszą być w CSS motywu
+// =============================================================================
+//
+// Wiersz tabeli metryk po najechaniu. Wcześniej ustawiany z JS stylem inline
+// (#f0f8ff) — jasny także w trybie ciemnym, bo styl inline omija i motyw
+// z trybem ciemnym, i konfigurator wyglądu. Selektor mocniejszy niż hover
+// Foundation (`table.hover:not(.unstriped) tr:nth-of-type(even):hover`).
+// Zmienna `--bpp-tlo-hover` istnieje tylko w trybie ciemnym (oba mechanizmy).
+
+table.hover:not(.unstriped) tbody tr.ewaluacja-metryki__clickable-row:hover,
+table.hover:not(.unstriped) tbody tr.ewaluacja-metryki__clickable-row:focus-visible {
+    background-color: var(--bpp-tlo-hover, #f0f8ff);
+}

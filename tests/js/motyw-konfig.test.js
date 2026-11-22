@@ -218,6 +218,20 @@ describe("przetworzCss — tryb ciemny i tło treści", () => {
         expect(css).toContain("body{background:#1a1a1a;color:#ececec}");
     });
 
+    test("zmienne --bpp-* (style spoza CSS motywu) tylko w wariancie ciemnym", () => {
+        expect(M.przetworzCss(CSS, { tryb_kolorow: "jasny", tlo_tresci: "przezroczyste" }))
+            .not.toContain("--bpp-tlo-pow");
+        const ciemny = M.przetworzCss(CSS, { tryb_kolorow: "ciemny" });
+        const tlo = /--bpp-tlo-pow:(#[0-9a-f]{6})/.exec(ciemny)[1];
+        const tekst = /--bpp-tekst:(#[0-9a-f]{6})/.exec(ciemny)[1];
+        expect(M.kontrast(tekst, tlo)).toBeGreaterThanOrEqual(4.5);
+        expect(ciemny).toMatch(/--bpp-akcent:#[0-9a-f]{6}/);
+        // Automatyczny: definicje wewnątrz prefers-color-scheme, nie w jasnym CSS.
+        const auto = M.przetworzCss(CSS, { tryb_kolorow: "automatyczny" });
+        const media = auto.indexOf("@media (prefers-color-scheme: dark){");
+        expect(auto.indexOf("--bpp-tlo-pow")).toBeGreaterThan(media);
+    });
+
     test("przezroczyste tło treści: karty tak, menu i body nie", () => {
         const css = M.przetworzCss(CSS, { tryb_kolorow: "jasny", tlo_tresci: "przezroczyste" });
         expect(css).toContain(".card{background-color:rgba(255,255,255,0)");

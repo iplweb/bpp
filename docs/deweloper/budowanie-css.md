@@ -223,3 +223,39 @@ Wynik (mixin `bpp-tryb-ciemny-komponenty`) wklej w miejsce mixinu w
 Przypadki szczególne (przyciski z kolorowym tłem, ciemne wypełnienia
 wykresów, style inline) dopisuj ręcznie w `bpp-tryb-ciemny-reguly`.
 Test `test_tryb_ciemny_bez_bialych_plam` (Playwright) pilnuje kilku stron.
+
+### Style spoza CSS motywu: zmienne `--bpp-*`
+
+Bloki `<style>` w szablonach, osobne arkusze modułów (np.
+`ewaluacja_optymalizuj_publikacje.css`) i style ustawiane z JS **nie
+przechodzą** ani przez mixin `bpp-tryb-ciemny`, ani przez `przetworzCss`
+konfiguratora — w trybie ciemnym zostają jasne. Dla nich są zmienne kolorów
+z kolorem zapasowym:
+
+```css
+background: var(--bpp-tlo-pow-2, #f8f9fa);
+color: var(--bpp-tekst-przygaszony, #6c757d);
+```
+
+W trybie jasnym zmienne nie istnieją (zostaje kolor zapasowy — wygląd bez
+zmian), w ciemnym definiują je oba mechanizmy: `_tryb-ciemny.scss` (blok
+`--bpp-*` w mixinie) i `ZMIENNE_KOLOROW` w `motyw-konfig.js`. Lista:
+`--bpp-tlo-pow`, `-pow-2`, `-hover`, `-sukces`, `-ostrzezenie`, `-blad`,
+`-info`, `--bpp-ramka`, `--bpp-tekst`, `-przygaszony`, `-sukces`,
+`-ostrzezenie`, `-blad`, `--bpp-akcent`. Test
+`test_zmienne_kolorow_zdefiniowane_w_obu_trybach_ciemnych` pilnuje, żeby
+każda użyta zmienna była zdefiniowana w obu miejscach.
+
+Zamianę robi `bin/tryb-ciemny-zmienne.py PLIK…` (pliki `.html` — tylko
+bloki `<style>`; obsługuje zagnieżdżenia SCSS; plakietki i barwne gradienty
+skal zostawia). Wynik przejrzyj w `git diff`.
+
+Wykresy JS (Plotly, circle-progress) w metrykach biorą kolory z wyliczonego
+stylu strony: `ewaluacja_metryki/js/wykresy-motyw.js` owija
+`Plotly.newPlot` i `$.fn.circleProgress` i — tylko gdy tekst strony jest
+jasny — ustawia przezroczyste tło, kolor tekstu i siatki. Działa dla obu
+mechanizmów trybu ciemnego bez znajomości palety.
+
+Audyt (`bin/tryb-ciemny-audyt.py`) sprawdza też wiersze tabel w stanie
+`:hover` (wpisy `HOVER`), tekst SVG (`fill`) i jasne tło wykresów SVG.
+Zawartości `<canvas>` nie ocenia.

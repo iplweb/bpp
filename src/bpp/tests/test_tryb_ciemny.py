@@ -91,6 +91,69 @@ def test_kafle_strony_glownej_bez_bialego_hover_w_szablonie():
     assert ".browse-tile:hover" not in szablon
 
 
+RE_ZMIENNA = re.compile(r"var\((--bpp-(?:tlo|tekst|ramka|akcent)[a-z0-9-]*),")
+
+
+def _uzyte_zmienne_kolorow():
+    """Zmienne `--bpp-*` z kolorem zapasowym w szablonach i arkuszach modułów."""
+    src = KORZEN / "src"
+    pliki = [*src.glob("*/templates/**/*.html"), *src.glob("*/static/*/scss/*.scss")]
+    pliki += [*SCSS.glob("*.scss")]
+    uzyte = {}
+    for plik in pliki:
+        for nazwa in RE_ZMIENNA.findall(plik.read_text(errors="replace")):
+            uzyte.setdefault(nazwa, plik.relative_to(src))
+    return uzyte
+
+
+def test_zmienne_kolorow_zdefiniowane_w_obu_trybach_ciemnych():
+    """Style spoza CSS motywu (bloki <style>, arkusze modułów) używają
+    `var(--bpp-*, kolor)`. Każdą taką zmienną muszą definiować oba
+    mechanizmy trybu ciemnego — inaczej w ciemnym zostaje jasny kolor
+    zapasowy (biała plama)."""
+    uzyte = _uzyte_zmienne_kolorow()
+    assert "--bpp-tlo-pow" in uzyte  # metryki, optymalizacja publikacji
+
+    reczny = (SCSS / "_tryb-ciemny.scss").read_text()
+    konfig = (
+        KORZEN / "src" / "bpp" / "static" / "bpp" / "js" / "motyw-konfig.js"
+    ).read_text()
+    for nazwa, plik in uzyte.items():
+        assert f"{nazwa}:" in reczny, f"{nazwa} ({plik}) brak w _tryb-ciemny.scss"
+        assert f'"{nazwa}' in konfig, f"{nazwa} ({plik}) brak w motyw-konfig.js"
+
+
+def test_metryki_bez_jasnego_hovera_ustawianego_z_js():
+    """Hover wiersza metryk był stylem inline z JS (#f0f8ff) — omijał oba
+    mechanizmy trybu ciemnego. Teraz jest w CSS motywu."""
+    lista = (
+        KORZEN
+        / "src"
+        / "ewaluacja_metryki"
+        / "templates"
+        / "ewaluacja_metryki"
+        / "lista.html"
+    ).read_text()
+    assert "css('background-color'" not in lista
+    assert "ewaluacja-metryki-kolory" in (SCSS / "common.scss").read_text()
+
+
+@pytest.mark.parametrize("szablon", ["lista.html", "szczegoly.html", "statystyki.html"])
+def test_wykresy_metryk_dolaczaja_kolory_motywu(szablon):
+    """Plotly i circle-progress rysują stałymi kolorami (białe tło) — skrypt
+    wykresy-motyw.js podmienia je na kolory z wyliczonego stylu strony."""
+    tresc = (
+        KORZEN
+        / "src"
+        / "ewaluacja_metryki"
+        / "templates"
+        / "ewaluacja_metryki"
+        / szablon
+    ).read_text()
+    assert "ewaluacja_metryki/js/wykresy-motyw.js" in tresc
+    assert finders.find("ewaluacja_metryki/js/wykresy-motyw.js")
+
+
 def _js_audytu():
     from bpp.tests.tryb_ciemny_audyt_js import JS_AUDYT
 

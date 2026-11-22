@@ -2049,6 +2049,38 @@
         return wyjscie.join("");
     }
 
+    // Zmienne kolorów dla stylów SPOZA CSS motywu (bloki <style> w szablonach,
+    // osobne arkusze modułów): piszą `var(--bpp-tlo-pow, #fff)`. W trybie
+    // jasnym zmiennych nie ma (zostaje kolor zapasowy); w ciemnym definiujemy
+    // je tu z jasnego wzorca przez naCiemny. Ta sama lista jest w
+    // _tryb-ciemny.scss (ręczne motywy z trybem ciemnym). [nazwa, rola, wzorzec]
+    var ZMIENNE_KOLOROW = [
+        ["--bpp-tlo-pow", "tlo", "#ffffff"],
+        ["--bpp-tlo-pow-2", "tlo", "#f8f9fa"],
+        ["--bpp-tlo-hover", "tlo", "#eef1f4"],
+        ["--bpp-tlo-sukces", "tlo", "#e1faea"],
+        ["--bpp-tlo-ostrzezenie", "tlo", "#fff3cd"],
+        ["--bpp-tlo-blad", "tlo", "#fdecea"],
+        ["--bpp-tlo-info", "tlo", "#e7f1ff"],
+        ["--bpp-ramka", "ramka", "#dee2e6"],
+        ["--bpp-tekst", "tekst", "#333333"],
+        ["--bpp-tekst-przygaszony", "tekst", "#6c757d"],
+        ["--bpp-tekst-sukces", "tekst", "#1e7e34"],
+        ["--bpp-tekst-ostrzezenie", "tekst", "#856404"],
+        ["--bpp-tekst-blad", "tekst", "#c0392b"],
+    ];
+
+    function zmienneCiemne(k) {
+        var pary = ZMIENNE_KOLOROW.map(function (z) {
+            var kolor = czytajKolor(z[2]);
+            return z[0] + ":" + piszKolor(naCiemny(kolor, z[1]) || kolor);
+        });
+        // Akcent (linki w stylach modułów) z koloru głównego motywu.
+        var glowny = czytajKolor(k.kolor_glowny);
+        if (glowny) pary.push("--bpp-akcent:" + piszKolor(naCiemny(glowny, "tekst") || glowny));
+        return ":root{" + pary.join(";") + "}";
+    }
+
     // Skompilowany CSS motywu → CSS z trybem kolorów i tłem treści z konfiga.
     // `opcje.trybPodgladu` wymusza jasny/ciemny (podgląd trybu automatycznego).
     function przetworzCss(css, konfig, opcje) {
@@ -2060,10 +2092,11 @@
         var wezly = parsujCss(css);
         if (tryb === "automatyczny") {
             var jasnyCss = przetworzWezly(wezly, false, k.tlo_tresci, false);
-            var ciemnyCss = przetworzWezly(wezly, true, k.tlo_tresci, true);
+            var ciemnyCss = przetworzWezly(wezly, true, k.tlo_tresci, true) + zmienneCiemne(k);
             return jasnyCss + "@media (prefers-color-scheme: dark){" + ciemnyCss + "}";
         }
-        return przetworzWezly(wezly, tryb === "ciemny", k.tlo_tresci, false);
+        var wynik = przetworzWezly(wezly, tryb === "ciemny", k.tlo_tresci, false);
+        return tryb === "ciemny" ? wynik + zmienneCiemne(k) : wynik;
     }
 
     return {
