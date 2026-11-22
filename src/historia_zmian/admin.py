@@ -7,6 +7,7 @@ porównać i przywrócić wersje.
 
 from django.contrib import admin
 from django.contrib.admin.utils import quote
+from django.http import Http404
 from django.urls import NoReverseMatch, reverse
 from django.utils.html import format_html, format_html_join
 
@@ -39,6 +40,9 @@ class ZrodloZmianyAdmin(admin.ModelAdmin):
     list_select_related = ["rewizja__user"]
     ordering = ["-rewizja__date_created"]
     show_full_result_count = False
+    # Wiersz nie prowadzi do strony wpisu: wszystko jest na liście, a linki
+    # w kolumnie „zmienione rekordy” prowadzą do ich stron „Historia”.
+    list_display_links = None
 
     def get_queryset(self, request):
         return super().get_queryset(request).prefetch_related("rewizja__version_set")
@@ -83,6 +87,10 @@ class ZrodloZmianyAdmin(admin.ModelAdmin):
         if len(wersje) > MAKS_OBIEKTOW:
             html = format_html("{}<br>… i {} więcej", html, len(wersje) - MAKS_OBIEKTOW)
         return html
+
+    def history_view(self, request, object_id, extra_context=None):
+        # Wpis historii zmian sam nie ma historii.
+        raise Http404
 
     def has_add_permission(self, request):
         return False

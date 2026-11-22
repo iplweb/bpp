@@ -352,3 +352,34 @@ def test_zrodlo_zmiany_przy_zapisie_hurtowym(admin_client):
     for rekord in rekordy:
         for wersja in Version.objects.get_for_object(rekord):
             assert wersja.revision.zrodlo_zmiany.zrodlo == "admin"
+
+
+def test_lista_historii_zmian_bez_historii_wpisu(admin_client):
+    """Lista „Historia zmian (rewizje)”: wpis nie ma własnej historii ani
+    przycisku „Historia” — to byłaby historia historii."""
+    seria = baker.make(Seria_Wydawnicza)
+    with reversion.create_revision():
+        seria.save()
+    wpis = Version.objects.get_for_object(seria).get().revision.zrodlo_zmiany
+
+    lista = admin_client.get(reverse("admin:historia_zmian_zrodlozmiany_changelist"))
+    assert lista.status_code == 200
+    assert (
+        reverse("admin:bpp_seria_wydawnicza_history", args=(seria.pk,))
+        in lista.content.decode()
+    )
+
+    strona = admin_client.get(
+        reverse("admin:historia_zmian_zrodlozmiany_change", args=(wpis.pk,))
+    )
+    assert strona.status_code == 200
+    assert (
+        reverse("admin:historia_zmian_zrodlozmiany_history", args=(wpis.pk,))
+        not in strona.content.decode()
+    )
+    assert (
+        admin_client.get(
+            reverse("admin:historia_zmian_zrodlozmiany_history", args=(wpis.pk,))
+        ).status_code
+        == 404
+    )
