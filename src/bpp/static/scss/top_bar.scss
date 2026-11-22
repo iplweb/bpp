@@ -126,6 +126,25 @@ body .uwy.userway_p1 .userway_buttons_wrapper {
         display: flex !important;
     }
 
+    // Strzałka rozwijania na czas inicjalizacji Foundation (bare.html:
+    // html.bpp-js-init). Klasę is-dropdown-submenu-parent dodaje dopiero JS,
+    // więc przy przejściach strzałka na moment znikała. Te same wymiary
+    // i kolor co strzałka Foundation (motywy nadpisują kolor dla obu reguł).
+    // .has-submenu ma własną strzałkę niżej, od razu.
+    @at-root html.bpp-js-init .top-bar .dropdown.menu > li:has(> a[aria-haspopup]):not(.has-submenu) > a {
+        position: relative;
+        padding-right: $dropdownmenu-arrow-padding;
+
+        &::after {
+            @include css-triangle($dropdownmenu-arrow-size, $dropdownmenu-arrow-color, down);
+            position: absolute;
+            top: 50%;
+            right: 5px;
+            left: auto;
+            margin-top: -1 * ($dropdownmenu-arrow-size * 0.5);
+        }
+    }
+
     // Ensure submenu positioning
     .dropdown.menu > li.is-dropdown-submenu-parent > a::after {
         transition: transform 0.3s ease;

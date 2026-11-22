@@ -249,7 +249,8 @@
       color: var(--tc-tekst);
     }
 
-    .dropdown.menu > li.is-dropdown-submenu-parent > a::after {
+    .dropdown.menu > li.is-dropdown-submenu-parent > a::after,
+    .dropdown.menu > li:has(> a[aria-haspopup]):not(.has-submenu) > a::after {
       border-top-color: var(--tc-akcent);
     }
 
