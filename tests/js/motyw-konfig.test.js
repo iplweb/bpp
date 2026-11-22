@@ -399,3 +399,18 @@ describe("własny kolor tła strony", () => {
         ).toBe(false);
     });
 });
+
+describe("położenie menu i ukryta stopka", () => {
+    test("menu na środku i ukryta stopka trafiają do SCSS", () => {
+        const k = M.normalizuj({ menu_polozenie: "srodek", stopka_tlo: "ukryta" });
+        const scss = M.doScss(k, {});
+        expect(scss).toContain('$cfg-menu-polozenie: "srodek";');
+        expect(scss).toContain("$cfg-stopka-ukryta: true;");
+    });
+
+    test("domyślnie menu do lewej, stopka widoczna", () => {
+        const scss = M.doScss(M.normalizuj({}), {});
+        expect(scss).toContain('$cfg-menu-polozenie: "lewo";');
+        expect(scss).toContain("$cfg-stopka-ukryta: false;");
+    });
+});

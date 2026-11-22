@@ -185,6 +185,26 @@ nav.sticky-header {
   }
 }
 
+// Położenie menu na komputerze (na telefonie menu i tak jest listą).
+@if $cfg-menu-polozenie == "srodek" {
+  @include breakpoint(medium) {
+    .top-bar {
+      justify-content: center;
+    }
+
+    .top-bar .top-bar-left {
+      flex: 0 1 auto;
+      // BPP przykleja menu do lewej (margin-right: auto) — tu z obu stron.
+      margin-left: auto;
+      margin-right: auto;
+    }
+
+    .top-bar .top-bar-left > .dropdown.menu {
+      justify-content: center;
+    }
+  }
+}
+
 // Ikona menu na telefonie (paski: top_bar.scss) i napis obok niej.
 .title-bar .bpp-ikona-menu {
   @if $cfg-ikona-menu == "dwa" {
@@ -440,6 +460,12 @@ nav.sticky-header {
   #breadcrumbs-wrapper #rotating-tips a {
     color: map-get($cfg-okruszki, link);
     text-decoration: underline;
+  }
+}
+
+@if $cfg-stopka-ukryta {
+  .footer-container {
+    display: none;
   }
 }
 

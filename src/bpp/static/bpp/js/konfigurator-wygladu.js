@@ -746,7 +746,7 @@
         [".bpp-strona-glowna, .bpp-logo, .bpp-napis", ["logo_bpp", "napis_w_pasku", "napis_wlasny", "logo_uczelni"]],
         [".top-bar .menu.vertical, .top-bar .menu-columns-wrapper", ["menu_zaokraglone", "cien_menu", "ikony_w_menu"]],
         [".menu-icon, .title-bar-title", ["ikona_menu", "ikona_menu_animacja", "napis_menu", "napis_menu_wlasny"]],
-        ["nav.sticky-header, .top-bar, .title-bar", ["kolor_naglowka", "ikony_w_menu", "menu_zaokraglone", "cien_menu"]],
+        ["nav.sticky-header, .top-bar, .title-bar", ["kolor_naglowka", "menu_polozenie", "ikony_w_menu", "menu_zaokraglone", "cien_menu"]],
         [".uczelnia__tile, .browse-tile", ["kafle_styl", "kolor_glowny"]],
         [".autor-page__slupek, .autor-page__wykres-linia, .autor-page__wykres-punkt", ["kolor_wykresow"]],
         ["h1, h2, h3, h4, h5, h6", ["czcionka_naglowkow", "naglowki", "czcionka_wlasna"]],
