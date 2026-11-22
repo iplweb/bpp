@@ -25,7 +25,7 @@
                         {# żeby uwagi były wyróżnione też w HTML/DOCX. #}
                         <b>{{ element.uwagi }}</b>
                     {% else %}
-                    <span style="color: red;">
+                    <span style="color: var(--bpp-tekst-blad, red);">
             {{ element.uwagi }}
             </span>
                     {% endif %}
@@ -54,6 +54,6 @@
     </ol>
     {# Poza <ol>: każdy <li> dostaje z CSS numer, więc komunikat byłby pozycją „0.". #}
     {% if not object_list %}
-        <p style="text-align: center; color: #6c757d; padding: 20px;">{% trans "No elements" %}</p>
+        <p style="text-align: center; color: var(--bpp-tekst-przygaszony, #6c757d); padding: 20px;">{% trans "No elements" %}</p>
     {% endif %}
 </div>

@@ -8,6 +8,7 @@ from django.contrib.auth.decorators import login_required
 from django.shortcuts import redirect, render
 
 from bpp.models import Uczelnia
+from ewaluacja_common.okres import okres_dla_request
 
 logger = logging.getLogger(__name__)
 
@@ -33,7 +34,9 @@ def unpin_all_sensible(request):
     # Uruchom zadanie Celery
     # Sprawdź czy nie ma już uruchomionego zadania
     try:
-        task = unpin_all_sensible_task.delay(uczelnia.pk)
+        task = unpin_all_sensible_task.delay(
+            uczelnia.pk, okres_pk=okres_dla_request(request).pk
+        )
     except DuplicateTaskError:
         messages.error(
             request,

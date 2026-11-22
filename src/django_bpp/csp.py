@@ -28,9 +28,12 @@ DOMYSLNA_POLITYKA = "; ".join(
         "https://www.googletagmanager.com https://*.userway.org "
         "https://*.freshworks.com https://*.freshdesk.com",
         "style-src 'self' 'unsafe-inline' https://*.userway.org "
-        "https://*.freshworks.com https://*.freshdesk.com",
+        "https://*.freshworks.com https://*.freshdesk.com "
+        # Czcionki z internetu w motywie z konfiguratora wyglądu.
+        "https://fonts.bunny.net https://fonts.googleapis.com",
         "img-src 'self' data: blob: https:",
-        "font-src 'self' data: https://*.userway.org https://*.freshworks.com",
+        "font-src 'self' data: https://*.userway.org https://*.freshworks.com "
+        "https://fonts.bunny.net https://fonts.gstatic.com",
         "connect-src 'self' https://api.rollbar.com "
         "https://*.google-analytics.com https://*.analytics.google.com "
         "https://www.googletagmanager.com https://*.userway.org "

@@ -60,6 +60,7 @@ from bpp.views.autocomplete import (
     Wydawnictwo_Nadrzedne_W_PBNAutocomplete,
     Wydawnictwo_NadrzedneAutocomplete,
     Wydawnictwo_ZwarteAdminAutocomplete,
+    WyszukiwarkaAutorAutocomplete,
     ZapisanyJakoAutocomplete,
     Zewnetrzna_Baza_DanychAutocomplete,
     ZrodloAutocomplete,
@@ -86,6 +87,7 @@ from bpp.views.browse import (
     UczelniaView,
     WydawcaView,
     WydawcyView,
+    WydzialyView,
     WyswietlDeklaracjeDostepnosci,
     ZrodlaView,
     ZrodloView,
@@ -97,6 +99,21 @@ from bpp.views.eksport_autora import (
     EksportAutoraStatusView,
     PrzekierowanieEksportuAutoraView,
     StartEksportAutoraView,
+)
+from bpp.views.konfigurator_wygladu import (
+    konfigurator_wygladu,
+    konfigurator_wygladu_demo,
+    konfigurator_wygladu_motyw,
+    konfigurator_wygladu_motyw_usun,
+    konfigurator_wygladu_motyw_zapisz,
+    konfigurator_wygladu_przymiarka_koniec,
+    konfigurator_wygladu_przymierz,
+    konfigurator_wygladu_przywroc,
+    konfigurator_wygladu_wersja,
+    konfigurator_wygladu_zapisz,
+    konfigurator_wygladu_zastosuj,
+    motyw_przymiarka_css,
+    motyw_wlasny_css,
 )
 from bpp.views.microsoft_auth_redirect import MicrosoftAuthRedirectView
 from bpp.views.oai import OAIView
@@ -293,6 +310,12 @@ urlpatterns = [
         JednostkiView.as_view(),
         name="browse_jednostki_literka",
     ),
+    url(r"^wydzialy/$", WydzialyView.as_view(), name="browse_wydzialy"),
+    url(
+        r"^wydzialy/(?P<literka>.)/$",
+        WydzialyView.as_view(),
+        name="browse_wydzialy_literka",
+    ),
     url(
         r"^wydzial/(?P<slug>[\w-]+)/$",
         browse_wydzial_redirect,
@@ -307,6 +330,71 @@ urlpatterns = [
         name="browse_artykul",
     ),
     url(r"^autorzy/$", AutorzyView.as_view(), name="browse_autorzy"),
+    path(
+        "konfigurator-wygladu/",
+        konfigurator_wygladu,
+        name="konfigurator_wygladu",
+    ),
+    path(
+        "konfigurator-wygladu/demo/",
+        konfigurator_wygladu_demo,
+        name="konfigurator_wygladu_demo",
+    ),
+    path(
+        "konfigurator-wygladu/wersja/<int:pk>/",
+        konfigurator_wygladu_wersja,
+        name="konfigurator_wygladu_wersja",
+    ),
+    path(
+        "konfigurator-wygladu/przywroc/",
+        konfigurator_wygladu_przywroc,
+        name="konfigurator_wygladu_przywroc",
+    ),
+    path(
+        "konfigurator-wygladu/motywy/zapisz/",
+        konfigurator_wygladu_motyw_zapisz,
+        name="konfigurator_wygladu_motyw_zapisz",
+    ),
+    path(
+        "konfigurator-wygladu/motywy/<int:pk>/",
+        konfigurator_wygladu_motyw,
+        name="konfigurator_wygladu_motyw",
+    ),
+    path(
+        "konfigurator-wygladu/motywy/<int:pk>/usun/",
+        konfigurator_wygladu_motyw_usun,
+        name="konfigurator_wygladu_motyw_usun",
+    ),
+    path(
+        "konfigurator-wygladu/zapisz/",
+        konfigurator_wygladu_zapisz,
+        name="konfigurator_wygladu_zapisz",
+    ),
+    path(
+        "konfigurator-wygladu/zastosuj/",
+        konfigurator_wygladu_zastosuj,
+        name="konfigurator_wygladu_zastosuj",
+    ),
+    path(
+        "konfigurator-wygladu/przymierz/",
+        konfigurator_wygladu_przymierz,
+        name="konfigurator_wygladu_przymierz",
+    ),
+    path(
+        "konfigurator-wygladu/przymierz/koniec/",
+        konfigurator_wygladu_przymiarka_koniec,
+        name="konfigurator_wygladu_przymiarka_koniec",
+    ),
+    path(
+        "motyw-przymiarka/<str:skrot>.css",
+        motyw_przymiarka_css,
+        name="motyw_przymiarka_css",
+    ),
+    path(
+        "motyw-wlasny/<str:skrot>.css",
+        motyw_wlasny_css,
+        name="motyw_wlasny_css",
+    ),
     url(
         r"^autorzy/(?P<literka>.)/$",
         AutorzyView.as_view(),
@@ -558,6 +646,11 @@ urlpatterns = [
         r"^public-autor-autocomplete/$",
         PublicAutorAutocomplete.as_view(),
         name="public-autor-autocomplete",
+    ),
+    url(
+        r"^wyszukiwarka-autor-autocomplete/$",
+        WyszukiwarkaAutorAutocomplete.as_view(),
+        name="wyszukiwarka-autor-autocomplete",
     ),
     url(
         r"^import-autor-autocomplete/$",

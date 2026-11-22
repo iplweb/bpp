@@ -28,7 +28,7 @@ from __future__ import annotations
 import asyncio
 import logging
 
-import rollbar
+from bpp.zglaszanie_bledow import capture_exception
 
 logger = logging.getLogger(__name__)
 
@@ -118,7 +118,7 @@ class StartMcp:
             # raz na awarię, a nie raz na żądanie — inaczej martwy menedżer
             # sam wyczerpałby kwotę Rollbara.
             logger.exception("mcp: lifespan aplikacji MCP zakończył się błędem")
-            rollbar.report_exc_info()
+            capture_exception()
             self._blad = exc
             self._gotowe.set()
             raise

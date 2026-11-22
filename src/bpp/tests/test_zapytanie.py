@@ -89,6 +89,29 @@ def test_zapytanie_view_renders_radio_buttons(superuser_client):
 
 
 @pytest.mark.django_db
+def test_zapytanie_view_ikony_modeli(superuser_client):
+    """Rekord ma ikonę dokumentu, Autor — osoby (wcześniej oba „torso",
+    bo szablon czytał nieistniejące ``radio.choice_value``)."""
+    html = superuser_client.get(reverse(URL)).content.decode("utf-8")
+
+    def etykieta(model):
+        return html.split(f'value="{model}"')[1].split("</label>")[0]
+
+    assert "fi-page-multiple" in etykieta("rekord")
+    assert "fi-torso" not in etykieta("rekord")
+    assert "fi-torso" in etykieta("autor")
+
+
+@pytest.mark.django_db
+def test_zapytanie_view_polskie_znaki(superuser_client):
+    html = superuser_client.get(reverse(URL)).content.decode("utf-8")
+    for tekst in ("Podgląd technologiczny", "Wyjaśnij liczby", "Historia zapytań"):
+        assert tekst in html
+    for tekst in ("Podglad", "Wyjasnij", "Wyczysc"):
+        assert tekst not in html
+
+
+@pytest.mark.django_db
 def test_zapytanie_query_autor_matches(superuser_client):
     baker.make("bpp.Autor", nazwisko="Kowalski", imiona="Jan")
     baker.make("bpp.Autor", nazwisko="Nowak", imiona="Anna")
@@ -708,3 +731,36 @@ def test_admin_djangoql_highlight_loaded():
             admin_cls.__name__,
             js,
         )
+
+
+@pytest.mark.django_db
+def test_zapytanie_przyklady_audytu_dla_kazdego_okresu_ewaluacji():
+    """Audyt ewaluacyjny jest w pomocy dla KAŻDEGO okresu ewaluacji z bazy
+    (stary i nowy okres), a zapytania są poprawnym DjangoQL."""
+    from bpp.views.zapytanie import examples_z_okresami
+    from ewaluacja_common.models import OkresEwaluacji
+
+    poziom = next(level for level in examples_z_okresami() if level["level"] == 3)
+    rekord = next(g for g in poziom["groups"] if g["model"] == "rekord")
+    audyty = [(d, q) for d, q in rekord["items"] if d.startswith("Audyt ewaluacyjny")]
+
+    okresy = list(OkresEwaluacji.objects.all())
+    assert {(o.rok_od, o.rok_do) for o in okresy} >= {(2022, 2025), (2026, 2030)}
+    assert len(audyty) == len(okresy)
+    for okres, (desc, query) in zip(okresy, audyty, strict=True):
+        assert f"w okresie {okres}" in desc
+        lata = ", ".join(str(rok) for rok in okres.lata)
+        assert f"rok in ({lata})" in query
+        DjangoQLParser().parse(query)
+
+    # Statyczne EXAMPLES nie mają lat okresu na sztywno.
+    assert not any(d.startswith("Audyt ewaluacyjny") for *_x, d, _q in _all_examples())
+
+
+@pytest.mark.django_db
+def test_zapytanie_strona_pokazuje_przyklady_obu_okresow(superuser_client):
+    response = superuser_client.get(reverse(URL))
+    tresc = response.content.decode()
+    assert "w okresie 2022–2025, min. 70 pkt" in tresc
+    assert "w okresie 2026–2030, min. 70 pkt" in tresc
+    assert "rok in (2026, 2027, 2028, 2029, 2030)" in tresc

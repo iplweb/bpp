@@ -212,7 +212,7 @@ class Command(PBNBaseCommand):
                 "Błąd adaptera przy liczeniu intencji oświadczeń BPP dla "
                 f"publikacji pk={publication.pk}",
                 logger=logger,
-                do_rollbar=False,
+                do_monitoringu=False,
             )
             intended_label = f"?? (błąd adaptera: {e})"
 
@@ -390,7 +390,7 @@ class Command(PBNBaseCommand):
                 "Błąd adaptera przy generowaniu intencji oświadczeń BPP do "
                 f"porównania z PBN dla publikacji pk={publication.pk}",
                 logger=logger,
-                do_rollbar=False,
+                do_monitoringu=False,
             )
             self._warn(f"Nie mogę wygenerować intencji BPP (adapter): {e}")
             self._info("Zwracam 'różnice' — user zdecyduje co robić.")

@@ -23,6 +23,8 @@ from bpp.models import (
     Wydawnictwo_Zwarte,
 )
 
+from ..dyscypliny import przypisz_brakujace_dyscypliny, waliduj_dyscypliny_sesji
+from ..historia import komunikat_utworzenia, zapisz_utworzenie
 from ..models import ImportedAuthor, ImportSession
 from .helpers import _detect_language
 from .pbn_check import _link_pbn_uid
@@ -394,11 +396,18 @@ def waliduj_afiliacje_sesji(session, uczelnia=None):
 
 
 @transaction.atomic
-def _create_publication(session):
-    """Utwórz rekord publikacji na podstawie sesji."""
+def _create_publication(session, user=None):
+    """Utwórz rekord publikacji na podstawie sesji.
+
+    ``user`` — kto prowadzi import (autor wpisu w historii zmian rekordu,
+    FD#441); domyślnie twórca sesji.
+    """
     # Twardy guard afiliacji — przed jakimkolwiek zapisem do bazy (transakcja
     # atomowa i tak by wycofała, ale tu odmawiamy zanim cokolwiek powstanie).
     waliduj_afiliacje_sesji(session)
+    # FD#623: autor z przypisaniem na rok pracy do INNEJ dyscypliny niż
+    # wybrana — czytelny komunikat zamiast błędu walidacji z ``dodaj_autora``.
+    waliduj_dyscypliny_sesji(session)
 
     normalized_data = session.normalized_data
 
@@ -456,6 +465,10 @@ def _create_publication(session):
 
     is_patent = session.rodzaj_rekordu == ImportSession.RodzajRekordu.PATENT
 
+    # FD#620: autor bez dyscypliny na rok pracy, któremu operator wybrał
+    # dyscyplinę z typowych — przypisz mu ją na ten rok (inaczej walidacja
+    # rekordu autora odrzuci dyscyplinę).
+    przypisz_brakujace_dyscypliny(session, record, user or session.created_by)
     _add_authors_to_record(session, record)
     # Patent nie ma relacji ``streszczenia`` (tylko Wydawnictwo_Ciagle/Zwarte
     # ją mają) — @patent z polem abstract (typowy eksport Zotero) wywaliłby
@@ -484,5 +497,8 @@ def _create_publication(session):
     # mają) — bez tego guardu stale pbn_mongo_id wywaliłby save(pbn_uid_id).
     if not is_patent:
         _link_pbn_uid(session, record)
+
+    # FD#441: ślad na stronie „Historia" rekordu w adminie (kto, skąd).
+    zapisz_utworzenie(user or session.created_by, record, komunikat_utworzenia(session))
 
     return record

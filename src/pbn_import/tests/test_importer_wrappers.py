@@ -75,7 +75,7 @@ def test_author_importer_records_download_and_integration_errors(session, uczeln
                 side_effect=RuntimeError("integration failed"),
             ):
                 with patch(
-                    "pbn_import.utils.base.rollbar.report_exc_info"
+                    "pbn_import.utils.base.capture_exception"
                 ) as report_exc_info:
                     result = importer.run()
 
@@ -387,7 +387,7 @@ def test_statement_importer_records_download_and_integration_errors(session, ucz
                         side_effect=RuntimeError("integration failed"),
                     ):
                         with patch(
-                            "pbn_import.utils.base.rollbar.report_exc_info"
+                            "pbn_import.utils.base.capture_exception"
                         ) as report_exc_info:
                             result = importer.run()
 
@@ -492,7 +492,7 @@ def test_statement_download_missing_publications_handles_batch_error(session):
                         side_effect=RuntimeError("batch failed"),
                     ):
                         with patch(
-                            "pbn_import.utils.base.rollbar.report_exc_info"
+                            "pbn_import.utils.base.capture_exception"
                         ) as report_exc_info:
                             statements.values_list.return_value.distinct.return_value = [
                                 "pub-1"

@@ -1,12 +1,12 @@
 import logging
 from datetime import timedelta
 
-import rollbar
 from django.apps import apps
 from django.core.cache import cache
 from django.urls import reverse
 from django.utils import timezone
 
+from bpp.zglaszanie_bledow import capture_exception, capture_message
 from django_bpp.celery_tasks import app
 from long_running.util import wait_for_object
 
@@ -45,7 +45,10 @@ def task_sprobuj_wyslac_do_pbn(pk):
 
         match res:
             case SendStatus.RETRY_LATER:
-                task_sprobuj_wyslac_do_pbn.apply_async(args=[pk], countdown=5 * 60)
+                p.refresh_from_db()
+                task_sprobuj_wyslac_do_pbn.apply_async(
+                    args=[pk], countdown=p.odstep_ponowienia(5 * 60)
+                )
 
             case SendStatus.RETRY_SOON:
                 # np. 423 Locked
@@ -103,9 +106,22 @@ def check_and_send_next_in_queue():
 
 @app.task
 def kolejka_wyczysc_wpisy_bez_rekordow():
-    for elem in PBN_Export_Queue.objects.all():
-        if not elem.check_if_record_still_exists():
+    """Usuwa wpisy WYSYŁKI, których rekordu fizycznie nie ma w bazie.
+
+    Historia wysyłek rekordów z kosza zostaje (rekord istnieje), zlecenia
+    wycofania — zawsze (to historia, ``WycofanieZablokowane``).
+    """
+    from pbn_export_queue.models import WpisWTrakcieWysylki
+
+    for elem in PBN_Export_Queue.objects.exclude(
+        operacja=PBN_Export_Queue.Operacja.WYCOFANIE
+    ):
+        if elem.rekord_istnieje_w_bazie():
+            continue
+        try:
             elem.delete()
+        except WpisWTrakcieWysylki:
+            continue  # worker go właśnie obsługuje — następnym razem
 
 
 @app.task
@@ -185,7 +201,7 @@ def queue_pbn_export_batch(
             )
         except Exception:
             # Każdy inny wyjątek to realny problem (DB error, integrity,
-            # programmer error). Logujemy, raportujemy do Rollbara,
+            # programmer error). Logujemy, raportujemy do monitoringu,
             # kontynuujemy batch — pojedynczy zły rekord nie powinien
             # zatrzymać wysyłki dziesiątek innych.
             logger.exception(
@@ -194,7 +210,7 @@ def queue_pbn_export_batch(
                 model_name,
                 record_id,
             )
-            rollbar.report_exc_info()
+            capture_exception()
 
 
 @app.task
@@ -211,12 +227,20 @@ def queue_watchdog():
     woken = 0
 
     # Scenariusz 1: elementy nigdy nie podjęte
-    never_started = PBN_Export_Queue.objects.filter(
-        wysylke_podjeto=None,
-        wysylke_zakonczono=None,
-        wykluczone=False,
-        retry_after_user_authorised=False,
-    ).order_by("zamowiono")[:20]
+    #
+    # ``retry_after_user_authorised`` przyjmuje tylko True (czeka na
+    # zalogowanie do PBN) albo None (domyślnie, także po resecie) — nigdy
+    # False. Filtr ``=False`` w SQL wyklucza NULL, więc nie budził niczego;
+    # pomijamy wyłącznie wpisy czekające na autoryzację.
+    never_started = (
+        PBN_Export_Queue.objects.filter(
+            wysylke_podjeto=None,
+            wysylke_zakonczono=None,
+            wykluczone=False,
+        )
+        .exclude(retry_after_user_authorised=True)
+        .order_by("zamowiono")[:20]
+    )
 
     for item in never_started:
         lock_key = f"{LOCK_PREFIX}{item.pk}"
@@ -227,12 +251,15 @@ def queue_watchdog():
     # Scenariusz 2: elementy z utraconymi retry'ami
     # Najdłuższy retry to 3h (PraceSerwisoweException), więc 4h to bezpieczny margines
     stale_threshold = timezone.now() - timedelta(hours=4)
-    stuck_retries = PBN_Export_Queue.objects.filter(
-        wysylke_podjeto__lt=stale_threshold,
-        wysylke_zakonczono=None,
-        wykluczone=False,
-        retry_after_user_authorised=False,
-    ).order_by("wysylke_podjeto")[:10]
+    stuck_retries = (
+        PBN_Export_Queue.objects.filter(
+            wysylke_podjeto__lt=stale_threshold,
+            wysylke_zakonczono=None,
+            wykluczone=False,
+        )
+        .exclude(retry_after_user_authorised=True)
+        .order_by("wysylke_podjeto")[:10]
+    )
 
     for item in stuck_retries:
         lock_key = f"{LOCK_PREFIX}{item.pk}"
@@ -272,7 +299,7 @@ def _najnowszy_komunikat(komunikat):
 @app.task
 def report_technical_errors_to_rollbar():
     """
-    Raportuje do Rollbar błędy techniczne w kolejce PBN.
+    Raportuje do monitoringu (Rollbar/Sentry) błędy techniczne w kolejce PBN.
     Uruchamiane przez Celery Beat raz dziennie.
 
     Raportuje jedynie jeśli liczba błędów jest większa niż 0.
@@ -310,13 +337,13 @@ def report_technical_errors_to_rollbar():
         for wpis in qset.order_by("-wysylke_zakonczono")[:LIMIT_WPISOW_W_ALARMIE]
     ]
 
-    rollbar.report_message(
+    capture_message(
         (
             f"PBN Export Queue contains {technical_errors_count} "
             "TECHNICAL errors that require investigation"
         ),
         level="warning",
-        extra_data={
+        extra={
             "technical_errors_count": technical_errors_count,
             "queue_name": "pbn_export_queue",
             "error_type": "TECHNICZNY",

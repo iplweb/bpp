@@ -8,7 +8,6 @@ autocomplete used by the search bar.
 import sys
 import traceback
 
-import rollbar
 from django.contrib import messages
 from django.http import JsonResponse
 from django.shortcuts import redirect, render
@@ -17,6 +16,7 @@ from django.views.decorators.http import require_http_methods
 from bpp.const import GR_WPROWADZANIE_DANYCH
 from bpp.models import Autor
 from bpp.models.cache import Rekord
+from bpp.zglaszanie_bledow import capture_exception
 from pbn_downloader_app.freshness import is_pbn_people_data_fresh
 from pbn_downloader_app.models import PbnDownloadTask
 
@@ -35,6 +35,7 @@ from .helpers import (
     _get_next_candidate_group,
     get_running_scan,
     group_required,
+    lata_okresu,
 )
 
 TEMPLATE_DUPLICATE_AUTHORS = "deduplikator_autorow/duplicate_authors.html"
@@ -91,6 +92,20 @@ def _build_base_context(request, running_scan, completed_scan, mode):
         "pbn_stale_message": pbn_stale_message,
         "pbn_last_download": pbn_last_download,
     }
+
+
+def _add_okres_context(request, context, completed_scan):
+    """Lata wybranego okresu (dyscypliny, linki do prac) i — gdy ostatnie
+    skanowanie liczyło priorytet dla innego okresu — ten okres, żeby
+    pokazać ostrzeżenie."""
+    rok_od, rok_do = lata_okresu(request)
+    context["rok_od"] = rok_od
+    context["rok_do"] = rok_do
+    okres_skanu = completed_scan.okres if completed_scan else None
+    context["okres_skanu"] = okres_skanu
+    context["okres_skanu_inny"] = okres_skanu is not None and (
+        (okres_skanu.rok_od, okres_skanu.rok_do) != (rok_od, rok_do)
+    )
 
 
 def _add_pending_counts(context, completed_scan, confidence_band):
@@ -189,8 +204,11 @@ def _apply_confidence_band(
     return candidates_for_author
 
 
-def _build_main_author_context(context, glowny_autor, candidates_for_author):
-    """Uzupełnij kontekst danymi głównego autora i jego duplikatów."""
+def _build_main_author_context(
+    context, glowny_autor, candidates_for_author, rok_od, rok_do
+):
+    """Uzupełnij kontekst danymi głównego autora i jego duplikatów
+    (dyscypliny z lat ``rok_od``–``rok_do`` — wybrany okres ewaluacji)."""
     from bpp.models import Autor_Dyscyplina
 
     context["glowny_autor"] = glowny_autor
@@ -226,13 +244,13 @@ def _build_main_author_context(context, glowny_autor, candidates_for_author):
     # Get main author's publications and disciplines
     context["glowny_autor_dyscypliny"] = (
         Autor_Dyscyplina.objects.filter(
-            autor=glowny_autor, rok__gte=2022, rok__lte=2025
+            autor=glowny_autor, rok__gte=rok_od, rok__lte=rok_do
         )
         .select_related("dyscyplina_naukowa", "subdyscyplina_naukowa")
         .order_by("rok")
     )
 
-    _add_dyscypliny_to_duplicates(duplikaty_z_publikacjami)
+    _add_dyscypliny_to_duplicates(duplikaty_z_publikacjami, rok_od, rok_do)
 
     glowny_autor_qs = Rekord.objects.prace_autora(glowny_autor)
     context["glowne_publikacje"] = glowny_autor_qs[:500]
@@ -264,6 +282,7 @@ def duplicate_authors_view(request):
     confidence_threshold_frac = MIN_PEWNOSC_DO_WYSWIETLENIA / 100.0
 
     context = _build_base_context(request, running_scan, completed_scan, mode)
+    _add_okres_context(request, context, completed_scan)
 
     # If no completed scan, show "run scan first" message
     if not completed_scan:
@@ -306,7 +325,13 @@ def duplicate_authors_view(request):
             )
         return render(request, TEMPLATE_DUPLICATE_AUTHORS, context)
 
-    _build_main_author_context(context, glowny_autor, candidates_for_author)
+    _build_main_author_context(
+        context,
+        glowny_autor,
+        candidates_for_author,
+        context["rok_od"],
+        context["rok_do"],
+    )
     return render(request, TEMPLATE_DUPLICATE_AUTHORS, context)
 
 
@@ -355,7 +380,7 @@ def mark_non_duplicate(request):
         return _respond(False, "Nie znaleziono autora o podanym ID.", status=404)
     except Exception:
         traceback.print_exc()
-        rollbar.report_exc_info(sys.exc_info())
+        capture_exception(sys.exc_info())
         return _respond(
             False,
             "Wystąpił wewnętrzny błąd podczas oznaczania autora. Spróbuj ponownie później.",
@@ -476,7 +501,7 @@ def mark_candidate_not_duplicate(request):
         return _respond(False, "Nie znaleziono kandydata o podanym ID.", status=404)
     except Exception:
         traceback.print_exc()
-        rollbar.report_exc_info(sys.exc_info())
+        capture_exception(sys.exc_info())
         return _respond(
             False, "Wystąpił wewnętrzny błąd podczas oznaczania kandydata.", status=500
         )

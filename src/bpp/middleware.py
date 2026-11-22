@@ -440,3 +440,108 @@ class NotificationsMiddleware(MiddlewareMixin):
 
         url = request.get_full_path()
         nieprzeczytane.filter(message__icontains=url).update(read=True)
+
+
+class RekordUsunietyMiddleware:
+    """Render :class:`bpp.rekord_usuniety.RekordUsuniety` as HTTP 410 Gone.
+
+    Sits below ``CustomRollbarNotifierMiddleware`` in ``MIDDLEWARE``, so its
+    ``process_exception`` runs first and the expected "record is in the
+    trash" signal never reaches Rollbar as an error. The page carries no
+    record data and ``noindex``; ``cache_publiczny`` stores only 200s, so a
+    410 is never cached under the shared public key.
+    """
+
+    TEMPLATE_NAME = "rekord_usuniety.html"
+
+    def __init__(self, get_response):
+        self.get_response = get_response
+
+    def __call__(self, request):
+        return self.get_response(request)
+
+    def process_exception(self, request, exception):
+        from django.shortcuts import render
+
+        from bpp.rekord_usuniety import RekordUsuniety
+
+        if not isinstance(exception, RekordUsuniety):
+            return None
+        response = render(
+            request,
+            self.TEMPLATE_NAME,
+            {"komunikat": exception.komunikat},
+            status=410,
+        )
+        response["X-Robots-Tag"] = "noindex"
+        return response
+
+
+class UzytkownikHistoriiMiddleware:
+    """Zalogowany użytkownik jest autorem wpisów historii (``LogEntry``,
+    reversion) dla rekordów, które widoki tworzą poza formularzami admina
+    (importy, „Toż", tworzenie autorów z PBN itd.) — patrz
+    ``bpp.wersjonowanie.jako_uzytkownik``. Bez zalogowanego użytkownika
+    historia trafi do konta systemowego.
+
+    Ustawia też źródło zmiany rewizji (``zrodlo_zmian``, FD#587): moduł
+    redagowania, API albo strona."""
+
+    def __init__(self, get_response):
+        self.get_response = get_response
+
+    def __call__(self, request):
+        from bpp.wersjonowanie import jako_uzytkownik
+        from bpp.zrodlo_zmian import zrodlo_zmian
+
+        user = getattr(request, "user", None)
+        if user is None or not user.is_authenticated:
+            user = None
+        # FD#587: źródło zmiany dla rewizji zapisanych w tym żądaniu.
+        with zrodlo_zmian(self._zrodlo(request)), jako_uzytkownik(user):
+            return self.get_response(request)
+
+    @staticmethod
+    def _zrodlo(request):
+        from django.urls import NoReverseMatch, reverse
+
+        from bpp.zrodlo_zmian import ZRODLO_ADMIN, ZRODLO_API, ZRODLO_STRONA
+
+        try:
+            admin_prefix = reverse("admin:index")
+        except NoReverseMatch:
+            admin_prefix = None  # urlconf bez admina (np. strony błędów w testach)
+        if admin_prefix and request.path.startswith(admin_prefix):
+            return ZRODLO_ADMIN
+        if request.path.startswith("/api/"):
+            return ZRODLO_API
+        return ZRODLO_STRONA
+
+
+class PodgladJakoGoscMiddleware:
+    """Konfigurator wyglądu: podgląd strony tak, jak widzi ją niezalogowany
+    odwiedzający (bez przycisków obsługi, „Otwórz do edycji” itd.).
+
+    Tylko dla obsługi i tylko w trybie podglądu (``?podglad_motywu&podglad_jako=gosc``):
+    żądanie dostaje anonimowego użytkownika — wyłącznie zmniejsza
+    uprawnienia. ``request.podglad_motywu`` zachowuje informację, że to
+    podgląd (procesor kontekstu ``config`` wstawia wtedy miejsce na motyw).
+    """
+
+    def __init__(self, get_response):
+        self.get_response = get_response
+
+    def __call__(self, request):
+        user = getattr(request, "user", None)
+        from bpp.konfigurator_dostep import moze_konfigurowac_wyglad
+
+        if (
+            "podglad_motywu" in request.GET
+            and request.GET.get("podglad_jako") == "gosc"
+            and moze_konfigurowac_wyglad(user)
+        ):
+            from django.contrib.auth.models import AnonymousUser
+
+            request.podglad_motywu = True
+            request.user = AnonymousUser()
+        return self.get_response(request)

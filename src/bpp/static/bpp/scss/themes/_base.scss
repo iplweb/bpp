@@ -7,7 +7,6 @@
 ul.grp-object-tools li a {
     display: inline-block !important;
     padding: 5px 12px !important;
-    padding-left: 35px !important;
     text-decoration: none !important;
     font-weight: normal !important;
     font-size: 12px !important;
@@ -17,8 +16,35 @@ ul.grp-object-tools li a {
     -webkit-border-radius: 3px !important;
     transition: background-color 0.2s ease, color 0.2s ease, border-color 0.2s ease !important;
     position: relative !important;
-    /* Increase default opacity from Grappelli's 0.5 for better visibility */
-    opacity: 0.85 !important;
+    /* Grappelli renders these at 0.5 opacity; any translucency lowers the */
+    /* text contrast below WCAG AA, so keep them fully opaque. */
+    opacity: 1 !important;
+}
+
+/* Miejsce na ikonę z lewej TYLKO dla przycisków, które ikonę mają (niżej  */
+/* `::before`, plus sprite'y Grappelli: dodawanie i „zobacz na stronie”).   */
+/* Wcześniej każdy przycisk dostawał 35 px pustego miejsca, więc przyciski  */
+/* bez ikony miały z lewej pustą dziurę.                                    */
+ul.grp-object-tools li a[href*="/add/"],
+ul.grp-object-tools li a[href*="/export/"],
+ul.grp-object-tools li a[href*="/pobierz-z-crossref/"],
+ul.grp-object-tools li a[href*="/history/"],
+ul.grp-object-tools li a[href*="_autor/"],
+ul.grp-object-tools li a[href$="/change/"],
+ul.grp-object-tools li a#dyncol-button,
+ul.grp-object-tools li a[target="_blank"],
+ul.grp-object-tools li a.grp-viewsite-link {
+    padding-left: 35px !important;
+}
+
+/* Edycja rekordu (np. „Edytuj rekord” na stronach historii) - ✏️ */
+ul.grp-object-tools li a[href$="/change/"]::before {
+    content: "✏️";
+    position: absolute;
+    left: 8px;
+    top: 50%;
+    transform: translateY(-50%);
+    font-size: 16px;
 }
 
 /* Icons for different link types in grp-object-tools */
@@ -89,6 +115,14 @@ ul.grp-object-tools li a#dyncol-button::before {
     font-size: 16px;
 }
 
+/* Przyciski modala kolumn (np. „Usuń osobisty układ") dostają display  */
+/* ze stylów grappelli/picker'a, co przebija atrybut `hidden` (arkusz    */
+/* przeglądarki ma niższy priorytet) — przycisk był widoczny mimo        */
+/* `hidden`. Przywracamy semantykę atrybutu wewnątrz modala.             */
+.dyncol-modal [hidden] {
+    display: none !important;
+}
+
 /* Smooth color transitions for theme switching */
 body,
 #grp-navigation,
@@ -126,11 +160,14 @@ ul.grp-messagelist li.info {
                 border-color 0.2s ease-in-out !important;
 }
 
+/* Otwieranie oraz przełączanie między pozycjami (kursor wciąż nad paskiem
+   menu) bez animacji opacity/visibility - inaczej stare podmenu wygasa,
+   a nowe się pojawia w tym samym czasie i przez chwilę widać oba ("miganie").
+   Wygaszanie zostaje tylko przy wyjściu kursorem z całego menu. */
+#grp-navigation ul#navigation-menu:hover li ul,
 #grp-navigation ul#navigation-menu li:hover ul,
 #grp-navigation ul#navigation-menu li.over ul {
-    transition: opacity 0.2s ease,
-                visibility 0s linear 0s,
-                background-color 0.2s ease-in-out,
+    transition: background-color 0.2s ease-in-out,
                 background 0.2s ease-in-out,
                 border-color 0.2s ease-in-out !important;
 }

@@ -97,6 +97,36 @@ a nad nim pojawiają się komunikaty:
   [Komunikat → co zrobić](#komunikaty),
 - **niebieski** — przypomnienie o autoryzacji (punkt 1).
 
+### Praca jest już w PBN — „Pobierz po ISBN” i „Pobierz po DOI” {#pobierz-po-isbn-doi}
+
+Jeżeli praca (albo książka, z której pochodzi rozdział) jest już w PBN, nie
+wysyłaj jej drugi raz — powiąż ją z istniejącym rekordem. Przy pustym polu
+**Odpowiednik w PBN** są przyciski **„Pobierz po ISBN”** (wydawnictwa
+zwarte) i **„Pobierz po DOI”**. BPP szuka rekordu po wartości z pola
+„ISBN” (gdy puste — „E-ISBN”) albo „DOI”:
+
+- najpierw w danych z PBN już pobranych do BPP i w pracach BPP, które mają
+  ustawiony odpowiednik w PBN — to trwa chwilę,
+- jeżeli tam nic nie ma — w PBN, po kilku zapisach tego samego numeru:
+  ISBN bez myślników i z myślnikami, w odmianie 13- i 10-cyfrowej; DOI tak,
+  jak je wpisano, i małymi literami. Adres `https://doi.org/` przed DOI nie
+  przeszkadza.
+
+Rok pracy nie zawęża wyszukiwania (rok w PBN bywa inny), tylko ustawia na
+początku listy rekordy z tego samego roku. Znaleziony rekord pojawia się
+w wyszukiwarce pola **Odpowiednik w PBN** — **wybierz go sam**; przyciski
+niczego nie wiążą automatycznie. Przy każdym rekordzie w nawiasie jest jego
+rodzaj w PBN, np. `[książka]` albo `[rozdział]`.
+
+!!! warning "Rozdział i książka mają ten sam ISBN"
+
+    Rozdział nosi ISBN książki, więc „Pobierz po ISBN” w rozdziale znajdzie
+    zwykle **książkę**. Nie wybieraj rekordu `[książka]` jako odpowiednika
+    rozdziału. Rozdział wprowadź z **wydawnictwem nadrzędnym** (książką),
+    książce ustaw odpowiednik w PBN, a rozdział wyślij do PBN — albo, jeśli
+    rozdział już jest w PBN, wybierz rekord `[rozdział]` (najprościej znaleźć
+    go przyciskiem „Pobierz po DOI”, jeśli rozdział ma własne DOI).
+
 ### Wysyłka w tle
 
 Po **„Zapisz i wyślij do PBN w tle”** zobaczysz komunikat **„Utworzono
@@ -262,7 +292,7 @@ ten sam powód bywa poprzedzony nazwą błędu, np. `DOIorWWWMissing:`).
 
 | Komunikat (fragment) | Przyczyna | Co zrobić |
 |---|---|---|
-| „Najpierw wykonaj autoryzację w PBN API …” | nie jesteś zalogowany do PBN | **PBN** → **autoryzuj PBN API** (w komunikacie stoi „operacje → autoryzuj w PBN” — to stara nazwa menu) |
+| „Najpierw wykonaj autoryzację w PBN API …” | nie jesteś zalogowany do PBN | **PBN** → **autoryzuj PBN API** |
 | „Brak dostępu z powodu nieprawidłowego tokena -- wymagana autoryzacja w PBN” / w kolejce „Użytkownik bez autoryzacji w PBN, spróbuję po zalogowaniu do PBN.” | autoryzacja wygasła | autoryzuj się ponownie; wpisy z kolejki ruszą same |
 | „Brak dostępu -- najprawdopodobniej użytkownik nie posiada odpowiednich uprawnień po stronie PBN/POLON” / w kolejce „Brak uprawnień …” | Twoje konto PBN nie ma uprawnień do publikacji instytucji | poproś osobę zarządzającą kontami PBN w uczelni o nadanie roli |
 | „Musi być DOI lub adres WWW” | praca nie ma DOI ani adresu WWW | uzupełnij DOI albo WWW |
@@ -271,7 +301,7 @@ ten sam powód bywa poprzedzony nazwą błędu, np. `DOIorWWWMissing:`).
 | „Autor … ma w tej pracy przypiętą dyscyplinę i afiluje, ale nie zostanie oświadczona w PBN, gdyż autor nie posiada odpowiednika w PBN.” | autor nie jest powiązany z osobą w PBN | w formularzu autora wybierz **Odpowiednik w PBN** (pomoże **importer autorów PBN**) i wyślij pracę ponownie |
 | „Wygląda na to, że wydawnictwo nadrzędne tego rekordu nie posiada odpowiednika w PBN …” | rozdział, którego książka nie jest jeszcze w PBN | najpierw wyślij książkę (albo ustaw jej **Odpowiednik w PBN**), potem rozdział |
 | „Rekord … został odrzucony przez PBN z powodu błędów walidacji danych: …” / w kolejce „Blad po stronie PBN -- kod 400” | PBN nie przyjął danych; lista pod spodem mówi, które pole | popraw wskazane pole, np. `openAccess.releaseDate` „Data udostępnienia w otwartym dostępie jest wymagana!” — uzupełnij dane otwartego dostępu |
-| `NOT_UNIQUE_PUBLICATION_ISBN_ISMN` „Publikacja o identycznym ISBN już istnieje!” | ta książka już jest w PBN | nie wysyłaj jej drugi raz — powiąż pracę z istniejącą w PBN (pole **Odpowiednik w PBN**) |
+| `NOT_UNIQUE_PUBLICATION_ISBN_ISMN` „Publikacja o identycznym ISBN już istnieje!” | ta książka już jest w PBN (także: rozdział z ISBN-em książki wysyłany jako osobna książka) | nie wysyłaj jej drugi raz — powiąż pracę z istniejącą w PBN (pole **Odpowiednik w PBN**, przycisk [„Pobierz po ISBN”](#pobierz-po-isbn-doi)); rozdział wprowadź z wydawnictwem nadrzędnym |
 | „… obiekt po stronie serwera PBN jest zablokowany. Spróbuj ponownie za jakiś czas.” / w kolejce „Zasób zablokowany w PBN (HTTP 423), ponawiam wysyłkę za kilka minut...” | ktoś (albo inny proces) właśnie zmienia tę pracę w PBN | poczekaj; kolejka ponowi sama |
 | „Po stronie PBN trwają prace serwisowe …” / „Prace serwisowe w PBN, spróbuję za kilka godzin” | przerwa techniczna PBN | poczekaj; kolejka ponowi sama |
 | „Identyczne dane rekordu … zostały wgrane do PBN w dniu … Nie aktualizuję w PBN API.” | od ostatniej wysyłki nic się nie zmieniło | nic — praca jest aktualna; aby mimo to wysłać, zmień coś w pracy albo poproś administratora o usunięcie wpisu o wysłanych danych |

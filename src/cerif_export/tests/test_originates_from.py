@@ -45,6 +45,7 @@ from cerif_export.cerif import publication as cerif_publication
 from cerif_export.kontekst import KontekstSerializacji
 from cerif_export.oai import czasowniki
 from cerif_export.providers import provider_dla_setu
+from cerif_export.tests.pomocnicze import strona_zywych
 
 NAMESPACE = "cerif.example.org"
 BASE_URL = "https://cerif.example.org/cerif-oai/"
@@ -529,7 +530,7 @@ def test_serializacja_publikacji_nie_rosnie_z_liczba_projektow(
             przypnij_grant(rekord, f"NR/{numer}", projekt=wlasny)
 
         with CaptureQueriesContext(connection) as licznik:
-            obiekty, _ = provider.strona(uczelnia, rozmiar=100)
+            obiekty, _ = strona_zywych(provider, uczelnia, rozmiar=100)
             obiekty = list(obiekty)
             kontekst = KontekstSerializacji(
                 namespace=NAMESPACE,
@@ -541,4 +542,8 @@ def test_serializacja_publikacji_nie_rosnie_z_liczba_projektow(
                     cerif_publication.serializuj(obiekt, kontekst)
         return len(licznik.captured_queries)
 
+    # Rozgrzewka: pierwsze wywołanie w procesie może dociągnąć do cache
+    # (np. ContentType) jedno zapytanie więcej — zależnie od tego, czy
+    # wcześniejszy test na tym workerze już to zrobił. Liczymy na ciepło.
+    zapytania_dla(1)
     assert zapytania_dla(1) == zapytania_dla(5)

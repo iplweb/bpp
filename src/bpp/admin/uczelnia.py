@@ -4,12 +4,14 @@ from django import forms
 from django.conf import settings
 from django.contrib import admin, messages
 from django.core.exceptions import ImproperlyConfigured, PermissionDenied
-from reversion.admin import VersionAdmin
+from django.urls import reverse
+from django.utils.html import format_html
+from reversion_compare.admin import CompareVersionAdmin
 
 from ewaluacja_liczba_n.models import LiczbaNDlaUczelni
 from pbn_api.exceptions import PraceSerwisoweException
 
-from ..models import Uczelnia, Ukryj_Status_Korekty
+from ..models import MOTYW_WLASNY, MotywWlasny, Uczelnia, Ukryj_Status_Korekty
 from ..profil_autora import waliduj_uklad
 from ..util.ssrf import waliduj_url_integracji
 
@@ -17,7 +19,7 @@ from ..util.ssrf import waliduj_url_integracji
 from .core import BaseBppAdminMixin, RestrictDeletionToAdministracjaGroupMixin
 from .helpers.constance_field_mixin import ConstanceUczelniaFieldsMixin
 from .helpers.fieldsets import ADNOTACJE_FIELDSET
-from .helpers.mixins import ZapiszZAdnotacjaMixin
+from .helpers.mixins import BppSoftDeleteAdminMixin, ZapiszZAdnotacjaMixin
 from .helpers.ror_field import czysc_ror
 from .helpers.site_filtered import SiteFilteredAdminMixin
 from .helpers.wersje import HistoriaWersjiMixin
@@ -87,7 +89,21 @@ class UczelniaAdminForm(forms.ModelForm):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.fields["theme_name"].choices = list(settings.BPP_THEMES)
+        motywy = list(settings.BPP_THEMES)
+        self.fields["theme_name"].help_text = format_html(
+            'Własne kolory, czcionkę i styl przycisków ustawisz w <a href="{}">'
+            "konfiguratorze wyglądu</a> (z podglądem stron).",
+            reverse("bpp:konfigurator_wygladu"),
+        )
+        # Motyw z konfiguratora wyglądu — do wyboru, gdy uczelnia go zapisała.
+        if (
+            self.instance.pk
+            and MotywWlasny.objects.filter(uczelnia=self.instance)
+            .exclude(css="")
+            .exists()
+        ):
+            motywy.append((MOTYW_WLASNY, "Własny (z konfiguratora wyglądu)"))
+        self.fields["theme_name"].choices = motywy
 
         # Multi-hosted: ``site`` jest na poziomie DB NOT NULL (migracja 0417),
         # ale to admin musi je wskazać JAWNIE — to Site wiąże uczelnię z
@@ -172,8 +188,9 @@ class UczelniaAdmin(
     RestrictDeletionToAdministracjaGroupMixin,
     ZapiszZAdnotacjaMixin,
     BaseBppAdminMixin,
+    BppSoftDeleteAdminMixin,
     HistoriaWersjiMixin,
-    VersionAdmin,
+    CompareVersionAdmin,
 ):
     form = UczelniaAdminForm
     list_display = ["nazwa", "nazwa_dopelniacz_field", "skrot", "pbn_uid"]
@@ -324,6 +341,7 @@ class UczelniaAdmin(
                     "uzywaj_wydzialow",
                     "pokazuj_jednostki_na_pierwszej_stronie",
                     "pokazuj_wydzialy_na_pierwszej_stronie",
+                    "kafel_wydzialy_zamiast_jednostek",
                     "pokazuj_siec_powiazan",
                     "wyszukiwanie_rekordy_na_strone_anonim",
                     "wyszukiwanie_rekordy_na_strone_zalogowany",
@@ -520,7 +538,7 @@ class UczelniaAdmin(
                     request,
                     f"Integracja z PBN jest włączona, ale konfiguracja jest niekompletna: {e}. "
                     f"Uzupełnij brakujące dane (nazwa aplikacji i token) lub wyłącz "
-                    f"integrację z PBN w sekcji „Integracja z PBN API”.",
+                    f"integrację z PBN w sekcji „PBN API”.",
                 )
                 return ret
 

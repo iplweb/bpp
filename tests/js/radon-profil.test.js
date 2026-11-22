@@ -21,10 +21,14 @@ beforeEach(() => {
 function makeContainer(dataset = {}) {
     const el = document.createElement("div");
     el.setAttribute("data-radon-osiagniecia", "");
-    el.dataset.orcid = dataset.orcid ?? "0000-0002-0153-4624";
+    el.dataset.orcid = dataset.orcid ?? "0000-0002-1825-0097";
     el.dataset.imie = dataset.imie ?? "Przemysław Jan";
-    el.dataset.nazwisko = dataset.nazwisko ?? "Kowalczewski";
-    el.hidden = true;
+    el.dataset.nazwisko = dataset.nazwisko ?? "Nowak";
+    // Jak w szablonie: sekcja widoczna od razu, ze wskaźnikiem pobierania.
+    el.setAttribute("data-radon-laduje", "");
+    const ladowanie = document.createElement("div");
+    ladowanie.className = "radon-osiagniecia__ladowanie";
+    el.appendChild(ladowanie);
     const wynik = document.createElement("div");
     wynik.className = "radon-osiagniecia__wynik";
     el.appendChild(wynik);
@@ -88,13 +92,15 @@ describe("wireRadonSections", () => {
         });
         expect(seen).toEqual({
             firstName: "Przemysław",
-            lastName: "Kowalczewski",
-            orcid: "0000-0002-0153-4624",
+            lastName: "Nowak",
+            orcid: "0000-0002-1825-0097",
         });
         expect(el.hidden).toBe(false);
+        expect(el.querySelector(".radon-osiagniecia__ladowanie")).toBeNull();
+        expect(el.hasAttribute("data-radon-laduje")).toBe(false);
     });
 
-    test("zostaje ukryty gdy brak danych (hasAny=false)", async () => {
+    test("chowa sekcję gdy brak danych (hasAny=false)", async () => {
         const el = makeContainer();
         await wireRadonSections(document, {
             fetchAchievements: async () => ({ hasAny: false, projects: [], patents: [], artisticAchievements: [], cv: null }),

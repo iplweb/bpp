@@ -1,0 +1,186 @@
+// =============================================================================
+// MULTISEEK — pasek opcji (raport + sortowanie) i przyciski akcji
+// Szablon: src/django_bpp/templates/multiseek/index.html
+// =============================================================================
+
+.multiseek-opcje {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem 2rem;
+  margin: 1rem 0 0.75rem;
+  padding: 0.6rem 0.9rem;
+  background: var(--bpp-tlo-pow-2, #f6f6f6);
+  border: 1px solid var(--bpp-ramka, #e0e0e0);
+  border-radius: 4px;
+
+  select {
+    margin: 0;
+    width: auto;
+    max-width: 16rem;
+  }
+}
+
+.multiseek-opcje__grupa {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.4rem 0.5rem;
+}
+
+.multiseek-opcje__etykieta {
+  margin: 0;
+  font-weight: bold;
+  white-space: nowrap;
+}
+
+.multiseek-sort {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+
+  &[hidden] {
+    display: none;
+  }
+}
+
+.multiseek-sort__potem {
+  margin: 0 0 0 0.4rem;
+  color: var(--bpp-tekst-przygaszony, #777);
+  white-space: nowrap;
+}
+
+// Przełącznik kierunku = etykieta schowanego checkboxa ``order_N_dir``.
+.multiseek-sort__kierunek {
+  margin: 0;
+  padding: 0.35rem 0.6rem;
+  border: 1px solid var(--bpp-ramka, #cacaca);
+  border-radius: 3px;
+  background: var(--bpp-tlo-pow, #fff);
+  font-size: 0.85rem;
+  white-space: nowrap;
+  cursor: pointer;
+  user-select: none;
+
+  &:hover {
+    background: var(--bpp-tlo-hover, #eef3f8);
+  }
+}
+
+.multiseek-sort__malejaco {
+  display: none;
+}
+
+.multiseek-sort__kierunek-pole:checked + .multiseek-sort__kierunek {
+  .multiseek-sort__rosnaco {
+    display: none;
+  }
+
+  .multiseek-sort__malejaco {
+    display: inline;
+  }
+}
+
+.multiseek-sort__kierunek-pole:focus-visible + .multiseek-sort__kierunek {
+  outline: 2px solid var(--bpp-akcent, #1779ba);
+  outline-offset: 1px;
+}
+
+.multiseek-sort__usun {
+  padding: 0 0.3rem;
+  color: var(--bpp-tekst-przygaszony, #888);
+  font-size: 1.3rem;
+  line-height: 1;
+  cursor: pointer;
+
+  &:hover {
+    color: var(--bpp-tekst-blad, #cc4b37);
+  }
+}
+
+.multiseek-sort__dodaj {
+  padding: 0.35rem 0.25rem;
+  color: var(--bpp-akcent, #1779ba);
+  font-size: 0.85rem;
+  cursor: pointer;
+
+  &:hover {
+    text-decoration: underline;
+  }
+
+  &[hidden] {
+    display: none;
+  }
+}
+
+// Przyciski: główna akcja po lewej, sprawy formularza po prawej.
+.multiseek-akcje {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.5rem 1rem;
+
+  .button {
+    margin: 0;
+  }
+}
+
+.multiseek-akcje__glowne,
+.multiseek-akcje__formularz {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.multiseek-form-menu {
+  width: auto;
+  min-width: 16rem;
+  padding: 0.4rem 0;
+
+  ul {
+    margin: 0;
+  }
+
+  a {
+    display: block;
+    padding: 0.4rem 1rem;
+    white-space: nowrap;
+
+    &:hover {
+      background: var(--bpp-tlo-hover, #eef3f8);
+    }
+  }
+}
+
+.multiseek-form-menu__naglowek {
+  margin-top: 0.3rem;
+  padding: 0.4rem 1rem 0.2rem;
+  border-top: 1px solid var(--bpp-ramka, #e0e0e0);
+  color: var(--bpp-tekst-przygaszony, #777);
+  font-size: 0.8rem;
+  text-transform: uppercase;
+}
+
+// Telefon: przyciski w kolumnie, na całą szerokość.
+@media screen and (max-width: 39.9375em) {
+  .multiseek-opcje__grupa,
+  .multiseek-sort {
+    width: 100%;
+  }
+
+  .multiseek-opcje select {
+    flex: 1 1 0;
+    min-width: 0;
+    max-width: 100%;
+  }
+
+  .multiseek-akcje,
+  .multiseek-akcje__glowne,
+  .multiseek-akcje__formularz {
+    flex-direction: column;
+    align-items: stretch;
+    width: 100%;
+  }
+}

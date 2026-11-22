@@ -7,7 +7,7 @@ po obejrzeniu realnych claimów.
 ## Cel
 
 Umożliwić użytkownikom logowanie do BPP przez zewnętrzny serwer OpenID
-Connect (Keycloak realm `KA` na `auth.uafm.edu.pl`), przepływem
+Connect (Keycloak realm `uczelnia` na `auth.uczelnia.example.org`), przepływem
 **Authorization Code** (redirect). Hasła użytkowników nigdy nie dotykają
 BPP — uwierzytelnia je Keycloak.
 
@@ -25,11 +25,11 @@ BPP — uwierzytelnia je Keycloak.
 
   | Zmienna (z prefiksem)                 | Fallback                        | Znaczenie     |
   |---------------------------------------|---------------------------------|---------------|
-  | `DJANGO_BPP_OIDC_UAFM_CLIENT_ID`      | `DJANGO_BPP_OIDC_CLIENT_ID`     | client_id     |
-  | `DJANGO_BPP_OIDC_UAFM_CLIENT_SECRET`  | `DJANGO_BPP_OIDC_CLIENT_SECRET` | client_secret |
-  | `DJANGO_BPP_OIDC_UAFM_ISSUER`         | `DJANGO_BPP_OIDC_ISSUER`        | issuer URL    |
+  | `DJANGO_BPP_OIDC_UCZELNIA_CLIENT_ID`  | `DJANGO_BPP_OIDC_CLIENT_ID`     | client_id     |
+  | `DJANGO_BPP_OIDC_UCZELNIA_CLIENT_SECRET` | `DJANGO_BPP_OIDC_CLIENT_SECRET` | client_secret |
+  | `DJANGO_BPP_OIDC_UCZELNIA_ISSUER`     | `DJANGO_BPP_OIDC_ISSUER`        | issuer URL    |
 
-  `UAFM` = `Uczelnia.skrot`. Aktywny skrót wykrywany automatycznie: jeśli
+  `UCZELNIA` = `Uczelnia.skrot`. Aktywny skrót wykrywany automatycznie: jeśli
   w środowisku jest dokładnie jeden komplet `DJANGO_BPP_OIDC_<X>_*`, brany
   jest on. Pierwszeństwo per-pole: **wariant z prefiksem > bare** (specyficzny
   bije generyczny), bare jest fallbackiem. Twarde wiązanie z
@@ -110,7 +110,7 @@ Blok warunkowy à la `if MICROSOFT_AUTH_CLIENT_ID:` — aktywny tylko gdy
 
 ## Przepływ danych
 
-1. User klika „Zaloguj przez UAFM” → `oidc_authentication_init` →
+1. User klika „Zaloguj przez UCZELNIA” → `oidc_authentication_init` →
    redirect do `authorization_endpoint` Keycloaka (z state, nonce, PKCE).
 2. User uwierzytelnia się na Keycloaku → powrót na
    `oidc/callback/` z kodem.
@@ -165,7 +165,7 @@ bywają w access/id-tokenie, nie w userinfo — nie buduję na ślepo):
 - Wiele issuerów naraz w jednym procesie (3 uczelnie / 3 OIDC) — osobne
   podklasy backendu + routing per-host/mountpoint.
 
-## Wymagania od administratora Keycloak (realm KA)
+## Wymagania od administratora Keycloak (realm uczelni)
 
 1. Confidential client → `client_id` + `client_secret` (mam).
 2. Standard Flow ON; Valid Redirect URI: `https://bpp.<domena>/oidc/callback/`.

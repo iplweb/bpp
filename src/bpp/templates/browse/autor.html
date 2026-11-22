@@ -14,22 +14,22 @@
 {# === Nagłówek (full-width nad gridem): H1 + funkcja + przyciski staff === #}
 <div class="author-header">
     <div class="grid-x grid-margin-x align-middle">
-        <div class="cell auto">
+        {# Telefon: nazwisko i przyciski jeden pod drugim (w wierszu przyciski ściskały nagłówek). #}
+        <div class="cell small-12 medium-auto">
             <h1 class="autor-page__heading">{{ autor }}</h1>
             {% if autor.aktualna_funkcja.pokazuj_za_nazwiskiem %}
                 <div class="author-title">{{ autor.aktualna_funkcja }}</div>
             {% endif %}
         </div>
-        <div class="cell shrink">
+        <div class="cell small-12 medium-shrink">
             <div class="hide-for-print autor-page__actions">
-                {% if request.user.is_authenticated %}
+                {% load user_in_group %}
+                {% if request.user.is_superuser or request.user|has_group:"wprowadzanie danych" %}
+                    {# Ta sama reguła co bramka widoków przemapuj_prace_autora. #}
                     <a href="{% url 'przemapuj_prace_autora:przemapuj_prace' autor.pk %}"
                        class="jednostka-remap-button">
                         <span class="fi fi-shuffle"></span>Przemapuj prace
                     </a>
-                {% endif %}
-                {% load user_in_group %}
-                {% if request.user.is_superuser or request.user|has_group:"wprowadzanie danych" %}
                     <a target="_blank"
                        href="{% url "admin:bpp_autor_change" autor.pk %}"
                        class="jednostka-edit-button">
@@ -53,16 +53,32 @@
     </div>
 {% endif %}
 
-{# Quick Actions (full-width): skok do wyszukiwarki prac + sieć powiązań. #}
-{# „Pokaż wszystkie prace” przewija do sekcji „Wyszukaj publikacje autora” #}
-{# (sekcja obowiązkowa profilu) — tam „Szukaj” bez filtrów = wszystkie prace. #}
-{# Przewijanie z poprawką na sticky header: autor-strona.js. #}
+{# Quick Actions (full-width): wszystkie prace autora, prace z zakresów lat #}
+{# (lata z tabeli okresów — tylko źródło zakresów, nic ewaluacyjnego w UI) #}
+{# i sieć powiązań. Przyciski prac budują zapytanie „autor = X” #}
+{# (+ zakres lat okresu) i przez cel=wyniki lądują od razu na liście wyników #}
+{# (bez formularza wyszukiwarki). Liczby: views.browse.liczby_prac_autora. #}
 <div class="autor-page__quick-actions">
-    <a href="#wyszukaj-publikacje-autora"
-       data-przewin-do="wyszukaj-publikacje-autora"
-       class="button primary large autor-page__show-all-btn">
-        <i class="fi-list-bullet autor-page__icon--mr-lg"></i>Pokaż wszystkie prace
-    </a>
+    {# „Pokaż wszystkie prace” jako przycisk dzielony: główna część — wszystkie #}
+    {# prace, strzałka obok — menu: zakresy lat, typy, najliczniejsze charaktery #}
+    {# (z liczbami) i przejście do wyszukiwarki z filtrami na tej stronie. #}
+    <div class="przycisk-prac">
+        <form method="post"
+              action="{% url "bpp:browse_build_search" %}"
+              class="autor-page__quick-actions-form">
+            {# Brak {% csrf_token %} celowo — BuildSearch jest @csrf_exempt. #}
+            <input type="hidden" name="autor" value="{{ autor.pk }}"/>
+            <input type="hidden" name="suggested-title" value="{{ autor }}"/>
+            <input type="hidden" name="cel" value="wyniki"/>
+            <button type="submit"
+                    class="button primary large autor-page__show-all-btn{% if liczby_prac.ma_menu %} przycisk-prac__glowny{% endif %}">
+                <i class="fi-list-bullet autor-page__icon--mr-lg"></i>Pokaż wszystkie prace ({{ liczby_prac.wszystkie }})
+            </button>
+        </form>
+        {% if liczby_prac.ma_menu %}
+            {% include "browse/_menu_prac.html" with liczby=liczby_prac pola=pola_prac tytul=autor klasa="button primary large autor-page__show-all-btn" kotwica="wyszukaj-publikacje-autora" only %}
+        {% endif %}
+    </div>
     {% if ma_powiazania %}
         <a href="{% url 'bpp:browse_autor_powiazania' autor.pk %}"
            class="button primary large autor-page__show-all-btn autor-page__network-btn">

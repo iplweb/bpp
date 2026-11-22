@@ -38,3 +38,19 @@ services:
       # safety net dla developera lokalnego — w CI to czysty narzut
       # × N shardów, dlatego tu wyłączamy.
       BPP_SKIP_ASSETS_BUILD: "1"
+      # Prawdziwy kompilator motywów (konfigurator wyglądu) — serwis niżej,
+      # uruchamiany przez bin/ci-motyw-kompilator.sh.
+      DJANGO_BPP_MOTYW_KOMPILATOR_URL: http://motyw-kompilator:8095
+
+  # Kompilator motywów konfiguratora wyglądu dla testów: gotowy node:22-alpine
+  # + pliki kompilatora wyciągnięte z obrazu test-runner
+  # (bin/ci-motyw-kompilator.sh). Jak w bpp-deploy, gdzie ten sam obraz czyta
+  # je z wolumenu plików statycznych.
+  motyw-kompilator:
+    image: node:22-alpine
+    command: ["node", "/static/bpp/js/motyw-kompilator-serwer.js"]
+    environment:
+      PORT: "8095"
+    volumes:
+      - ./ci-motyw-kompilator:/static/bpp/js:ro
+    read_only: true

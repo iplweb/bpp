@@ -14,7 +14,7 @@ from django.test import override_settings
 
 from bpp.models import Uczelnia
 from pbn_api.management.commands.util import PBNBaseCommand
-from pbn_api.reporting import rollbar_reporter
+from pbn_api.reporting import bpp_reporter
 
 
 def _second_uczelnia(**kwargs):
@@ -128,4 +128,4 @@ def test_get_client_injects_django_timeout_and_bpp_reporter(monkeypatch):
     client = command.get_client()
 
     assert client.transport.timeout == (2.0, 8.0)
-    assert client.transport.reporter is rollbar_reporter
+    assert client.transport.reporter is bpp_reporter

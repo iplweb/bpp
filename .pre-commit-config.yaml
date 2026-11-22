@@ -8,7 +8,7 @@ repos:
       # A lower pin here caused pre-commit to accept an I001 layout that
       # ruff 0.15.x (used by CI) rejected — the diff was invisible
       # locally until GitHub Actions failed.
-      rev: v0.17.4
+      rev: v0.17.5
       hooks:
         - id: ruff
           args: ["--fix", "--exit-non-zero-on-fix"]
@@ -75,12 +75,23 @@ repos:
             # `mkdocs build --strict` parsuje plik bez problemu.
             exclude: ^(docker-compose\.test\.ci\.yml|mkdocs\.yml)$
         -   id: check-toml
+        # `src/cerif_export/tests/xsd/` to VENDOROWANE schematy XSD (profil
+        # OpenAIRE CERIF 1.2 + koperta OAI-PMH 2.0) — kopie plików cudzych,
+        # pobrane wprost od wydawcy. Nie normalizujemy w nich białych znaków:
+        # plik ma zostać porównywalny bajt-w-bajt z upstreamem, żeby przy
+        # podbiciu wersji diff pokazywał ZMIANY SCHEMATU, a nie nasze
+        # przeformatowanie. Wyjątek nie obejmuje naszego pliku spinającego
+        # `oai-pmh-z-profilem.xsd` — ten piszemy sami.
         -   id: end-of-file-fixer
-            exclude: ^baseline-sql/baseline\.sql$
+            exclude: &wylaczone_z_bialych_znakow |
+              (?x)^(
+                baseline-sql/baseline\.sql$
+                | src/cerif_export/tests/xsd/(?!oai-pmh-z-profilem\.xsd).*\.xsd$
+              )
         -   id: trailing-whitespace
-            exclude: ^baseline-sql/baseline\.sql$
+            exclude: *wylaczone_z_bialych_znakow
         -   id: mixed-line-ending
-            exclude: ^baseline-sql/baseline\.sql$
+            exclude: *wylaczone_z_bialych_znakow
         -   id: check-added-large-files
             args: ['--maxkb=500']
             # .test_durations to celowy, generowany plik danych pytest-split
@@ -134,8 +145,13 @@ repos:
         - id: trufflehog
           name: TruffleHog
           description: Detect secrets in your data.
-          entry: bash -c 'trufflehog git file://. --since-commit HEAD --only-verified --fail --no-update'
+          # Jeden proces na commit (pass_filenames: false) i wspólny limit RAM przez
+          # ~/.config/systemd/user/trufflehog.slice (chezmoi); bez systemd (CI, macOS)
+          # biegnie zwykłe wywołanie.
+          entry: bash -c 't="trufflehog git file://. --since-commit HEAD --only-verified --fail --no-update --concurrency=6"; if command -v systemd-run >/dev/null && [ -S "${XDG_RUNTIME_DIR:-/nonexistent}/bus" ]; then exec systemd-run --user --scope --quiet --collect --slice=trufflehog.slice $t; else exec $t; fi'
           language: system
+          pass_filenames: false
+          require_serial: true
           stages: ["pre-commit", "pre-push"]
 
         # Lint CAŁEGO zakresu gałęzi (origin/dev..HEAD) tym samym ruff-em co
@@ -154,12 +170,17 @@ repos:
           pass_filenames: false
           always_run: true
 
-#    - repo: https://github.com/gitguardian/ggshield
-#      rev: v1.43.0
-#      hooks:
-#        - id: ggshield
-#          language: python
-#          stages: [commit]
+    # GitGuardian secret detection — the same engine as the GitGuardian
+    # check on GitHub, so secrets get caught before the commit instead of
+    # as an alert on the PR. Needs auth: `uvx ggshield auth login` once per
+    # machine (token lands in ~/.config/ggshield/), or GITGUARDIAN_API_KEY.
+    # False positives: `ggshield secret ignore --last-found` → .gitguardian.yaml.
+    - repo: https://github.com/gitguardian/ggshield
+      rev: v1.56.1
+      hooks:
+        - id: ggshield
+          language_version: python3
+          stages: [pre-commit]
 
     - repo: https://github.com/rhysd/actionlint
       rev: v1.7.8

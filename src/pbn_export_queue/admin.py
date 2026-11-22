@@ -10,7 +10,7 @@ from bpp.admin.core import DynamicAdminFilterMixin
 from bpp.admin.helpers.site_filtered import SiteFilteredAdminMixin
 from pbn_api.exceptions import AlreadyEnqueuedError
 
-from .models import PBN_Export_Queue
+from .models import OperacjaNaWpisieZablokowana, PBN_Export_Queue
 
 User = get_user_model()
 
@@ -54,6 +54,7 @@ class PBN_Export_QueueAdmin(
     list_per_page = 10
     list_display = [
         "rekord_do_wysylki",
+        "operacja",
         "object_id",
         "zamowil",
         "wysylke_podjeto",
@@ -67,6 +68,7 @@ class PBN_Export_QueueAdmin(
 
     list_filter = [
         ZamowilUniqueFilter,
+        "operacja",
         "zakonczono_pomyslnie",
         "retry_after_user_authorised",
     ]
@@ -76,6 +78,7 @@ class PBN_Export_QueueAdmin(
     readonly_fields = [
         "object_id",
         "content_type",
+        "operacja",
         "zamowiono",
         "zamowil",
         "wysylke_podjeto",
@@ -86,6 +89,10 @@ class PBN_Export_QueueAdmin(
     ]
 
     def has_delete_permission(self, request, obj=None):
+        # Zleceń WYCOFANIA nie usuwa się z kolejki — nigdy
+        # (``PBN_Export_Queue.delete``).
+        if obj is not None and obj.operacja == PBN_Export_Queue.Operacja.WYCOFANIE:
+            return False
         if request.user.is_superuser:
             return True
         if obj is not None and obj.zamowil == request.user:
@@ -142,6 +149,21 @@ class PBN_Export_QueueAdmin(
     resend_to_pbn_action.short_description = "Wyślij ponownie"
 
     actions = [resend_to_pbn_action]
+
+    def delete_model(self, request, obj):
+        try:
+            obj.delete()
+        except OperacjaNaWpisieZablokowana as e:
+            self.message_user(request, str(e), level=messages.ERROR)
+
+    def delete_queryset(self, request, queryset):
+        """Masowe usuwanie per wpis (te same reguły co ``delete()``):
+        zlecenia wycofania i wpisy w trakcie wysyłki zostają."""
+        for obj in queryset:
+            try:
+                obj.delete()
+            except OperacjaNaWpisieZablokowana as e:
+                self.message_user(request, f"{obj}: {e}", level=messages.WARNING)
 
     def save_form(self, request, form, change):
         return form.save(commit=False)

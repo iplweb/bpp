@@ -235,3 +235,41 @@ def test_themed_modules_registered_and_compose(key):
     assert compose_zrodlo_nazwa(theme, rng)
     s = compose_streszczenie(theme, rng)
     assert "{" not in s and "}" not in s
+
+
+@pytest.mark.django_db
+def test_autorzy_obowiazkowi_powstaja_raz(tmp_manifest_path):
+    """Autorzy obowiązkowi motywu powstają jako pierwsi i nie są losowani
+    drugi raz (skrypty zrzutów ekranu szukają ich ``Autor.objects.get``)."""
+    import random
+
+    from model_bakery import baker
+
+    from bpp.demo_data.generators.autorzy import create_autorzy
+    from bpp.demo_data.manifest import Manifest
+    from bpp.demo_data.themes.registry import get_theme
+    from bpp.models import Autor, Jednostka, Uczelnia
+
+    theme = get_theme("wiedzmin")
+    uczelnia = Uczelnia.objects.first() or baker.make(Uczelnia)
+    jednostka = baker.make(Jednostka, uczelnia=uczelnia)
+    manifest = Manifest(path=tmp_manifest_path, database="db", command_args={})
+    create_autorzy(
+        n=300,
+        jednostki=[jednostka],
+        theme=theme,
+        manifest=manifest,
+        rng=random.Random(1),
+        disable_progress=True,
+    )
+    for imiona, nazwisko in theme.autorzy_obowiazkowi:
+        assert Autor.objects.filter(imiona=imiona, nazwisko=nazwisko).count() == 1
+
+
+def test_miks_zawiera_pule_skladnikow():
+    from bpp.demo_data.themes.miks import MIKS, SKLADNIKI
+
+    for t in SKLADNIKI:
+        assert set(t.autor_imiona) <= set(MIKS.autor_imiona)
+        assert set(t.tytul_topics) <= set(MIKS.tytul_topics)
+    assert len(set(MIKS.autor_nazwiska)) == len(MIKS.autor_nazwiska)

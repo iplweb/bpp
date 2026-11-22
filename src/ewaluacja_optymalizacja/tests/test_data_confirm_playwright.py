@@ -16,6 +16,7 @@ from bpp.models import Uczelnia
 def test_data_confirm_shows_single_dialog(
     admin_page: Page,
     channels_live_server,
+    okresy_ewaluacji,
 ):
     """Test sprawdzający, że data-confirm wyświetla tylko jeden dialog.
 
@@ -73,6 +74,7 @@ def test_data_confirm_shows_single_dialog(
 def test_data_confirm_cancel_prevents_action(
     admin_page: Page,
     channels_live_server,
+    okresy_ewaluacji,
 ):
     """Test sprawdzający, że anulowanie dialogu data-confirm blokuje akcję.
 

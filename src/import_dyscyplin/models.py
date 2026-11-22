@@ -446,69 +446,80 @@ class Import_Dyscyplin(TimeStampedModel):
         return self._integruj_wiersze()
 
     def _integruj_wiersze(self):
-        for elem in self.poprawne_wiersze_do_integracji().select_related():
-            if elem.dyscyplina_naukowa is None:
-                # Kasowanie
-                # elem["subdyscyplina_naukowa"] został już wcześniej sprawdzony.
-                Autor_Dyscyplina.objects.get(autor=elem.autor, rok=self.rok).delete()
-                elem.info = f"Usunięto przypisanie do dyscyplin za rok {self.rok}"
-                elem.stan = Import_Dyscyplin_Row.STAN.ZINTEGROWANY
-                elem.save()
-                continue
+        # Historia autora w adminie (LogEntry + wersja); autor wpisu =
+        # właściciel importu.
+        from bpp.wersjonowanie import jako_uzytkownik, zmiana_rekordu
 
-            try:
-                ad = Autor_Dyscyplina.objects.get(autor=elem.autor, rok=self.rok)
-
-                changed = False
-                for attr in [
-                    "dyscyplina_naukowa",
-                    "procent_dyscypliny",
-                    "subdyscyplina_naukowa",
-                    "procent_subdyscypliny",
-                ]:
-                    source = getattr(elem, attr)
-                    target = getattr(ad, attr)
-
-                    if source != target:
-                        setattr(ad, attr, source)
-                        if elem.info is None:
-                            elem.info = ""
-
-                        elem.info += (
-                            f"Istniejące {attr.replace('_', ' ')} dla roku {self.rok} "
-                            f"zmieniono z {target or '[brak]'} na {source or '[brak]'}. "
-                        )
-
-                        changed = True
-
-                if changed:
-                    ad.save()
-                else:
-                    elem.info = "stan w bazie zgodny jak w pliku importu"
-
-            except Autor_Dyscyplina.DoesNotExist:
-                Autor_Dyscyplina.objects.create(
-                    autor=elem.autor,
-                    rok=self.rok,
-                    dyscyplina_naukowa=elem.dyscyplina_naukowa,
-                    procent_dyscypliny=elem.procent_dyscypliny,
-                    subdyscyplina_naukowa=elem.subdyscyplina_naukowa,
-                    procent_subdyscypliny=elem.procent_subdyscypliny,
-                )
-                subdyscyplina_str = (
-                    f", {elem.subdyscyplina_naukowa}"
-                    if elem.subdyscyplina_naukowa
-                    else ""
-                )
-                elem.info = (
-                    f"nowe przypisanie dla {self.rok}: "
-                    f"{elem.dyscyplina_naukowa}{subdyscyplina_str}."
-                )
-
-            elem.stan = Import_Dyscyplin_Row.STAN.ZINTEGROWANY
-            elem.save()
+        with jako_uzytkownik(self.owner):
+            for elem in self.poprawne_wiersze_do_integracji().select_related():
+                with zmiana_rekordu(None, elem.autor, "") as zmiana:
+                    self._integruj_wiersz(elem)
+                    zmiana.pomin = elem.info == self.INFO_BEZ_ZMIAN
+                    zmiana.komentarz = f"Import dyscyplin nr {self.pk}: {elem.info}"
 
         Autor_Dyscyplina.objects.ukryj_nieuzywane()
+
+    INFO_BEZ_ZMIAN = "stan w bazie zgodny jak w pliku importu"
+
+    def _integruj_wiersz(self, elem):
+        if elem.dyscyplina_naukowa is None:
+            # Kasowanie
+            # elem["subdyscyplina_naukowa"] został już wcześniej sprawdzony.
+            Autor_Dyscyplina.objects.get(autor=elem.autor, rok=self.rok).delete()
+            elem.info = f"Usunięto przypisanie do dyscyplin za rok {self.rok}"
+            elem.stan = Import_Dyscyplin_Row.STAN.ZINTEGROWANY
+            elem.save()
+            return
+
+        try:
+            ad = Autor_Dyscyplina.objects.get(autor=elem.autor, rok=self.rok)
+
+            changed = False
+            for attr in [
+                "dyscyplina_naukowa",
+                "procent_dyscypliny",
+                "subdyscyplina_naukowa",
+                "procent_subdyscypliny",
+            ]:
+                source = getattr(elem, attr)
+                target = getattr(ad, attr)
+
+                if source != target:
+                    setattr(ad, attr, source)
+                    if elem.info is None:
+                        elem.info = ""
+
+                    elem.info += (
+                        f"Istniejące {attr.replace('_', ' ')} dla roku {self.rok} "
+                        f"zmieniono z {target or '[brak]'} na {source or '[brak]'}. "
+                    )
+
+                    changed = True
+
+            if changed:
+                ad.save()
+            else:
+                elem.info = self.INFO_BEZ_ZMIAN
+
+        except Autor_Dyscyplina.DoesNotExist:
+            Autor_Dyscyplina.objects.create(
+                autor=elem.autor,
+                rok=self.rok,
+                dyscyplina_naukowa=elem.dyscyplina_naukowa,
+                procent_dyscypliny=elem.procent_dyscypliny,
+                subdyscyplina_naukowa=elem.subdyscyplina_naukowa,
+                procent_subdyscypliny=elem.procent_subdyscypliny,
+            )
+            subdyscyplina_str = (
+                f", {elem.subdyscyplina_naukowa}" if elem.subdyscyplina_naukowa else ""
+            )
+            elem.info = (
+                f"nowe przypisanie dla {self.rok}: "
+                f"{elem.dyscyplina_naukowa}{subdyscyplina_str}."
+            )
+
+        elem.stan = Import_Dyscyplin_Row.STAN.ZINTEGROWANY
+        elem.save()
 
     def delete(self, *args, **kw):
         transaction.on_commit(lambda instance=self: instance.plik.delete(False))

@@ -20,8 +20,6 @@
             <span class="fi-graph-bar"></span> Statystyki metryk ewaluacyjnych
         </h1>
 
-        <!-- Disclaimer komunikat -->
-        {% include "ewaluacja_metryki/disclaimer.html" %}
 
         <!-- Navigation menu -->
         <div class="callout stats-navigation">
@@ -62,27 +60,27 @@
             </div>
             <h3><span class="fi-database"></span> Statystyki globalne</h3>
             <div class="row">
-                <div class="medium-2 columns text-center">
+                <div class="small-6 medium-2 columns text-center">
                     <h5>Liczba wierszy</h5>
                     <p class="stat">{{ statystyki_globalne.liczba_wierszy|default:"0" }}</p>
                 </div>
-                <div class="medium-2 columns text-center">
+                <div class="small-6 medium-2 columns text-center">
                     <h5>Liczba autorów</h5>
                     <p class="stat">{{ statystyki_globalne.liczba_autorow|default:"0" }}</p>
                 </div>
-                <div class="medium-2 columns text-center">
+                <div class="small-6 medium-2 columns text-center">
                     <h5>Średnie wykorzystanie</h5>
                     <p class="stat">{{ statystyki_globalne.srednia_wykorzystania|floatformat:1|default:"0" }}%</p>
                 </div>
-                <div class="medium-2 columns text-center">
+                <div class="small-6 medium-2 columns text-center">
                     <h5>Średnia PKDaut/slot</h5>
                     <p class="stat">{{ statystyki_globalne.srednia_pkd_slot|floatformat:2|default:"0" }}</p>
                 </div>
-                <div class="medium-2 columns text-center">
+                <div class="small-6 medium-2 columns text-center">
                     <h5>Suma punktów</h5>
                     <p class="stat">{{ statystyki_globalne.suma_punktow|floatformat:0|default:"0" }}</p>
                 </div>
-                <div class="medium-2 columns text-center">
+                <div class="small-6 medium-2 columns text-center">
                     <h5>Suma slotów</h5>
                     <p class="stat">{{ statystyki_globalne.suma_slotow|floatformat:0|default:"0" }}</p>
                 </div>
@@ -121,7 +119,7 @@
 
         <!-- Top 20 autorów - wide list -->
         <div class="row">
-            <div class="medium-12 columns">
+            <div class="small-12 medium-12 columns">
                 <div class="callout success" id="top-autorzy">
                     <div class="float-right">
                         <a href="{% url 'ewaluacja_metryki:export_xlsx' 'top-autorzy' %}" class="button tiny success">
@@ -194,7 +192,7 @@
 
         <!-- Top 20 autorów - sloty wypełnione -->
         <div class="row">
-            <div class="medium-12 columns">
+            <div class="small-12 medium-12 columns">
                 <div class="callout primary" id="top-sloty" style="background-color: #2ca8ff; border-color: #0e90db;">
                     <div class="float-right">
                         <a href="{% url 'ewaluacja_metryki:export_xlsx' 'top-sloty' %}" class="button tiny success">
@@ -267,7 +265,7 @@
 
         <!-- Rozkład wykorzystania slotów -->
         <div class="row">
-            <div class="medium-6 columns">
+            <div class="small-12 medium-6 columns">
                 <div class="callout">
                     <div class="float-right">
                         <a href="{% url 'ewaluacja_metryki:export_xlsx' 'wykorzystanie' %}" class="button tiny success">
@@ -335,7 +333,7 @@
 
         <!-- Najniższe 20 autorów wg PKDaut/slot (nie-zerowych) -->
         <div class="row">
-            <div class="medium-12 columns">
+            <div class="small-12 medium-12 columns">
                 <div class="callout warning" id="bottom-autorzy">
                     <div class="float-right">
                         <a href="{% url 'ewaluacja_metryki:export_xlsx' 'bottom-pkd' %}" class="button tiny success">
@@ -408,7 +406,7 @@
 
         <!-- Najniższe 20 autorów wg slotów wypełnionych (nie-zerowych) -->
         <div class="row">
-            <div class="medium-12 columns">
+            <div class="small-12 medium-12 columns">
                 <div class="callout alert" id="bottom-sloty">
                     <div class="float-right">
                         <a href="{% url 'ewaluacja_metryki:export_xlsx' 'bottom-sloty' %}" class="button tiny success">
@@ -511,7 +509,7 @@
 
         <!-- Lista autorów zerowych -->
         <div class="row">
-            <div class="medium-12 columns">
+            <div class="small-12 medium-12 columns">
                 <div class="callout secondary" id="autorzy-zerowi">
                     <div class="float-right">
                         <a href="{% url 'ewaluacja_metryki:export_xlsx' 'zerowi' %}" class="button tiny success">
@@ -733,10 +731,10 @@
     .stat {
         font-size: 2rem;
         font-weight: bold;
-        color: #1779ba;
+        color: var(--bpp-akcent, #1779ba);
     }
     .text-muted {
-        color: #8a8a8a;
+        color: var(--bpp-tekst-przygaszony, #8a8a8a);
     }
 
     /* Circular Progress Bar Styles */
@@ -763,14 +761,14 @@
         transform: translate(-50%, -50%);
         font-size: 14px;
         font-weight: 600;
-        color: #333;
+        color: var(--bpp-tekst, #333);
         z-index: 1;
     }
 
     .circular-progress-wrapper .progress-label {
         display: block;
         margin-top: 5px;
-        color: #666;
+        color: var(--bpp-tekst-przygaszony, #666);
         font-size: 0.85rem;
         white-space: nowrap;
     }
@@ -780,7 +778,7 @@
         display: inline-block;
         min-width: 200px;
         padding: 10px;
-        background: #f8f9fa;
+        background: var(--bpp-tlo-pow-2, #f8f9fa);
         border-radius: 8px;
         box-shadow: 0 2px 4px rgba(0,0,0,0.1);
     }
@@ -792,12 +790,12 @@
 
     .pkd-value-label strong {
         font-size: 1.25rem;
-        color: #2c3e50;
+        color: var(--bpp-tekst, #2c3e50);
         display: block;
     }
 
     .pkd-value-label small {
-        color: #7f8c8d;
+        color: var(--bpp-tekst-przygaszony, #7f8c8d);
         font-size: 0.75rem;
     }
 
@@ -807,7 +805,7 @@
 
     .pkd-progress-track {
         height: 20px;
-        background: #e0e0e0;
+        background: var(--bpp-tlo-pow-2, #e0e0e0);
         border-radius: 10px;
         overflow: hidden;
         position: relative;
@@ -898,7 +896,7 @@
     }
     .pkd-quality-label.temp-100 {
         background: #fcb69f;
-        color: #333;
+        color: var(--bpp-tekst, #333);
     }
 
     .pkd-progress-fill.temp-120 {
@@ -1087,6 +1085,8 @@
 
 
 
+{# Kolory wykresów w trybie ciemnym (owija circleProgress). #}
+{% load static %}<script src="{% static 'ewaluacja_metryki/js/wykresy-motyw.js' %}"></script>
 <script>
 // Inicjalizacja Foundation
 $(document).foundation();

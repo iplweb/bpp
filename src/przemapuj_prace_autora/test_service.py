@@ -208,3 +208,32 @@ def test_cofnij_omija_clean_dyscypliny(autor, jednostka_z, jednostka_do):
     pa.refresh_from_db()
     assert pa.jednostka_id == jednostka_z.pk
     assert (cofnieto, pominieto) == (1, 0)
+
+
+@pytest.mark.django_db
+def test_przemapuj_i_cofnij_zapisuja_historie_prac(
+    autor, jednostka_z, jednostka_do, admin_user
+):
+    from django.contrib.admin.models import CHANGE, LogEntry
+
+    from bpp.wersjonowanie import jako_uzytkownik
+
+    wc = baker.make(Wydawnictwo_Ciagle, tytul_oryginalny="Art", rok=2023)
+    baker.make(Wydawnictwo_Ciagle_Autor, rekord=wc, autor=autor, jednostka=jednostka_z)
+    wz = baker.make(Wydawnictwo_Zwarte, tytul_oryginalny="Ksz", rok=2022)
+    baker.make(Wydawnictwo_Zwarte_Autor, rekord=wz, autor=autor, jednostka=jednostka_z)
+
+    prz = service.przemapuj(autor, jednostka_z, jednostka_do, user=admin_user)
+    with jako_uzytkownik(admin_user):
+        service.cofnij(prz)
+
+    for praca, model in ((wc, "wydawnictwo_ciagle"), (wz, "wydawnictwo_zwarte")):
+        wpisy = list(
+            LogEntry.objects.filter(
+                content_type__model=model, object_id=str(praca.pk)
+            ).order_by("pk")
+        )
+        assert [w.action_flag for w in wpisy] == [CHANGE, CHANGE]
+        assert {w.user for w in wpisy} == {admin_user}
+        assert "„Stara” → „Nowa”" in wpisy[0].change_message
+        assert wpisy[1].change_message.startswith("Cofnięto przemapowanie")

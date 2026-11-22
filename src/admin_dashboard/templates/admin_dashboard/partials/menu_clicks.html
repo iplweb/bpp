@@ -8,7 +8,7 @@
         transition: all 0.2s ease; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
             {{ click.emoji }}
         </div>
-        <span class="menu-label" style="font-size: 11px; color: #333; line-height: 1.2; word-wrap: break-word; max-width: 100%;">
+        <span class="menu-label" style="font-size: 11px; color: var(--bpp-tekst, #333); line-height: 1.2; word-wrap: break-word; max-width: 100%;">
             {{ click.menu_label }}
         </span>
     </a>
@@ -21,7 +21,7 @@
         box-shadow: 0 4px 8px rgba(0,0,0,0.15);
     }
     .menu-click-item:hover .menu-label {
-        color: #417690;
+        color: var(--bpp-tekst-przygaszony, #417690);
     }
     @media (max-width: 768px) {
         .menu-clicks-grid {
@@ -31,5 +31,5 @@
     }
 </style>
 {% else %}
-<p style="padding: 10px; color: #666;">Brak kliknięć w menu. Zacznij korzystać z menu, a tutaj pojawią się Twoje najczęściej wybierane pozycje.</p>
+<p style="padding: 10px; color: var(--bpp-tekst-przygaszony, #666);">Brak kliknięć w menu. Zacznij korzystać z menu, a tutaj pojawią się Twoje najczęściej wybierane pozycje.</p>
 {% endif %}

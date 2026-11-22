@@ -1,7 +1,12 @@
-# BPP 202607.1397
+# BPP 202611.1408
 # Model: bpp.Rekord   Schemat: bpp.djangoql_schema.RekordLLMSchema
 # Wygenerowano: manage.py opisz_schemat_djangoql_dla_llm
 # Plik generowany — nie edytuj ręcznie.
+
+# Rekordy skasowane (soft-delete, pole `deleted_at`) są DOMYŚLNIE pomijane.
+# Zapytanie bez wzmianki o `deleted_at` widzi tylko żywe wiersze — nie dopisuj
+# `deleted_at = None`, to już działa. Żeby zajrzeć do kosza, wymień to pole na
+# wybranej relacji: `autorzy_set.deleted_at != None` = TYLKO skasowane autorstwa.
 
 # DjangoQL schema
 # Query: <field> <op> <value>, combined with and/or, grouped with ().
@@ -79,7 +84,7 @@ bpp.autorzy:
   afiliuje               bool
   autor                  -> bpp.autor
   data_oswiadczenia      date
-  dyscyplina_naukowa     -> bpp.dyscyplina_naukowa  match nazwa
+  dyscyplina_naukowa     -> bpp.dyscyplina_naukowa
   id                     unknown
   jednostka              -> bpp.jednostka
   kierunek_studiow       -> bpp.kierunek_studiow
@@ -98,6 +103,7 @@ bpp.charakter_formalny:
   charakter_pbn        -> bpp.charakter_pbn?  match help_text
   charakter_sloty      int?  "Charakter dla slotów" — Jak potraktować ten charakter przy kalkulacji slotów dla wydawnictwa zwartego?  choices: Książka | Rozdział | Referat
   children             -> bpp.charakter_formalny?
+  coar_type            str  "Typ COAR" — Pełny identyfikator typu zasobu ze słownika COAR Resource Types, np. http://purl.org/coar/resource_type/c_6501 dla artykułu naukowego. Używany w eksporcie CERIF/OpenAIRE; gdy pusty, prace o tym charakterze formalnym zostaną wyeksportowane bez typu zasobu.
   id                   int
   level                int
   lft                  int
@@ -121,6 +127,7 @@ bpp.charakter_formalny:
 
 bpp.jezyk:
   id                               int
+  kod_bcp47                        str  "Kod języka wg BCP 47" — Kod języka w notacji BCP 47 (RFC 5646), np. „pl”, „en”, „en-GB”. Używany w eksporcie CERIF/OpenAIRE jako wartość atrybutu xml:lang; gdy pusty, elementy w tym języku zostaną wyeksportowane bez oznaczenia języka.
   nazwa                            str
   pbn_uid                          -> pbn_api.language?
   praca_doktorska                  -> bpp.praca_doktorska?
@@ -142,6 +149,7 @@ bpp.konferencja:
   baza_inna           str?  "Indeksowana w..." — Wpisz listę innych baz czasopism i abstraktów, w których indeksowana była ta konferencja. Rozdziel średnikiem.
   baza_scopus         bool  "Indeksowana w SCOPUS?"
   baza_wos            bool  "Indeksowana w WOS?"
+  deleted_at          datetime?
   id                  int
   miasto              str?
   nazwa               str
@@ -149,8 +157,10 @@ bpp.konferencja:
   panstwo             str?  "Państwo"
   pbn_uid             -> pbn_api.conference?  "Odpowiednik w PBN"
   rekord              -> bpp.rekord?
+  restored_at         datetime?
   rozpoczecie         date?  "Rozpoczęcie"
   skrocona_nazwa      str?  "Skrócona nazwa"
+  transaction_id      str?
   typ_konferencji     int?  choices: 🚆 krajowa | ✈ ️międzynarodowa | 🚲 lokalna
   wydawnictwo_ciagle  -> bpp.wydawnictwo_ciagle?
   wydawnictwo_zwarte  -> bpp.wydawnictwo_zwarte?
@@ -169,6 +179,7 @@ bpp.licencja_openaccess:
   nazwa               str
   rekord              -> bpp.rekord?
   skrot               str
+  uri                 str  "Adres URI licencji" — Kanoniczny adres URI licencji, np. https://creativecommons.org/licenses/by/4.0/ . Używany w eksporcie CERIF/OpenAIRE; gdy pusty, prace na tej licencji zostaną wyeksportowane bez odnośnika do jej treści.
   wydawnictwo_ciagle  -> bpp.wydawnictwo_ciagle?
   wydawnictwo_zwarte  -> bpp.wydawnictwo_zwarte?
   zrodlo              -> bpp.zrodlo?
@@ -240,6 +251,7 @@ bpp.typ_kbn:
 
 bpp.wydawca:
   alias_dla            -> bpp.wydawca?
+  deleted_at           datetime?
   id                   int
   ile_aliasow          int
   lista_poziomow       unknown?
@@ -249,6 +261,9 @@ bpp.wydawca:
   praca_doktorska      -> bpp.praca_doktorska?
   praca_habilitacyjna  -> bpp.praca_habilitacyjna?
   rekord               -> bpp.rekord?
+  restored_at          datetime?
+  slug                 str
+  transaction_id       str?
   wydawca              -> bpp.wydawca?
   wydawnictwo_zwarte   -> bpp.wydawnictwo_zwarte?
 
@@ -259,6 +274,7 @@ bpp.wydawnictwo_zwarte:
   calkowita_liczba_autorow                     int?
   calkowita_liczba_redaktorow                  int?
   charakter_formalny                           -> bpp.charakter_formalny  match nazwa
+  deleted_at                                   datetime?
   dodatkowe_tytuly                             -> bpp.wydawnictwo_zwarte_tytul?
   doi                                          str?
   dostep_dnia                                  date?  "Dostęp dnia (płatny dostęp)" — Data dostępu do strony WWW.
@@ -288,6 +304,8 @@ bpp.wydawnictwo_zwarte:
   openaccess_data_opublikowania                date?  "OpenAccess: data publikacji"
   openaccess_ilosc_miesiecy                    int?  "OpenAccess: ilość miesięcy" — Ilość miesięcy jakie upłynęły od momentu opublikowania do momentu udostępnienia
   openaccess_licencja                          -> bpp.licencja_openaccess?  match nazwa  "OpenAccess: licencja"
+  openaccess_miesiac_udostepnienia             int?  "OpenAccess: miesiąc udostępnienia" — Miesiąc (1–12) udostępnienia w otwartym dostępie — razem z rokiem, gdy nie jest znana pełna data udostępnienia.
+  openaccess_rok_udostepnienia                 int?  "OpenAccess: rok udostępnienia" — Rok udostępnienia w otwartym dostępie — razem z miesiącem, gdy nie jest znana pełna data udostępnienia.
   openaccess_tryb_dostepu                      -> bpp.tryb_openaccess_wydawnictwo_zwarte?  match nazwa
   openaccess_wersja_tekstu                     -> bpp.wersja_tekstu_openaccess?  match nazwa  "OpenAccess: wersja tekstu"
   opis_bibliograficzny_autorzy_cache           unknown?
@@ -319,6 +337,7 @@ bpp.wydawnictwo_zwarte:
   recenzowana                                  bool
   redakcja                                     str
   rekord                                       -> bpp.rekord?
+  restored_at                                  datetime?
   rok                                          int
   search_index                                 unknown
   seria_wydawnicza                             -> bpp.seria_wydawnicza?
@@ -332,6 +351,7 @@ bpp.wydawnictwo_zwarte:
   tekst_po_ostatnim_autorze                    str?
   tekst_przed_pierwszym_autorem                str?
   tom                                          str
+  transaction_id                               str?
   typ_kbn                                      -> bpp.typ_kbn  match nazwa  "typ MNiSW/MEiN"
   tytul                                        str  "Tytuł"
   tytul_oryginalny                             str  "Tytuł oryginalny"
@@ -360,6 +380,7 @@ bpp.zewnetrznebazydanychview:
 
 bpp.zrodlo:
   adnotacje                  str
+  deleted_at                 datetime?
   doi                        str?
   e_issn                     str  "e-ISSN"
   id                         int
@@ -373,41 +394,46 @@ bpp.zrodlo:
   pbn_uid                    -> pbn_api.journal?  "Odpowiednik w PBN"
   poprzednia_nazwa           str?  "Poprzedni tytuł"
   rekord                     -> bpp.rekord?
+  restored_at                datetime?
   rodzaj                     -> bpp.rodzaj_zrodla  match nazwa
   search                     unknown
   skrot                      str  "Skrót"
   skrot_nazwy_alternatywnej  str?
   slug                       str
+  transaction_id             str?
   www                        str?
   wydawca                    str
   wydawnictwo_ciagle         -> bpp.wydawnictwo_ciagle?
   zasieg                     -> bpp.zasieg_zrodla?  match nazwa
 
 bpp.autor:
-  aktualna_funkcja             -> bpp.funkcja_autora?  match nazwa
-  aktualna_jednostka           -> bpp.jednostka?
-  autor_dyscyplina             -> bpp.autor_dyscyplina?
-  autor_jednostka              -> bpp.autor_jednostka?
-  autorzy                      -> bpp.autorzy?
-  cache_punktacja_autora       -> bpp.cache_punktacja_autora?
-  expertus_id                  str?  "Identyfikator w bazie Expertus"
-  id                           int
-  imiona                       str
-  jednostki                    -> bpp.jednostka
-  nazwisko                     str
-  orcid                        str?  "Identyfikator ORCID" — Open Researcher and Contributor ID, vide http://www.orcid.org
-  orcid_w_pbn                  bool?  "ORCID jest w bazie PBN?" — Jeżeli ORCID jest w bazie PBN, to pole powinno być zaznaczone. Zaznaczenie następuje
+  aktualna_funkcja              -> bpp.funkcja_autora?  match nazwa
+  aktualna_jednostka            -> bpp.jednostka?
+  autor_dyscyplina              -> bpp.autor_dyscyplina?
+  autor_jednostka               -> bpp.autor_jednostka?
+  autorzy                       -> bpp.autorzy?
+  biogram                       str
+  biogram_format                str  "Format biogramu"  choices: Markdown | HTML
+  cache_punktacja_autora        -> bpp.cache_punktacja_autora?
+  deleted_at                    datetime?
+  expertus_id                   str?  "Identyfikator w bazie Expertus"
+  google_scholar_id             str  "Identyfikator Google Scholar" — Np. qc6CJjYAAAAJ. Można wkleić cały adres profilu w Google Scholar.
+  id                            int
+  imiona                        str
+  jednostki                     -> bpp.jednostka
+  nazwisko                      str
+  orcid                         str?  "Identyfikator ORCID" — Open Researcher and Contributor ID, vide http://www.orcid.org
+  orcid_w_pbn                   bool?  "ORCID jest w bazie PBN?" — Jeżeli ORCID jest w bazie PBN, to pole powinno być zaznaczone. Zaznaczenie następuje
         automatycznie, przez procedury integrujące bazę danych z PBNem w nocy. Można też zaznaczyć ręcznie.
         Pole wykorzystywane jest gdy autor nie ma odpowiednika w PBN (pole 'PBN UID' rekordu autora jest puste,
         zaś eksport danych powoduje komunikat zwrotny z PBN o nieistniejącym w ich bazie ORCID). W takich sytuacjach
         należy w polu wybrać "Nie".
-  ostatnio_zmieniony           datetime?
-  patent                       -> bpp.patent?
-  patent_autor                 -> bpp.patent_autor?
-  pbn_uid                      -> pbn_api.scientist?
-  plec                         -> bpp.plec?  match nazwa
+  ostatnio_zmieniony            datetime?
+  patent                        -> bpp.patent?
+  patent_autor                  -> bpp.patent_autor?
+  pbn_uid                       -> pbn_api.scientist?
+  plec                          -> bpp.plec?  match nazwa
   pokazuj_na_stronie_jednostki  bool
-  pokazuj_opis                  bool
   pokazuj_poprzednie_nazwiska   bool
   pokazuj_siec_powiazan         bool?  "Pokazuj sieć powiązań" — Czy udostępniać sieć współautorstwa dla tego autora. Puste = użyj ustawienia uczelni; TAK/NIE nadpisuje je dla tego autora.
   pokazuj_strone_autora         bool  "Pokazuj stronę autora" — Gdy odznaczone, publiczna strona autora nie istnieje (404), a jego nazwisko nie jest nigdzie linkowane. Wymaga wcześniejszego wyłączenia pokazywania w wyszukiwaniu i w indeksie.
@@ -415,23 +441,28 @@ bpp.autor:
   pokazuj_w_indeksie            bool  "Pokazuj w indeksie autorów" — Pokazuj autora na alfabetycznej liście autorów.
   pokazuj_w_rankingu            bool
   pokazuj_w_wyszukiwaniu        bool
-  poprzednie_nazwiska          str
-  praca_doktorska              -> bpp.praca_doktorska?
-  praca_habilitacyjna          -> bpp.praca_habilitacyjna?
-  promotor_doktoratu           -> bpp.praca_doktorska?
-  pseudonim                    str
-  search                       unknown
-  slug                         str
-  sort                         str
-  system_kadrowy_id            int?  "Identyfikator w systemie kadrowym" — Identyfikator cyfrowy, używany do matchowania autora z danymi z systemu kadrowego Uczelni
-  tytul                        -> bpp.tytul?  match nazwa
-  urodzony                     date?
-  www                          str
-  wydawnictwo_ciagle           -> bpp.wydawnictwo_ciagle?
-  wydawnictwo_ciagle_autor     -> bpp.wydawnictwo_ciagle_autor?
-  wydawnictwo_zwarte           -> bpp.wydawnictwo_zwarte?
-  wydawnictwo_zwarte_autor     -> bpp.wydawnictwo_zwarte_autor?
-  zmarl                        date?
+  poprzednie_nazwiska           str
+  praca_doktorska               -> bpp.praca_doktorska?
+  praca_habilitacyjna           -> bpp.praca_habilitacyjna?
+  promotor_doktoratu            -> bpp.praca_doktorska?
+  pseudonim                     str
+  restored_at                   datetime?
+  scopus_author_id              str
+  search                        unknown
+  slug                          str
+  sort                          str
+  system_kadrowy_id             int?  "Identyfikator w systemie kadrowym" — Identyfikator cyfrowy, używany do matchowania autora z danymi z systemu kadrowego Uczelni
+  transaction_id                str?
+  tytul                         -> bpp.tytul?  match nazwa
+  url_profilu_uczelni           str  "Adres profilu w portalu uczelni" — Pełny adres profilu w uczelnianym portalu (np. PPM). Etykietę linku ustawia się w konfiguracji uczelni.
+  wos_researcherid              str  "Web of Science ResearcherID" — Np. A-1234-2008. Można wkleić cały adres profilu w WoS.
+  www                           str
+  wydawnictwo_ciagle            -> bpp.wydawnictwo_ciagle?
+  wydawnictwo_ciagle_autor      -> bpp.wydawnictwo_ciagle_autor?
+  wydawnictwo_zwarte            -> bpp.wydawnictwo_zwarte?
+  wydawnictwo_zwarte_autor      -> bpp.wydawnictwo_zwarte_autor?
+  zdjecie                       unknown?  "Zdjęcie" — Zdjęcie profilowe autora. Przy zapisie przez formularz jest przeskalowane do kwadratu.
+  zmarl                         date?
 
 bpp.dyscyplina_naukowa:
   autorzy                   -> bpp.autorzy?
@@ -462,6 +493,7 @@ bpp.jednostka:
   level                        int
   lft                          int
   nazwa                        str
+  nie_eksportuj_przez_api      bool
   obca_jednostka               -> bpp.uczelnia?
   opis                         str?
   ostatnio_zmieniony           datetime?
@@ -475,6 +507,7 @@ bpp.jednostka:
   praca_habilitacyjna          -> bpp.praca_habilitacyjna?
   rght                         int
   rodzaj                       -> bpp.rodzajjednostki?  match nazwa
+  ror_id                       str  "Identyfikator ROR" — Identyfikator w Research Organization Registry (ROR), np. https://ror.org/016f61126 — ma wbudowaną sumę kontrolną, więc literówka zostanie odrzucona. Używany w eksporcie CERIF/OpenAIRE jako identyfikator zewnętrzny jednostki organizacyjnej; gdy pusty, nie zostanie wyeksportowany.
   search                       unknown?
   skrot                        str  "Skrót"
   skrot_nazwy                  str?
@@ -534,6 +567,7 @@ bpp.wydawnictwo_ciagle:
   autorzy_set                                  -> bpp.wydawnictwo_ciagle_autor?
   cached_punkty_dyscyplin                      unknown?
   charakter_formalny                           -> bpp.charakter_formalny  match nazwa
+  deleted_at                                   datetime?
   dodatkowe_tytuly                             -> bpp.wydawnictwo_ciagle_tytul?
   doi                                          str?
   dostep_dnia                                  date?  "Dostęp dnia (płatny dostęp)" — Data dostępu do strony WWW.
@@ -554,6 +588,7 @@ bpp.wydawnictwo_ciagle:
         skonfigurowania dostępu do API WOS AMR (przez obiekt 'Uczelnia'). Możesz również
         czaktualizować tą wartość ręcznie, naciskając przycisk.
   liczba_znakow_wydawniczych                   int?  "Liczba znaków wydawniczych"
+  nagrody                                      -> bpp.nagroda?
   nie_eksportuj_przez_api                      bool
   nr_zeszytu                                   str
   numer_odbitki                                str
@@ -561,6 +596,8 @@ bpp.wydawnictwo_ciagle:
   openaccess_data_opublikowania                date?  "OpenAccess: data publikacji"
   openaccess_ilosc_miesiecy                    int?  "OpenAccess: ilość miesięcy" — Ilość miesięcy jakie upłynęły od momentu opublikowania do momentu udostępnienia
   openaccess_licencja                          -> bpp.licencja_openaccess?  match nazwa  "OpenAccess: licencja"
+  openaccess_miesiac_udostepnienia             int?  "OpenAccess: miesiąc udostępnienia" — Miesiąc (1–12) udostępnienia w otwartym dostępie — razem z rokiem, gdy nie jest znana pełna data udostępnienia.
+  openaccess_rok_udostepnienia                 int?  "OpenAccess: rok udostępnienia" — Rok udostępnienia w otwartym dostępie — razem z miesiącem, gdy nie jest znana pełna data udostępnienia.
   openaccess_tryb_dostepu                      -> bpp.tryb_openaccess_wydawnictwo_ciagle?  match nazwa  "OpenAccess: tryb dostępu"
   openaccess_wersja_tekstu                     -> bpp.wersja_tekstu_openaccess?  match nazwa  "OpenAccess: wersja tekstu"
   opis_bibliograficzny_autorzy_cache           unknown?
@@ -589,6 +626,7 @@ bpp.wydawnictwo_ciagle:
   punktacja_wewnetrzna                         float  "Punktacja wewnętrzna"
   punkty_kbn                                   float  "punkty MNiSW/MEiN"
   recenzowana                                  bool
+  restored_at                                  datetime?
   rok                                          int
   search_index                                 unknown
   slowa_kluczowe                               -> taggit.tag?  "Słowa kluczowe -- język polski" — Lista słów kluczowych -- język polski.
@@ -601,6 +639,7 @@ bpp.wydawnictwo_ciagle:
   tekst_po_ostatnim_autorze                    str?
   tekst_przed_pierwszym_autorem                str?
   tom                                          str
+  transaction_id                               str?
   typ_kbn                                      -> bpp.typ_kbn  match nazwa  "typ MNiSW/MEiN"
   tytul                                        str  "Tytuł"
   tytul_oryginalny                             str  "Tytuł oryginalny"
@@ -623,6 +662,7 @@ pbn_api.language:
 
 bpp.praca_doktorska:
   autor                                        -> bpp.autor
+  deleted_at                                   datetime?
   doi                                          str?
   dostep_dnia                                  date?  "Dostęp dnia (płatny dostęp)" — Data dostępu do strony WWW.
   e_isbn                                       str  "E-ISBN"
@@ -663,6 +703,7 @@ bpp.praca_doktorska:
   punkty_kbn                                   float  "punkty MNiSW/MEiN"
   recenzowana                                  bool
   redakcja                                     str
+  restored_at                                  datetime?
   rok                                          int
   search_index                                 unknown
   slowa_kluczowe                               -> taggit.tag?  "Słowa kluczowe -- język polski" — Lista słów kluczowych -- język polski.
@@ -674,6 +715,7 @@ bpp.praca_doktorska:
   tekst_po_ostatnim_autorze                    str?
   tekst_przed_pierwszym_autorem                str?
   tom                                          str
+  transaction_id                               str?
   typ_kbn                                      -> bpp.typ_kbn  match nazwa  "typ MNiSW/MEiN"
   tytul                                        str  "Tytuł"
   tytul_oryginalny                             str  "Tytuł oryginalny"
@@ -687,6 +729,7 @@ bpp.praca_doktorska:
 
 bpp.praca_habilitacyjna:
   autor                                        -> bpp.autor
+  deleted_at                                   datetime?
   doi                                          str?
   dostep_dnia                                  date?  "Dostęp dnia (płatny dostęp)" — Data dostępu do strony WWW.
   e_isbn                                       str  "E-ISBN"
@@ -726,6 +769,7 @@ bpp.praca_habilitacyjna:
   punkty_kbn                                   float  "punkty MNiSW/MEiN"
   recenzowana                                  bool
   redakcja                                     str
+  restored_at                                  datetime?
   rok                                          int
   search_index                                 unknown
   slowa_kluczowe                               -> taggit.tag?  "Słowa kluczowe -- język polski" — Lista słów kluczowych -- język polski.
@@ -737,6 +781,7 @@ bpp.praca_habilitacyjna:
   tekst_po_ostatnim_autorze                    str?
   tekst_przed_pierwszym_autorem                str?
   tom                                          str
+  transaction_id                               str?
   typ_kbn                                      -> bpp.typ_kbn  match nazwa  "typ MNiSW/MEiN"
   tytul                                        str  "Tytuł"
   tytul_oryginalny                             str  "Tytuł oryginalny"
@@ -790,6 +835,7 @@ bpp.patent:
   cached_punkty_dyscyplin                      unknown?
   data_decyzji                                 date?
   data_zgloszenia                              date?  "Data zgłoszenia"
+  deleted_at                                   datetime?
   dostep_dnia                                  date?  "Dostęp dnia (płatny dostęp)" — Data dostępu do strony WWW.
   id                                           int
   impact_factor                                float
@@ -809,6 +855,7 @@ bpp.patent:
   punktacja_wewnetrzna                         float  "Punktacja wewnętrzna"
   punkty_kbn                                   float  "punkty MNiSW/MEiN"
   recenzowana                                  bool
+  restored_at                                  datetime?
   rodzaj_prawa                                 -> bpp.rodzaj_prawa_patentowego?  match nazwa
   rok                                          int
   search_index                                 unknown
@@ -821,6 +868,7 @@ bpp.patent:
   tekst_po_ostatnim_autorze                    str?
   tekst_przed_pierwszym_autorem                str?
   tom                                          str
+  transaction_id                               str?
   tytul_oryginalny                             str  "Tytuł oryginalny"
   tytul_oryginalny_sort                        str
   utworzono                                    datetime?
@@ -852,7 +900,7 @@ bpp.wydawnictwo_zwarte_autor:
   afiliuje               bool
   autor                  -> bpp.autor
   data_oswiadczenia      date?  "Data oświadczenia" — Informacja eksportowana do PBN, gdy uzupełniono
-  dyscyplina_naukowa     -> bpp.dyscyplina_naukowa?  match nazwa
+  dyscyplina_naukowa     -> bpp.dyscyplina_naukowa?
   id                     int
   jednostka              -> bpp.jednostka
   kierunek_studiow       -> bpp.kierunek_studiow?
@@ -887,14 +935,18 @@ bpp.nagroda:
   uzasadnienie       str
 
 bpp.tryb_openaccess_wydawnictwo_zwarte:
+  coar_access_right   str  "Prawo dostępu wg COAR" — Pełny identyfikator prawa dostępu ze słownika COAR Access Rights, np. http://purl.org/coar/access_right/c_abf2 dla „open access”. Używany w eksporcie CERIF/OpenAIRE; gdy pusty, prace o tym trybie zostaną wyeksportowane bez określonego prawa dostępu.
   id                  int
   nazwa               str
   skrot               str
   wydawnictwo_zwarte  -> bpp.wydawnictwo_zwarte?
 
 bpp.seria_wydawnicza:
+  deleted_at          datetime?
   id                  int
   nazwa               str
+  restored_at         datetime?
+  transaction_id      str?
   wydawnictwo_zwarte  -> bpp.wydawnictwo_zwarte?
 
 bpp.wydawnictwo_zwarte_zewnetrzna_baza_danych:
@@ -946,13 +998,13 @@ bpp.funkcja_autora:
 
 bpp.autor_dyscyplina:
   autor                  -> bpp.autor
-  dyscyplina_naukowa     -> bpp.dyscyplina_naukowa  match nazwa
+  dyscyplina_naukowa     -> bpp.dyscyplina_naukowa
   id                     int
   procent_dyscypliny     float?
   procent_subdyscypliny  float?
   rodzaj_autora          -> ewaluacja_common.rodzaj_autora?  match nazwa
   rok                    int
-  subdyscyplina_naukowa  -> bpp.dyscyplina_naukowa?  match nazwa
+  subdyscyplina_naukowa  -> bpp.dyscyplina_naukowa?
   wymiar_etatu           float?
   zatrudnienie_do        datetime?
   zatrudnienie_od        datetime?
@@ -970,7 +1022,7 @@ bpp.autor_jednostka:
 
 bpp.cache_punktacja_autora:
   autor       -> bpp.autor
-  dyscyplina  -> bpp.dyscyplina_naukowa  match nazwa
+  dyscyplina  -> bpp.dyscyplina_naukowa
   id          int
   jednostka   -> bpp.jednostka
   pkdaut      float
@@ -981,7 +1033,7 @@ bpp.patent_autor:
   afiliuje               bool
   autor                  -> bpp.autor
   data_oswiadczenia      date?  "Data oświadczenia" — Informacja eksportowana do PBN, gdy uzupełniono
-  dyscyplina_naukowa     -> bpp.dyscyplina_naukowa?  match nazwa
+  dyscyplina_naukowa     -> bpp.dyscyplina_naukowa?
   id                     int
   jednostka              -> bpp.jednostka
   kierunek_studiow       -> bpp.kierunek_studiow?
@@ -1030,7 +1082,7 @@ bpp.wydawnictwo_ciagle_autor:
   afiliuje               bool
   autor                  -> bpp.autor
   data_oswiadczenia      date?  "Data oświadczenia" — Informacja eksportowana do PBN, gdy uzupełniono
-  dyscyplina_naukowa     -> bpp.dyscyplina_naukowa?  match nazwa
+  dyscyplina_naukowa     -> bpp.dyscyplina_naukowa?
   id                     int
   jednostka              -> bpp.jednostka
   kierunek_studiow       -> bpp.kierunek_studiow?
@@ -1079,6 +1131,7 @@ bpp.rodzajjednostki:
   wyklucz_z_rankingu_autorow      bool
 
 bpp.tryb_openaccess_wydawnictwo_ciagle:
+  coar_access_right   str  "Prawo dostępu wg COAR" — Pełny identyfikator prawa dostępu ze słownika COAR Access Rights, np. http://purl.org/coar/access_right/c_abf2 dla „open access”. Używany w eksporcie CERIF/OpenAIRE; gdy pusty, prace o tym trybie zostaną wyeksportowane bez określonego prawa dostępu.
   id                  int
   nazwa               str
   skrot               str
@@ -1091,9 +1144,11 @@ bpp.wydawnictwo_ciagle_zewnetrzna_baza_danych:
   rekord  -> bpp.wydawnictwo_ciagle
 
 bpp.rodzaj_prawa_patentowego:
-  id      int
-  nazwa   str
-  patent  -> bpp.patent?
+  coar_type              str  "Typ COAR" — Pełny identyfikator typu zasobu ze słownika COAR Resource Types, np. http://purl.org/coar/resource_type/c_15cd dla patentu. Używany w eksporcie CERIF/OpenAIRE; gdy pusty, patenty o tym rodzaju prawa zostaną wyeksportowane bez typu zasobu.
+  eksportuj_jako_patent  bool  "Eksportuj do CERIF jako patent" — Odznacz dla praw, które nie są patentami w rozumieniu słownika COAR (np. znak towarowy). Takie rekordy nie trafią do eksportu CERIF/OpenAIRE — profil wymaga dla każdego rekordu typu z gałęzi „patent”, więc jedyną alternatywą byłoby zadeklarowanie ich patentami wbrew prawdzie.
+  id                     int
+  nazwa                  str
+  patent                 -> bpp.patent?
 
 bpp.organprzyznajacynagrody:
   id       int
@@ -1122,21 +1177,19 @@ bpp.wymiar_etatu:
 
 dictionaries (shared relation values, referenced above):
   bpp.charakter_formalny
-    nazwa: "Artykuł w czasopismie", "Broszura", "Czasopismo", "Dokument elektroniczny", "Editorial", "Fragment", "inne", "Komentarz", "Książka", "Książka w języku obcym", "Książka w języku polskim", "List do redakcji", "Patent", "Podręcznik akademicki", "Polski Referat Zjazdowy", "Polskie streszczenie zjazdowe", "Poradnik zawodowy", "Poster - streszczenie", "Praca doktorska", "Praca habilitacyjna", "Projekt wynalazczy", "Publikacja w suplemencie", "Recenzja", "Referat zjazdowy konferencji miedzynarodowej", "Rozdział książki", "Rozdział skryptu", "Skrypt", "Streszczenie zjazdowe konferencji międzynarodowej", "Tłumaczenie"
+    nazwa: "Artykuł w czasopismie", "Broszura", "Czasopismo", "Dokument elektroniczny", "Fragment", "inne", "Komentarz", "Książka", "Książka w języku obcym", "Książka w języku polskim", "List do redakcji", "Patent", "Podręcznik akademicki", "Polski Referat Zjazdowy", "Polskie streszczenie zjazdowe", "Poradnik zawodowy", "Praca doktorska", "Praca habilitacyjna", "Projekt wynalazczy", "Publikacja w suplemencie", "Recenzja", "Referat zjazdowy konferencji miedzynarodowej", "Rozdział książki", "Rozdział skryptu", "Skrypt", "Streszczenie zjazdowe konferencji międzynarodowej", "Tłumaczenie"
   bpp.jezyk
-    nazwa: "abchaski", "Achinese", "Acoli", "Adangme", "Adyghe", "afar", "Afrihili", "Afro-Asiatic languages", "afrykanerski", "Ainu", "ajmara", "akadyjski", "akan", "albański", "Aleut", "Algonquian languages", "Altaic languages", "amharski", "angielski", "Angika", "Apache languages", "arabski", "aragoński", "Arapaho", "Arawak", "Aromanian", "Artificial languages", "asamski", "Asturian", "Athapascan languages", "Australian languages", "Austronesian languages", "Awadhi", "awarski", "awestyjski", "azerski", "Balinese", "Baltic languages", "Baluchi", "bambara", "Bamileke languages", "Banda languages", "Bantu languages", "Basa", "baskijski", "baszkirski", "Batak languages", "Beja", "Bemba", "bengalski", "Berber languages", "Bhojpuri", "białoruski", "bihari", "Bikol", "Bini", "birmański", "bislama", "Blin", "Blissymbols", "bośniacki", "Braj", "brak danych", "bretoński", "Buginese", "bułgarski", "Buriat", "Caddo", "Caucasian languages", "Cebuano", "Celtic languages", "Central American Indian languages", "Chagatai", "Chamic languages", "Cherokee", "Cheyenne", "Chibcha", "Chinook jargon", "chiński", "Chipewyan", "Choctaw", "chorwacki", "Chuukese", "Classical Newari", "Coptic", "Creek", "Creoles and pidgins", "Creoles and pidgins, English based", "Creoles and pidgins, French-based", "Creoles and pidgins, Portuguese-based", "Crimean Tatar", "Cushitic languages", "czamorro", "czarnogórski", "czeczeński", "czeski", "cziczewa", "czuwaski", "Dakota", "Dargwa", "Delaware", "Dinka", "Dogri", "Dogrib", "Dravidian languages", "Duala", "duński", "Dutch, Middle (ca.1050-1350)", "Dyula", "dzongkha", "Eastern Frisian", "Efik", "Egyptian (Ancient)", "Ekajuk", "Elamite", "English, Middle (1100-1500)", "Erzya", "esperanto", "estoński", "ewe", "Ewondo", "Fang", "Fanti", "farerski", "fidżyjski", "Filipino", "Finno-Ugrian languages", "fiński", "Fon", "francuski", "French, Middle (ca.1400-1600)", "French, Old (842-ca.1400)", "Friulian", "fryzyjski", "ful", "Ga", "gaelicki szkocki", "Galibi Carib", "galicyjski", "Gayo", "Gbaya", "Geez", "German, Middle High (ca.1050-1500)", "German, Old High (ca.750-1050)", "Germanic languages", "Gilbertese", "Gondi", "Gorontalo", "Gothic", "Grebo", "grecki (nowożytny)", "grecki (starożytny)", "grenlandzki", "gruziński", "guarani", "gudźarati", "Gwich'in", "Haida", "haitański", "hausa", "Hawaiian", "hebrajski", "herero", "Hiligaynon", "Himachali languages", "hindi", "hiri motu", "hiszpański", "Hittite", "Hmong", "holenderski", "Hupa", "Iban", "ido", "igbo", "Ijo languages", "Iloko", "Inari Sami", "Indic languages", "Indo-European languages", "indonezyjski", "Ingush", "inny", "interlingua", "inuktitut", "inupiak", "Iranian languages", "Irish, Middle (900-1200)", "Irish, Old (to 900)", "irlandzki", "Iroquoian languages", "islandzki", "japoński", "jawajski", "jidysz", "joruba", "Judeo-Arabic", "Judeo-Persian", "Kabardian", "Kabyle", "Kachin", "Kalmyk", "Kamba", "kannada", "kanuri", "Kara-Kalpak", "Karachay-Balkar", "Karelian", "Karen languages", "Kashubian", "kaszmirski", "kataloński", "Kawi", "kazachski", "keczua", "Khasi", "khmerski", "Khoisan languages", "Khotanese", "kikuju", "Kimbundu", "kirgiski", "Klingon", "komi", "kongo", "Konkani", "koreański", "kornijski", "korsykański", "Kosraean", "Kpelle", "kri", "Kru languages", "Kumyk", "kurdyjski", "Kurukh", "Kutenai", "kwanyama", "Ladino", "Lahnda", "Lamba", "Land Dayak languages", "laotański", "Lezghian", "limburski", "lingala", "litewski", "Lojban", "Low German", "Lower Sorbian", "Lozi", "Luba-katanga", "Luba-Lulua", "luganda", "Luiseno", "luksemburski", "Lule Sami", "Lunda", "Luo (Kenya and Tanzania)", "Lushai", "łaciński", "łotewski", "macedoński", "Madurese", "Magahi", "Maithili", "Makasar", "malajalam", "malajski", "malediwski", "malgaski", "maltański", "Manchu", "Mandar", "Mandingo", "Manipuri", "Manobo languages", "manx", "maoryski", "Mapudungun", "marathi", "Mari", "marszalski", "Marwari", "Masai", "Mayan languages", "Mende", "Mi'kmaq", "Minangkabau", "Mirandese", "Mohawk", "Moksha", "Mon-Khmer languages", "Mongo", "mongolski", "Mossi", "Munda languages", "N'Ko", "Nahuatl languages", "nauruański", "nawaho", "ndebele południowy", "ndebele północny", "ndonga", "Neapolitan", "Nepal Bhasa", "nepalski", "Nias", "niemiecki", "Niger-Kordofanian languages", "Nilo-Saharan languages", "Niuean", "No linguistic content", "Nogai", "Norse, Old", "North American Indian languages", "Northern Frisian", "norweski", "norweski (bokmål)", "norweski (nynorsk)", "Nubian languages", "nuosu", "Nyamwezi", "Nyankole", "Nyoro", "Nzima", "occidental", "odżibwe", "Official Aramaic (700-300 BCE)", "orija", "ormiański", "oromo", "Osage", "osetyjski", "Otomian languages", "Pahlavi", "Palauan", "pali", "Pampanga", "Pangasinan", "Papiamento", "Papuan languages", "paszto", "Pedi", "pendżabski", "Persian, Old (ca.600-400 B.C.)", "perski", "Philippine languages", "Phoenician", "Pohnpeian", "polski", "portugalski", "północnolapoński", "Prakrit languages", "Provençal, Old (to 1500)", "prowansalski", "Rajasthani", "Rapanui", "Rarotongan", "Romance languages", "romansz", "Romany", "rosyjski", "ruanda", "rumuński", "rundi", "Salishan languages", "Samaritan Aramaic", "Sami languages", "samoański", "Sandawe", "sango", "sanskryt", "Santali", "sardyński", "Sasak", "Scots", "Selkup", "Semitic languages", "serbski", "Serer", "Shan", "shona", "Sicilian", "Sidamo", "Sign Languages", "Siksika", "sindhi", "Sino-Tibetan languages", "Siouan languages", "Skolt Sami", "Slave (Athapascan)", "Slavic languages", "słowacki", "słoweński", "Sogdian", "somalijski", "Songhai languages", "Soninke", "Sorbian languages", "sotho południowy", "South American Indian languages", "Southern Altai", "Southern Sami", "Sranan Tongo", "Standard Moroccan Tamazight", "staro-cerkiewno-słowiański", "suahili", "suazi", "Sukuma", "sumeryjski", "sundajski", "Susu", "Swiss German", "syngaleski", "syryjski", "syryjski (klasyczny)", "szwedzki", "tadżycki", "tagalski", "tahitański", "Tai languages", "tajski", "Tamashek", "tamilski", "tatarski", "telugu", "Tereno", "Tetum", "Tigre", "tigrinia", "Timne", "Tiv", "Tlingit", "Tok Pisin", "Tokelau", "tonga", "Tonga (Nyasa)", "Tsimshian", "tsonga", "tswana", "Tumbuka", "Tupi languages", "turecki", "Turkish, Ottoman (1500-1928)", "turkmeński", "Tuvalu", "Tuvinian", "twi", "tybetański", "Udmurt", "ugarycki", "ujgurski", "ukraiński", "Umbundu", "Uncoded languages", "Undetermined", "Upper Sorbian", "urdu", "uzbecki", "Vai", "venda", "volapük", "Votic", "Wakashan languages", "walijski", "waloński", "Waray", "Washo", "węgierski", "wiele języków", "wietnamski", "włoski", "Wolaitta", "wolof", "xhosa", "Yakut", "Yao", "Yapese", "Yupik languages", "Zande languages", "Zapotec", "Zaza", "Zenaga", "zhuang", "zulu", "Zuni"
+    nazwa: "angielski", "brak danych", "francuski", "hiszpański", "inny", "niemiecki", "polski", "rosyjski", "włoski"
   bpp.czas_udostepnienia_openaccess
     nazwa: "po opublikowaniu", "przed opublikowaniem", "w momencie opublikowania"
   bpp.licencja_openaccess
     nazwa: "Creative Commons - Universal - Przekazanie do Domeny Publicznej (CC0 1.0)", "Creative Commons - Uznanie Autorstwa - Bez utworów zależnych (CC-BY-ND)", "Creative Commons - Uznanie Autorstwa - Na Tych Samych Warunkach (CC-BY-SA)", "Creative Commons - Uznanie Autorstwa - Użycie niekomercyjne - Bez utworów zależnych (CC-BY-NC-ND)", "Creative Commons - Uznanie Autorstwa - Użycie niekomercyjne - Na tych samych warunkach (CC-BY-NC-SA)", "Creative Commons - Uznanie Autorstwa - Użycie niekomercyjne (CC-BY-NC);", "Creative Commons - Uznanie Autorstwa (CC-BY)", "inna otwarta licencja"
   bpp.wersja_tekstu_openaccess
-    nazwa: "Inna", "Oryginalna wersja autorska", "Ostateczna wersja autorska", "Ostateczna wersja opublikowana"
+    nazwa: "Oryginalna wersja autorska", "Ostateczna wersja autorska", "Ostateczna wersja opublikowana"
   bpp.status_korekty
     nazwa: "po korekcie", "przed korektą", "w trakcie korekty"
   bpp.typ_kbn
     nazwa: "inne", "Opis Przypadku", "Podręcznik akademicki", "praca monograficzna", "Praca Oryginalna", "Praca Przeglądowa", "Praca wieloośrodkowa", "Publikacja popularnonaukowa", "Redakcja czasopisma"
-  bpp.dyscyplina_naukowa
-    nazwa: "archeologia", "architektura i urbanistyka", "astronomia", "automatyka, elektronika, elektrotechnika i technologie kosmiczne", "biologia medyczna", "biotechnologia", "ekonomia i finanse", "etnologia i antropologia kulturowa", "filozofia", "geografia społeczno-ekonomiczna i gospodarka przestrzenna", "historia", "informatyka", "informatyka techniczna i telekomunikacja", "inżynieria bezpieczeństwa", "inżynieria biomedyczna", "inżynieria chemiczna", "inżynieria lądowa, geodezja i transport", "inżynieria materiałowa", "inżynieria mechaniczna", "inżynieria środowiska, górnictwo i energetyka", "językoznawstwo", "literaturoznawstwo", "matematyka", "nauki biblijne", "nauki biologiczne", "nauki chemiczne", "nauki farmaceutyczne", "nauki fizyczne", "nauki leśne", "nauki medyczne", "nauki o bezpieczeństwie", "nauki o komunikacji społecznej i mediach", "nauki o kulturze fizycznej", "nauki o kulturze i religii", "nauki o polityce i administracji", "nauki o rodzinie", "nauki o sztuce", "nauki o zarządzaniu i jakości", "nauki o zdrowiu", "nauki o Ziemi i środowisku", "nauki prawne", "nauki socjologiczne", "nauki teologiczne", "pedagogika", "polonistyka", "prawo kanoniczne", "psychologia", "rolnictwo i ogrodnictwo", "stosunki międzynarodowe", "sztuki filmowe i teatralne", "sztuki muzyczne", "sztuki plastyczne i konserwacja dzieł sztuki", "technologia żywności i żywienia", "weterynaria", "zootechnika i rybactwo"
   bpp.typ_odpowiedzialnosci
     nazwa: "autor", "autor korespondencyjny", "komentator", "opracował", "recenzent", "redaktor", "redaktor naukowy wydania polskiego", "tłumacz", "tłumacz z języka angielskiego"
   bpp.charakter_pbn
@@ -1156,7 +1209,7 @@ dictionaries (shared relation values, referenced above):
   bpp.plec
     nazwa: "kobieta", "mężczyzna"
   bpp.tytul
-    nazwa: "doktor", "doktor habilitowany", "doktor habilitowany medycyny", "doktor habilitowany nauk farmaceutycznych", "doktor habilitowany nauk humanistycznych", "doktor habilitowany nauk przyrodniczych", "doktor nauk chemicznych", "doktor nauk farmaceutycznych", "doktor nauk fizycznych", "doktor nauk humanistycznych", "doktor nauk medycznych", "doktor nauk o kulturze fizycznej", "doktor nauk prawnych", "doktor nauk przyrodniczych", "doktor nauk rolniczych", "doktor nauk weterynaryjnych", "dr hab. inż.", "dr inż.", "lekarz", "lekarz dentysta", "lekarz medycyny", "lekarz stomatolog", "lekarz weterynarii", "magister", "magister inżynier", "magister pielęgniarstwa", "magister położnictwa", "mgr, inż.", "prof. dr", "prof. dr hab.", "prof. dr hab. inż.", "profesor", "profesor doktor habilitowany medycyny", "profesor doktor habilitowany nauk biologicznych", "profesor doktor habilitowany nauk chemicznych", "profesor doktor habilitowany nauk farmaceutycznych", "profesor doktor habilitowany nauk humanistycznych"
+    nazwa: "doktor", "doktor habilitowany", "doktor habilitowany medycyny", "doktor habilitowany nauk farmaceutycznych", "doktor habilitowany nauk humanistycznych", "doktor habilitowany nauk przyrodniczych", "doktor nauk chemicznych", "doktor nauk farmaceutycznych", "doktor nauk fizycznych", "doktor nauk humanistycznych", "doktor nauk medycznych", "doktor nauk o kulturze fizycznej", "doktor nauk prawnych", "doktor nauk przyrodniczych", "doktor nauk rolniczych", "doktor nauk weterynaryjnych", "lekarz", "lekarz dentysta", "lekarz medycyny", "lekarz stomatolog", "lekarz weterynarii", "magister", "magister inżynier", "magister pielęgniarstwa", "magister położnictwa", "profesor", "profesor doktor habilitowany medycyny", "profesor doktor habilitowany nauk biologicznych", "profesor doktor habilitowany nauk chemicznych", "profesor doktor habilitowany nauk farmaceutycznych", "profesor doktor habilitowany nauk humanistycznych"
   bpp.rodzajjednostki
     nazwa: "Koło naukowe", "Standard", "Wydział"
   bpp.tryb_openaccess_wydawnictwo_ciagle

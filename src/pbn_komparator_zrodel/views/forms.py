@@ -5,7 +5,22 @@ from django import forms
 from .constants import DEFAULT_ROK_DO, DEFAULT_ROK_OD
 
 
-class FilterForm(forms.Form):
+class _LataOkresuMixin:
+    """Puste „rok od/do” = lata okresu ewaluacji (``domyslne_lata``,
+    zwykle okres wybrany na pasku okresu)."""
+
+    def __init__(self, *args, domyslne_lata=None, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.domyslne_lata = domyslne_lata or (DEFAULT_ROK_OD, DEFAULT_ROK_DO)
+
+    def clean_rok_od(self):
+        return self.cleaned_data.get("rok_od") or self.domyslne_lata[0]
+
+    def clean_rok_do(self):
+        return self.cleaned_data.get("rok_do") or self.domyslne_lata[1]
+
+
+class FilterForm(_LataOkresuMixin, forms.Form):
     rok_od = forms.IntegerField(
         min_value=1900,
         max_value=2100,
@@ -34,13 +49,7 @@ class FilterForm(forms.Form):
     )
     tylko_rozbieznosci = forms.BooleanField(required=False, initial=True)
     bez_publikacji = forms.BooleanField(required=False, initial=False)
-    bez_publikacji_2022_2025 = forms.BooleanField(required=False, initial=True)
-
-    def clean_rok_od(self):
-        return self.cleaned_data.get("rok_od") or DEFAULT_ROK_OD
-
-    def clean_rok_do(self):
-        return self.cleaned_data.get("rok_do") or DEFAULT_ROK_DO
+    tylko_z_publikacjami_w_okresie = forms.BooleanField(required=False, initial=True)
 
     def clean_search(self):
         return self.cleaned_data.get("search") or ""
@@ -49,7 +58,7 @@ class FilterForm(forms.Form):
         return self.cleaned_data.get("dyscyplina") or ""
 
 
-class DyscyplinyFilterForm(forms.Form):
+class DyscyplinyFilterForm(_LataOkresuMixin, forms.Form):
     """Formularz filtrów dla widoku dyscyplin."""
 
     rok_od = forms.IntegerField(
@@ -75,14 +84,8 @@ class DyscyplinyFilterForm(forms.Form):
     )
     tylko_rozbieznosci = forms.BooleanField(required=False, initial=True)
     bez_publikacji = forms.BooleanField(required=False, initial=False)
-    bez_publikacji_2022_2025 = forms.BooleanField(required=False, initial=True)
+    tylko_z_publikacjami_w_okresie = forms.BooleanField(required=False, initial=True)
     wyswietlaj_nazwy = forms.BooleanField(required=False, initial=False)
-
-    def clean_rok_od(self):
-        return self.cleaned_data.get("rok_od") or DEFAULT_ROK_OD
-
-    def clean_rok_do(self):
-        return self.cleaned_data.get("rok_do") or DEFAULT_ROK_DO
 
     def clean_search(self):
         return self.cleaned_data.get("search") or ""

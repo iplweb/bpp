@@ -12,6 +12,9 @@ from bpp.models import (
     Wydawnictwo_Zwarte,
     Wydawnictwo_Zwarte_Autor,
 )
+from ewaluacja_common.okres import okres_dla_request
+
+from ..okres import filtr_lat
 
 logger = logging.getLogger(__name__)
 
@@ -19,14 +22,17 @@ logger = logging.getLogger(__name__)
 @login_required
 def database_verification_view(request):
     """
-    Wyświetla listę prac z autorami mającymi sloty poniżej 0.1 w latach 2022-2025.
-    Takie sloty należy usunąć przed dalszymi krokami optymalizacji.
+    Wyświetla listę prac z autorami mającymi sloty poniżej 0.1 w latach
+    wybranego okresu ewaluacji. Takie sloty należy usunąć przed dalszymi
+    krokami optymalizacji.
     """
     from bpp.models import Autor_Dyscyplina, Cache_Punktacja_Autora_Query
 
-    # Pobierz autorów którzy mają przypisane dyscypliny w latach 2022-2025
+    okres = okres_dla_request(request)
+
+    # Pobierz autorów którzy mają przypisane dyscypliny w latach okresu
     autorzy_z_dyscyplinami = set(
-        Autor_Dyscyplina.objects.filter(rok__gte=2022, rok__lte=2025)
+        Autor_Dyscyplina.objects.filter(**filtr_lat(okres))
         .values_list("autor_id", flat=True)
         .distinct()
     )
@@ -35,8 +41,7 @@ def database_verification_view(request):
     problematic_records = (
         Cache_Punktacja_Autora_Query.objects.filter(
             slot__lt=Decimal("0.1"),
-            rekord__rok__gte=2022,
-            rekord__rok__lte=2025,
+            **filtr_lat(okres, "rekord__"),
             autor_id__in=autorzy_z_dyscyplinami,
         )
         .select_related("rekord", "autor", "dyscyplina")
@@ -52,17 +57,20 @@ def database_verification_view(request):
     nieprzypiete_ciagle = Wydawnictwo_Ciagle_Autor.objects.filter(
         dyscyplina_naukowa__isnull=False,
         przypieta=False,
+        **filtr_lat(okres, "rekord__"),
     ).select_related("rekord", "autor", "dyscyplina_naukowa")
 
     nieprzypiete_zwarte = Wydawnictwo_Zwarte_Autor.objects.filter(
         dyscyplina_naukowa__isnull=False,
         przypieta=False,
+        **filtr_lat(okres, "rekord__"),
     ).select_related("rekord", "autor", "dyscyplina_naukowa")
 
-    # Liczba publikacji z rok >= 2022, gdzie autor ma dyscyplinę, ale brak daty oświadczenia
+    # Liczba publikacji z lat okresu, gdzie autor ma dyscyplinę, ale brak daty
+    # oświadczenia
     brak_oswiadczenia_ciagle_count = (
         Wydawnictwo_Ciagle.objects.filter(
-            rok__gte=2022,
+            **filtr_lat(okres),
             autorzy_set__dyscyplina_naukowa__isnull=False,
             autorzy_set__data_oswiadczenia__isnull=True,
         )
@@ -72,7 +80,7 @@ def database_verification_view(request):
 
     brak_oswiadczenia_zwarte_count = (
         Wydawnictwo_Zwarte.objects.filter(
-            rok__gte=2022,
+            **filtr_lat(okres),
             autorzy_set__dyscyplina_naukowa__isnull=False,
             autorzy_set__data_oswiadczenia__isnull=True,
         )
@@ -81,6 +89,7 @@ def database_verification_view(request):
     )
 
     context = {
+        "okres": okres,
         "problematic_records": problematic_records,
         "total_count": total_count,
         "unique_works": unique_works,

@@ -11,9 +11,16 @@ from oswiadczenia.views import (
 )
 
 
+class _Okres:
+    """Okres ewaluacji bez bazy — formularzowi wystarczą lata."""
+
+    rok_od = 2022
+    rok_do = 2025
+
+
 def test_wydruk_oswiadczen_filter_form_defaults():
-    """Test that filter form provides default values for missing fields."""
-    form = WydrukOswiadczenFilterForm(data={})
+    """Bez lat w zapytaniu — cały okres ewaluacji z paska."""
+    form = WydrukOswiadczenFilterForm(data={}, okres=_Okres)
     assert form.is_valid()
     assert form.cleaned_data["rok_od"] == 2022
     assert form.cleaned_data["rok_do"] == 2025
@@ -31,7 +38,8 @@ def test_wydruk_oswiadczen_filter_form_with_values():
             "szukaj_autor": "Kowalski",
             "szukaj_tytul": "publikacja",
             "przypieta": "tak",
-        }
+        },
+        okres=_Okres,
     )
     assert form.is_valid()
     assert form.cleaned_data["rok_od"] == 2023
@@ -39,11 +47,17 @@ def test_wydruk_oswiadczen_filter_form_with_values():
     assert form.cleaned_data["szukaj_autor"] == "Kowalski"
 
 
-def test_wydruk_oswiadczen_filter_form_invalid_rok():
-    """Test that filter form rejects invalid year values."""
-    form = WydrukOswiadczenFilterForm(data={"rok_od": 2021})  # Min is 2022
-    assert not form.is_valid()
-    assert "rok_od" in form.errors
+def test_wydruk_oswiadczen_filter_form_lata_przyciete_do_okresu():
+    """Lata spoza okresu (np. po przełączeniu okresu na pasku) są przycinane
+    do okresu, a pozostałe filtry zostają."""
+    form = WydrukOswiadczenFilterForm(
+        data={"rok_od": 2019, "rok_do": 2028, "szukaj_autor": "Kowalski"},
+        okres=_Okres,
+    )
+    assert form.is_valid()
+    assert form.cleaned_data["rok_od"] == 2022
+    assert form.cleaned_data["rok_do"] == 2025
+    assert form.cleaned_data["szukaj_autor"] == "Kowalski"
 
 
 def test_calculate_export_ranges_small_count():
@@ -343,3 +357,120 @@ def test_generate_combined_pdf(monkeypatch):
     )
     assert content.startswith(b"%PDF")
     assert task.processed_items == 2
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize("rok_pracy,lata", [(2023, "2022-2025"), (2027, "2026-2030")])
+def test_oswiadczenie_lata_z_okresu_pracy(
+    zwarte_z_dyscyplinami, admin_client, rok_pracy, lata
+):  # noqa
+    """Treść oświadczenia: „za lata ...” wg okresu, do którego należy praca —
+    nie na sztywno 2022-2025."""
+    # update() z pominięciem walidacji przypisań autorów do dyscyplin na rok
+    type(zwarte_z_dyscyplinami).objects.filter(pk=zwarte_z_dyscyplinami.pk).update(
+        rok=rok_pracy
+    )
+    rekord = Rekord.objects.get_for_model(zwarte_z_dyscyplinami)
+    autor = rekord.autorzy_set.first()
+    url = reverse(
+        "oswiadczenia:jedno-oswiadczenie",
+        args=(rekord.pk[0], rekord.pk[1], autor.autor.pk, autor.dyscyplina_naukowa.pk),
+    )
+    res = admin_client.get(url)
+    assert f"za lata <strong>{lata}</strong>" in res.content.decode()
+
+
+@pytest.mark.django_db
+def test_wydruk_stary_adres_przekierowuje(admin_client):
+    res = admin_client.get("/oswiadczenia/wydruk-2022-25/?szukaj_autor=X")
+    assert res.status_code == 302
+    assert res["Location"] == reverse("oswiadczenia:wydruk") + "?szukaj_autor=X"
+
+
+@pytest.mark.django_db
+def test_wydruk_lata_i_pasek_wg_wybranego_okresu(admin_client):
+    """Lista oświadczeń bierze lata z okresu wybranego na pasku i ten pasek
+    pokazuje; tytuł bez lat."""
+    from ewaluacja_common.models import OkresEwaluacji
+
+    okres = OkresEwaluacji.objects.get(rok_od=2026)
+    admin_client.post(reverse("ewaluacja_common:wybierz_okres"), {"okres": okres.pk})
+    res = admin_client.get(reverse("oswiadczenia:wydruk"))
+    html = res.content.decode()
+    assert res.context["rok_od"] == 2026
+    assert res.context["rok_do"] == 2030
+    assert 'class="pasek-okresu"' in html
+    assert "<h1>Wydruk oświadczeń</h1>" in html
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize(
+    "rok_pracy,szablon",
+    [
+        (2023, "oswiadczenia/tresc_jednego_oswiadczenia.html"),
+        (2027, "oswiadczenia/tresc_jednego_oswiadczenia_2026_2030.html"),
+    ],
+)
+def test_oswiadczenie_szablon_okresu(
+    zwarte_z_dyscyplinami, admin_client, rok_pracy, szablon
+):  # noqa
+    """Praca z okresu 2026–2030 dostaje osobny szablon treści oświadczenia;
+    okres bez własnego szablonu — wspólny."""
+    type(zwarte_z_dyscyplinami).objects.filter(pk=zwarte_z_dyscyplinami.pk).update(
+        rok=rok_pracy
+    )
+    rekord = Rekord.objects.get_for_model(zwarte_z_dyscyplinami)
+    autor = rekord.autorzy_set.first()
+    url = reverse(
+        "oswiadczenia:jedno-oswiadczenie",
+        args=(rekord.pk[0], rekord.pk[1], autor.autor.pk, autor.dyscyplina_naukowa.pk),
+    )
+    res = admin_client.get(url)
+    assert szablon in [t.name for t in res.templates]
+
+
+def test_szablony_oswiadczenia_task(db):
+    from oswiadczenia.templatetags.oswiadczenia_tags import szablony_oswiadczenia
+
+    assert szablony_oswiadczenia(2028)[0].endswith("_2026_2030.html")
+    assert szablony_oswiadczenia(None) == [
+        "oswiadczenia/tresc_jednego_oswiadczenia.html"
+    ]
+
+
+@pytest.mark.django_db
+def test_szablon_2026_2030_w_bazie_z_adnotacja(zwarte_z_dyscyplinami, admin_client):
+    """Migracja zakłada szablon 2026–2030 w bazie (edytowalny w panelu):
+    lata nowego okresu i adnotacja o starej podstawie prawnej.
+
+    Funkcję migracji wołamy wprost: dane z migracji mogą zniknąć po flushu
+    testu transakcyjnego na tym samym workerze."""
+    import importlib
+
+    from dbtemplates.models import Template
+    from django.apps import apps
+
+    migracja = importlib.import_module(
+        "oswiadczenia.migrations.0007_szablon_oswiadczenia_2026_2030"
+    )
+    Template.objects.filter(name=migracja.TEMPLATE_NAME).delete()
+    migracja.forward(apps, None)
+    # druga migracja nie dubluje ani nie nadpisuje istniejącego szablonu
+    migracja.forward(apps, None)
+
+    t = Template.objects.get(name=migracja.TEMPLATE_NAME)
+    assert "za lata <strong>2026-2030</strong>" in t.content
+    assert "[stara podstawa prawna]" in t.content
+
+    type(zwarte_z_dyscyplinami).objects.filter(pk=zwarte_z_dyscyplinami.pk).update(
+        rok=2027
+    )
+    rekord = Rekord.objects.get_for_model(zwarte_z_dyscyplinami)
+    autor = rekord.autorzy_set.first()
+    url = reverse(
+        "oswiadczenia:jedno-oswiadczenie",
+        args=(rekord.pk[0], rekord.pk[1], autor.autor.pk, autor.dyscyplina_naukowa.pk),
+    )
+    html = admin_client.get(url).content.decode()
+    assert "[stara podstawa prawna]" in html
+    assert "za lata <strong>2026-2030</strong>" in html

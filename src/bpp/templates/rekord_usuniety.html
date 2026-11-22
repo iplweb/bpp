@@ -1,0 +1,50 @@
+{% extends "base.html" %}
+{# HTTP 410 Gone: a trashed record (bpp.rekord_usuniety). #}
+{# NEVER render any data of the record here - not even in <title>/meta. #}
+{# og:url is dropped on purpose: the request URL may carry the slug, #}
+{# and a publication slug contains its title and authors. #}
+
+{% block extratitle %}
+    Rekord usunięty (410)
+{% endblock %}
+
+{% block meta_description %}
+    <meta name="description" content="Ten rekord został usunięty z bibliografii."/>
+{% endblock %}
+
+{% block opengraph %}
+    <meta property="og:site_name" content="Bibliografia Publikacji {{ uczelnia.skrot }}"/>
+    <meta property="og:type" content="website"/>
+{% endblock %}
+
+{% block extrahead %}
+    {{ block.super }}
+    <meta name="robots" content="noindex"/>
+{% endblock %}
+
+{% block breadcrumbs %}
+    {{ block.super }}
+    <li>Rekord usunięty</li>
+{% endblock %}
+
+{% block content %}
+    <div class="grid-container" style="min-height: 50vh; display: flex; align-items: center;">
+        <div class="grid-x grid-padding-x align-center" style="width: 100%;">
+            <div class="cell large-6 medium-8 small-12 text-center">
+                <div style="padding: 3rem 0;">
+                    <span class="fi-trash" style="font-size: 4em; color: var(--bpp-tekst-przygaszony, #8a8a8a); display: block; margin-bottom: 1rem;"></span>
+                    <h1 style="font-size: 2.2rem; margin-bottom: 1rem;">Ten rekord został usunięty z bibliografii</h1>
+                    <p style="font-size: 1.1rem; color: var(--bpp-tekst-przygaszony, #666); margin-bottom: 2rem; line-height: 1.6;">
+                        {{ komunikat }}
+                    </p>
+                    <a href="{% url "multiseek:index" %}" class="button primary">
+                        <span class="fi-magnifying-glass"></span> Przejdź do wyszukiwania
+                    </a>
+                    <a href="/" class="button secondary">
+                        <span class="fi-home"></span> Wróć do strony głównej
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+{% endblock %}

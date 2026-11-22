@@ -2,7 +2,6 @@ import logging
 import sys
 import unicodedata
 
-import rollbar
 from django.conf import settings
 from django.contrib.contenttypes.models import ContentType
 from django.core.exceptions import ValidationError
@@ -23,12 +22,14 @@ from bpp.models.wydawca import Wydawca
 from bpp.models.wydawnictwo_zwarte import Wydawnictwo_Zwarte
 from bpp.util import zaloguj_polkniety_wyjatek
 from bpp.views.mixins import UczelniaSettingRequiredMixin
+from bpp.zglaszanie_bledow import capture_exception, capture_message
 from import_common.normalization import normalize_tytul_publikacji
 from pbn_api.models.publication import (
     Publication as PBN_Publication,
 )
 from pbn_api.models.publisher import Publisher as PBN_Publisher
 from zglos_publikacje import const
+from zglos_publikacje.dyscypliny import przypisz_dyscypline_jesli_brak
 from zglos_publikacje.forms import (
     FORMA_DOSTEPU_FORM_TO_MODEL,
     RODZAJ_FORM_TO_MODEL,
@@ -138,9 +139,12 @@ def _resolve_qss_value(value_str):
 
 
 def _process_autorzy_formset(
-    autorzy_formset, publication_object, typ_odpowiedzialnosci
+    autorzy_formset, publication_object, typ_odpowiedzialnosci, user=None
 ):
-    """Process the authors formset and save author records."""
+    """Process the authors formset and save author records.
+
+    FD#620: autorowi bez przypisania dyscypliny na rok pracy zakłada
+    przypisanie wybranej dyscypliny (z historią w imieniu ``user``)."""
     if not autorzy_formset.is_valid():
         return
 
@@ -161,6 +165,7 @@ def _process_autorzy_formset(
         instance.kolejnosc = no
         instance.typ_odpowiedzialnosci = typ_odpowiedzialnosci
         instance.save()
+        przypisz_dyscypline_jesli_brak(instance, user)
 
 
 def _send_notification_email(publication_object, request):
@@ -172,9 +177,13 @@ def _send_notification_email(publication_object, request):
     for zpa in publication_object.zgloszenie_publikacji_autor_set.all().select_related(
         "jednostka"
     ):
-        if zpa.jednostka_id is not None:
-            jednostka_do_powiadomienia = zpa.jednostka
+        if zpa.jednostka_id is None:
+            # Autor bez jednostki nie wskazuje wydziału — pomijamy go; gdy
+            # żaden autor nie ma jednostki, poniżej idzie powiadomienie do
+            # grupy obsługi zgłoszeń.
+            continue
 
+        jednostka_do_powiadomienia = zpa.jednostka
         if jednostka_do_powiadomienia.skupia_pracownikow:
             break
 
@@ -207,7 +216,7 @@ def _send_notification_email(publication_object, request):
             },
         )
     except Exception:
-        rollbar.report_exc_info(sys.exc_info())
+        capture_exception(sys.exc_info())
 
         messages.add_message(
             request,
@@ -489,7 +498,7 @@ class Zgloszenie_PublikacjiWizard(UczelniaSettingRequiredMixin, SessionWizardVie
 
         Odrzuca pliki > MAX_ROZMIAR_PLIKU, przycina do MAX_LICZBA_PLIKOW
         i do łącznego limitu rozmiaru (``max_laczny_rozmiar_plikow``).
-        Jeśli cokolwiek odrzuci/przytnie → alarmuje przez rollbar: to „nie
+        Jeśli cokolwiek odrzuci/przytnie → alarmuje przez monitoring błędów: to „nie
         powinno się zdarzyć", bo walidacja formularza (A2) już przepuściła
         dokładnie tę listę — rozjazd = błąd w warstwie walidacji.
         """
@@ -508,7 +517,7 @@ class Zgloszenie_PublikacjiWizard(UczelniaSettingRequiredMixin, SessionWizardVie
         odrzucone_liczba = len(w_limicie) - len(przyciete)
 
         if odrzucone_rozmiar or odrzucone_liczba:
-            rollbar.report_message(
+            capture_message(
                 "process_step_files: _pliki_w_limicie odrzuciło pliki mimo"
                 " że walidacja formularza (A2) je przepuściła —"
                 f" odrzucone_rozmiar={odrzucone_rozmiar},"
@@ -538,6 +547,17 @@ class Zgloszenie_PublikacjiWizard(UczelniaSettingRequiredMixin, SessionWizardVie
         # w żywej sesji. `self.storage` istnieje (ustawione w dispatch);
         # pierwsze wejście (brak extra_data) → no-op, bezpieczne.
         self._wyczysc_tmp_pliki()
+        kod_do_edycji = self.kwargs.get("kod_do_edycji")
+        if (
+            kod_do_edycji
+            and not Zgloszenie_Publikacji.objects.filter(
+                kod_do_edycji=kod_do_edycji
+            ).exists()
+        ):
+            # Link do edycji zgłoszenia, którego nie ma albo jest w koszu
+            # (``objects`` kosza nie widzi) — 404 od razu, nie dopiero po
+            # przejściu dwóch kroków kreatora.
+            raise Http404
         return super().get(request, *args, **kwargs)
 
     def render_done(self, form, **kwargs):
@@ -643,7 +663,48 @@ class Zgloszenie_PublikacjiWizard(UczelniaSettingRequiredMixin, SessionWizardVie
             self._wyczysc_tmp_pliki()
             messages.add_message(self.request, messages.ERROR, KOMUNIKAT_LIMIT_ZGLOSZEN)
             return HttpResponseRedirect(self.request.path)
-        return self._zapisz_zgloszenie(form_list, **kwargs)
+        return self._zapisz_z_historia(form_list, **kwargs)
+
+    def _zapisz_z_historia(self, form_list, **kwargs):
+        """Zapis zgłoszenia jako wersja w historii (FD#587): nowe zgłoszenie
+        i poprawka zgłaszającego (link z e-maila) to rewizje ze zgłoszonymi
+        autorami i załącznikami. Przy poprawce najpierw stan sprzed zmiany —
+        żeby dało się porównać, co zgłaszający zmienił."""
+        nowe = self.object is None
+        # Jedna transakcja na zgłoszenie i jego historię: gdyby zapis wersji
+        # się nie udał, nie zostanie zgłoszenie bez historii ani wysłany
+        # e-mail (``on_commit``) — zgłaszający zobaczy błąd i nic nie
+        # zostanie zapisane (bez duplikatów przy ponownej próbie).
+        with transaction.atomic():
+            return self._zapisz_w_transakcji(nowe, form_list, **kwargs)
+
+    def _zapisz_w_transakcji(self, nowe, form_list, **kwargs):
+        import reversion
+
+        from bpp.wersjonowanie import zapewnij_wersje_poczatkowa
+
+        if not nowe:
+            zapewnij_wersje_poczatkowa(self.object)
+        odpowiedz = self._zapisz_zgloszenie(form_list, **kwargs)
+        # Wersja PO zapisie (osobny, kolejny blok reversion, a nie rewizja
+        # wokół zapisu): zapis zgłoszenia sam zapisuje historię innych
+        # rekordów (np. dyscyplina autora), a bloki reversion nie mogą się
+        # zagnieżdżać.
+        with reversion.create_revision():
+            reversion.add_to_revision(
+                Zgloszenie_Publikacji.objects.get(pk=self.object.pk)
+            )
+            if self.request.user.is_authenticated:
+                reversion.set_user(self.request.user)
+            reversion.set_comment(
+                (
+                    "Zgłoszono publikację przez formularz na stronie"
+                    if nowe
+                    else "Zgłaszający poprawił zgłoszenie (link z e-maila)"
+                )
+                + f" (zgłaszający: {self.object.email})."
+            )
+        return odpowiedz
 
     @transaction.atomic
     def _zapisz_zgloszenie(self, form_list, **kwargs):
@@ -736,6 +797,7 @@ class Zgloszenie_PublikacjiWizard(UczelniaSettingRequiredMixin, SessionWizardVie
             autorzy_formset,
             self.object,
             typ_odpowiedzialnosci,
+            self.request.user,
         )
 
         transaction.on_commit(

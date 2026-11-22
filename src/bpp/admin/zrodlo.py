@@ -3,6 +3,7 @@ from dal import autocomplete
 from django import forms
 from django.contrib import admin, messages
 from django.db.models import Count, F
+from reversion_compare.admin import CompareVersionAdmin
 
 from bpp.admin.helpers.djangoql import BppDjangoQLSearchMixin
 from bpp.models.zrodlo import Redakcja_Zrodla
@@ -22,7 +23,8 @@ from .filters import (
     PBNStatusFilter,
 )
 from .helpers.fieldsets import ADNOTACJE_FIELDSET, MODEL_PUNKTOWANY_Z_KWARTYLAMI_BAZA
-from .helpers.mixins import ZapiszZAdnotacjaMixin
+from .helpers.mixins import BppSoftDeleteAdminMixin, ZapiszZAdnotacjaMixin
+from .helpers.wersje import HistoriaWersjiMixin
 from .helpers.widgets import CHARMAP_SINGLE_LINE, COMMA_DECIMAL_FIELD_OVERRIDE
 
 # Rozmiar paczki kasowania w akcji admina „Usuń źródła bez publikacji".
@@ -124,7 +126,13 @@ class ZrodloForm(forms.ModelForm):
 
 
 class ZrodloAdmin(
-    BppDjangoQLSearchMixin, ZapiszZAdnotacjaMixin, BaseBppAdminMixin, admin.ModelAdmin
+    BppDjangoQLSearchMixin,
+    ZapiszZAdnotacjaMixin,
+    BaseBppAdminMixin,
+    BppSoftDeleteAdminMixin,
+    # Historia zmian (FD#587): tuż przed terminalną klasą admina.
+    HistoriaWersjiMixin,
+    CompareVersionAdmin,
 ):
     djangoql_completion_enabled_by_default = False
     djangoql_completion = True

@@ -60,7 +60,7 @@ class Command(PBNBaseCommand):
                 zaloguj_polkniety_wyjatek(
                     "Błąd podczas pobierania oświadczeń instytucji z PBN",
                     logger=logger,
-                    do_rollbar=False,
+                    do_monitoringu=False,
                 )
                 tqdm.write(
                     self.style.ERROR(f"✗ Error downloading institution statements: {e}")
@@ -90,7 +90,7 @@ class Command(PBNBaseCommand):
                 zaloguj_polkniety_wyjatek(
                     "Błąd podczas pobierania publikacji instytucji z PBN",
                     logger=logger,
-                    do_rollbar=False,
+                    do_monitoringu=False,
                 )
                 tqdm.write(
                     self.style.ERROR(

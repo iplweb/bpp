@@ -10,6 +10,7 @@ from bpp.util import zaloguj_polkniety_wyjatek
 from pbn_api.models import OsobaZInstytucji
 
 from .analysis_meta import _name_or_initial_match
+from .constants import DOMYSLNE_LATA_PRIORYTETU
 from .gender import Gender, plcie_sa_rozne, zgadnij_plec_autora
 from .search import szukaj_kopii
 
@@ -34,7 +35,7 @@ def _ustal_glownego_autora(osoba_z_instytucji: OsobaZInstytucji):
             "Ustalanie głównego autora z BPP dla OsobaZInstytucji "
             f"(pk={osoba_z_instytucji.pk}) w analizie duplikatów",
             logger=logger,
-            do_rollbar=True,
+            do_monitoringu=True,
         )
         return None
     return glowny_autor or None
@@ -414,15 +415,17 @@ def analiza_duplikatow(osoba_z_instytucji: OsobaZInstytucji) -> dict:
 
 
 def autor_ma_publikacje_z_lat(
-    autor: Autor, lata_od: int = 2022, lata_do: int = 2025
+    autor: Autor,
+    lata_od: int = DOMYSLNE_LATA_PRIORYTETU[0],
+    lata_do: int = DOMYSLNE_LATA_PRIORYTETU[1],
 ) -> bool:
     """
     Sprawdza czy autor ma publikacje z określonego zakresu lat.
 
     Args:
         autor: Obiekt Autor do sprawdzenia
-        lata_od: Rok początkowy (domyślnie 2022)
-        lata_do: Rok końcowy (domyślnie 2025)
+        lata_od: Rok początkowy (zwykle początek wybranego okresu ewaluacji)
+        lata_do: Rok końcowy (zwykle koniec wybranego okresu ewaluacji)
 
     Returns:
         bool: True jeśli autor ma publikacje z tego okresu, False w przeciwnym przypadku

@@ -14,6 +14,7 @@ from django.utils.translation import gettext_lazy as _
 from polish_inflection import MIANOWNIK, MNOGA, odmien_lub_wyraz
 
 from bpp.const import (
+    GR_ADMINISTRACJA,
     GR_EKSPORT_DSPACE,
     GR_WPROWADZANIE_DANYCH,
     GR_ZGLOSZENIA_PUBLIKACJI,
@@ -115,12 +116,17 @@ RAPORTY_MENU = [
     ("Tabele", "/admin/flexible_reports/table/"),
 ]
 
+KONFIGURATOR_WYGLADU = ("Konfigurator wyglądu", "/bpp/konfigurator-wygladu/")
+
 WEB_MENU = [
     ("Serwisy", "/admin/sites/site/"),
     ("Blog", "/admin/siteblog/article/"),
     ("Favicon", "/admin/favicon/"),
     ("Szablony", "/admin/dbtemplates/template/"),
     ("Powiązania szablonów dla opisu", "/admin/bpp/szablondlaopisubibliograficznego/"),
+    # Wygląd strony WWW (kolory, czcionki, menu) — konfigurator wyglądu
+    # (superużytkownik, grupy „web” i „administracja”: bpp.konfigurator_dostep).
+    KONFIGURATOR_WYGLADU,
 ]
 
 STRUKTURA_MENU = [
@@ -182,6 +188,7 @@ ADMIN_MENU = [
         "Kolumny w module redagowania",
         "/admin/dynamic_admin_columns/modeladmin/",
     ),
+    ("Wersje przeliczeń", "/admin/bpp/wersja_przeliczenia/"),
 ]
 
 DOCKER_SERVICES_MENU = [
@@ -293,6 +300,11 @@ def _add_group_submenus(menu, user, groups, request):
             ]
 
     flt("web", "WWW", WEB_MENU, "menu-icon-web")
+    if not user.is_superuser and "web" not in groups and GR_ADMINISTRACJA in groups:
+        # Administracja bez grupy „web”: z zakładki WWW tylko konfigurator.
+        menu.children += [
+            submenu("WWW", [KONFIGURATOR_WYGLADU], "menu-icon-web"),
+        ]
     flt("dane systemowe", "PBN API", PBN_MENU, "menu-icon-api")
 
     # Combine "Dane" and "systemowe" into single 2-column menu

@@ -1,8 +1,7 @@
 import sys
 
-import rollbar
-
 from bpp.models import Autor_Absencja
+from bpp.zglaszanie_bledow import capture_exception
 from import_common.core import matchuj_autora
 from import_polon.models import ImportPlikuAbsencji, WierszImportuPlikuAbsencji
 from import_polon.utils import read_excel_or_csv_dataframe_guess_encoding
@@ -69,9 +68,9 @@ def analyze_file_import_absencji(fn, parent_model: ImportPlikuAbsencji, p):
     except ValueError as e:
         # Handle file format errors gracefully
         error_msg = str(e)
-        rollbar.report_exc_info(
+        capture_exception(
             sys.exc_info(),
-            extra_data={"context": "import_absencji", "error_type": "file_format"},
+            extra={"context": "import_absencji", "error_type": "file_format"},
         )
         WierszImportuPlikuAbsencji.objects.create(
             parent=parent_model,
@@ -84,9 +83,9 @@ def analyze_file_import_absencji(fn, parent_model: ImportPlikuAbsencji, p):
     except Exception as e:
         # Handle any other unexpected errors
         error_msg = f"Błąd podczas wczytywania pliku: {str(e)}"
-        rollbar.report_exc_info(
+        capture_exception(
             sys.exc_info(),
-            extra_data={"context": "import_absencji", "error_type": "unexpected"},
+            extra={"context": "import_absencji", "error_type": "unexpected"},
         )
         WierszImportuPlikuAbsencji.objects.create(
             parent=parent_model,

@@ -160,6 +160,8 @@ def test_save_form_csrf(page: Page, live_server):
 
     page.goto(live_server.url + reverse("multiseek:index"))
     page.evaluate("Cookielaw.accept()")
+    # „Zapisz formularz" siedzi w rozwijanym menu „Formularz".
+    page.click("#multiseekFormularzMenu")
     page.wait_for_selector("#saveFormButton", state="visible")
 
     # saveForm odpala POST po dwoch setTimeout(500ms), wiec czekamy na response.
@@ -198,3 +200,32 @@ def test_multiseek_pusty_formularz_z_sesji_ma_domyslne_pole(
     expect(page.locator("#id_report_type option:checked")).to_have_text("lista")
     expect(page.locator("#id_ordering_0 option:checked")).to_have_text("utworzono")
     expect(page.locator("#order_0_dir")).to_be_checked()
+
+
+@pytest.mark.django_db
+def test_multiseek_edycja_tytulu(wydawnictwo_zwarte, page: Page, live_server):
+    """Klik w tytuł wyników otwiera pole z „Zapisz”; zapisany tytuł zostaje
+    w sesji (widać go po przeładowaniu), a „Anuluj” przywraca poprzedni."""
+    page.goto(live_server.url + reverse("multiseek:index"))
+    page.evaluate("Cookielaw.accept()")
+    page.wait_for_selector("#multiseek-szukaj", state="visible")
+    with page.expect_navigation(wait_until="domcontentloaded"):
+        page.click("#multiseek-szukaj")
+
+    tytul = page.locator("h1.bpp-multiseek-title")
+    expect(tytul).to_have_text("Rezultat wyszukiwania")
+
+    tytul.click()
+    page.fill("textarea.multiseek-tytul-pole", "Publikacje wydziału 2024")
+    with page.expect_response(lambda r: "update-multiseek-title" in r.url):
+        page.click(".jip-ok-button")
+    expect(tytul).to_have_text("Publikacje wydziału 2024")
+
+    page.reload()
+    expect(tytul).to_have_text("Publikacje wydziału 2024")
+
+    # Ołówek też otwiera edycję; Anuluj nie zmienia tytułu.
+    page.click("#edit-activator")
+    page.fill("textarea.multiseek-tytul-pole", "Nie zapisuj")
+    page.click(".jip-cancel-button")
+    expect(tytul).to_have_text("Publikacje wydziału 2024")

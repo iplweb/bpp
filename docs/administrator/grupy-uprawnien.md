@@ -29,6 +29,23 @@ z niedozwolonych znaczników. Konfigurację integracji uczelni (PBN, Clarivate,
 ORCID, DSpace) wraz z danymi dostępowymi widzi i zmienia wyłącznie
 superużytkownik.
 
+## Wgląd w metryki jednostek (bez grupy) {#metryki-jednostek}
+
+Zestawienie PDF [„Metryki jednostek”](../redaktor/metryki-jednostek.md)
+zawiera imienne oceny pracowników. Poza grupą „wprowadzanie danych” (która
+widzi wszystkie jednostki) dostęp do niego daje się **bez żadnej grupy**:
+
+- **kierownik jednostki** widzi swoją jednostkę automatycznie — wystarczy,
+  że jego konto jest powiązane z autorem, a autor ma w jednostce funkcję
+  „kierownik” w bieżących datach,
+- innym osobom administrator wskazuje jednostki w edycji użytkownika
+  (**Administracja → Użytkownicy**):
+  sekcja **„Metryki jednostek”**, pole **„Metryki jednostek — jednostki do
+  wglądu”** (z podjednostkami).
+
+To pole nie daje innych uprawnień. Szczegóły:
+[Kto widzi metryki jednostek](../redaktor/metryki-jednostek.md#kto-widzi).
+
 ## Zalecenia
 
 - **Nadawaj grupy uprzywilejowane tylko zaufanym osobom**, tak samo jak
@@ -42,14 +59,24 @@ superużytkownik.
   przy tym dostępne, więc dla kont uprzywilejowanych warto korzystać
   wyłącznie z logowania przez dostawcę z MFA i stosować
   [politykę haseł](zaawansowane.md#polityka-haseł).
-- **Okresowo przeglądaj członków grup.** W panelu administracyjnym:
-  „Użytkownicy” — kolumna z listą grup oraz filtr „grupy” w panelu bocznym
-  (pokazuje wszystkich członków wybranej grupy); filtr „status
-  superużytkownika” pokazuje konta z pełnymi uprawnieniami.
+- **Okresowo przeglądaj członków grup** — patrz
+  [Przegląd członków grup](#przegląd-członków-grup) niżej.
 - **Historia zmian.**
     - Szablony z bazy (dbtemplates) mają historię wersji z porównaniem
       zmian (django-reversion) — przycisk „Historia” na stronie szablonu.
-    - Rekord uczelni również ma historię wersji (django-reversion).
+    - Każdy rekord edytowany w module redagowania (publikacje z autorami,
+      autorzy, struktura, słowniki, użytkownicy, grupy, ustawienia) ma
+      historię wersji z porównaniem dwóch wersji i przywracaniem — patrz
+      [Historia zmian publikacji](../redaktor/wydawnictwa.md#historia-zmian).
+      Bez historii są tylko logi, wyniki zadań, sesje importów i kopie
+      danych z PBN.
+    - Przy każdej wersji zapisuje się **źródło zmiany**: moduł redagowania,
+      strona, import lub narzędzie, API / MCP (z aplikacją OAuth) albo
+      system. Pełna lista zmian z filtrami po źródle i aplikacji:
+      **Administracja → Historia zmian (rewizje)**. Historia jest trzymana
+      bez limitu czasu.
+    - Hasła, tokeny PBN i sekrety aplikacji OAuth **nie są** zapisywane
+      w wersjach; przywrócenie wersji użytkownika nie zmienia jego hasła.
     - W instalacji produkcyjnej dziennik django-easy-audit rejestruje
       zmiany rekordów uczelni i jednostek.
     - Dla pozostałych obiektów (artykuły, ustawienia formularzy, raporty,
@@ -58,3 +85,37 @@ superużytkownik.
       oraz które pola — **bez** poprzedniej treści. Jeżeli potrzebny jest
       pełny ślad zmian, rozważ dopisanie tych modeli do
       `DJANGO_EASY_AUDIT_REGISTERED_CLASSES`.
+    - Rekordy utworzone poza formularzami panelu — przez importery (PBN,
+      importer publikacji, import pracowników, importer autorów PBN,
+      import patentów), przycisk „Toż” i niektóre polecenia `manage.py` —
+      też mają wpis „dodano” w historii, z opisem, skąd pochodzą. Autorem
+      wpisu jest osoba, która uruchomiła import.
+    - Zmiany istniejących rekordów robione poza formularzami — scalanie
+      autorów, przemapowania źródeł i prac autora (oraz ich cofnięcia),
+      aktualizacje z importu pracowników, POLON-u i importu dyscyplin,
+      ustawienia z porównania z CrossRef i modułu rozbieżności, powiązania
+      z PBN — mają wpis „zmieniono” z opisem operacji. W modelach
+      z historią wersji (m.in. autorzy, publikacje) taka zmiana zapisuje
+      też wersję, więc można ją cofnąć przyciskiem „Historia”. Usunięcie duplikatu przy scalaniu zostawia wpis
+      „usunięto”.
+- **Konta `system-user-…`.** Gdy import uruchomiono poleceniem
+  `manage.py` (bez zalogowanej osoby), wpisy historii są przypisywane
+  kontu `system-user-<login>`, gdzie `<login>` to login systemowy, z którego
+  uruchomiono polecenie (np. `system-user-biblio`). Konto powstaje
+  automatycznie przy pierwszym takim rekordzie, jest nieaktywne i nie ma
+  hasła — nie da się na nie zalogować. Nie usuwaj go: usunięcie skasuje
+  powiązane wpisy historii.
+
+## Przegląd członków grup
+
+1. W module redagowania wybierz z górnego menu **Administracja →
+   Użytkownicy**. Kolumna **Lista grup** pokazuje grupy każdego konta,
+   a kolumna **Status superużytkownika** — konta z pełnymi uprawnieniami.
+
+    ![Lista użytkowników z kolumnami „Status superużytkownika” i „Lista grup”](../images/administrator/grupy-uprawnien/01-lista-uzytkownikow.png)
+
+2. Kliknij **Filtruj** i rozwiń filtr **grupy**. Wybranie grupy pokazuje
+   wszystkich jej członków; filtr **status superużytkownika** pokazuje konta
+   z pełnymi uprawnieniami.
+
+    ![Panel filtrów z rozwiniętym filtrem „grupy”](../images/administrator/grupy-uprawnien/02-filtr-grupy.png)

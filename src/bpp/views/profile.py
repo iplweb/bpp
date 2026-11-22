@@ -102,16 +102,53 @@ class ProfilUzytkownikaView(LoginRequiredMixin, TemplateView):
         context["autor"] = autor
 
         if autor:
+            from ewaluacja_common.okres import okres_dla_request
             from ewaluacja_metryki.models import MetrykaAutora
             from ewaluacja_metryki.uczelnia_scope import scope_metryki
             from raport_slotow.uczelnia_helper import uczelnia_dla_odczytu
 
             # Metryki pokazujemy z JEDNEJ uczelni — tej z requestu. Autor
             # afiliowany do wielu uczelni nie może widzieć tu metryk obcej
-            # uczelni (no-op przy single-install).
+            # uczelni (no-op przy single-install). Tylko z jednego okresu
+            # ewaluacji (wybranego albo domyślnego) — inaczej dyscypliny
+            # dublowałyby się dla kolejnych okresów.
             context["metryki"] = scope_metryki(
                 MetrykaAutora.objects.filter(autor=autor),
                 uczelnia_dla_odczytu(self.request),
+                okres_dla_request(self.request),
             ).select_related("dyscyplina_naukowa")
 
+        context.update(self._metryki_jednostek_context())
         return context
+
+    def _metryki_jednostek_context(self):
+        """Blok „Metryki jednostek” (FD#617): kierownik jednostki albo osoba
+        z jednostkami wskazanymi w profilu widzi tu swoje zestawienia PDF.
+        Pełne uprawnienia ewaluacji — tylko link do listy wszystkich."""
+        from ewaluacja_metryki.dostep_jednostek import (
+            ma_dostep_do_metryk_jednostek,
+            widzi_wszystkie_jednostki,
+        )
+        from ewaluacja_metryki.views.metryki_jednostek import (
+            jednostki_z_metrykami,
+            uzywa_wydzialow,
+            wydzialy_z_metrykami,
+        )
+
+        user = self.request.user
+        wydzialy = uzywa_wydzialow(self.request)
+        if widzi_wszystkie_jednostki(user):
+            return {
+                "metryki_jednostek_wszystkie": True,
+                "metryki_wydzialow_wszystkie": wydzialy,
+            }
+        if not ma_dostep_do_metryk_jednostek(user):
+            return {}
+        return {
+            "metryki_jednostek_dostep": True,
+            "metryki_jednostek": jednostki_z_metrykami(self.request),
+            # Np. dziekan — kierownik jednostki głównej wydziału.
+            "metryki_wydzialow": (
+                wydzialy_z_metrykami(self.request) if wydzialy else []
+            ),
+        }

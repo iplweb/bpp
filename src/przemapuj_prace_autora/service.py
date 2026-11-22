@@ -9,9 +9,12 @@ from django.db import transaction
 
 from bpp.models import (
     Jednostka,
+    Wydawnictwo_Ciagle,
     Wydawnictwo_Ciagle_Autor,
+    Wydawnictwo_Zwarte,
     Wydawnictwo_Zwarte_Autor,
 )
+from bpp.wersjonowanie import zmiany_rekordow
 
 from .models import PrzemapoaniePracAutora
 
@@ -64,26 +67,41 @@ def _historia_prac_zwartych(prace_zwarte, jednostka_z):
     return historia
 
 
+def _rekordy(wiersze_autorow):
+    """Klucze prac (rekordów publikacji) dla queryseta ``*_Autor``."""
+    return set(wiersze_autorow.values_list("rekord_id", flat=True))
+
+
 def przemapuj(autor, jednostka_z, jednostka_do, user, zrodlowy_import=None):
     """Przenieś prace autora afiliowane do ``jednostka_z`` na ``jednostka_do``.
 
     Zakres (D7): wszystkie prace ze ``jednostka_z``, niezależnie od roku. Zwraca
     utworzony rekord audytu ``PrzemapoaniePracAutora``.
     """
+    komentarz = (
+        f"Przemapowano afiliację autora „{autor}”: „{jednostka_z}” → "
+        f"„{jednostka_do}” (przemapowanie prac autora)."
+    )
     with transaction.atomic():
         prace_ciagle = Wydawnictwo_Ciagle_Autor.objects.filter(
             autor=autor, jednostka=jednostka_z
         ).select_related("rekord")
         prace_ciagle_historia = _historia_prac_ciaglych(prace_ciagle, jednostka_z)
         liczba_prac_ciaglych = len(prace_ciagle_historia)
-        prace_ciagle.update(jednostka=jednostka_do)
+        with zmiany_rekordow(
+            user, Wydawnictwo_Ciagle, _rekordy(prace_ciagle), komentarz
+        ):
+            prace_ciagle.update(jednostka=jednostka_do)
 
         prace_zwarte = Wydawnictwo_Zwarte_Autor.objects.filter(
             autor=autor, jednostka=jednostka_z
         ).select_related("rekord")
         prace_zwarte_historia = _historia_prac_zwartych(prace_zwarte, jednostka_z)
         liczba_prac_zwartych = len(prace_zwarte_historia)
-        prace_zwarte.update(jednostka=jednostka_do)
+        with zmiany_rekordow(
+            user, Wydawnictwo_Zwarte, _rekordy(prace_zwarte), komentarz
+        ):
+            prace_zwarte.update(jednostka=jednostka_do)
 
         return PrzemapoaniePracAutora.objects.create(
             autor=autor,
@@ -135,6 +153,7 @@ def cofnij(przemapowanie):
     istniejace = set(
         Jednostka.objects.filter(pk__in=jz_pks).values_list("pk", flat=True)
     )
+    cofniete = {Wydawnictwo_Ciagle_Autor: [], Wydawnictwo_Zwarte_Autor: []}
     with transaction.atomic():
         for historia, model in historie:
             for wpis in historia or []:
@@ -154,8 +173,24 @@ def cofnij(przemapowanie):
                 ).update(jednostka_id=jz)
                 if n == 1:
                     cofnieto += 1
+                    cofniete[model].append(pk)
                 else:
                     # pk nie istnieje ALBO praca zmieniła afiliację po
                     # przemapowaniu (guard niespełniony).
                     pominieto += 1
+
+        # Historia prac (autor wpisu: zalogowany użytkownik / konto
+        # systemowe). Prace nie są wersjonowane, więc wpis po fakcie.
+        for model, rekord_model in (
+            (Wydawnictwo_Ciagle_Autor, Wydawnictwo_Ciagle),
+            (Wydawnictwo_Zwarte_Autor, Wydawnictwo_Zwarte),
+        ):
+            with zmiany_rekordow(
+                None,
+                rekord_model,
+                _rekordy(model.objects.filter(pk__in=cofniete[model])),
+                f"Cofnięto przemapowanie prac autora nr {przemapowanie.pk} "
+                f"(„{przemapowanie.jednostka_do}” → poprzednia jednostka).",
+            ):
+                pass
     return cofnieto, pominieto

@@ -3,39 +3,96 @@
 // Report title, query params, and removed records panel
 // =============================================================================
 
-// Report title styling
+// Tytuł raportu — zwykły nagłówek (bez osobnej karty: jej margines
+// odsłaniał szary pasek tła strony nad wynikami), który po najechaniu
+// wygląda jak pole tekstowe, bo jest edytowalny w miejscu (jinplace).
 .multiseek-report-title {
-  background: white;
-  border-radius: 8px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
-  padding: 8px 15px;
-  margin-bottom: 8px;
-  margin-top: 0;
-  border: 1px solid #e9ecef;
+  display: flex;
+  align-items: flex-start;
+  gap: 0.25rem;
+  margin: 0;
+  padding: 8px 10px 4px;
+  // To samo tło co kontener wyników pod spodem — bez tego w podglądzie
+  // (iframe na stronie wyszukiwania) prześwitywało szare tło strony.
+  background: var(--bpp-tlo-pow, #fff);
 
   h1 {
-    color: #2c3e50;
-    font-size: 1.4rem;
+    flex: 1 1 auto;
+    min-width: 0;
     margin: 0;
-    display: inline-block;
+    padding: 2px 8px;
+    border: 1px solid transparent;
+    border-radius: 4px;
+    color: var(--bpp-tekst, #2c3e50);
+    font-size: 1.4rem;
     line-height: 1.3;
+    cursor: text;
+    transition: border-color 0.15s ease, background-color 0.15s ease;
+
+    &:hover {
+      border-color: var(--bpp-ramka, #cacaca);
+      background: var(--bpp-tlo-pow-2, #f8f9fa);
+    }
+
+    // Tryb edycji: pole na całą szerokość w rozmiarze tytułu.
+    &:has(form),
+    &:has(form):hover {
+      border-color: transparent;
+      background: none;
+      cursor: auto;
+    }
+
+    form {
+      display: block !important;
+    }
+  }
+
+  .multiseek-tytul-pole {
+    display: block;
+    width: 100% !important;
+    min-height: 2.6rem;
+    margin: 0 0 0.5rem;
+    font-size: 1.4rem;
+    line-height: 1.3;
+    resize: vertical;
+  }
+
+  .jip-button {
+    margin: 0 0.5rem 0 0;
+    padding: 0.45rem 1rem;
+    border-radius: 3px;
+    font-size: 0.85rem;
+    cursor: pointer;
+  }
+
+  .jip-ok-button {
+    border: 1px solid $primary-color;
+    background: $primary-color;
+    color: #fff;
+  }
+
+  .jip-cancel-button {
+    border: 1px solid var(--bpp-ramka, #cacaca);
+    background: var(--bpp-tlo-pow, #fff);
+    color: var(--bpp-tekst, #333);
   }
 
   .title-edit-btn {
-    margin-left: 15px;
-    padding: 6px 12px;
-    background: #f8f9fa;
-    border: 1px solid #dee2e6;
+    flex: 0 0 auto;
+    padding: 0.4rem 0.5rem;
     border-radius: 4px;
-    color: #6c757d;
-    font-size: 0.85rem;
-    transition: all 0.2s ease;
+    color: var(--bpp-tekst-przygaszony, #6c757d);
+    font-size: 1.1rem;
+    cursor: pointer;
 
     &:hover {
-      background: #e9ecef;
-      border-color: #adb5bd;
-      color: #495057;
+      color: var(--bpp-tekst, #333);
+      background: var(--bpp-tlo-pow-2, #f1f3f4);
     }
+  }
+
+  h1:has(form) + .title-edit-btn {
+    display: none;
   }
 }
 
@@ -134,6 +191,86 @@
 
   select {
     margin: 0;
+  }
+}
+
+// Formularz pivota jako schemat tabeli (2×2): narożnik | kolumny,
+// wiersze | komórka.
+.multiseek-pivot-schemat {
+  display: grid;
+  grid-template-columns: minmax(12rem, max-content) minmax(16rem, max-content);
+  grid-template-areas:
+    "naroznik kolumny"
+    "wiersze komorka";
+  border: 1px solid var(--bpp-ramka, #ccc);
+  border-radius: 4px;
+  overflow: hidden;
+
+  label {
+    margin: 0;
+  }
+
+  > * {
+    padding: 0.5rem 0.75rem;
+  }
+}
+
+.multiseek-pivot-schemat__naroznik {
+  grid-area: naroznik;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--bpp-tlo-pow-2, #eee);
+  border-right: 1px solid var(--bpp-ramka, #ccc);
+  border-bottom: 1px solid var(--bpp-ramka, #ccc);
+  color: var(--bpp-tekst-przygaszony, #999);
+  font-size: 1.5rem;
+}
+
+.multiseek-pivot-schemat__kolumny,
+.multiseek-pivot-schemat__wiersze {
+  background: var(--bpp-tlo-pow-2, #f4f4f4);
+}
+
+.multiseek-pivot-schemat__kolumny {
+  grid-area: kolumny;
+  border-bottom: 1px solid var(--bpp-ramka, #ccc);
+}
+
+.multiseek-pivot-schemat__wiersze {
+  grid-area: wiersze;
+  border-right: 1px solid var(--bpp-ramka, #ccc);
+}
+
+.multiseek-pivot-schemat__komorka {
+  grid-area: komorka;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  background: var(--bpp-tlo-pow, #fff);
+
+  label {
+    font-weight: normal;
+  }
+}
+
+@media screen and (max-width: 39.9375em) {
+  .multiseek-pivot-schemat {
+    grid-template-columns: 1fr;
+    grid-template-areas:
+      "kolumny"
+      "wiersze"
+      "komorka";
+    width: 100%;
+  }
+
+  .multiseek-pivot-schemat__naroznik {
+    display: none;
+  }
+
+  .multiseek-pivot-schemat__wiersze {
+    border-right: none;
+    border-bottom: 1px solid var(--bpp-ramka, #ccc);
   }
 }
 

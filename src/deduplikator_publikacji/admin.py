@@ -31,6 +31,25 @@ class PublicationDuplicateScanRunAdmin(admin.ModelAdmin):
     ]
     ordering = ["-started_at"]
 
+    def get_actions(self, request):
+        # Bulk delete would bypass has_delete_permission(obj) and remove
+        # (CASCADE) the "not a duplicate" decisions of the deleted scans.
+        actions = super().get_actions(request)
+        actions.pop("delete_selected", None)
+        return actions
+
+    def has_delete_permission(self, request, obj=None):
+        # A scan holding "not a duplicate" decisions must stay: deleting it
+        # would delete the decisions and the rejected pairs would return.
+        if (
+            obj is not None
+            and obj.candidates.filter(
+                status=PublicationDuplicateCandidate.Status.NOT_DUPLICATE
+            ).exists()
+        ):
+            return False
+        return super().has_delete_permission(request, obj)
+
 
 @admin.register(PublicationDuplicateCandidate)
 class PublicationDuplicateCandidateAdmin(admin.ModelAdmin):

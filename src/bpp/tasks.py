@@ -286,7 +286,7 @@ MAKS_EKSPORT_AUTORA = 5000
 
 
 #: Komunikat pokazywany publicznie, gdy generowanie eksportu się nie powiedzie.
-#: Szczegóły wyjątku trafiają wyłącznie do logu i Rollbara.
+#: Szczegóły wyjątku trafiają wyłącznie do logu i monitoringu błędów.
 KOMUNIKAT_BLEDU_EKSPORTU_AUTORA = (
     "Nie udało się wygenerować pliku. Spróbuj ponownie później."
 )
@@ -365,7 +365,7 @@ def generuj_eksport_autora(self, task_id: str):
         return {"status": "success", "task_id": str(task_id)}
     except Exception:
         # Status zadania jest publiczny (UUID) — nie pokazujemy treści wyjątku.
-        # Szczegóły: log tutaj, Rollbar przez sygnał ``task_failure``
+        # Szczegóły: log tutaj, monitoring przez sygnał ``task_failure``
         # (``django_bpp.celery_tasks``) po ponownym zgłoszeniu wyjątku niżej.
         logger.exception("Błąd generowania eksportu autora (zadanie %s)", task_id)
         task.status = "failed"
@@ -387,3 +387,21 @@ def usun_stare_eksporty_autora():
         field_name="created_at",
         days=7,
     )
+
+
+@app.task(ignore_result=True)
+def zlec_zalegle_przeliczenia():
+    """Zleca w tle przeliczenia, których wersja w kodzie jest wyższa niż
+    zapisana w bazie (``bpp.przeliczenia``). Wołane po starcie workera."""
+    from bpp.przeliczenia import zlec_zalegle_przeliczenia as zlec
+
+    zlec()
+
+
+@app.task(ignore_result=True)
+def odswiez_typowe_dyscypliny():
+    """Przelicz „typowe dyscypliny uczelni" (podpowiedź, gdy autor nie ma
+    dyscypliny na rok pracy — FD#620) i zapisz je w cache na dobę."""
+    from bpp.util.typowe_dyscypliny import odswiez_typowe_dyscypliny as odswiez
+
+    odswiez()

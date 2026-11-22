@@ -101,6 +101,13 @@ nav:
       - Mój profil autora: uzytkownik/moj-profil-autora.md
       - Nie mogę się zalogować: uzytkownik/logowanie.md
       - Widget publikacji na stronie WWW: uzytkownik/widget-publikacji.md
+      - Wyszukiwanie precyzyjne — podstawy: uzytkownik/wyszukiwanie-precyzyjne.md
+      - Wyszukiwanie precyzyjne — przykłady zapytań: uzytkownik/wyszukiwanie-precyzyjne-przyklady.md
+      - Wyszukiwanie precyzyjne — praca z wynikami: uzytkownik/wyszukiwanie-precyzyjne-wyniki.md
+      - Wyszukiwanie precyzyjne — zapisane formularze: uzytkownik/wyszukiwanie-precyzyjne-zapisane.md
+      - Tabela krzyżowa (zestawienia): uzytkownik/tabela-krzyzowa.md
+      - Sieć powiązań autorów: uzytkownik/powiazania-autorow.md
+      - Bibliografia w asystencie AI: uzytkownik/asystent-ai.md
   - Instrukcja redaktora:
       - Wyszukiwanie i redagowanie: redaktor/wyszukiwanie-redagowanie.md
       - Jak dodać publikację importerem: redaktor/importer-publikacji.md
@@ -111,6 +118,7 @@ nav:
       - Impact Factor, kwartyle i punktacja źródeł: redaktor/impact-factor-i-punktacja.md
       - Duplikaty autorów i źródeł: redaktor/duplikaty.md
       - Metryki ewaluacyjne autorów: redaktor/metryki-ewaluacyjne.md
+      - "Metryki jednostek — PDF dla kierownika": redaktor/metryki-jednostek.md
       - Liczba N — najczęstsze pytania: redaktor/liczba-n-faq.md
       - "Import list ministerialnych i punktacji czasopism": redaktor/import-list-ministerialnych.md
       - "Rozbieżności dyscyplin — jak je znaleźć i poprawić": redaktor/rozbieznosci-dyscyplin.md
@@ -122,8 +130,12 @@ nav:
       - Wydawnictwa: redaktor/wydawnictwa.md
       - Sloty: redaktor/sloty.md
       - Eksportowanie do DSpace: redaktor/eksportowanie-do-dspace.md
+      - Dwudyscyplinowcy: redaktor/dwudyscyplinowcy.md
+      - Przemapowanie prac autora: redaktor/przemapowanie-prac-autora.md
+      - Duplikaty publikacji: redaktor/duplikaty-publikacji.md
   - Instrukcja administratora:
       - Konfiguracja ogólna: administrator/ogolna.md
+      - Konfigurator wyglądu: administrator/konfigurator-wygladu.md
       - Importer publikacji: administrator/importer-publikacji.md
       - Import pracowników: administrator/import-pracownikow.md
       - Zgłaszanie publikacji: administrator/zglaszanie-publikacji.md
@@ -135,12 +147,17 @@ nav:
       - Widget wsparcia Freshdesk: administrator/widget-wsparcia-freshdesk.md
       - Konfiguracja zaawansowana: administrator/zaawansowane.md
       - Grupy uprawnień: administrator/grupy-uprawnien.md
+      - Metody logowania (LDAP, AD, Keycloak, ORCID…): administrator/metody-logowania.md
+      - Pulpit administratora: administrator/panel-administracyjny.md
   - API: api/index.md
   - Dla deweloperów i agentów:
       - deweloper/index.md
       - Mapa kodu: deweloper/mapa-kodu.md
       - Polecenia: deweloper/polecenia.md
       - Pakiety klienckie PBN: deweloper/pakiety-pbn.md
+      - Soft-delete (kosz): deweloper/soft-delete.md
+      - Przeliczenia po aktualizacji: deweloper/przeliczenia-po-aktualizacji.md
+      - Historia zmian (reversion): deweloper/historia-zmian-reversion.md
       - Import z SQLite (harvestery): deweloper/import-sqlite.md
       - Budowanie CSS/SCSS: deweloper/budowanie-css.md
       - Rozwijanie projektu: deweloper/rozwijanie-projektu.md

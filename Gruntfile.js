@@ -1,4 +1,9 @@
 const sass = require('sass');
+const path = require('path');
+const motywKonfig = require('./src/bpp/static/bpp/js/motyw-konfig.js');
+
+// Konfiguracje motywów z konfiguratora wyglądu (task `motywy` niżej).
+const KATALOG_MOTYWOW = 'src/bpp/static/scss/motywy';
 
 // Sentinel kompletnego builda assetow. MUSI byc zgodny z `CSS_STAMP`
 // w Makefile — to po jego mtime `make assets` decyduje, czy przebudowywac.
@@ -33,10 +38,36 @@ module.exports = function (grunt) {
                         'src/bpp/static/scss/app-blue.scss'
                 }
             },
+            // Warianty z trybem ciemnym (_tryb-ciemny.scss): -auto = wg
+            // ustawień systemu odwiedzającego, -ciemny = zawsze ciemny.
+            blue_auto: {
+                files: {
+                    'src/bpp/static/scss/app-blue-auto.css':
+                        'src/bpp/static/scss/app-blue-auto.scss'
+                }
+            },
+            blue_ciemny: {
+                files: {
+                    'src/bpp/static/scss/app-blue-ciemny.css':
+                        'src/bpp/static/scss/app-blue-ciemny.scss'
+                }
+            },
             green: {
                 files: {
                     'src/bpp/static/scss/app-green.css':
                         'src/bpp/static/scss/app-green.scss'
+                }
+            },
+            green_auto: {
+                files: {
+                    'src/bpp/static/scss/app-green-auto.css':
+                        'src/bpp/static/scss/app-green-auto.scss'
+                }
+            },
+            green_ciemny: {
+                files: {
+                    'src/bpp/static/scss/app-green-ciemny.css':
+                        'src/bpp/static/scss/app-green-ciemny.scss'
                 }
             },
             orange: {
@@ -45,10 +76,34 @@ module.exports = function (grunt) {
                         'src/bpp/static/scss/app-orange.scss'
                 }
             },
+            orange_auto: {
+                files: {
+                    'src/bpp/static/scss/app-orange-auto.css':
+                        'src/bpp/static/scss/app-orange-auto.scss'
+                }
+            },
+            orange_ciemny: {
+                files: {
+                    'src/bpp/static/scss/app-orange-ciemny.css':
+                        'src/bpp/static/scss/app-orange-ciemny.scss'
+                }
+            },
             vizja: {
                 files: {
                     'src/bpp/static/scss/app-vizja.css':
                         'src/bpp/static/scss/app-vizja.scss'
+                }
+            },
+            vizja_auto: {
+                files: {
+                    'src/bpp/static/scss/app-vizja-auto.css':
+                        'src/bpp/static/scss/app-vizja-auto.scss'
+                }
+            },
+            vizja_ciemny: {
+                files: {
+                    'src/bpp/static/scss/app-vizja-ciemny.css':
+                        'src/bpp/static/scss/app-vizja-ciemny.scss'
                 }
             },
             mwsl: {
@@ -57,10 +112,34 @@ module.exports = function (grunt) {
                         'src/bpp/static/scss/app-mwsl.scss'
                 }
             },
+            mwsl_auto: {
+                files: {
+                    'src/bpp/static/scss/app-mwsl-auto.css':
+                        'src/bpp/static/scss/app-mwsl-auto.scss'
+                }
+            },
+            mwsl_ciemny: {
+                files: {
+                    'src/bpp/static/scss/app-mwsl-ciemny.css':
+                        'src/bpp/static/scss/app-mwsl-ciemny.scss'
+                }
+            },
             uafm: {
                 files: {
                     'src/bpp/static/scss/app-uafm.css':
                         'src/bpp/static/scss/app-uafm.scss'
+                }
+            },
+            uafm_auto: {
+                files: {
+                    'src/bpp/static/scss/app-uafm-auto.css':
+                        'src/bpp/static/scss/app-uafm-auto.scss'
+                }
+            },
+            uafm_ciemny: {
+                files: {
+                    'src/bpp/static/scss/app-uafm-ciemny.css':
+                        'src/bpp/static/scss/app-uafm-ciemny.scss'
                 }
             },
             adminthemes: {
@@ -171,11 +250,24 @@ module.exports = function (grunt) {
             themes: {
                 tasks: [
                     'sass:blue',
+                    'sass:blue_auto',
+                    'sass:blue_ciemny',
                     'sass:green',
+                    'sass:green_auto',
+                    'sass:green_ciemny',
                     'sass:orange',
+                    'sass:orange_auto',
+                    'sass:orange_ciemny',
                     'sass:vizja',
+                    'sass:vizja_auto',
+                    'sass:vizja_ciemny',
                     'sass:mwsl',
+                    'sass:mwsl_auto',
+                    'sass:mwsl_ciemny',
                     'sass:uafm',
+                    'sass:uafm_auto',
+                    'sass:uafm_ciemny',
+                    'motywy',
                     'sass:adminthemes',
                     'sass:adminfilterpanel',
                     'sass:adminprint',
@@ -204,7 +296,11 @@ module.exports = function (grunt) {
             grunt: {files: ['Gruntfile.js']},
 
             sass: {
-                files: ['src/bpp/static/scss/*.scss','src/bpp/static/bpp/scss/*.scss'],
+                files: [
+                    'src/bpp/static/scss/*.scss',
+                    'src/bpp/static/scss/motywy/*.json',
+                    'src/bpp/static/bpp/scss/*.scss'
+                ],
                 tasks: ['concurrent:themes']
             }
 
@@ -238,6 +334,15 @@ module.exports = function (grunt) {
                          '--format=iife --target=es2018 ' +
                          '--inject:src/bpp/static/bpp/js/jquery-shim.js ' +
                          '--define:global=window'
+            },
+            // Dart Sass dla konfiguratora wyglądu (kompilacja motywu
+            // w przeglądarce, ładowany tylko przez worker konfiguratora).
+            esbuildSass: {
+                command: 'npx esbuild ' +
+                         'src/bpp/static/bpp/js/sass-przegladarka-entry.js ' +
+                         '--bundle --minify --format=iife --platform=browser ' +
+                         '--target=es2020 ' +
+                         '--outfile=src/bpp/static/bpp/js/dist/sass-przegladarka.js'
             },
             // Osobny lazy bundle Cytoscape.js + fcose dla strony eksploratora
             // powiązań autorów (ładowany tylko na tej stronie, nie globalnie).
@@ -311,6 +416,68 @@ module.exports = function (grunt) {
 
     grunt.registerTask('shell-test', ['shell:collectstatic']);
 
+    // Motywy z konfiguratora wyglądu: każdy plik scss/motywy/<nazwa>.json
+    // → scss/app-<nazwa>.css. Punkt wejścia SCSS generuje ten sam moduł,
+    // którego używa konfigurator w przeglądarce (motyw-konfig.js), więc
+    // podgląd i produkcja są identyczne. Konfig z błędem (np. za mały
+    // kontrast) przerywa build.
+    grunt.registerTask(
+        'motywy',
+        'Kompiluje motywy z konfiguracji (src/bpp/static/scss/motywy/*.json)',
+        function () {
+            const opcje = grunt.config('sass.options');
+            let zle = 0;
+            grunt.file.expand(KATALOG_MOTYWOW + '/*.json').forEach(function (plik) {
+                const konfig = grunt.file.readJSON(plik);
+                const bledy = motywKonfig.waliduj(konfig);
+                if (path.basename(plik, '.json') !== konfig.nazwa) {
+                    bledy.push({komunikat: 'nazwa pliku musi być równa polu "nazwa"'});
+                }
+                if (bledy.length) {
+                    bledy.forEach(function (b) {
+                        grunt.log.error(plik + ': ' + b.komunikat);
+                    });
+                    zle++;
+                    return;
+                }
+                const wynik = sass.compileString(motywKonfig.doScss(konfig), {
+                    loadPaths: ['src/bpp/static/scss'].concat(opcje.loadPaths),
+                    style: opcje.style,
+                    silenceDeprecations: opcje.silenceDeprecations,
+                });
+                const cel = 'src/bpp/static/scss/app-' + konfig.nazwa + '.css';
+                grunt.file.write(cel, motywKonfig.przetworzCss(wynik.css, konfig));
+                grunt.log.ok(plik + ' → ' + cel);
+            });
+            return zle === 0;
+        }
+    );
+
+    // Źródła SCSS dla konfiguratora wyglądu: pliki BPP (scss/*.scss) i SCSS
+    // Foundation w jednym JSON-ie — worker konfiguratora kompiluje z nich
+    // motyw w przeglądarce (w obrazie produkcyjnym nie ma node_modules).
+    grunt.registerTask(
+        'motywyZrodla',
+        'Pakuje źródła SCSS dla konfiguratora wyglądu',
+        function () {
+            const pliki = {};
+            grunt.file.expand({cwd: 'src/bpp/static/scss'}, '*.scss')
+                .forEach(function (p) {
+                    pliki['bpp/' + p] = grunt.file.read('src/bpp/static/scss/' + p);
+                });
+            // Cały pakiet (scss/ + _vendor/): foundation.scss importuje
+            // '../_vendor/...' spoza swojego katalogu.
+            const fnd = 'node_modules/foundation-sites';
+            grunt.file.expand({cwd: fnd}, ['scss/**/*.scss', '_vendor/**/*.scss'])
+                .forEach(function (p) {
+                    pliki['foundation/' + p] = grunt.file.read(fnd + '/' + p);
+                });
+            const cel = 'src/bpp/static/bpp/js/dist/motyw-zrodla-scss.json';
+            grunt.file.write(cel, JSON.stringify(pliki));
+            grunt.log.ok(Object.keys(pliki).length + ' plików → ' + cel);
+        }
+    );
+
     // Odswieza sentinel, po ktorym `make assets` poznaje, ze assety sa
     // aktualne. Wczesniej `touch` robila wylacznie regula w Makefile, wiec
     // `npx grunt build` odpalony RECZNIE budowal pliki, ale zostawial
@@ -336,6 +503,8 @@ module.exports = function (grunt) {
         'shell:esbuild',
         'shell:esbuildCytoscape',
         'shell:esbuildThree',
+        'shell:esbuildSass',
+        'motywyZrodla',
         'shell:patchBundle',
         'shell:copyRollbar',
         'shell:collectstatic',
@@ -350,6 +519,8 @@ module.exports = function (grunt) {
         'shell:esbuild',
         'shell:esbuildCytoscape',
         'shell:esbuildThree',
+        'shell:esbuildSass',
+        'motywyZrodla',
         'shell:patchBundle',
         'shell:copyRollbar'
     ]);

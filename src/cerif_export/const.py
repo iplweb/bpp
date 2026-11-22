@@ -112,4 +112,8 @@ ATRYBUT_TYP_COAR = "cerif_typ_coar"
 TOKEN_TTL = 24 * 60 * 60
 TOKEN_SALT = "cerif_export.resumption"
 
-DELETED_RECORD = "no"
+# Faza 05b soft-delete: ogłaszamy usunięcia nagłówkiem status="deleted".
+# `transient`, nie `persistent`: nie gwarantujemy trwałości nagrobka —
+# husk może zniknąć przy twardym kasowaniu albo czyszczeniu kosza (faza 07),
+# a sety bez soft-delete (jednostki, projekty) nie mają trwałego śladu.
+DELETED_RECORD = "transient"

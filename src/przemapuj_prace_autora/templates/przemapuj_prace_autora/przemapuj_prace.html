@@ -21,14 +21,6 @@
             {% endif %}
         </div>
 
-        {% if messages %}
-            {% for message in messages %}
-                <div class="callout {% if message.tags == 'success' %}success{% elif message.tags == 'error' %}alert{% else %}primary{% endif %}">
-                    {{ message }}
-                </div>
-            {% endfor %}
-        {% endif %}
-
         {% if not preview %}
             <h3>Obecny rozkład prac w jednostkach</h3>
             {% if jednostki_stats %}
@@ -107,8 +99,8 @@
                             <td>{{ log.liczba_prac_zwartych }}</td>
                             <td>{{ log.utworzono_przez.username }}</td>
                             <td>
-                                {% if request.user.is_superuser or request.user.groups.filter.name == "wprowadzanie danych" %}
-                                    <a href="/admin/przemapuj_prace_autora/przemapoaniepracautora/{{ log.pk }}/change/"
+                                {% if moze_otworzyc_szczegoly %}
+                                    <a href="{% url 'admin:przemapuj_prace_autora_przemapoaniepracautora_change' log.pk %}"
                                        target="_blank"
                                        class="button tiny secondary"
                                        title="Zobacz szczegółową historię przemapowanych prac">
@@ -199,8 +191,9 @@
                 {{ form }}
 
                 <div class="callout alert">
-                    <p><span class="fi-alert"></span> <strong>Uwaga!</strong> Ta operacja jest nieodwracalna.
-                    Upewnij się, że wybrane jednostki są poprawne.</p>
+                    <p><span class="fi-alert"></span> <strong>Uwaga!</strong> Upewnij się, że wybrane jednostki są poprawne.
+                    Przemapowanie można później cofnąć przyciskiem „Cofnij”
+                    w tabeli „Historia przemapowań” na stronie autora.</p>
                 </div>
 
                 <div class="button-group">

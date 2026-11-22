@@ -2,14 +2,12 @@ import sys
 
 from django import forms
 from django.contrib import admin
-from django.contrib.admin.actions import delete_selected
-from django.core.exceptions import PermissionDenied
 from django.urls import reverse
 from django.utils.html import format_html
-from django.utils.translation import gettext
 from import_export.admin import ImportMixin
 from mptt.admin import DraggableMPTTAdmin
 from mptt.forms import MPTTAdminForm
+from reversion_compare.admin import CompareVersionAdmin
 
 from bpp.admin.helpers.djangoql import BppDjangoQLSearchMixin
 from bpp.admin.helpers.ror_field import czysc_ror
@@ -22,6 +20,7 @@ from .helpers import LimitingFormset
 from .helpers.fieldsets import ADNOTACJE_FIELDSET
 from .helpers.mixins import ZapiszZAdnotacjaMixin
 from .helpers.site_filtered import SiteFilteredAdminMixin
+from .helpers.wersje import HistoriaWersjiMixin
 from .jednostka_import import JednostkaImportResource
 from .xlsx_export import resources
 from .xlsx_export.mixins import EksportDanychMixin
@@ -116,6 +115,9 @@ class JednostkaAdmin(
     EksportDanychMixin,
     BaseBppAdminMixin,
     DraggableMPTTAdmin,
+    # Historia zmian (FD#587): tuż przed terminalną klasą admina.
+    HistoriaWersjiMixin,
+    CompareVersionAdmin,
 ):
     form = JednostkaAdminForm
     uczelnia_field_path = "uczelnia"
@@ -125,6 +127,12 @@ class JednostkaAdmin(
     # import (ImportMixin) dostaje dedykowany resource przez override nizej —
     # oba mixiny domyslnie czytaja TEN SAM atrybut resource_classes.
     resource_classes = [resources.JednostkaResource]
+
+    def po_przywroceniu_wersji(self, request, obj):
+        # Wersja niesie rodzica i pola drzewa MPTT z chwili zapisu; po
+        # przywróceniu (zapis surowy, z pominięciem MPTT) lft/rght mogą nie
+        # pasować do dzisiejszego drzewa — przeliczamy je z rodziców.
+        Jednostka._tree_manager.rebuild()
 
     def get_import_resource_classes(self, request):
         resource_classes = [JednostkaImportResource]
@@ -263,67 +271,18 @@ class JednostkaAdmin(
         return super().changelist_view(request, *args, **kwargs)
 
     #
-    # Bezpieczne kasowanie: tylko puste jednostki (spec 2026-07-07).
+    # Jednostek nie kasuje się wcale (ani do kosza) — patrz
+    # ``bpp.models.jednostka.JednostkaNieDoUsuniecia``.
     #
 
-    def get_deleted_objects(self, objs, request):
-        """Bramkuj kasowanie niepustych jednostek przez listę ``protected``.
+    def has_delete_permission(self, request, obj=None):
+        return False
 
-        Dla każdej jednostki z odwrotnymi referencjami (patrz
-        ``Jednostka.przeszkody_w_kasowaniu``) dokładamy czytelny wpis do
-        ``protected`` — Django renderuje go na stronie potwierdzenia i CHOWA
-        przycisk potwierdzenia. Obsługuje pojedynczy delete ORAZ stronę
-        potwierdzenia akcji masowej (MPTT ``delete_selected_tree`` na pierwszym
-        przejściu deleguje do standardowego ``delete_selected``)."""
-        deletable, model_count, perms_needed, protected = super().get_deleted_objects(
-            objs, request
-        )
-        protected = list(protected)
-        for obj in objs:
-            przeszkody = obj.przeszkody_w_kasowaniu()
-            if not przeszkody:
-                continue
-            szczegoly = ", ".join(
-                f"{liczba}× {etykieta}" for etykieta, liczba in przeszkody
-            )
-            protected.append(
-                format_html(
-                    gettext(
-                        "Jednostka „{}” — nie można usunąć, bo są do niej "
-                        "przypięte inne obiekty (odepnij je najpierw): {}"
-                    ),
-                    obj.nazwa,
-                    szczegoly,
-                )
-            )
-        return deletable, model_count, perms_needed, protected
-
-    def delete_selected_tree(self, modeladmin, request, queryset):
-        """Akcja masowa: wszystko-albo-nic.
-
-        MPTT ``delete_selected_tree`` na potwierdzeniu (``post``) kasuje pętlą
-        ``obj.delete()`` z per-obiektowym ``has_delete_permission`` — omija
-        nasz ``get_deleted_objects``. Dlatego: jeśli w zaznaczeniu jest CHOĆ
-        JEDNA niepusta jednostka, routujemy CAŁĄ partię do standardowego
-        ``delete_selected`` (który przez nasz ``get_deleted_objects`` pokaże
-        listę blokad i nie skasuje niczego). Gdy wszystkie puste — normalne
-        kasowanie drzewa MPTT."""
-        if any(not obj.czy_mozna_skasowac() for obj in queryset):
-            return delete_selected(modeladmin, request, queryset)
-        return super().delete_selected_tree(modeladmin, request, queryset)
-
-    def delete_model(self, request, obj):
-        """Defense-in-depth dla pojedynczego kasowania: nie kasuj niepustej
-        jednostki nawet gdyby ścieżka ominęła ``get_deleted_objects``.
-
-        Rzucamy ``PermissionDenied`` (a nie ``message_user`` + ``return``) —
-        inaczej Django ``_delete_view`` domknąłby flow komunikatem „usunięto
-        pomyślnie" i wpisem DELETION w LogEntry mimo braku kasowania."""
-        if not obj.czy_mozna_skasowac():
-            raise PermissionDenied(
-                gettext("Nie skasowano „%s” — jednostka nie jest pusta.") % obj
-            )
-        super().delete_model(request, obj)
+    def get_actions(self, request):
+        actions = super().get_actions(request)
+        actions.pop("delete_selected", None)
+        actions.pop("delete_selected_tree", None)
+        return actions
 
     def indented_title(self, item):
         """

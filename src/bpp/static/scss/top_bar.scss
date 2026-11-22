@@ -20,7 +20,53 @@ nav.sticky-header {
     -webkit-backdrop-filter: blur(8px);
 }
 
+// Wcięcie pozycji podmenu po najechaniu myszą. Tekst przesuwa się w prawo
+// o $shift, ale o tyle samo maleje prawy padding — suma paddingów (a więc
+// szerokość pozycji liczona do `width: max-content`) się nie zmienia.
+// Wcześniej rósł tylko padding-left i najdłuższa pozycja rozciągała całe
+// rozwijane menu o kilka pikseli. Oba paddingi mają to samo przejście, więc
+// suma jest stała także w trakcie animacji.
+// Pilnuje tego test src/integration_tests/test_top_bar_menu_hover.py.
+@mixin menu-hover-indent($padding-x, $shift: 4px) {
+    padding-left: $padding-x + $shift;
+    padding-right: $padding-x - $shift;
+}
+
+// Widget dostępności UserWay (ładowany z CDN w base.html) stoi domyślnie
+// na sztywnych `top: 13px` — nie w osi paska menu, którego wysokość zależy
+// od motywu. Środek pierwszego wiersza paska mierzy JS w base.html
+// (--bpp-userway-top); fallback 35px = 13px + połowa 44px ikony, czyli
+// pozycja domyślna UserWay. Reguła UserWay (`.uwy.userway_p1
+// .userway_buttons_wrapper`) ładuje się PO naszym CSS, stąd `body` dla
+// wyższej specyficzności. Stan zwinięty (`.userway_hidden`) ma jeszcze
+// wyższą specyficzność i zostaje nietknięty.
+body .uwy.userway_p1 .userway_buttons_wrapper {
+    top: var(--bpp-userway-top, 35px);
+    transform: translate(-100%, -50%);
+    // UserWay ma `transition: transform 0.4s` — po wczytaniu widget
+    // „wjeżdżał” z boku na miejsce ustawione powyżej. Od razu na miejscu.
+    transition: none !important;
+}
+
 .top-bar {
+    // Pozycje najwyższego poziomu w osi paska. Bez tego są wyrównane do
+    // góry, a „BPP” (większa czcionka + logo) jest wyższe od reszty, więc
+    // tekst pozostałych pozycji wypada kilka pikseli nad jego środkiem.
+    .top-bar-left > .dropdown.menu,
+    .top-bar-right > .dropdown.menu {
+        align-items: center;
+    }
+
+    // Link „BPP”: logo i tekst w jednej osi. Przy zwykłym inline logo
+    // (vertical-align: middle) podnosi linię, a tekst siada na baseline —
+    // wypadał ok. 2 px nad tekstem pozostałych pozycji. Flex zjada spację
+    // między <img> a tekstem, stąd `gap`.
+    .dropdown.menu > li > a:has(> .bpp-logo) {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.25em;
+    }
+
     // Dropdown menu animations
     .dropdown.menu {
         > li {
@@ -80,6 +126,25 @@ nav.sticky-header {
         display: flex !important;
     }
 
+    // Strzałka rozwijania na czas inicjalizacji Foundation (bare.html:
+    // html.bpp-js-init). Klasę is-dropdown-submenu-parent dodaje dopiero JS,
+    // więc przy przejściach strzałka na moment znikała. Te same wymiary
+    // i kolor co strzałka Foundation (motywy nadpisują kolor dla obu reguł).
+    // .has-submenu ma własną strzałkę niżej, od razu.
+    @at-root html.bpp-js-init .top-bar .dropdown.menu > li:has(> a[aria-haspopup]):not(.has-submenu) > a {
+        position: relative;
+        padding-right: $dropdownmenu-arrow-padding;
+
+        &::after {
+            @include css-triangle($dropdownmenu-arrow-size, $dropdownmenu-arrow-color, down);
+            position: absolute;
+            top: 50%;
+            right: 5px;
+            left: auto;
+            margin-top: -1 * ($dropdownmenu-arrow-size * 0.5);
+        }
+    }
+
     // Ensure submenu positioning
     .dropdown.menu > li.is-dropdown-submenu-parent > a::after {
         transition: transform 0.3s ease;
@@ -122,12 +187,13 @@ nav.sticky-header {
                 font-size: 0.95rem;  // Larger font size
                 font-weight: 400;  // Normal weight but still readable
                 line-height: 1.6;  // Better line spacing
-                transition: background-color 0.2s ease, color 0.2s ease, padding-left 0.2s ease;
+                transition: background-color 0.2s ease, color 0.2s ease,
+                            padding-left 0.2s ease, padding-right 0.2s ease;
 
                 &:hover {
                     background-color: rgba($primary-color, 0.08);  // Lighter hover background
                     color: $primary-color;
-                    padding-left: 28px;  // Subtle indent on hover
+                    @include menu-hover-indent(24px);
                 }
 
                 // Icons in menu items
@@ -264,7 +330,7 @@ nav.sticky-header {
                     &:hover {
                         background-color: rgba($primary-color, 0.08);
                         color: $primary-color;
-                        padding-left: 28px;  // Subtle indent on hover
+                        @include menu-hover-indent(24px);
                     }
                 }
             }
@@ -860,5 +926,45 @@ html.global-search-scrollbar-gutter {
         box-shadow:
             0 1px 0 rgba(255, 255, 255, 0.5) inset,
             0 0 1px rgba(0, 0, 0, 0.15);
+    }
+}
+
+
+// Ikona menu na telefonie (top_bar.html: `.bpp-ikona-menu`): trzy paski
+// w kolorze napisów paska (currentColor). Zamiast ::after z box-shadow
+// Foundation — cienie i tło przeliczały się w trybie ciemnym różnie
+// (jeden pasek czarny, dwa białe). Stan otwarcia: aria-expanded
+// (event-handlers.js); motyw może dodać animację w „X”.
+.title-bar .menu-icon.bpp-ikona-menu {
+    position: relative;
+    width: 20px;
+    height: 16px;
+    color: inherit;
+
+    &::after {
+        display: none;
+    }
+
+    span {
+        position: absolute;
+        left: 0;
+        width: 100%;
+        height: 2px;
+        border-radius: 1px;
+        background: currentColor;
+        transition: top 0.2s ease, transform 0.2s ease, opacity 0.15s ease,
+            width 0.2s ease;
+
+        &:nth-child(1) {
+            top: 0;
+        }
+
+        &:nth-child(2) {
+            top: 7px;
+        }
+
+        &:nth-child(3) {
+            top: 14px;
+        }
     }
 }

@@ -78,7 +78,7 @@
     <div id="siec3d-zaawansowane"
          style="display: none; flex-wrap: wrap; align-items: flex-end;
                 gap: 8px 24px; margin-top: 8px; padding: 10px;
-                background: #f7f7f7; border: 1px solid #e3e3e3;
+                background: var(--bpp-tlo-pow-2, #f7f7f7); border: 1px solid var(--bpp-ramka, #e3e3e3);
                 border-radius: 4px;">
         <div>
             <label style="display: block;">Rok (od–do)</label>
@@ -95,7 +95,7 @@
                        style="margin: 0 4px 0 0;">
                 Tylko aktualnie zatrudnieni
             </label>
-            <span style="display: block; font-size: 12px; color: #666;">
+            <span style="display: block; font-size: 12px; color: var(--bpp-tekst-przygaszony, #666);">
                 współautorzy z bieżącej uczelni
             </span>
         </div>
@@ -106,7 +106,7 @@
                 Powiązania w grupie
             </label>
             <label for="siec3d-wewn-prog"
-                   style="display: block; font-size: 12px; color: #666;">
+                   style="display: block; font-size: 12px; color: var(--bpp-tekst-przygaszony, #666);">
                 od <span id="siec3d-wewn-prog-label">1</span> wspólnych prac
             </label>
             <input type="range" id="siec3d-wewn-prog" autocomplete="off"
@@ -117,7 +117,7 @@
             <span class="fi-refresh"></span> Odśwież układ
         </button>
     </div>
-    <small style="display: block; color: #666; margin: 6px 0 12px;">
+    <small style="display: block; color: var(--bpp-tekst-przygaszony, #666); margin: 6px 0 12px;">
         Obracaj scenę przeciągając tło, przybliżaj kółkiem myszy. Najedź na
         węzeł, aby zobaczyć autora; kliknij, aby dolecieć kamerą i otworzyć
         link do jego strony. Złapany węzeł można przeciągać — układ reaguje
@@ -134,11 +134,11 @@
              {# UWAGA: bez myślnika przed "2d" — `data-url-2d` mapowałoby się #}
              {# na dataset["url-2d"], bo po myślniku stoi cyfra, nie litera. #}
              data-url2d="{% url 'bpp:browse_autor_powiazania' autor.pk %}"
-             style="width: 100%; height: 78vh; border: 1px solid #ccc;
+             style="width: 100%; height: 78vh; border: 1px solid var(--bpp-ramka, #ccc);
                     background: #0b1020;"></div>
         <div id="siec3d-info"
              style="position: absolute; top: 10px; left: 10px; display: none;
-                    background: rgba(255,255,255,.95); border: 1px solid #ddd;
+                    background: var(--bpp-tlo-pow, rgba(255,255,255,.95)); border: 1px solid var(--bpp-ramka, #ddd);
                     border-radius: 4px; padding: 8px 10px; font-size: 13px;
                     max-width: 280px; z-index: 1001;"></div>
     </div>

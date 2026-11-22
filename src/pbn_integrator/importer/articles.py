@@ -13,8 +13,10 @@ from bpp.models import (
     Wydawnictwo_Ciagle_Tytul,
 )
 from bpp.util import safe_tytul_html
+from bpp.wersjonowanie import zarejestruj_utworzenie
 from pbn_api.client import PBNClient
 from pbn_api.models import Publication
+from pbn_integrator.kosz import pomin_jesli_w_koszu
 
 from .authors import utworz_autorow
 from .cache import (
@@ -70,6 +72,12 @@ def importuj_artykul(
     if ret is not None and not force:
         return ret
 
+    # Rekord w koszu BPP: NIE wskrzeszamy — pomijamy i raportujemy
+    # (``pbn_integrator/kosz.py``). Także przy ``force``: unikalne
+    # ``pbn_uid`` i tak nie pozwoliłoby utworzyć drugiego rekordu.
+    if pomin_jesli_w_koszu(pbn_publication, "articles", inconsistency_callback):
+        return None
+
     pbn_json = pbn_publication.current_version["object"]
     orig_pbn_json = copy.deepcopy(pbn_json)  # noqa
 
@@ -111,6 +119,7 @@ def importuj_artykul(
         )
 
     ret.save()
+    zarejestruj_utworzenie(None, ret, "Zaimportowano z PBN.")
     utworz_autorow(ret, pbn_json, client, default_jednostka, inconsistency_callback)
     pbn_json.pop("type")
 

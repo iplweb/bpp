@@ -20,10 +20,10 @@ def _tresc(client, autor):
 
 
 def test_orcid_link_i_kopiowanie(client):
-    autor = baker.make(Autor, orcid="0000-0002-0153-4624")
+    autor = baker.make(Autor, orcid="0000-0002-1825-0097")
     tresc = _tresc(client, autor)
-    assert 'href="https://orcid.org/0000-0002-0153-4624"' in tresc
-    assert 'data-kopiuj="0000-0002-0153-4624"' in tresc
+    assert 'href="https://orcid.org/0000-0002-1825-0097"' in tresc
+    assert 'data-kopiuj="0000-0002-1825-0097"' in tresc
 
 
 def test_bpp_id_do_skopiowania(client):

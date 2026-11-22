@@ -115,7 +115,7 @@ najbliższej zmianie lub resecie hasła.
 | `DJANGO_BPP_PASSWORD_DURATION_SECONDS` | `0` | co ile sekund wymuszać zmianę hasła; `0` = nigdy (np. `2592000` = 30 dni) |
 | `DJANGO_BPP_USE_PASSWORD_HISTORY` | `true` | czy pamiętać poprzednie hasła |
 | `DJANGO_BPP_PASSWORD_HISTORY_COUNT` | `12` | ile poprzednich haseł pamiętać |
-| `DJANGO_BPP_PASSWORD_CONTEXT_WORDS` | (puste) | dodatkowe słowa zakazane w hasłach, rozdzielone przecinkami (np. `umlub,lublin`) |
+| `DJANGO_BPP_PASSWORD_CONTEXT_WORDS` | (puste) | dodatkowe słowa zakazane w hasłach, rozdzielone przecinkami (np. skrót uczelni i nazwa miasta: `abc,miasto`) |
 | `DJANGO_BPP_PASSWORD_CHECK_PWNED` | `true` | sprawdzanie haseł w Have I Been Pwned; `false` wyłącza |
 | `DJANGO_BPP_PASSWORD_MIN_ZXCVBN_SCORE` | `3` | minimalna ocena siły hasła wg zxcvbn (0–4); `0` wyłącza |
 
@@ -145,6 +145,42 @@ przez Microsoft lub ORCID nie są ruszane. Uruchomienie drugi raz jest
 bezpieczne. Wymuszenie dla pojedynczego użytkownika można też dodać i usunąć
 w panelu administracyjnym („Enforced password changes").
 
+## Przeliczenie zapisanej punktacji dyscyplin i slotów {#przeliczenie-punktacji-dyscyplin}
+
+Punkty dla dyscyplin i sloty (PKd, PKdAut, slot) są liczone przy zapisie rekordu
+i przechowywane w bazie — z nich korzystają raporty slotów, metryki ewaluacyjne
+i optymalizacja.
+
+Gdy nowa wersja BPP zmienia sposób liczenia (np. poprawka FD#618: zaokrąglanie
+√(k/m) i k/m do czterech miejsc i minimum 10% także dla slotów), **BPP sam
+przelicza zapisane wartości w tle** — nie trzeba niczego uruchamiać. Przeliczenie
+zleca worker Celery kilka chwil po starcie nowej wersji, raz na zmianę (kolejne
+restarty go nie powtarzają). Obejmuje wszystkie prace z autorami przypisanymi do
+dyscyplin. Strona działa normalnie w trakcie; w dużej bazie trwa to od
+kilkunastu minut do około godziny.
+
+- Kiedy i ile prac zlecono: panel administracyjny → **Wersje przeliczeń**.
+- Ile jeszcze zostało: `python src/manage.py denorm_show_dirtyinstances_count`
+  (liczba rekordów w kolejce przeliczeń, łącznie z bieżącymi zmianami).
+- Wymagane: działające kontenery `workerserver` (kolejka `denorm`)
+  i `denorm-queue` — w standardowej instalacji (bpp-deploy) są zawsze.
+
+Po przeliczeniu warto ponownie wygenerować metryki ewaluacyjne i wyniki
+optymalizacji, jeśli były liczone wcześniej.
+
+Przeliczenie można też uruchomić ręcznie (np. bez działającego Celery):
+
+```bash
+python src/manage.py przelicz_punktacje_dyscyplin --dry-run   # ile rekordów
+python src/manage.py przelicz_punktacje_dyscyplin
+```
+
+Domyślnie komenda przelicza tylko artykuły, monografie i rozdziały, które mają
+slot mniejszy niż 1 (liczone z √(k/m) albo k/m). `--wszystkie` przelicza
+wszystkie rekordy, `--od-roku`/`--do-roku` zawężają lata. Każdy rekord jest
+przeliczany w osobnej transakcji: komendę można przerwać i uruchomić ponownie.
+Orientacyjnie 25–60 ms na rekord.
+
 ## Limity eksportu publikacji autora dla niezalogowanych
 
 Eksport publikacji autora do BibTeX/RIS jest generowany w tle przez
@@ -173,7 +209,8 @@ dwóm limitom, które ustawia się zmiennymi środowiskowymi:
 
 Konfiguracja LDAP (ActiveDirectory) odbywa się za pomocą zmiennych środowiskowych lub
 konfiguracyjnych `AUTH_LDAP_SERVER_URI`, `AUTH_LDAP_BIND_DN`, `AUTH_LDAP_BIND_PASSWORD` oraz
-`AUTH_LDAP_USER_SEARCH`. Zmienne te należy ustawić w pliku `.env` w katalogu domowym użytkownika.
+`AUTH_LDAP_USER_SEARCH`. Pełny opis (wszystkie zmienne, dopasowanie kont, typowe problemy):
+[Metody logowania](metody-logowania.md#ldap-active-directory).
 
 ## Content-Security-Policy (CSP)
 

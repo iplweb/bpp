@@ -1,8 +1,10 @@
 from decimal import Decimal
 
+from django.db import transaction
 from django.db.models import Exists, F, OuterRef, Q, Subquery
 
 from bpp.models import Punktacja_Zrodla, Wydawnictwo_Ciagle
+from bpp.wersjonowanie import zmiana_rekordu
 from rozbieznosci.models import IgnorowanaRozbieznosc, RozbieznoscLog
 
 DEFAULT_SORT = "-ostatnio_zmieniony"
@@ -149,9 +151,8 @@ def ustaw_ze_zrodla(pks, metryka, user_id=None, kasuj_przy_pustym=False):
     * ``kasuj_przy_pustym=True`` — wartość w pracy jest czyszczona
       (kwartyl → ``None``, IF/MNiSW → ``0``).
     """
-    import rollbar
-
     from bpp.models import BppUser
+    from bpp.zglaszanie_bledow import capture_exception
 
     field = metryka.field_name
     updated = 0
@@ -182,10 +183,21 @@ def ustaw_ze_zrodla(pks, metryka, user_id=None, kasuj_przy_pustym=False):
             if old_value == new_value:
                 continue
 
-            setattr(wc, field, new_value)
-            wc.save()
-            if metryka.recalculates_disciplines:
-                wc.przelicz_punkty_dyscyplin()
+            # Zmiana + wpis w historii rekordu (admin „Historia") razem
+            # albo wcale.
+            with (
+                transaction.atomic(),
+                zmiana_rekordu(
+                    user,
+                    wc,
+                    f"Ustawiono {field}: {old_value} → {new_value} z punktacji "
+                    f"źródła (rozbieżności: {metryka.slug}).",
+                ),
+            ):
+                setattr(wc, field, new_value)
+                wc.save()
+                if metryka.recalculates_disciplines:
+                    wc.przelicz_punkty_dyscyplin()
 
             RozbieznoscLog.objects.create(
                 metryka=metryka.slug,
@@ -197,7 +209,7 @@ def ustaw_ze_zrodla(pks, metryka, user_id=None, kasuj_przy_pustym=False):
             )
             updated += 1
         except Exception:
-            rollbar.report_exc_info()
+            capture_exception()
             errors += 1
 
     return updated, errors

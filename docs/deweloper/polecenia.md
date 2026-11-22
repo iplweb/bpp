@@ -62,6 +62,30 @@ Note: The script requires `expect` to be installed on the system.
   zamroziło maszynę; na macOS zamiast tego watchdog pluginu. Nadpisanie:
   `XDIST_N=6`; wyłączenie limitu: `XDIST_GUARD=`; wyłączenie pluginu:
   `XDIST_MEMORY=`.
+- `make xdist-bench` - Benchmark liczby workerów na TEJ maszynie
+  (`bin/xdist_bench.py`): pełna suita bez Playwright kolejno z kilkoma `-n`
+  (domyślnie z liczby rdzeni, np. 8,12,16,20,24,32 na 16C/32T), najlepsze
+  zapisuje w `.pytest-xdist-bench.json` (gitignored; klucz: hostname + model
+  CPU, osobno dla każdego `-m`). „Najlepsze" = najmniej workerów w granicy 3%
+  od najszybszego (różnice poniżej to szum). Od tej pory `-n auto` =
+  min(RAM wg pytest-xdist-memory, wynik benchmarku) — hook
+  `pytest_xdist_auto_num_workers` w `conftest.py`, podsumowanie w sekcji
+  `xdist-bench` na końcu przebiegu. Po co: powyżej liczby rdzeni fizycznych
+  kolejne workery trafiają na wątki SMT już zajętych rdzeni i suita nie
+  przyspiesza (Ryzen 9950X: 16, 22 i 24 workery = ~38 s), a zjadają RAM.
+  Opcje: `XDIST_BENCH_CANDIDATES=12,16,20`, `XDIST_BENCH_REPEAT=2`;
+  Playwright: `make xdist-bench-playwright`; podgląd: `make xdist-bench-show`.
+  Reset: usuń plik. Jawne `-n N`/`XDIST_N=N` omija limit.
+  Benchmark mierzy też pamięć: podczas każdego przebiegu co 0,5 s próbkuje
+  szczyt RSS procesów pytest (kontroler + workery) oraz szczyt przyrostu
+  zajętej pamięci systemu względem stanu sprzed przebiegu — ten obejmuje też
+  kontenery testcontainers (Postgres per worker), więc to on służy do
+  wymiarowania. `make xdist-bench-show` pokazuje szczyt RAM przy każdym `-n`
+  i sekcję „Wymagania”: model `RAM ≈ stała + N MB na worker`, ile RAM-u
+  trzeba przy najszybszym `-n` (z 2 GB zapasu) i ile workerów — z jakim
+  czasem — zmieści 8/16/32/64/128 GB RAM. Mierz na spokojnej maszynie:
+  przyrost pamięci systemu łapie też inne procesy uruchomione w tym czasie
+  (np. równoległe sesje testów).
 - `make tests-only-playwright` - Only Playwright tests with parallelization (slow).
   Nic nie instaluje — tylko sprawdza (`make playwright-check`), czy przeglądarki
   są na dysku; instalacja to jednorazowe `make playwright-install`. Poza CI `-n`
@@ -118,7 +142,7 @@ Note: The script requires `expect` to be installed on the system.
 ## Running a local script on a client's server
 
 ```bash
-scripts/bpp-remote-shell bpp.apoz.edu.pl my_script.py --some-arg value
+scripts/bpp-remote-shell bpp.example.edu.pl my_script.py --some-arg value
 ```
 
 Streams a local Python script over SSH into the Django shell of a remote

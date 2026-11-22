@@ -13,8 +13,12 @@ from bpp.models import Wydawnictwo_Ciagle
 from bpp.util import worksheet_columns_autosize, worksheet_create_table
 
 from ..models import RozbieznoscZrodlaPBN
-from .constants import DEFAULT_ROK_DO, DEFAULT_ROK_OD
 from .forms import DyscyplinyFilterForm, FilterForm
+from .okres import (
+    filtruj_publikacje_w_okresie,
+    lata_okresu,
+    tylko_z_publikacjami_w_okresie,
+)
 
 
 class ExportDyscyplinyXlsxView(GroupRequiredMixin, View):
@@ -25,26 +29,29 @@ class ExportDyscyplinyXlsxView(GroupRequiredMixin, View):
     def get_filter_params(self):
         """Pobiera parametry filtrów z request."""
         # When no GET params, use defaults
+        okres_od, okres_do = lata_okresu(self.request)
         if not self.request.GET:
-            return DEFAULT_ROK_OD, DEFAULT_ROK_DO, "", True, False, True
+            return okres_od, okres_do, "", True, False, True
 
-        form = DyscyplinyFilterForm(self.request.GET)
+        form = DyscyplinyFilterForm(
+            self.request.GET, domyslne_lata=(okres_od, okres_do)
+        )
         if form.is_valid():
             rok_od = form.cleaned_data["rok_od"]
             rok_do = form.cleaned_data["rok_do"]
             search = form.cleaned_data["search"]
             tylko_rozbieznosci = "tylko_rozbieznosci" in self.request.GET
             bez_publikacji = "bez_publikacji" in self.request.GET
-            bez_publikacji_2022_2025 = "bez_publikacji_2022_2025" in self.request.GET
+            z_publikacjami_w_okresie = tylko_z_publikacjami_w_okresie(self.request)
             return (
                 rok_od,
                 rok_do,
                 search,
                 tylko_rozbieznosci,
                 bez_publikacji,
-                bez_publikacji_2022_2025,
+                z_publikacjami_w_okresie,
             )
-        return DEFAULT_ROK_OD, DEFAULT_ROK_DO, "", True, False, True
+        return okres_od, okres_do, "", True, False, True
 
     def get_queryset(self):
         """Buduje queryset z zastosowanymi filtrami."""
@@ -54,7 +61,7 @@ class ExportDyscyplinyXlsxView(GroupRequiredMixin, View):
             search,
             tylko_rozbieznosci,
             bez_publikacji,
-            bez_publikacji_2022_2025,
+            z_publikacjami_w_okresie,
         ) = self.get_filter_params()
 
         queryset = RozbieznoscZrodlaPBN.objects.select_related(
@@ -79,12 +86,11 @@ class ExportDyscyplinyXlsxView(GroupRequiredMixin, View):
             )
             queryset = queryset.filter(Exists(has_publications))
 
-        # Filtr tylko źródła z publikacjami 2022-2025
-        if bez_publikacji_2022_2025:
-            has_publications_2022_2025 = Wydawnictwo_Ciagle.objects.filter(
-                zrodlo_id=OuterRef("zrodlo_id"), rok__gte=2022, rok__lte=2025
+        # Filtr tylko źródła z publikacjami z lat wybranego okresu ewaluacji
+        if z_publikacjami_w_okresie:
+            queryset = filtruj_publikacje_w_okresie(
+                queryset, *lata_okresu(self.request)
             )
-            queryset = queryset.filter(Exists(has_publications_2022_2025))
 
         return queryset.order_by("zrodlo__nazwa", "rok")
 
@@ -155,28 +161,39 @@ class ExportXlsxView(GroupRequiredMixin, View):
     group_required = "wprowadzanie danych"
 
     def get_filter_params(self):
-        """Pobiera parametry filtrów z request (jak w ListView)."""
-        # Przy pierwszym wejściu (brak GET params) domyślnie checkbox zaznaczony
+        """Pobiera parametry filtrów z request — te same co lista, łącznie
+        z filtrami publikacji, żeby eksport obejmował dokładnie to, co widać
+        na liście."""
+        # Przy pierwszym wejściu (brak GET params) domyślne wartości jak na liście
+        okres_od, okres_do = lata_okresu(self.request)
+        domyslne = (okres_od, okres_do, "", "", True, False, True)
         if not self.request.GET:
-            return DEFAULT_ROK_OD, DEFAULT_ROK_DO, "", "", True
+            return domyslne
 
-        form = FilterForm(self.request.GET)
+        form = FilterForm(self.request.GET, domyslne_lata=(okres_od, okres_do))
         if form.is_valid():
-            tylko_rozbieznosci = "tylko_rozbieznosci" in self.request.GET
             return (
                 form.cleaned_data["rok_od"],
                 form.cleaned_data["rok_do"],
                 form.cleaned_data["search"],
                 form.cleaned_data["dyscyplina"],
-                tylko_rozbieznosci,
+                "tylko_rozbieznosci" in self.request.GET,
+                "bez_publikacji" in self.request.GET,
+                tylko_z_publikacjami_w_okresie(self.request),
             )
-        return DEFAULT_ROK_OD, DEFAULT_ROK_DO, "", "", True
+        return domyslne
 
     def get_queryset(self):
         """Buduje queryset z zastosowanymi filtrami."""
-        rok_od, rok_do, search, dyscyplina, tylko_rozbieznosci = (
-            self.get_filter_params()
-        )
+        (
+            rok_od,
+            rok_do,
+            search,
+            dyscyplina,
+            tylko_rozbieznosci,
+            bez_publikacji,
+            z_publikacjami_w_okresie,
+        ) = self.get_filter_params()
 
         queryset = RozbieznoscZrodlaPBN.objects.select_related(
             "zrodlo", "zrodlo__pbn_uid"
@@ -199,6 +216,20 @@ class ExportXlsxView(GroupRequiredMixin, View):
         # Filtr tylko rozbieżności punktów
         if tylko_rozbieznosci:
             queryset = queryset.filter(ma_rozbieznosc_punktow=True)
+
+        # Filtr tylko źródła z publikacjami (jak na liście)
+        if bez_publikacji:
+            queryset = queryset.filter(
+                Exists(
+                    Wydawnictwo_Ciagle.objects.filter(zrodlo_id=OuterRef("zrodlo_id"))
+                )
+            )
+
+        # Filtr tylko źródła z publikacjami z lat wybranego okresu ewaluacji
+        if z_publikacjami_w_okresie:
+            queryset = filtruj_publikacje_w_okresie(
+                queryset, *lata_okresu(self.request)
+            )
 
         return queryset.order_by("zrodlo__nazwa", "rok")
 

@@ -31,13 +31,18 @@ def test_str_autor_jednostka_po_skasowaniu_autora_nie_raportuje(
     autor_jan_kowalski, jednostka, mocker, caplog
 ):
     """Wisząca referencja po kaskadzie → fallback, ale BEZ raportu do Rollbara."""
-    report = mocker.patch("bpp.util.wyjatki.rollbar.report_exc_info")
+    report = mocker.patch("bpp.util.wyjatki.capture_exception")
 
     Autor_Jednostka.objects.create(autor=autor_jan_kowalski, jednostka=jednostka)
     # Świeży obiekt z bazy — bez podpiętego w pamięci cache'u FK ``autor``,
     # dokładnie tak jak w produkcyjnym tracebacku.
     aj = Autor_Jednostka.objects.get(autor=autor_jan_kowalski, jednostka=jednostka)
-    Autor.objects.filter(pk=autor_jan_kowalski.pk).delete()
+    # ``hard_delete()``, nie ``delete()``: od fazy 04 ``Autor`` jest modelem
+    # soft-delete, więc zwykłe kasowanie zostawia wiersz w bazie i ŻADNA
+    # wisząca referencja by nie powstała — a to ją właśnie testujemy.
+    # Wiszące referencje nie zniknęły z produkcji razem z soft-deletem:
+    # biorą się z twardych kasowań (`hard_delete`, kaskady ORM, ręcznego SQL).
+    Autor.objects.filter(pk=autor_jan_kowalski.pk).hard_delete()
 
     with caplog.at_level(logging.ERROR, logger="bpp.models.autor"):
         assert str(aj) == f"Autor_Jednostka #{aj.pk}"
@@ -58,7 +63,7 @@ def test_str_autor_jednostka_nadal_raportuje_nieoczekiwane_bledy(
     Bez tego testu nic nie broni przed cofnięciem całego sensu tej zmiany —
     zamianą ``except ObjectDoesNotExist`` z powrotem na ``except Exception``.
     """
-    report = mocker.patch("bpp.util.wyjatki.rollbar.report_exc_info")
+    report = mocker.patch("bpp.util.wyjatki.capture_exception")
     aj = Autor_Jednostka.objects.create(autor=autor_jan_kowalski, jednostka=jednostka)
 
     # Awaria, która NIE jest wiszącą referencją — np. uszkodzony rekord autora.

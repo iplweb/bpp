@@ -12,6 +12,7 @@ class MetrykaAutoraAdmin(DynamicAdminFilterMixin, admin.ModelAdmin):
         "autor",
         "dyscyplina_naukowa",
         "uczelnia",
+        "okres",
         "jednostka",
         "slot_maksymalny",
         "slot_nazbierany",
@@ -22,6 +23,7 @@ class MetrykaAutoraAdmin(DynamicAdminFilterMixin, admin.ModelAdmin):
     ]
 
     list_filter = [
+        "okres",
         "uczelnia",
         "dyscyplina_naukowa",
         "jednostka",
@@ -42,7 +44,10 @@ class MetrykaAutoraAdmin(DynamicAdminFilterMixin, admin.ModelAdmin):
             "Podstawowe informacje",
             {"fields": ("autor", "dyscyplina_naukowa", "uczelnia", "jednostka")},
         ),
-        ("Parametry ewaluacji", {"fields": ("rok_min", "rok_max", "slot_maksymalny")}),
+        (
+            "Parametry ewaluacji",
+            {"fields": ("okres", "rok_min", "rok_max", "slot_maksymalny")},
+        ),
         (
             "Wyniki algorytmu plecakowego",
             {
@@ -79,6 +84,7 @@ class MetrykaAutoraAdmin(DynamicAdminFilterMixin, admin.ModelAdmin):
 class StatusGenerowaniaAdmin(admin.ModelAdmin):
     list_display = [
         "status_display",
+        "okres",
         "data_rozpoczecia",
         "data_zakonczenia",
         "liczba_przetworzonych",
@@ -94,11 +100,12 @@ class StatusGenerowaniaAdmin(admin.ModelAdmin):
         "liczba_bledow",
         "ostatni_komunikat",
         "task_id",
+        "okres",
         "czas_trwania",
     ]
 
     fieldsets = [
-        ("Status", {"fields": ("w_trakcie", "task_id")}),
+        ("Status", {"fields": ("w_trakcie", "okres", "task_id")}),
         ("Daty", {"fields": ("data_rozpoczecia", "data_zakonczenia", "czas_trwania")}),
         ("Statystyki", {"fields": ("liczba_przetworzonych", "liczba_bledow")}),
         ("Komunikat", {"fields": ("ostatni_komunikat",)}),

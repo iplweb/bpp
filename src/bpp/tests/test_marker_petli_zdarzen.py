@@ -41,15 +41,22 @@ def test_przestawienie_markera_wyrzuca_zapis_poza_transakcje():
     na które musimy uważać. Gdyby kiedyś przestało zachodzić (zmiana
     w asgiref), ten test padnie i będzie można uprościć regułę wyżej.
     """
-    from django.db import connection
+    from django.db import connection, connections
 
     assert connection.in_atomic_block
     poprzedni = asyncio.events._get_running_loop()
     try:
+        # Stan wyjściowy ustawiamy JAWNIE (bez markera): wcześniejszy test
+        # w tym samym procesie xdist (Playwright) może zostawić marker na
+        # stałe — wtedy ustawienie kolejnej pętli niczego nie przełącza.
+        # Porównujemy TOŻSAMOŚĆ połączenia, nie ``in_atomic_block``: magazyn
+        # ``cvar`` może już trzymać połączenie zostawione przez taki test,
+        # także w otwartym atomic bloku. Obie zależności od kolejności testów
+        # dawały flake na CI.
+        asyncio.events._set_running_loop(None)
+        bez_markera = connections["default"]
         asyncio.events._set_running_loop(asyncio.new_event_loop())
-        from django.db import connection as po_zmianie
-
-        assert not po_zmianie.in_atomic_block, (
+        assert connections["default"] is not bez_markera, (
             "asgiref przestał przełączać magazyn połączeń po markerze pętli — "
             "regułę o nieruszaniu markera można wtedy przemyśleć na nowo"
         )

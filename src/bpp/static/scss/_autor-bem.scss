@@ -29,6 +29,8 @@
   // "Zobacz sieć powiązań" obok siebie, wyśrodkowane, z odstępem.
   // Flex + gap daje odstęp w poziomie ORAZ pionie (gdy zawiną się na
   // wąskim ekranie) — czego samo margin-left nie zapewniało.
+  // Jeden rząd: „Pokaż wszystkie prace” (przycisk dzielony ze strzałką ▾
+  // rozwijającą zakresy lat) i „Zobacz sieć powiązań”.
   &__quick-actions {
     display: flex;
     flex-wrap: wrap;
@@ -36,6 +38,12 @@
     align-items: center;
     gap: 0.75rem;
     margin-bottom: 30px;
+  }
+
+  // Formularze przycisków prac (wszystkie / okresy) nie tworzą własnego
+  // pudełka — przycisk jest bezpośrednim elementem flexa rodzica.
+  &__quick-actions-form {
+    display: contents;
   }
 
   // Show all works button
@@ -47,6 +55,7 @@
     border-radius: 6px;
     box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
     transition: all 0.2s ease;
+    margin: 0;
 
     &:hover,
     &:focus {
@@ -1109,8 +1118,83 @@
   background: #b8860b;
 }
 
+// Ramka „Ewaluacja 2022–2025” na stronach źródła i wydawcy: ile punktów
+// daje publikacja jednego autora (bpp.punkty_ewaluacji).
+// Poprzednie okresy ewaluacji na stronie źródła/wydawcy — zwinięte.
+.punkty-ewaluacji__poprzedni {
+  margin-bottom: 1rem;
+
+  > summary {
+    cursor: pointer;
+    font-size: 0.9rem;
+    opacity: 0.8;
+    margin-bottom: 0.5rem;
+  }
+}
+
+.callout.punkty-ewaluacji {
+  border-left: 4px solid #b8860b;
+  background: #fffaf0;
+  margin: 1rem 0;
+}
+
+.punkty-ewaluacji__naglowek {
+  font-weight: 600;
+  color: #555;
+  margin-bottom: 0.25rem;
+}
+
+.punkty-ewaluacji__glowne {
+  margin: 0;
+  font-size: 1.05rem;
+}
+
+.punkty-ewaluacji__liczba {
+  font-size: 1.25rem;
+  color: #8a5a00;
+  white-space: nowrap;
+}
+
+.punkty-ewaluacji__lata {
+  list-style: none;
+  margin: 0.5rem 0 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem 1rem;
+  font-size: 0.9rem;
+  color: #555;
+
+  span {
+    font-weight: 600;
+  }
+}
+
+.punkty-ewaluacji__przypis {
+  margin: 0.5rem 0 0;
+  font-size: 0.8rem;
+  color: #777;
+}
+
 // Sekcje „Najczęściej publikujący autorzy” / „Jednostki” pod wyszukiwarką
 // na stronach źródła i wydawcy.
 .bpp-sekcje-top {
   margin-top: 1.5rem;
+}
+
+// Sekcja „Osiągnięcia naukowe” (RAD-on): wskaźnik pobierania danych.
+.radon-osiagniecia__ladowanie {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.5rem 0;
+  opacity: 0.75;
+
+  .spinner {
+    margin: 0;
+  }
+}
+
+// Podpis źródła ma sens dopiero, gdy dane już są.
+.radon-osiagniecia[data-radon-laduje] .radon-osiagniecia__zrodlo {
+  display: none;
 }

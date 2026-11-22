@@ -6,8 +6,10 @@ from bpp.models import (
     Wydawnictwo_Zwarte_Autor,
 )
 
+from ...okres import pobierz_okres
 
-def _apply_dyscyplina_nieprzypisana_filter(ciagle_qs, zwarte_qs, filters):
+
+def _apply_dyscyplina_nieprzypisana_filter(ciagle_qs, zwarte_qs, filters, okres=None):
     """Zastosuj filtr po dyscyplinie nieprzypisanej.
 
     Filtr znajduje publikacje gdzie:
@@ -27,7 +29,7 @@ def _apply_dyscyplina_nieprzypisana_filter(ciagle_qs, zwarte_qs, filters):
         return ciagle_qs, zwarte_qs
 
     dyscyplina_nieprzypisana_id = int(dyscyplina_nieprzypisana)
-    lata_filtra = [int(rok)] if rok else [2022, 2023, 2024, 2025]
+    lata_filtra = [int(rok)] if rok else pobierz_okres(okres).lata
 
     # Znajdz DWUDYSCYPLINOWCÓW z dana dyscyplina (glowna lub subdyscyplina)
     # Wymagamy subdyscyplina_naukowa__isnull=False - autor musi mieć dwie dyscypliny
@@ -65,15 +67,16 @@ def _apply_dyscyplina_nieprzypisana_filter(ciagle_qs, zwarte_qs, filters):
     return ciagle_qs, zwarte_qs
 
 
-def _build_base_filter(filters):
-    """Zbuduj bazowy filtr dla publikacji."""
+def _build_base_filter(filters, okres=None):
+    """Zbuduj bazowy filtr dla publikacji (lata okresu ewaluacji; ``None`` =
+    okres domyślny)."""
     from decimal import Decimal, InvalidOperation
 
     rok = filters.get("rok")
     punkty_od = filters.get("punkty_od")
     punkty_do = filters.get("punkty_do")
 
-    base_filter = {"rok__in": [2022, 2023, 2024, 2025]}
+    base_filter = {"rok__in": pobierz_okres(okres).lata}
     if rok:
         base_filter["rok"] = int(rok)
 

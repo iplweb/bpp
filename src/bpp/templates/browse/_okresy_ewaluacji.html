@@ -1,0 +1,12 @@
+{# Ramki „Ewaluacja” dla okresów: bieżący rozwinięty, poprzednie zwinięte (bpp.punkty_ewaluacji.okresy_ewaluacji_strony). #}
+{# Oczekuje: okresy_ewaluacji_ramki, szablon = ramka jednego okresu (oczekuje zmiennej „ewaluacja”). #}
+{% for okres in okresy_ewaluacji_ramki %}
+    {% if okres.biezacy %}
+        {% include szablon with ewaluacja=okres.dane %}
+    {% else %}
+        <details class="punkty-ewaluacji__poprzedni">
+            <summary>Poprzedni okres ewaluacji: {{ okres.dane.od }}–{{ okres.dane.do }}</summary>
+            {% include szablon with ewaluacja=okres.dane %}
+        </details>
+    {% endif %}
+{% endfor %}

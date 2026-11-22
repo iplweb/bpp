@@ -1,7 +1,7 @@
 """Celery taski dla wizard-a importera publikacji.
 
 Globalny @task_failure.connect w src/django_bpp/celery_tasks.py:40-42
-automatycznie raportuje wyjątki do Rollbar — task body wystarczy raise
+automatycznie raportuje wyjątki do monitoringu błędów — task body wystarczy raise
 po zapisaniu user-safe message w sesji.
 
 **Wszystkie zapisy sesji idą przez ``update_fields``** (z ``modified``,
@@ -15,10 +15,11 @@ konkretnie ``zgloszenie`` dopisywane gałęzią idempotency w ``FetchView``
 import logging
 import traceback
 
-import rollbar
 from celery import shared_task
 from django.contrib.contenttypes.models import ContentType
 from django.db import transaction
+
+from bpp.zglaszanie_bledow import capture_exception
 
 from .models import ImportSession
 from .progress import (
@@ -52,7 +53,7 @@ def fetch_session_task(self, session_id, request_user_id):
     update_state, na końcu ustawia session.status = FETCHED.
 
     Wszystkie wyjątki: zapisz user-safe message + traceback na sesji,
-    raise (globalny @task_failure.connect zgłosi do Rollbar).
+    raise (globalny @task_failure.connect zgłosi do monitoringu).
 
     Args:
         session_id: ImportSession.pk
@@ -267,7 +268,7 @@ def create_publication_task(self, session_id, request_user_id, also_pbn):
     try:
         report_progress(self, "prepare", stages=CREATE_STAGES)
         report_progress(self, "create_record", stages=CREATE_STAGES)
-        record = _create_publication(session)
+        record = _create_publication(session, request_user)
 
         if also_pbn:
             report_progress(self, "link_pbn", stages=CREATE_STAGES)
@@ -316,7 +317,7 @@ def _oznacz_zgloszenie_nie_wywracajac_importu(session, record):
     :func:`create_publication_task` cofnąłby sesję do ``IMPORT_FAILED``,
     operator kliknąłby „Ponów" i powstałby DRUGI rekord tej samej pracy.
     Dlatego łapiemy szeroko, ale **nie po cichu**: pełny traceback do logu
-    + zgłoszenie do Rollbara (globalny ``@task_failure.connect`` już go tu
+    + zgłoszenie do monitoringu (globalny ``@task_failure.connect`` już go tu
     nie zobaczy, bo nie ma re-raise'a).
 
     Gorszym scenariuszem jest zgłoszenie nieoznaczone (do ręcznego
@@ -340,10 +341,10 @@ def _oznacz_zgloszenie_nie_wywracajac_importu(session, record):
             session.pk,
             record.pk,
         )
-        rollbar.report_exc_info()
+        capture_exception()
 
 
-def _create_publication(session):
+def _create_publication(session, user=None):
     """Thin wrapper na ``views.publikacja._create_publication``.
     Wydzielone do osobnej funkcji żeby testy mogły patchować
     ``importer_publikacji.tasks._create_publication`` bez naruszania
@@ -352,7 +353,7 @@ def _create_publication(session):
     """
     from .views.publikacja import _create_publication as _impl
 
-    return _impl(session)
+    return _impl(session, user)
 
 
 class _NoopMessageStorage:

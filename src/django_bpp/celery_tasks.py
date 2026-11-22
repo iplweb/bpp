@@ -10,6 +10,8 @@ from celery_singleton import util as singleton_util
 from django.apps import apps
 from django.conf import settings
 
+from bpp.zglaszanie_bledow import capture_exception
+
 if platform.system() == "Darwin":
     os.environ.setdefault("OBJC_DISABLE_INITIALIZE_FORK_SAFETY", "YES")
 
@@ -105,6 +107,16 @@ def unlock_all(**kwargs):
 
 
 @worker_ready.connect
+def zlec_przeliczenia_po_aktualizacji(**kwargs):
+    """Po starcie workera (czyli także po wdrożeniu nowej wersji) zleć
+    przeliczenia, których algorytm się zmienił — patrz ``bpp.przeliczenia``.
+    Tylko ``delay()``: start workera nie czeka na przeliczenie."""
+    from bpp.tasks import zlec_zalegle_przeliczenia
+
+    zlec_zalegle_przeliczenia.delay()
+
+
+@worker_ready.connect
 def initialize_rollbar(**kwargs):
     """Initialize Rollbar after Django settings are configured."""
     from bpp.rollbar_config import configure_rollbar
@@ -120,9 +132,12 @@ def handle_task_failure(**kw):
     # sys.exc_info(), ktore Celery potrafi juz wyczyscic w momencie emisji
     # task_failure -> do Rollbara szedl pusty/smieciowy raport albo nic
     # (Freshdesk #344: 500 importera nie pojawial sie w Rollbarze).
+    #
+    # pomin_sentry: Sentry/GlitchTip dostaje błędy zadań z własnej
+    # CeleryIntegration (bpp.sentry_config) — zgłoszenie stąd byłoby duplikatem.
     einfo = kw.get("einfo")
     exc_info = getattr(einfo, "exc_info", None)
-    rollbar.report_exc_info(exc_info=exc_info, extra_data=kw)
+    capture_exception(exc_info, extra=kw, pomin_sentry=True)
 
 
 def celery_base_data_hook(request, data):

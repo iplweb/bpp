@@ -62,26 +62,29 @@ wybranej pozycji, a `ESC` zamyka okno.
 
 ### Wyszukiwanie precyzyjne (formularz)
 
-Pozycja **szukaj → precyzyjnie** otwiera rozbudowany formularz, w którym
-budujesz zapytanie z wielu warunków jednocześnie — np. autor *oraz* rok
-*oraz* typ pracy *oraz* jednostka. Poszczególne kryteria łączysz spójnikami
-(i / lub), a całość możesz dowolnie zagnieżdżać. Wyniki da się sortować,
-wydrukować, a po zalogowaniu — pobrać jako plik Word lub Excel (krok po
-kroku: [Jak pobrać listę publikacji](pobieranie-listy-publikacji.md)).
+Pozycja **szukaj → precyzyjnie** otwiera formularz, w którym budujesz
+zapytanie z wielu warunków jednocześnie — np. autor *i* lata *i* typ pracy —
+łącząc je spójnikami i / lub / i nie oraz grupując w ramki. Najprościej
+zacząć od strony autora albo jednostki: przycisk **„Szukaj publikacji”**
+otwiera formularz z już wpisanymi warunkami.
 
-Najprościej zacząć od strony autora albo jednostki: przycisk **„Szukaj
-publikacji”** w sekcji „Wyszukaj publikacje…” otwiera ten formularz z już
-wypełnionymi warunkami, które można dalej zmieniać.
-
-!!! tip "Kiedy używać"
-    Wyszukiwanie precyzyjne sprawdza się, gdy chcesz zawęzić wyniki po
-    kilku polach naraz (np. „artykuły danego autora z lat 2020–2023") —
-    czego pojedyncze pole szybkiego wyszukiwania nie potrafi.
+Szczegóły w pięciu artykułach:
+[podstawy](wyszukiwanie-precyzyjne.md),
+[przykłady zapytań](wyszukiwanie-precyzyjne-przyklady.md),
+[praca z wynikami](wyszukiwanie-precyzyjne-wyniki.md),
+[zapisane formularze](wyszukiwanie-precyzyjne-zapisane.md) oraz
+[tabela krzyżowa](tabela-krzyzowa.md) — zestawienie wyników w tabeli,
+np. punkty według jednostki i charakteru formalnego.
 
 !!! note "Wyszukiwanie zapytaniem"
     W menu może pojawić się dodatkowo pozycja **zapytaniem** — to tryb dla
     zalogowanych redaktorów, pozwalający wpisać zapytanie w języku BPP-QL.
     Dla zwykłego odwiedzającego nie jest widoczny.
+
+!!! tip "Wyszukiwanie przez asystenta AI"
+    Bibliografię można też przeszukiwać, rozmawiając z asystentem AI
+    (np. Claude, ChatGPT) — zobacz [Bibliografia w asystencie
+    AI](asystent-ai.md).
 
 ## Przeglądanie
 
@@ -95,6 +98,8 @@ Dostępne są widoki:
 - **Uczelnia** — strona główna z danymi i logo uczelni oraz jej strukturą.
 - **Jednostki** — alfabetyczna lista wydziałów i jednostek; po wejściu
   w jednostkę zobaczysz przypisane do niej publikacje i pracowników.
+  Na stronie głównej niektórych uczelni zamiast kafla „Jednostki” jest
+  kafel **„Wydziały”** — prowadzi do listy samych wydziałów tej uczelni.
 - **Autorzy** — alfabetyczna lista autorów; strona pojedynczego autora to
   jego pełna bibliografia (patrz niżej).
 - **Źródła** — wydawnictwa ciągłe (czasopisma) i inne źródła; po wejściu
@@ -144,7 +149,9 @@ W układzie domyślnym, od góry:
   zdjęcia ani biogramu, wykresy stają obok afiliacji, jeden pod drugim.
 - **Statystyki wg charakteru formalnego** (np. ile artykułów, ile
   rozdziałów) oraz **najczęstsi współautorzy** — z odnośnikiem do
-  wizualnej sieci powiązań.
+  wizualnej sieci powiązań. Jak czytać tę sieć i co można w niej
+  sprawdzić, opisuje strona
+  [Sieć powiązań autorów](powiazania-autorow.md).
 - **Liczba cytowań** (o ile uczelnia pobiera takie dane) oraz **metryki
   ewaluacyjne** — te ostatnie widzi tylko zalogowany autor na własnej
   stronie i osoby uprawnione do metryk.

@@ -122,15 +122,15 @@ def test_autorzy_z_dyscypliny(
     "ustaw_rok,punkty,ma_byc_1,ma_byc_2",
     [
         (2017, 30, "30.0000", "1.0000"),
-        (2017, 20, "14.1421", "0.7071"),
-        (2017, 25, "17.6777", "0.7071"),
+        (2017, 20, "14.1420", "0.7071"),
+        (2017, 25, "17.6775", "0.7071"),
         (2017, 15, "7.5000", "0.5000"),
         (2017, 5, "2.5000", "0.5000"),
         (2019, 200, "200.0000", "1.0000"),
         (2019, 140, "140.0000", "1.0000"),
         (2019, 100, "100.0000", "1.0000"),
-        (2019, 70, "49.4975", "0.7071"),
-        (2019, 40, "28.2843", "0.7071"),
+        (2019, 70, "49.4970", "0.7071"),
+        (2019, 40, "28.2840", "0.7071"),
         (2019, 20, "10.0000", "0.5000"),
         (2019, 5, "2.5000", "0.5000"),
     ],
@@ -212,7 +212,7 @@ def test_slotkalkulator_wydawnictwo_ciagle_prog2_punkty_pkd(
 
     slot = SlotKalkulator_Wydawnictwo_Ciagle_Prog2(ciagle_z_dyscyplinami)
 
-    assert str(round(slot.punkty_pkd(dyscyplina1), 4)) == "14.1421"
+    assert str(round(slot.punkty_pkd(dyscyplina1), 4)) == "14.1420"
     assert str(round(slot.slot_dla_autora_z_dyscypliny(dyscyplina1), 4)) == "0.7071"
     assert str(round(slot.slot_dla_dyscypliny(dyscyplina1), 4)) == "0.7071"
 

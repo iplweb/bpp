@@ -1,6 +1,8 @@
 from django.contrib.auth.decorators import login_required
 from django.shortcuts import render
 
+from ewaluacja_common.okres import okres_dla_request
+
 from .core import (
     pobierz_autorow_z_dwiema_dyscyplinami,
     pobierz_publikacje_dla_wszystkich_lat,
@@ -11,15 +13,19 @@ from .core import (
 def index(request):
     """
     Widok główny modułu dwudyscyplinowców.
-    Pokazuje listę autorów z dwiema dyscyplinami i ich publikacje (2022-2025).
+    Pokazuje listę autorów z dwiema dyscyplinami i ich publikacje w okresie ewaluacji wybranym
+    na pasku okresu (domyślnie: okres obejmujący bieżący rok).
     """
     # Pobierz wszystkich autorów z dwiema dyscyplinami
-    autorzy_dict = pobierz_autorow_z_dwiema_dyscyplinami()
+    okres = okres_dla_request(request)
+    autorzy_dict = pobierz_autorow_z_dwiema_dyscyplinami(
+        lata=okres.lata if okres is not None else []
+    )
 
     # Przygotuj dane dla template
     autorzy_dane = []
 
-    for autor_id, autor_data in autorzy_dict.items():
+    for autor_data in autorzy_dict.values():
         # Pobierz wszystkie publikacje autora z wszystkich lat
         publikacje = pobierz_publikacje_dla_wszystkich_lat(autor_data)
 
@@ -62,7 +68,7 @@ def index(request):
     context = {
         "autorzy_dane": autorzy_dane,
         "liczba_autorow": len(autorzy_dane),
-        "lata": "2022-2025",
+        "lata": str(okres) if okres is not None else "—",
     }
 
     return render(request, "ewaluacja_dwudyscyplinowcy/index.html", context)

@@ -433,9 +433,7 @@ def test_fetch_jawne_zgloszenie_w_dozwolonym_statusie_wiaze(importer_client, sta
 @pytest.mark.django_db
 def test_fetch_jawne_zgloszenie_soft_usuniete_bez_wiazania(importer_client):
     zgl = _zgl(strona_www=f"https://doi.org/{DOI}")
-    Zgloszenie_Publikacji.global_objects.filter(pk=zgl.pk).update(
-        deleted_at=timezone.now()
-    )
+    zgl.delete(reason="test")
 
     response = _post_fetch(importer_client, zgloszenie=zgl.pk)
 
@@ -489,6 +487,15 @@ def test_sciezka_jawna_do_zapisu_zwrotnego_oznacza_dozwolone_zgloszenie(
     assert zgl.content_type == ContentType.objects.get_for_model(rekord)
     assert zgl.zaimportowal_id == importer_user.pk
     assert zgl.kod_do_edycji is None
+
+    # FD#587: oznaczenie jest w historii zgłoszenia (stan „przed” i „po”).
+    from reversion.models import Version
+
+    po, przed = Version.objects.get_for_object(zgl)[:2]
+    assert po.revision.comment.startswith("Zaimportowano jako rekord")
+    assert po.revision.user_id == importer_user.pk
+    assert po.field_dict["status"] == STATUSY.ZAIMPORTOWANY
+    assert przed.field_dict["status"] != STATUSY.ZAIMPORTOWANY
 
 
 # --------------------------------------------------------------------------
@@ -891,7 +898,7 @@ def test_task_create_nie_kasuje_odpiecia_zrobionego_w_locie(importer_user):
     zgl = _zgl()
     session = _sesja(importer_user, zgloszenie=zgl)
 
-    def _create(sess):
+    def _create(sess, user=None):
         ImportSession.objects.filter(pk=sess.pk).update(zgloszenie=None)
         return _rekord()
 
@@ -925,7 +932,7 @@ def test_wyjatek_w_zapisie_zwrotnym_zostawia_sesje_completed(importer_user):
         patch(
             "importer_publikacji.zgloszenia.oznacz_jako_zaimportowane"
         ) as mock_oznacz,
-        patch("importer_publikacji.tasks.rollbar") as mock_rollbar,
+        patch("importer_publikacji.tasks.capture_exception") as mock_zgloszenie,
     ):
         mock_create.return_value = rekord
         mock_oznacz.side_effect = RuntimeError("zapis zwrotny wybuchł")
@@ -935,7 +942,7 @@ def test_wyjatek_w_zapisie_zwrotnym_zostawia_sesje_completed(importer_user):
             args=[session.pk, session.created_by_id, False]
         ).get()
 
-        assert mock_rollbar.report_exc_info.called
+        assert mock_zgloszenie.called
 
     session.refresh_from_db()
     assert session.status == ImportSession.Status.COMPLETED
@@ -958,7 +965,7 @@ def test_wyjatek_w_zapisie_zwrotnym_loguje_traceback(importer_user, caplog):
         patch(
             "importer_publikacji.zgloszenia.oznacz_jako_zaimportowane"
         ) as mock_oznacz,
-        patch("importer_publikacji.tasks.rollbar"),
+        patch("importer_publikacji.tasks.capture_exception"),
         caplog.at_level(logging.ERROR, logger="importer_publikacji.tasks"),
     ):
         mock_create.return_value = _rekord()

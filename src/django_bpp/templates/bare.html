@@ -1,7 +1,8 @@
 {% load compress %}<!DOCTYPE html>
 {#PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN"#}
 {#        "http://www.w3.org/TR/html4/loose.dtd">#}
-<html class="no-js" lang="pl" dir="ltr">
+{# data-tryb-domyslny: tryb kolorów motywu bez wyboru odwiedzającego (jasny/ciemny/auto) — dla pigułki ☀ | ☾. #}
+<html class="no-js" lang="pl" dir="ltr"{% if TRYB_KOLOROW_DOMYSLNY %} data-tryb-domyslny="{{ TRYB_KOLOROW_DOMYSLNY }}"{% endif %}>
 <head>
     <meta http-equiv="X-UA-Compatible" content="IE=10">
     {% load static %}
@@ -50,17 +51,92 @@
         <meta name="deklaracja-dostępności" content="{% url "bpp:browse_deklaracja_dostepnosci" %}"/>
     {% endif %}
 
-    {# bare.html - FOUC prevention #}
+    {# Do inicjalizacji Foundation ukrywamy tylko to, co bez JS wygląda źle — NIE całą stronę. #}
+    {# Dawne ukrywanie <body> do jQuery-ready dawało puste mignięcie przy każdym przejściu. #}
+    {# CSS motywu i tak blokuje rysowanie strony, więc nieostylowanej treści nie widać. #}
+    {# Klasę ustawia skrypt (bez JS nic nie jest ukryte), zdejmuje ją inicjalizacja niżej. #}
+    {# Bezpiecznik: gdyby JS padł przed inicjalizacją, po 3 s i tak pokaż menu. #}
+    <script>
+        document.documentElement.classList.add("bpp-js-init");
+        setTimeout(function () { document.documentElement.classList.remove("bpp-js-init"); }, 3000);
+    </script>
+
+    {# Przełącznik trybu kolorów (top_bar.html): wybór z localStorage jako atrybut elementu html #}
+    {# PRZED arkuszami stylów — bez mignięcia jasnej strony. Brak wpisu = jak system. #}
+    {% if TRYB_KOLOROW_PRZELACZNIK %}
+        <script>
+            (function () {
+                try {
+                    var tryb = window.localStorage.getItem("bpp-tryb-kolorow");
+                    if (tryb === "jasny" || tryb === "ciemny") {
+                        document.documentElement.setAttribute("data-tryb-kolorow", tryb);
+                    }
+                } catch (e) {
+                    // localStorage zablokowany (np. tryb prywatny) — zostaje tryb systemu.
+                    if (e.name !== "SecurityError") throw e;
+                }
+            })();
+        </script>
+    {% endif %}
+
     <style>
-        .fouc-hidden { visibility: hidden; opacity: 0; transition: opacity 0.3s ease-in-out; }
-        .fouc-visible { visibility: visible; opacity: 1; }
-        @media print {
-            body.fouc-hidden { visibility: visible !important; opacity: 1 !important; }
+        {# Podmenu (listy i wielokolumnowe bloki) dostają klasy Foundation dopiero od JS — #}
+        {# do tego czasu rozpychały pozycje menu na całą szerokość paska (!important + id menu: reguły podmenu w top_bar.scss mają display: block !important i 5 klas). #}
+        html.bpp-js-init #example-menu .dropdown.menu > li > :not(a) { display: none !important; }
+        {# Telefon: menu chowa Foundation (data-responsive-toggle) dopiero przez JS. #}
+        @media screen and (max-width: 39.9375em) {
+            html.bpp-js-init [data-responsive-toggle] + .top-bar { display: none; }
+        }
+        {# Komputer: pasek „Menu” z hamburgerem (data-hide-for) też chowa dopiero JS. #}
+        @media screen and (min-width: 40em) {
+            html.bpp-js-init [data-responsive-toggle] { display: none; }
         }
     </style>
 
+    {# Podgląd konfiguratora wyglądu: motyw wstawia konfigurator do tego <style>. #}
+    {# CSS bierzemy od razu z okna konfiguratora (ta sama domena), zanim ruszy JS Foundation, #}
+    {# który przy starcie odczytuje z CSS-a breakpointy. #}
+    {% if PODGLAD_MOTYWU %}
+        <style id="bpp-motyw-podglad"></style>
+        <script>
+            {# Dev: przeładowanie strony z django-dev-helpers trzyma stałe połączenie (SSE). #}
+            {# Kilkanaście podglądów wyczerpałoby limit 6 połączeń przeglądarki na host — #}
+            {# w podglądzie wyłączamy je (na produkcji tego skryptu nie ma). #}
+            (function () {
+                var Oryginalny = window.EventSource;
+                if (!Oryginalny) return;
+                window.EventSource = function (adres, opcje) {
+                    if (String(adres).indexOf("/__dev_reload__/") === 0) {
+                        return { close: function () {}, addEventListener: function () {} };
+                    }
+                    return new Oryginalny(adres, opcje);
+                };
+            })();
+            try {
+                {# window.top — także strony w ramkach zagnieżdżonych (wyniki multiseek). #}
+                if (window.top !== window && window.top.BppKonfiguratorCss) {
+                    {# Wersja (jasna/ciemna) z atrybutu ramki konfiguratora. #}
+                    var bppOkno = window;
+                    while (bppOkno.parent !== window.top) { bppOkno = bppOkno.parent; }
+                    var bppRamka = bppOkno.frameElement;
+                    var bppWarianty = window.top.BppKonfiguratorCssWarianty || {};
+                    document.getElementById("bpp-motyw-podglad").textContent =
+                        (bppRamka && bppWarianty[bppRamka.getAttribute("data-wariant")]) ||
+                        window.top.BppKonfiguratorCss;
+                }
+            } catch (e) {
+                // Rodzic z innej domeny — zostaje pusty <style>.
+                if (e.name !== "SecurityError") throw e;
+            }
+        </script>
+    {% elif MOTYW_WLASNY_URL %}
+        {# Motyw z konfiguratora wyglądu — z bazy, więc poza compress. #}
+        <link rel="stylesheet" type="text/css" href="{{ MOTYW_WLASNY_URL }}"/>
+    {% endif %}
     {% compress css %}
-        <link rel="stylesheet" type="text/css" href="{% static THEME_NAME %}"/>
+        {% if not PODGLAD_MOTYWU and not MOTYW_WLASNY_URL %}
+            <link rel="stylesheet" type="text/css" href="{% static THEME_NAME %}"/>
+        {% endif %}
         <link rel="stylesheet" type="text/css" href="{% static "jqueryui/jquery-ui.css" %}">
         <link rel="stylesheet" type="text/css" href="{% static "multiseek/css/style.css" %}">
         <link rel="stylesheet" type="text/css" href="{% static 'session_security/style.css' %}">
@@ -117,6 +193,7 @@
         <script src="{% static 'bpp/js/dist/bundle.js' %}"></script>
         {# Centralized event handlers: data-confirm, data-submit-on-change, data-open-url #}
         <script src="{% static 'bpp/js/event-handlers.js' %}"></script>
+        <script src="{% static 'bpp/js/tryb-kolorow.js' %}"></script>
     {% endcompress %}
 
     {# DataTables: polski język + lengthMenu ustawiamy SYNCHRONICZNIE tu, zaraz #}
@@ -144,13 +221,14 @@
     {# vary_on host: favicon podąża za Site (multi-tenant), więc fragment #}
     {# MUSI być kluczowany per host — inaczej cache podałby favicon jednej #}
     {# uczelni pod domeną innej. Patrz favicon_bpp.place_favicon. #}
-    {% cache 3600 favicon request.get_host %}
+    {# FAVICON_WERSJA: każda zmiana ikony unieważnia fragment (bpp/favicon_wersja.py). #}
+    {% cache 3600 favicon request.get_host FAVICON_WERSJA %}
         {% load favicon_bpp %}
         {% place_favicon %}
     {% endcache %}
 </head>
 {# djlint:off H025 #}
-<body class="fouc-hidden">
+<body>
 {# djlint:on H025 #}
 {% block skip_link %}<a href="#main-content" class="skip-link">Przejdź do głównej zawartości</a>{% endblock %}
 {% block body %}
@@ -171,8 +249,8 @@
         // Tu ich NIE ustawiamy: ready na dole <body> przegrywał wyścig z
         // inline-initami DataTables w blokach content (startowały z „Search").
 
-        // Show body after styles are loaded (FOUC prevention)
-        $('body').removeClass('fouc-hidden').addClass('fouc-visible');
+        // Foundation gotowe — pokaż menu ukryte do inicjalizacji (head).
+        document.documentElement.classList.remove('bpp-js-init');
     });
 
     // Focus search field when Select2 opens
@@ -189,13 +267,5 @@
     <!-- wygenerowano dnia {% bpp_localtime %}, wersja {% bpp_version %} -->
 </footer>
 
-<noscript>
-    <style>
-        body.fouc-hidden {
-            visibility: visible !important;
-            opacity: 1 !important;
-        }
-    </style>
-</noscript>
 
 </html>

@@ -4,6 +4,7 @@ import re
 import bibtexparser
 from bibtexparser.middlewares import NormalizeFieldKeys
 from bibtexparser.model import Entry, ParsingFailedBlock
+from pylatexenc.latex2text import LatexNodes2Text
 
 from bpp.util import zaloguj_polkniety_wyjatek
 
@@ -12,6 +13,7 @@ from . import (
     FetchedPublication,
     InputMode,
     SplitRecord,
+    dolacz_redaktorow,
     register_provider,
 )
 
@@ -28,6 +30,8 @@ BIBTEX_TYPE_MAP = {
     "phdthesis": "dissertation",
     "mastersthesis": "dissertation",
     "proceedings": "proceedings",
+    # biblatex: książka redagowana (redaktorzy w ``editor``) — FD#619.
+    "collection": "edited-book",
     "techreport": "report",
     "manual": "monograph",
     "misc": "other",
@@ -156,7 +160,7 @@ class BibTeXProvider(DataProvider):
 
     def fetch(self, identifier: str) -> FetchedPublication | None:
         # NIE lykamy po cichu: nieoczekiwany blad parsera to bug, ktory ma
-        # trafic do logow + Rollbara (przez @task_failure w celery_tasks),
+        # trafic do logow + monitoringu bledow (przez @task_failure w celery_tasks),
         # a nie zniknac jako "dostawca nic nie zwrocil". validate_identifier
         # juz potwierdzil parsowalnosc synchronicznie przed kolejka.
         try:
@@ -170,24 +174,32 @@ class BibTeXProvider(DataProvider):
         entry = library.entries[0]
         fields = entry.fields_dict
 
-        title = _get_field(fields, "title", "")
+        title = _clean_latex(_get_field(fields, "title", ""))
         if not title:
             return None
 
-        authors = _parse_authors(_get_field(fields, "author", ""))
         year = _parse_year(_get_field(fields, "year", ""))
         doi = _clean_doi(_get_field(fields, "doi", ""))
         pages = _clean_pages(_get_field(fields, "pages", ""))
 
         keywords_raw = _get_field(fields, "keywords", "")
-        keywords = (
-            [k.strip() for k in keywords_raw.split(",") if k.strip()]
-            if keywords_raw
-            else []
-        )
+        # Czyscimy PRZED filtrem pustych: ``{}`` czy ``\-`` po konwersji
+        # LaTeX-a to pusty napis.
+        keywords = [
+            cleaned for k in keywords_raw.split(",") if (cleaned := _clean_latex(k))
+        ]
 
         bibtex_type = entry.entry_type.lower()
         publication_type = BIBTEX_TYPE_MAP.get(bibtex_type)
+
+        # Pole ``editor``: redaktorzy książki/tomu. W ``@incollection`` /
+        # ``@inproceedings`` to redaktorzy publikacji nadrzędnej — te
+        # pomija ``dolacz_redaktorow`` po typie (FD#619).
+        authors = dolacz_redaktorow(
+            _parse_authors(_get_field(fields, "author", "")),
+            _parse_authors(_get_field(fields, "editor", "")),
+            publication_type,
+        )
 
         raw_data = {
             "bibtex_text": identifier,
@@ -199,8 +211,8 @@ class BibTeXProvider(DataProvider):
         filing_date = None
         if bibtex_type == "patent":
             patent_number = _get_field(fields, "number", "") or None
-            patent_holder = _clean_latex(_get_field(fields, "holder", "")) or None
-            jurisdiction = _get_field(fields, "location", "") or None
+            patent_holder = _clean_optional(_get_field(fields, "holder", ""))
+            jurisdiction = _clean_optional(_get_field(fields, "location", ""))
             patent_type = _get_field(fields, "type", "") or None
             filing_date = _parse_bibtex_date(_get_field(fields, "date", ""))
 
@@ -211,16 +223,17 @@ class BibTeXProvider(DataProvider):
             year=year,
             authors=authors,
             source_title=(
-                _get_field(fields, "journal", "")
-                or _get_field(fields, "booktitle", "")
-                or None
+                _clean_optional(_get_field(fields, "journal", ""))
+                or _clean_optional(_get_field(fields, "booktitle", ""))
             ),
             issn=_get_field(fields, "issn", "") or None,
             isbn=_get_field(fields, "isbn", "") or None,
-            publisher=_get_field(fields, "publisher", "") or None,
+            publisher=_clean_optional(_get_field(fields, "publisher", "")),
             publication_type=publication_type,
             language=_get_field(fields, "language", "") or None,
-            abstract=_get_field(fields, "abstract", "") or None,
+            abstract=_clean_optional(
+                _get_field(fields, "abstract", ""), keep_lines=True
+            ),
             volume=_get_field(fields, "volume", "") or None,
             issue=_get_field(fields, "number", "") or None,
             pages=pages or None,
@@ -244,7 +257,7 @@ def _get_field(fields_dict, key, default=""):
 
 
 def _parse_authors(author_str: str) -> list[dict]:
-    """Parsuj string autorów BibTeX na listę dict."""
+    """Parsuj string autorów (albo redaktorów) BibTeX na listę dict."""
     if not author_str:
         return []
 
@@ -281,15 +294,56 @@ def _parse_authors(author_str: str) -> list[dict]:
     return authors
 
 
-def _clean_latex(text: str) -> str:
-    """Usuń proste polecenia LaTeX z tekstu."""
-    # Usuń klamry
-    text = text.replace("{", "").replace("}", "")
-    # Usuń \~ \' \" itp.
-    text = re.sub(r"\\[`'^\"~=.uvHtcdbr]", "", text)
-    # Usuń \command z jednym argumentem
-    text = re.sub(r"\\[a-zA-Z]+\s*", "", text)
-    return text.strip()
+# Konwerter LaTeX -> Unicode (``pylatexenc``, jawna zaleznosc w
+# ``pyproject.toml``; ``bibtexparser`` 2.x i tak go uzywa).
+# ``math_mode="verbatim"`` zostawia wzory ``$...$`` nietkniete;
+# ``strict_latex_spaces`` nie zjada spacji po makrach typu ``\L``.
+_LATEX_TO_TEXT = LatexNodes2Text(math_mode="verbatim", strict_latex_spaces=True)
+
+# Nieescapowane ``%`` i ``&`` sa w realnych eksportach (WoS, Scopus)
+# zwyklymi znakami ("50% of patients", "Smith & Jones"), a dla LaTeX-a to
+# odpowiednio komentarz (ucina reszte pola) i separator kolumn tabeli.
+_UNESCAPED_SPECIAL = re.compile(r"(?<!\\)([%&])")
+
+# Dwie lub wiecej pustych linii pod rzad (po normalizacji wierszy).
+_MULTI_BLANK_LINES = re.compile(r"\n{3,}")
+
+
+def _clean_latex(text: str, keep_lines: bool = False) -> str:
+    r"""Zamien znaczniki LaTeX z pola BibTeX na zwykly tekst Unicode.
+
+    Obsluguje m.in. (Freshdesk #458):
+
+    - klamry chroniace wielkie litery: ``{U}kraine`` -> ``Ukraine``,
+    - cudzyslowy LaTeX-a (dwa grawisy ... dwa apostrofy) -> ``“tekst”``
+      (typograficzne cudzyslowy angielskie; neutralne wzgledem jezyka
+      tekstu, a niosace te sama informacje co znacznik LaTeX-owy),
+    - polpauze i pauze: ``--`` -> ``–``, ``---`` -> ``—``,
+    - akcenty i znaki diakrytyczne: ``{\k a}`` -> ``ą``, ``{\l}`` -> ``ł``,
+      ``\'{n}`` -> ``ń``, ``\.{z}`` -> ``ż``, ``\"{o}`` -> ``ö``,
+    - proste makra formatujace (``\textit{x}``, ``\emph{x}``) -> ``x``,
+    - escapowane znaki specjalne: ``\%``, ``\&``, ``\_`` itd.
+
+    Wzory matematyczne ``$...$`` zostaja bez zmian, a miekki dywiz ``\-``
+    jest usuwany. Bialy znak (w tym twarda spacja z ``~``) jest sprowadzany
+    do pojedynczych spacji. Lamanie wierszy tez -- chyba ze
+    ``keep_lines=True`` (abstrakt): wtedy podzialy wierszy zostaja,
+    a puste linie miedzy akapitami sa sprowadzane do jednej.
+    """
+    if not text:
+        return ""
+    text = _UNESCAPED_SPECIAL.sub(r"\\\1", text)
+    text = _LATEX_TO_TEXT.latex_to_text(text)
+    text = text.replace("\xad", "")
+    if not keep_lines:
+        return " ".join(text.split())
+    lines = [" ".join(line.split()) for line in text.splitlines()]
+    return _MULTI_BLANK_LINES.sub("\n\n", "\n".join(lines)).strip()
+
+
+def _clean_optional(text: str, keep_lines: bool = False) -> str | None:
+    """``_clean_latex`` dla pol opcjonalnych: pusty wynik -> ``None``."""
+    return _clean_latex(text, keep_lines=keep_lines) or None
 
 
 def _parse_year(year_str: str) -> int | None:

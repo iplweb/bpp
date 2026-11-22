@@ -64,6 +64,23 @@ class OplataZaWydawnictwoPBNAdapter:
         return fee
 
 
+#: Wartości enuma ``releaseDateMonth`` w API PBN, indeks 0 = styczeń.
+PBN_MIESIACE = (
+    "JANUARY",
+    "FEBRUARY",
+    "MARCH",
+    "APRIL",
+    "MAY",
+    "JUNE",
+    "JULY",
+    "AUGUST",
+    "SEPTEMBER",
+    "OCTOBER",
+    "NOVEMBER",
+    "DECEMBER",
+)
+
+
 class WydawnictwoPBNAdapter:
     CHAPTER = "CHAPTER"
     BOOK = "BOOK"
@@ -243,26 +260,38 @@ class WydawnictwoPBNAdapter:
 
         Priorytet źródeł (od najbardziej dedykowanego):
 
-        1. ``openaccess_data_opublikowania`` — pole dedykowane OpenAccess
-           (``ModelZOpenAccess``), ustawiane przez importer z PBN i przez
-           redakcję ręcznie. To powinno być podstawowe źródło.
-        2. ``public_dostep_dnia`` — data wolnego dostępu do strony WWW
-           (``ModelZWWW``). Fallback dla starszych rekordów bez dedykowanej
-           daty OpenAccess.
-        3. ``dostep_dnia`` — data płatnego dostępu. Ostatni fallback.
+        1. ``openaccess_data_opublikowania`` — pełna data udostępnienia OA,
+           wysyłana jako ``releaseDate``.
+        2. ``openaccess_miesiac_udostepnienia`` + ``openaccess_rok_udostepnienia``
+           (Freshdesk #281) — wysyłane jako ``releaseDateMonth`` (nazwa
+           enuma PBN, np. ``DECEMBER``) + ``releaseDateYear`` (int), BEZ
+           ``releaseDate``. Formularz nie pozwala wypełnić 1. i 2. naraz.
+           Jawnie wpisany miesiąc i rok OA wygrywają z datami WWW niżej:
+           tamte są tylko przybliżeniem (data dostępu do strony).
+        3. ``public_dostep_dnia`` — data wolnego dostępu do strony WWW.
+        4. ``dostep_dnia`` — data płatnego dostępu. Ostatni fallback.
 
-        Gdy żadna z dat nie jest wypełniona, pola ``releaseDate``,
-        ``releaseDateMonth``, ``releaseDateYear`` NIE są ustawiane.
-        Wcześniejsza implementacja wstawiała hardcoded
-        ``{"releaseDateMonth": "JANUARY", "releaseDateYear": str(rok)}``,
-        co wysyłało do PBN nieprawdziwe dane (styczeń niezależnie od
-        faktycznego miesiąca publikacji). Lepiej pominąć pola i zmusić
-        PBN do zwrócenia validation error (lub zaakceptowania, jeśli
-        spec pozwala), niż wysyłać kłamliwy miesiąc.
+        Sam rok (bez miesiąca) NIGDY nie jest wysyłany — testy na
+        produkcyjnym PBN (FD#281):
+
+        - sam ``releaseDateYear`` → 400 „pełna data albo miesiąc i rok jest
+          wymagana”, także z ``releaseDateMonth`` ``null``/``0``/``""``,
+        - ``releaseDate: "2025"`` → przyjęte, ale zapisane jako
+          1970-01-01T00:33:45Z (PBN czyta to jako sekundy od epoki),
+        - ``releaseDateYear`` + ``releaseDateMonth`` → przyjęte i zapisane
+          dokładnie tak.
+
+        Gdy żadne z pól nie jest wypełnione, pola daty NIE są ustawiane
+        (dawniej wstawiano zmyślony styczeń roku publikacji).
         """
         data_oa = getattr(self.original, "openaccess_data_opublikowania", None)
+        rok_oa = getattr(self.original, "openaccess_rok_udostepnienia", None)
+        miesiac_oa = getattr(self.original, "openaccess_miesiac_udostepnienia", None)
         if data_oa is not None:
             oa["releaseDate"] = str(data_oa)
+        elif rok_oa is not None and miesiac_oa is not None:
+            oa["releaseDateMonth"] = PBN_MIESIACE[int(miesiac_oa) - 1]
+            oa["releaseDateYear"] = int(rok_oa)
         elif self.original.public_dostep_dnia is not None:
             oa["releaseDate"] = str(self.original.public_dostep_dnia)
         elif self.original.dostep_dnia is not None:

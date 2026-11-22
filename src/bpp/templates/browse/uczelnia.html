@@ -1,90 +1,12 @@
 {% extends "base.html" %}
-{% load user_in_group polish_inflection cache media_utils static prace %}
+{% load user_in_group polish_inflection cache media_utils static prace porady %}
 
 {% block extratitle %}
     Uczelnia
 {% endblock %}
 
 {% block breadcrumbs-html %}
-    <!-- Tips section in place of breadcrumbs for main page -->
-        <div id="breadcrumbs-wrapper" class="grid-container-fluid hide-for-small-only breadcrumbs-tips-wrapper">
-        <div class="grid-x">
-            <div class="cell">
-                <div id="rotating-tips">
-                    <div class="tip-content">
-                        <i class="fi-lightbulb"></i> <strong>Porady BPP:</strong> <span id="tip-text">Ładowanie porad...</span>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <script>
-    document.addEventListener('DOMContentLoaded', function() {
-        const tips = [
-            'Użyj <a href="/multiseek/">wyszukiwarki zaawansowanej</a> aby znaleźć publikacje według różnych kryteriów.',
-            'W <a href="/admin/">panelu administracyjnym</a> możesz zarządzać rekordami publikacji i autorów.',
-            'Skorzystaj z <a href="/bpp/raporty/ranking-autorow/wybierz/">rankingu autorów</a> aby zobaczyć najaktywniejszych badaczy.',
-            'Funkcja <strong>eksportu do PBN</strong> pozwala na synchronizację danych z Polską Bibliografią Naukową.',
-            'W module <strong>raportów</strong> znajdziesz szczegółowe zestawienia publikacji według jednostek i wydziałów.',
-            'Użyj filtrów <strong>według roku</strong> aby ograniczyć wyniki wyszukiwania do określonego okresu.',
-            'System automatycznie <strong>przypisuje punktację</strong> publikacjom zgodnie z aktualnymi listami ministeralnymi.',
-            'Funkcja <strong>duplikatów</strong> pomaga w identyfikacji i usuwaniu powtarzających się rekordów.',
-            'W <strong>profilach autorów</strong> znajdziesz pełną listę ich publikacji i współprac.',
-            'System obsługuje import danych z <strong>zewnętrznych baz</strong> jak CrossRef czy Web of Science.',
-            'Użyj opcji <strong>"Zgłoś publikację"</strong> aby dodać nowe pozycje do bazy danych.',
-            'Funkcja <strong>oświadczeń autorów</strong> pozwala na przypisanie publikacji do właściwych dyscyplin naukowych.',
-            'W module <strong>statystyk</strong> znajdziesz wykresy pokazujące trendy publikacyjne uczelni.',
-            'System automatycznie <strong>aktualizuje cytowania</strong> z baz Web of Science i Scopus.',
-            'Skorzystaj z <strong>eksportu do BibTeX</strong> aby zaimportować publikacje do programów bibliograficznych.'
-        ];
-
-        const tipTextElement = document.getElementById('tip-text');
-        const tipContentElement = document.querySelector('.tip-content');
-        let usedTips = [];
-
-        function getRandomTip() {
-            // If all tips have been used, reset the array
-            if (usedTips.length >= tips.length) {
-                usedTips = [];
-            }
-
-            let randomIndex;
-            do {
-                randomIndex = Math.floor(Math.random() * tips.length);
-            } while (usedTips.includes(randomIndex));
-
-            usedTips.push(randomIndex);
-            return tips[randomIndex];
-        }
-
-        function showNextTip() {
-            // Fade out current tip
-            tipContentElement.style.opacity = '0';
-
-            setTimeout(function() {
-                // Change text while invisible
-                tipTextElement.innerHTML = getRandomTip();
-                tipContentElement.style.display = 'block';
-
-                // Fade in new tip
-                setTimeout(function() {
-                    tipContentElement.style.opacity = '1';
-                }, 50);
-            }, 500); // Wait for fade out to complete
-        }
-
-        // Show first tip immediately
-        tipTextElement.innerHTML = getRandomTip();
-        tipContentElement.style.display = 'block';
-        setTimeout(function() {
-            tipContentElement.style.opacity = '1';
-        }, 100);
-
-        // Rotate tips every 15 seconds
-        setInterval(showNextTip, 15000);
-    });
-    </script>
+    {% pasek_porad %}
 {% endblock %}
 
 {% block content %}
@@ -203,8 +125,11 @@
             <h2 class="uczelnia__section-heading">
                 <i class="fi-compass"></i> Przeglądaj bazę publikacji
             </h2>
-            <div class="grid-x grid-margin-x">
-                <div class="small-12 medium-4 large-auto cell">
+            {# Kolejność kafli: autorzy, jednostki, źródła, wydawcy, lata. #}
+            {# Siatka CSS (grid-auto-rows: 1fr) — wszystkie kafle mają wysokość #}
+            {# najwyższego, także gdy zawijają się do kolejnych wierszy. #}
+            <div class="uczelnia__kafle">
+                <div class="uczelnia__kafel">
                     <a href="/bpp/autorzy/" class="browse-tile">
                         <div class="uczelnia__tile">
                             <i class="fi-torsos-all uczelnia__tile-icon uczelnia__tile-icon--blue"></i>
@@ -213,7 +138,29 @@
                         </div>
                     </a>
                 </div>
-                <div class="small-12 medium-4 large-auto cell">
+                <div class="uczelnia__kafel">
+                    {# FD#391: opcja uczelni zamienia kafel „Jednostki” na „Wydziały” #}
+                    {# (indeks jednostek najwyższego poziomu tej uczelni). #}
+                    {% if uczelnia.kafel_wydzialy_zamiast_jednostek %}
+                        {% odmien nazwa_wydzialu "mianownik" liczba="mnoga" as kafel_wydzialy_tytul %}
+                        <a href="{% url 'bpp:browse_wydzialy' %}" class="browse-tile">
+                            <div class="uczelnia__tile">
+                                <i class="fi-foundation uczelnia__tile-icon uczelnia__tile-icon--red"></i>
+                                <h4 class="uczelnia__tile-title">{{ kafel_wydzialy_tytul|capfirst }}</h4>
+                                <p class="uczelnia__tile-description">Przeglądaj wg {% odmien nazwa_wydzialu "dopelniacz" %}</p>
+                            </div>
+                        </a>
+                    {% else %}
+                        <a href="/bpp/jednostki/" class="browse-tile">
+                            <div class="uczelnia__tile">
+                                <i class="fi-home uczelnia__tile-icon uczelnia__tile-icon--red"></i>
+                                <h4 class="uczelnia__tile-title">Jednostki</h4>
+                                <p class="uczelnia__tile-description">Przeglądaj wg jednostki</p>
+                            </div>
+                        </a>
+                    {% endif %}
+                </div>
+                <div class="uczelnia__kafel">
                     <a href="/bpp/zrodla/" class="browse-tile">
                         <div class="uczelnia__tile">
                             <i class="fi-book uczelnia__tile-icon uczelnia__tile-icon--green"></i>
@@ -222,7 +169,7 @@
                         </div>
                     </a>
                 </div>
-                <div class="small-12 medium-4 large-auto cell">
+                <div class="uczelnia__kafel">
                     <a href="{% url 'bpp:browse_wydawcy' %}" class="browse-tile">
                         <div class="uczelnia__tile">
                             <i class="fi-print uczelnia__tile-icon uczelnia__tile-icon--purple"></i>
@@ -231,7 +178,7 @@
                         </div>
                     </a>
                 </div>
-                <div class="small-12 medium-4 large-auto cell">
+                <div class="uczelnia__kafel">
                     <a href="{% url 'bpp:browse_lata' %}" class="browse-tile">
                         <div class="uczelnia__tile">
                             <i class="fi-calendar uczelnia__tile-icon uczelnia__tile-icon--yellow"></i>
@@ -240,31 +187,9 @@
                         </div>
                     </a>
                 </div>
-                <div class="small-12 medium-4 large-auto cell">
-                    <a href="/bpp/jednostki/" class="browse-tile">
-                        <div class="uczelnia__tile">
-                            <i class="fi-home uczelnia__tile-icon uczelnia__tile-icon--red"></i>
-                            <h4 class="uczelnia__tile-title">Jednostki</h4>
-                            <p class="uczelnia__tile-description">Przeglądaj wg jednostki</p>
-                        </div>
-                    </a>
-                </div>
             </div>
         </div>
     </div>
-
-    <style>
-    .browse-tile:hover > div {
-        transform: translateY(-2px);
-        box-shadow: 0 4px 12px rgba(0,0,0,0.1);
-        background: #fff !important;
-    }
-    .browse-tile {
-        text-decoration: none;
-        display: block;
-        margin-bottom: 20px;
-    }
-    </style>
 
     <div class="grid-x grid-margin-x">
         {% if article %}
@@ -703,7 +628,7 @@
             {
                 name: "Oświadczenia autorów",
                 description: "System zarządzania oświadczeniami dotyczącymi przypisania publikacji do dyscyplin naukowych. Kluczowe dla prawidłowej ewaluacji jednostek.",
-                link: "/oswiadczenia/",
+                link: "{% url 'oswiadczenia:wydruk' %}",
                 icon: "fi-clipboard-notes"
             },
             {

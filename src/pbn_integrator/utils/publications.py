@@ -2,18 +2,19 @@
 
 from __future__ import annotations
 
+import contextvars
 import logging
 import sys
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from typing import TYPE_CHECKING
 
-import rollbar
 from pbn_client.const import ACTIVE
 from tqdm import tqdm
 
 from bpp.const import PBN_MIN_ROK
 from bpp.models import Rekord
 from bpp.util import pbar
+from bpp.zglaszanie_bledow import capture_exception
 from pbn_api.exceptions import (
     BrakIDPracyPoStroniePBN,
     HttpException,
@@ -443,11 +444,11 @@ def _download_and_import_single_publication(
         return (pbn_uid_id, False, "Publikacja nie istnieje w PBN")
     except Exception as e:
         # Catch-all w wątku roboczym — błąd pojedynczej pracy nie może zniknąć
-        # po cichu. Pełny traceback do logów + Rollbar; status wraca do agregatora.
+        # po cichu. Pełny traceback do logów + monitoring błędów; status wraca do agregatora.
         logger.exception("Błąd importu publikacji PBN UID %s", pbn_uid_id)
-        rollbar.report_exc_info(
+        capture_exception(
             sys.exc_info(),
-            extra_data={
+            extra={
                 "pbn_uid_id": pbn_uid_id,
                 "phase": "pobierz_i_zaimportuj_pojedyncza_prace",
             },
@@ -489,7 +490,10 @@ def pobierz_brakujace_publikacje_batch(
     with ThreadPoolExecutor(max_workers=max_workers) as executor:
         # Submit all tasks
         futures = {
+            # copy_context: wątek roboczy nie dziedziczy ContextVar-ów, a z nich
+            # bierze się autor wpisów historii (bpp.wersjonowanie).
             executor.submit(
+                contextvars.copy_context().run,
                 _download_and_import_single_publication,
                 client,
                 pbn_uid_id,

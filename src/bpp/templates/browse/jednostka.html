@@ -89,6 +89,7 @@
         {# głębiej w drzewie: jawna lista jednostki + potomków, bo POST #}
         {# poddrzewa byłby wtedy pusty/zignorowany albo dał pusty raport. #}
         <div class="jednostka__quick-actions">
+            <div class="przycisk-prac">
             <form method="post" action="{% url "bpp:browse_build_search" %}" class="jednostka__quick-actions-form">
                 {# Brak {% csrf_token %} celowo — BuildSearch jest @csrf_exempt #}
                 {# (zapis tylko do własnej sesji), by strona weszła do cache. #}
@@ -105,10 +106,16 @@
                     {% endfor %}
                 {% endif %}
                 <input type="hidden" name="suggested-title" value="{{ jednostka }}"/>
-                <button type="submit" class="button button-show-all">
-                    <i class="fi-list-bullet"></i>Pokaż wszystkie publikacje
+                {# cel=wyniki: od razu lista wyników, bez formularza multiseek. #}
+                <input type="hidden" name="cel" value="wyniki"/>
+                <button type="submit" class="button button-show-all{% if liczby_prac.ma_menu %} przycisk-prac__glowny{% endif %}">
+                    <i class="fi-list-bullet"></i>Pokaż wszystkie publikacje{% if liczby_prac.wszystkie %} ({{ liczby_prac.wszystkie }}){% endif %}
                 </button>
             </form>
+            {% if liczby_prac.ma_menu %}
+                {% include "browse/_menu_prac.html" with liczby=liczby_prac pola=pola_prac_struktura tytul=jednostka klasa="button button-show-all" kotwica="wyszukaj-publikacje" only %}
+            {% endif %}
+            </div>
         </div>
 
         <!-- Modern Navigation -->
@@ -359,11 +366,13 @@
         <div class="grid-x grid-margin-x align-middle">
             <div class="cell auto">
                 <h1 class="jednostka__title">{{ jednostka }}</h1>
-                {% if jednostka.kierownik %}
+                {% with kierownik=jednostka.kierownik %}
+                {% if kierownik %}
                     <div class="subheader jednostka__subheader">
-                        <i class="fi-torso jednostka__icon--mr-xs"></i>Kierownik: {{ jednostka.kierownik }}
+                        <i class="fi-torso jednostka__icon--mr-xs"></i>Kierownik: {{ kierownik }}
                     </div>
                 {% endif %}
+                {% endwith %}
             </div>
             <div class="cell shrink">
                 {% include "browse/go_to_admin_change.html" with url="admin:bpp_jednostka_change" pk=jednostka.pk group="struktura" %}
@@ -417,6 +426,7 @@
 
     <!-- Quick Actions -->
     <div class="jednostka__quick-actions">
+        <div class="przycisk-prac">
         <form method="post" action="{% url "bpp:browse_build_search" %}" class="jednostka__quick-actions-form">
             {# Brak {% csrf_token %} celowo — BuildSearch jest @csrf_exempt. #}
             <input type="hidden" name="jednostka" value="{{ jednostka.pk }}"/>
@@ -424,11 +434,17 @@
                 <input type="hidden" name="jednostka" value="{{ descendant.pk }}"/>
             {% endfor %}
             <input type="hidden" name="suggested-title" value="{{ jednostka }}"/>
+            {# cel=wyniki: od razu lista wyników, bez formularza multiseek. #}
+            <input type="hidden" name="cel" value="wyniki"/>
             <button type="submit"
-                    class="button primary large jednostka__btn-primary">
-                <i class="fi-list-bullet jednostka__icon--mr-sm"></i>Pokaż wszystkie publikacje
+                    class="button primary large jednostka__btn-primary{% if liczby_prac.ma_menu %} przycisk-prac__glowny{% endif %}">
+                <i class="fi-list-bullet jednostka__icon--mr-sm"></i>Pokaż wszystkie publikacje{% if liczby_prac.wszystkie %} ({{ liczby_prac.wszystkie }}){% endif %}
             </button>
         </form>
+        {% if liczby_prac.ma_menu %}
+            {% include "browse/_menu_prac.html" with liczby=liczby_prac pola=pola_prac tytul=jednostka klasa="button primary large jednostka__btn-primary" kotwica="wyszukaj-publikacje" only %}
+        {% endif %}
+        </div>
     </div>
 
     {# Wykresy w latach (wspólne ze stroną autora); klik w rok → wyszukiwanie #}
@@ -440,7 +456,7 @@
     {% endif %}
 
     {# Wyszukiwarka w stylu strony autora (wspólne częściowe szablony). #}
-    <div class="search-container autor-page__search-container">
+    <div class="search-container autor-page__search-container" id="wyszukaj-publikacje">
         {% include "browse/_wyszukiwarka_naglowek.html" with tytul="Wyszukaj publikacje" podtytul="Bez zaznaczonych filtrów wyszukiwanie pokaże wszystkie prace jednostki (razem z jednostkami podrzędnymi). Zaznacz typy, autorów lub lata, żeby zawęzić wyniki." %}
 
         <form method="post"

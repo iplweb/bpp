@@ -123,16 +123,16 @@ def test_host_z_niepoprawnym_portem_daje_421_i_nie_woła_rollbara(
     autor.save()
     rollbar_narzedzi = Mock()
     rollbar_routingu = Mock()
-    monkeypatch.setattr(modul_aplikacji, "rollbar", rollbar_narzedzi)
-    monkeypatch.setattr(modul_routingu, "rollbar", rollbar_routingu)
+    monkeypatch.setattr(modul_aplikacji, "capture_exception", rollbar_narzedzi)
+    monkeypatch.setattr(modul_routingu, "capture_exception", rollbar_routingu)
 
     router = _router(settings)
     (_, (status, _, tresc)) = _dialog(router, "bpp.example.test:abc")
 
     assert status == 421, tresc
     assert json.loads(tresc) == {"error": "unknown_host"}
-    rollbar_narzedzi.report_exc_info.assert_not_called()
-    rollbar_routingu.report_exc_info.assert_not_called()
+    rollbar_narzedzi.assert_not_called()
+    rollbar_routingu.assert_not_called()
 
 
 @pytest.mark.django_db(transaction=True)

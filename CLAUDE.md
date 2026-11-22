@@ -12,6 +12,21 @@ management system built with Django. Python >=3.11.5,<3.15 (production and CI: 3
 - Commands reference: [docs/deweloper/polecenia.md](docs/deweloper/polecenia.md)
 - CSS/SCSS build: [docs/deweloper/budowanie-css.md](docs/deweloper/budowanie-css.md)
 
+## Polityka języka
+
+BPP to polski produkt — **nowe** teksty piszemy po polsku:
+
+- komunikaty programu i teksty interfejsu (UI, komunikaty błędów, e-maile),
+- komentarze w kodzie i docstringi,
+- opisy commitów i pull requestów,
+- dokumentacja (`docs/`), newsfragmenty.
+
+Nazwy w kodzie (zmienne, funkcje, klasy) — zgodnie z konwencją danego modułu.
+
+**Nie przepisujemy istniejących tekstów** tylko po to, żeby zmienić język:
+angielskie komentarze i commity zostają, dopóki i tak nie zmieniasz danego
+fragmentu z innego powodu.
+
 ## Pokazywanie ścieżek do plików `.md` (linki `file://`)
 
 Gdy w odpowiedzi pokazujesz ścieżkę do pliku `.md` (spec, dokument w
@@ -199,6 +214,18 @@ docker compose up db redis -d
 # Testing (full suite takes UP TO 10 MINUTES):
 uv run pytest
 make tests-without-playwright    # fast, no browser tests
+```
+
+**Full-suite runs: never hard-code `-n 16` (or any large `-n`).** Use
+`make tests-without-playwright` — it sizes xdist workers from free RAM via
+`--xdist-memory`. If you must call pytest directly, use at most `-n 6`.
+Each worker takes ~600–800 MB plus its own Postgres container, and all
+Claude sessions on the dev box share one tmux cgroup capped at 20 GB:
+a 16-worker run throttles every other session to a standstill.
+(These numbers assume the current 29 GB RAM dev box — revisit them, and the
+tmux slice limit, after a RAM upgrade.)
+
+```bash
 
 # Code quality:
 ruff format .
@@ -256,6 +283,11 @@ Nazwa pliku: `<slug>.<typ>.rst` (albo `.md`), gdzie `<typ>`:
 
 Treść po polsku, zwięźle (jedno zdanie/akapit). Numer zgłoszenia w slugu
 dla ticketów (np. `fd407.bugfix.rst`); `#443` linkuje się do GitHub Issues.
+
+CI (workflow `Newsfragments`, `bin/check-fd-newsfragments.py`) wymaga
+fragmentu `fd<N>.<typ>.rst` dla każdego `FD#<N>` w tytule PR-a. Świadomy
+wyjątek: etykieta `bez-newsfragmentu`. Dla ticketów opis ma być dokładny
+(co było źle, co jest teraz, gdzie to widać w UI) — trafia do klientów.
 
 ## Autologin dla agentów (WebFetch / curl bez logowania)
 

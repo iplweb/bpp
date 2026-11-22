@@ -46,7 +46,7 @@ def _sync_single_source(zrodlo_id, min_rok, dyscypliny_dict):
         zaloguj_polkniety_wyjatek(
             f"Nie udało się zaimportować punktacji/dyscyplin źródła {zrodlo_id}",
             logger=logger,
-            do_rollbar=True,
+            do_monitoringu=True,
         )
         return (zrodlo_id, False, str(e))
 

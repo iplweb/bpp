@@ -28,8 +28,8 @@ from django.contrib.contenttypes.models import ContentType
 from django.utils import timezone
 from password_policies.models import PasswordHistory
 
+from bpp.demo_data.zrzuty import regis as zrzuty_regis
 from bpp.models import (
-    Autor,
     Autor_Dyscyplina,
     BppUser,
     Dyscyplina_Naukowa,
@@ -37,6 +37,7 @@ from bpp.models import (
     Wydawnictwo_Ciagle,
     Wydawnictwo_Ciagle_Autor,
 )
+from ewaluacja_common.models import Rodzaj_Autora
 from pbn_api.exceptions import HttpException
 from pbn_api.models import Publication
 from pbn_wysylka_oswiadczen.models import PbnWysylkaLog, PbnWysylkaOswiadczenTask
@@ -66,11 +67,27 @@ ucz.drukuj_alternatywne_oswiadczenia = True
 ucz.save()
 
 # --- an author with two disciplines in 2023 --------------------------------
-regis = Autor.objects.get(nazwisko="z Cintry", imiona="Regis")
-regis.orcid = "0000-0002-1825-0097"  # the ORCID documentation example iD
+regis = zrzuty_regis()
+# Przykładowy iD z dokumentacji ORCID. Nie „0000-0002-1825-0097” — ten
+# bin/docs-demo-duplikaty.py nadaje Geraltowi z Rivii (ORCID jest unikalny).
+regis.orcid = "0000-0002-1694-233X"
 regis.save()
 filozofia = Dyscyplina_Naukowa.objects.get(nazwa="filozofia")
-ad = Autor_Dyscyplina.objects.get(autor=regis, rok=2023)
+ad = Autor_Dyscyplina.objects.filter(autor=regis, rok=2023).first()
+if ad is None:
+    # Generator danych demo nie każdemu autorowi przypisuje dyscyplinę (zależy
+    # to od puli nazw i --seed), więc w razie potrzeby nadajemy ją tutaj —
+    # razem z dyscypliną przy jego pracach z 2023 r.
+    teologia = Dyscyplina_Naukowa.objects.get(nazwa="nauki teologiczne")
+    ad = Autor_Dyscyplina.objects.create(
+        autor=regis,
+        rok=2023,
+        dyscyplina_naukowa=teologia,
+        rodzaj_autora=Rodzaj_Autora.objects.get(skrot="N"),
+    )
+    Wydawnictwo_Ciagle_Autor.objects.filter(autor=regis, rekord__rok=2023).update(
+        dyscyplina_naukowa=teologia, przypieta=True
+    )
 if ad.dyscyplina_naukowa_id != filozofia.pk:
     ad.subdyscyplina_naukowa = filozofia
     ad.save()
@@ -80,8 +97,10 @@ Wydawnictwo_Ciagle_Autor.objects.filter(
 ).update(data_oswiadczenia=datetime.date(2024, 1, 15))
 
 # --- PBN UIDs on a few works -------------------------------------------------
-Wydawnictwo_Ciagle.objects.exclude(pbn_uid=None).update(pbn_uid=None)
-Publication.objects.filter(mongoId__startswith="64f0c0de0sw").delete()
+# tylko własne rekordy PBN — innych skryptów (np. bin/docs-demo-pbn.py) nie ruszamy
+WLASNE = Publication.objects.filter(mongoId__startswith="64f0c0de0sw")
+Wydawnictwo_Ciagle.objects.filter(pbn_uid__in=WLASNE).update(pbn_uid=None)
+WLASNE.delete()
 
 prace = list(
     Wydawnictwo_Ciagle.objects.filter(

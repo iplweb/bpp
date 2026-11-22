@@ -5,6 +5,7 @@ Autorzy
 from __future__ import annotations
 
 import logging
+import uuid
 from datetime import date, timedelta
 
 from autoslug import AutoSlugField
@@ -22,11 +23,28 @@ from django.db.models import CASCADE, SET_NULL, Count, Func, Q, Sum
 from django.urls.base import reverse
 from django.utils import timezone
 from django.utils.functional import cached_property
+from django_softdelete.managers import DeletedManager, GlobalManager
+from django_softdelete.models import SoftDeleteModel
+from django_softdelete.signals import post_restore, post_soft_delete
 
 from bpp import const
 from bpp.core import zbieraj_sloty
 from bpp.models import LinkDoPBNMixin, ModelZAdnotacjami, ModelZNazwa, NazwaISkrot
 from bpp.models.abstract import ModelZPBN_ID
+from bpp.models.soft_delete import (
+    BppPkPrzedHardDeleteMixin,
+    BppSoftDeleteQuerySet,
+    BppUnikalnoscZKoszemMixin,
+    dopisz_znacznik_zmiany,
+    operacja_kosza,
+    powiazania_w_koszu,
+    raise_if_has_protected_children,
+    relacje_przychodzace,
+    sprawdz_stan_kosza,
+    sprawdz_wskazania_przed_przywroceniem,
+    zapisz_przywrocenie,
+)
+from bpp.models.soft_delete_context import soft_delete_context
 from bpp.util import FulltextSearchMixin, zaloguj_polkniety_wyjatek
 from bpp.util.biogram import FORMAT_MARKDOWN, FORMATY_BIOGRAMU
 from bpp.util.identyfikatory import (
@@ -71,8 +89,18 @@ def autor_split_string(text):
     return text[0], text[1]
 
 
-class AutorQuerySet(models.QuerySet):
+class AutorQuerySet(BppSoftDeleteQuerySet):
     """Zakresy wyszukiwania autora (spec 2026-07-02).
+
+    Baza to ``BppSoftDeleteQuerySet`` (faza 04), nie ``models.QuerySet`` —
+    stąd bierze się gate blokujący bulk ``update(deleted_at=...)`` oraz
+    ``restore()`` z domyślnym ``strict=False``. Bez tego przepięcia husk
+    autora dałoby się wyprodukować jednym ``update()``, z pominięciem
+    ``save()``, sygnałów, reversion i (od fazy 06) ``SoftDeleteLog``.
+
+    Filtrowanie skasowanych NIE siedzi tutaj, tylko w menedżerze — ten sam
+    queryset obsługuje ``objects`` (żywi), ``global_objects`` (wszyscy)
+    i ``deleted_objects`` (kosz).
 
     Kategorie semantyczne — obowiązują tak samo w single- i multi-host (NIE
     przechodzą przez guard ``tylko_jedna_uczelnia``; to wybór kategorii autora,
@@ -128,6 +156,17 @@ class AutorManager(FulltextSearchMixin, models.Manager.from_queryset(AutorQueryS
     # Nie włączaj websearch gdy podano minus (podwójne nazwiska z myślnikiem)
     fts_enable_websearch_on_minus_or_quote = False
 
+    def get_queryset(self):
+        """Menedżer publiczny autora UKRYWA husk (faza 04).
+
+        Dopisanie ``SoftDeleteModel`` do bazy klasy ``Autor`` samo z siebie
+        NIC by tu nie zmieniło: ``objects = AutorManager()`` nadpisuje
+        menedżer pakietu, więc bez tego filtra autor skasowany miękko dalej
+        wyskakiwałby w autocomplete, na listach i w wyszukiwarce
+        pełnotekstowej — czyli „usunięcie" nie usuwałoby niczego widocznego.
+        """
+        return super().get_queryset().filter(deleted_at__isnull=True)
+
     def create_from_string(self, text, uczelnia=None):
         """Tworzy rekord autora z ciągu znaków. Używane, gdy dysponujemy
         wpisanym ciągiem znaków z np AutorAutocomplete i chcemy utworzyć
@@ -158,10 +197,134 @@ class AutorManager(FulltextSearchMixin, models.Manager.from_queryset(AutorQueryS
         )
 
     def fulltext_annotate(self, search_query, normalization):
-        return {self.fts_field + "__rank": Count("wydawnictwo_ciagle")}
+        """Ranking autora = liczba jego autorstw w wydawnictwach ciągłych.
+
+        Liczymy przez ``wydawnictwo_ciagle_autor`` (through-model), a NIE
+        przez M2M ``wydawnictwo_ciagle``, z dwóch powodów:
+
+        1. agregat po relacji to JOIN po SUROWEJ tabeli
+           ``bpp_wydawnictwo_ciagle_autor`` — manager soft-delete nie jest
+           pytany, więc bez ``filter=Q(…__deleted_at__isnull=True)`` husk
+           autora (wszystkie autorstwa skasowane) rankowałby się tak samo
+           wysoko, jak przed skasowaniem. Predykat MUSI iść tą samą ścieżką
+           relacji co agregat, inaczej Django zrobi drugi, nieskorelowany
+           JOIN;
+        2. przy okazji odpada drugi JOIN (do ``bpp_wydawnictwo_ciagle``) —
+           FK z through-modelu jest NOT NULL, więc kardynalność bez niego
+           jest ta sama.
+        """
+        return {
+            self.fts_field + "__rank": Count(
+                "wydawnictwo_ciagle_autor",
+                filter=Q(wydawnictwo_ciagle_autor__rekord__deleted_at__isnull=True),
+            )
+        }
 
 
-class Autor(LinkDoPBNMixin, ModelZAdnotacjami, ModelZPBN_ID):
+class AutorGlobalManager(GlobalManager):
+    """``Autor.global_objects`` — żywi RAZEM z koszem.
+
+    Zwraca ``AutorQuerySet``, a nie generyczny queryset pakietu, żeby
+    ``global_objects.aktualnie_zatrudnieni(...)`` i reszta metod domenowych
+    działały tak samo jak na ``objects``. Menedżer globalny bez metod
+    domenowych to pułapka: kod przełączony „na kosz" wywala się na
+    ``AttributeError`` w miejscu niezwiązanym z soft-delete.
+    """
+
+    def get_queryset(self):
+        return AutorQuerySet(self.model, using=self._db)
+
+
+class AutorDeletedManager(DeletedManager):
+    """``Autor.deleted_objects`` — wyłącznie kosz. Też z metodami domenowymi."""
+
+    def get_queryset(self):
+        return AutorQuerySet(self.model, using=self._db).filter(
+            deleted_at__isnull=False
+        )
+
+
+#: Relacje przychodzące do ``Autor``, które NIE blokują kosza. Wszystkie
+#: inne (autorstwa, doktoraty — także jako promotor — habilitacje, projekty,
+#: redakcje źródeł, autorzy zgłoszeń, konto użytkownika, …) blokują, o ile
+#: pochodzą od ŻYWEGO rekordu: autorstwo publikacji z kosza czy autor
+#: zgłoszenia z kosza nie blokuje (przywrócenie tamtego rekordu odmówi,
+#: dopóki autor jest w koszu). Lista jest JAWNA, a guard
+#: wyprowadzany generycznie z ``_meta`` (``relacje_przychodzace``) — nowa
+#: relacja jest chroniona domyślnie.
+#:
+#: Pomijane: dane kadrowe żyjące z autorem (ukryte razem z nim), dane
+#: wyliczane (cache, liczba N, metryki, optymalizacja), logi/historia oraz
+#: wiersze importów i deduplikacji (scalanie autorów wyrzuca duplikat do
+#: kosza, a kandydaci na duplikat wskazują na niego).
+POMIJANE_RELACJE_KOSZA_AUTORA = frozenset(
+    {
+        "bpp.Autor_Dyscyplina.autor",
+        "bpp.Autor_Absencja.autor",
+        "bpp.Autor_Jednostka.autor",
+        "bpp.WybranaPublikacjaAutora.autor",
+        "bpp.Cache_Punktacja_Autora.autor",
+        "bpp.AutorEksportTask.autor",
+        "bpp.Opi_2012_Afiliacja_Do_Wydzialu.autor",
+        "import_pracownikow.ImportPracownikowRow.autor",
+        "import_pracownikow.ImportPracownikowRow.wybrany_kandydat",
+        "import_pracownikow.ImportPracownikowRowKandydat.autor",
+        "powiazania_autorow.AuthorConnection.primary_author",
+        "powiazania_autorow.AuthorConnection.secondary_author",
+        "import_dyscyplin.Import_Dyscyplin_Row.autor",
+        "ewaluacja_liczba_n.IloscUdzialowDlaAutoraZaRok.autor",
+        "ewaluacja_liczba_n.IloscUdzialowDlaAutoraZaCalosc.autor",
+        "ewaluacja_metryki.MetrykaAutora.autor",
+        "ewaluacja_optymalizacja.DisciplineSwapOpportunity.autor",
+        "ewaluacja_optymalizacja.OptimizationAuthorResult.autor",
+        "ewaluacja_optymalizacja.UnpinningOpportunity.autor_could_benefit",
+        "ewaluacja_optymalizacja.UnpinningOpportunity.autor_currently_using",
+        "ewaluacja_optymalizuj_publikacje.HistoriaZmianDyscypliny.autor",
+        "import_polon.WierszImportuPlikuAbsencji.autor",
+        "import_polon.WierszImportuPlikuPolon.autor",
+        "deduplikator_autorow.NotADuplicate.autor",
+        "deduplikator_autorow.IgnoredScientist.autor",
+        "deduplikator_autorow.IgnoredAuthor.autor",
+        "deduplikator_autorow.LogScalania.main_autor",
+        "deduplikator_autorow.DuplicateCandidate.main_autor",
+        "deduplikator_autorow.DuplicateCandidate.duplicate_autor",
+        "importer_autorow_pbn.CachedScientistMatch.matched_autor",
+        "przemapuj_prace_autora.PrzemapoaniePracAutora.autor",
+        "komparator_pbn_udzialy.BrakAutoraWPublikacji.autor",
+        "importer_publikacji.ImportedAuthor.matched_autor",
+        "importer_publikacji.ImportedAuthor_Candidate.autor",
+    }
+)
+
+
+def _relacje_chronione_autora():
+    return relacje_przychodzace(Autor, POMIJANE_RELACJE_KOSZA_AUTORA)
+
+
+class Autor(
+    BppUnikalnoscZKoszemMixin,
+    BppPkPrzedHardDeleteMixin,
+    LinkDoPBNMixin,
+    ModelZAdnotacjami,
+    ModelZPBN_ID,
+    SoftDeleteModel,
+):
+    """Autor (osoba) w bibliografii.
+
+    Soft-delete (kosz) obejmuje WYŁĄCZNIE autora bez żywych prac —
+    duplikaty, literówki, husk po scaleniu, autor, którego prace są już
+    w koszu. ``delete()`` odmawia (``ProtectedError``), gdy wskazuje na niego
+    jakikolwiek ŻYWY rekord (autorstwo, doktorat, promotorstwo, habilitacja,
+    projekt, redakcja źródła, zgłoszenie, konto użytkownika;
+    ``POMIJANE_RELACJE_KOSZA_AUTORA``). Rekordy z kosza nie blokują — ich
+    ``restore()`` odmawia, dopóki autor jest w koszu.
+    Dane kadrowe autora (``Autor_Jednostka``, ``Autor_Dyscyplina``,
+    ``Autor_Absencja``, udziały do liczby N) NIE są ruszane — zostają przy
+    autorze w koszu i wracają z nim. Pola kosza nie są wersjonowane przez
+    django-reversion (``bpp/wersjonowanie.py``). Pełna mapa:
+    ``docs/deweloper/soft-delete.md``.
+    """
+
     url_do_pbn = const.LINK_PBN_DO_AUTORA
 
     imiona = models.CharField(max_length=512, db_index=True)
@@ -370,9 +533,23 @@ class Autor(LinkDoPBNMixin, ModelZAdnotacjami, ModelZPBN_ID):
 
     search = VectorField()
 
+    # Kolejność ma znaczenie: pierwszy zdefiniowany menedżer jest domyślny.
+    # ``_base_manager`` zostaje przy tym zwykłym, NIEFILTRUJĄCYM menedżerem
+    # Django (``base_manager_name`` nie jest ustawione) — i tak ma zostać:
+    # to przez niego rozwiązują się deskryptory FK, więc ``autorstwo.autor``
+    # ma zwracać husk, a nie ``DoesNotExist``.
     objects = AutorManager()
+    global_objects = AutorGlobalManager()
+    deleted_objects = AutorDeletedManager()
 
-    slug = AutoSlugField(populate_from="get_full_name", unique=True, max_length=1024)
+    # ``manager_name="global_objects"``: unikalność sluga sprawdzana RAZEM
+    # z koszem — autor w koszu zachowuje slug, nowy dostaje kolejny wariant.
+    slug = AutoSlugField(
+        populate_from="get_full_name",
+        unique=True,
+        max_length=1024,
+        manager_name="global_objects",
+    )
 
     sort = models.TextField()
 
@@ -444,6 +621,21 @@ class Autor(LinkDoPBNMixin, ModelZAdnotacjami, ModelZPBN_ID):
                 condition=Q(pokazuj_strone_autora=True)
                 | Q(pokazuj_w_wyszukiwaniu=False, pokazuj_w_indeksie=False),
                 name="bpp_autor_strona_schowana_wymaga_ukrycia",
+            ),
+        ]
+        indexes = [
+            # Indeks CZĘŚCIOWY (`WHERE deleted_at IS NOT NULL`) — ten sam
+            # wzorzec i to samo uzasadnienie, co przy `wc_deleted_at_idx`
+            # (faza 02): predykat `deleted_at IS NULL`, którym `objects`
+            # filtruje KAŻDE zapytanie o autora, pasuje do ~100% wierszy,
+            # więc planner i tak wybierze seq scan — pełny btree byłby
+            # wyłącznie kosztem. Selektywne jest zapytanie ODWROTNE (kosz,
+            # audyt, `deleted_objects`) i to ono dostaje tu indeks
+            # rozmiaru „tyle, ile husków".
+            models.Index(
+                fields=["deleted_at"],
+                name="autor_deleted_at_idx",
+                condition=Q(deleted_at__isnull=False),
             ),
         ]
 
@@ -571,12 +763,105 @@ class Autor(LinkDoPBNMixin, ModelZAdnotacjami, ModelZPBN_ID):
 
     def save(self, *args, **kw):
         self.sort = (self.nazwisko.lower().replace("von ", "") + self.imiona).lower()
+
+        # Soft-delete i restore MUSZĄ podbić ``ostatnio_zmieniony`` — ten sam
+        # kontrakt PINNED, co w mixinach faz 01/02 (pełne uzasadnienie
+        # w docstringu ``dopisz_znacznik_zmiany``). Bez tego autor zniknięty
+        # z bazy byłby nieodpytywalny przez harvest przyrostowy.
+        update_fields = kw.get("update_fields")
+        if update_fields:
+            kw["update_fields"] = dopisz_znacznik_zmiany(self, update_fields)
+
         ret = super().save(*args, **kw)
 
         for jednostka in self.jednostki.all():
             self.defragmentuj_jednostke(jednostka)
 
         return ret
+
+    def sprawdz_czy_mozna_do_kosza(self, *args, **kwargs):
+        """Guard: autor wskazywany przez żywy rekord → ``ProtectedError``."""
+        raise_if_has_protected_children(
+            self,
+            _relacje_chronione_autora(),
+            label="autora",
+        )
+
+    def powiazania_w_koszu(self):
+        """Powiązania od rekordów z kosza (``[GrupaBlokady]``) — np. prace
+        w koszu; ich przywrócenie będzie wymagało najpierw przywrócenia
+        autora."""
+        return powiazania_w_koszu(self, _relacje_chronione_autora())
+
+    def delete(self, *args, user=None, reason="", **kwargs):
+        """Soft-delete autora — DOZWOLONY wyłącznie dla autora bez prac.
+
+        NIE WOŁAMY ``super().delete()`` — i to jest najważniejsza decyzja
+        w tej metodzie. ``SoftDeleteModel.delete()`` pakietu przechodzi po
+        WSZYSTKICH relacjach odwrotnych i dla dziecka z ``CASCADE``, które
+        samo nie jest modelem soft-delete, woła zwykłe ``delete()``, czyli
+        kasuje je TWARDO (``django_softdelete/models.py``, gałąź
+        ``on_delete == models.CASCADE``). ``Autor`` ma 27 takich dzieci —
+        m.in. ``Autor_Jednostka``, ``Autor_Dyscyplina`` i ``Autor_Absencja``
+        — więc delegacja wymazałaby zatrudnienie i dyscypliny osoby, a husk
+        przestałby dać się sensownie przywrócić. Faza 02 rozstrzygnęła ten
+        sam dylemat identycznie dla publikacji (``BppPublikacjaSoftDelete
+        Mixin.delete()``): kaskadę pakietu odrzucamy, ``deleted_at`` piszemy
+        sami.
+
+        Konsekwencja jest zamierzona: skasowanie autora NIE rusza jego
+        autorstw (spec §1, §10.1). Autor z ŻYWYMI autorstwami i tak tu nie
+        dojdzie — zatrzyma go guard; autorstwa publikacji z kosza zostają
+        przy nim (ich przywrócenie odmówi, dopóki autor jest w koszu).
+
+        ``user``/``reason`` trafiają do ``SoftDeleteLog`` (faza 06) przez
+        thread-local ``soft_delete_context``.
+
+        Guard leci PO blokadzie wiersza autora (``sprawdz_stan_kosza``, ``FOR
+        UPDATE``): równoległe przywrócenie publikacji z tym autorem trzyma
+        jego wiersz ``FOR SHARE`` (``sprawdz_wskazania_przed_przywroceniem``),
+        więc guard czeka na jego commit i widzi już żywą publikację.
+        """
+        txid = kwargs.pop("transaction_id", None) or uuid.uuid4()
+        with soft_delete_context(user=user, reason=reason), transaction.atomic():
+            sprawdz_stan_kosza(self, ma_byc_w_koszu=False)
+            self.sprawdz_czy_mozna_do_kosza()
+            self.deleted_at = timezone.now()
+            self.restored_at = None
+            self.transaction_id = txid
+            with operacja_kosza():
+                self.save(update_fields=["deleted_at", "restored_at", "transaction_id"])
+            post_soft_delete.send(sender=self.__class__, instance=self)
+        return 1, {self._meta.label: 1}
+
+    delete.alters_data = True
+
+    def restore(self, *args, strict: bool = False, user=None, **kwargs):
+        """Przywrócenie husku autora.
+
+        ``strict`` przyjmujemy i ignorujemy świadomie — przekazują go ścieżki
+        queryset-owe (``global_objects``/``deleted_objects``). Pakietowy
+        ``restore()`` ma domyślnie ``strict=True`` i sprawdza KAŻDE pole
+        z ``related_model``, także zwykłe FK w przód; ``Autor`` ma FK m.in.
+        do ``Tytul``, więc rzuciłby ``SoftDeleteException`` i przywrócenie
+        husku byłoby niemożliwe. Nie wołamy go wcale, więc wyjątek nie ma
+        jak polecieć (inwariant z docstringu ``bpp/models/soft_delete.py``).
+
+        Nie przywracamy niczego „razem z autorem": jego skasowanie niczego
+        nie zabrało, więc nie ma czego wskrzeszać. Prace autora z kosza
+        zostają w koszu — użytkownik przywraca je osobno.
+        """
+        with soft_delete_context(user=user), transaction.atomic():
+            sprawdz_stan_kosza(self, ma_byc_w_koszu=True)
+            sprawdz_wskazania_przed_przywroceniem(self)
+            txid = self.transaction_id
+            self.deleted_at = None
+            self.restored_at = timezone.now()
+            self.transaction_id = None
+            zapisz_przywrocenie(self, ["deleted_at", "restored_at", "transaction_id"])
+            post_restore.send(sender=self.__class__, instance=self, transaction_id=txid)
+
+    restore.alters_data = True
 
     def afiliacja_na_rok(self, rok, wydzial, rozszerzona=False):
         """
@@ -1004,7 +1289,7 @@ class Autor_Jednostka(models.Model):
             # ``logging.lastResort``. Diagnostyka jest zatem słaba — ale to
             # osobny temat (konfiguracja LOGGING), nie powód, by zostawiać
             # fałszywy alarm w Rollbarze.
-            zaloguj_polkniety_wyjatek(komunikat, logger=logger, do_rollbar=False)
+            zaloguj_polkniety_wyjatek(komunikat, logger=logger, do_monitoringu=False)
             return fallback
         except Exception:
             # Cokolwiek innego jest naprawdę nieoczekiwane — raportuj.

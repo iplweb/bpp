@@ -1,0 +1,68 @@
+{% extends "base.html" %}
+{% load humanize %}
+
+{% block title %}Metryki wydziałów{% endblock %}
+
+{% block breadcrumbs %}
+    {{ block.super }}
+    <li><a href="/">Strona główna</a></li>
+    <li><a href="{% url 'ewaluacja_metryki:lista' %}">Metryki ewaluacyjne</a></li>
+    <li class="current">Metryki wydziałów</li>
+{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="columns">
+        <h1><span class="fi-page-pdf"></span> Metryki wydziałów <span class="label warning" title="Wersja testowa">beta</span></h1>
+
+        {% include "ewaluacja_metryki/_metryki_jednostek_beta.html" %}
+
+        <div class="callout secondary">
+            <p>
+                To samo zestawienie co <a href="{% url 'ewaluacja_metryki:metryki_jednostek' %}">metryki jednostek</a>,
+                ale dla całego wydziału, za okres <strong>{{ okres }}</strong>: wypełnienie slotów
+                i punkty, wykres efektywności na tle wydziału, lista efektywności z jednostką każdej
+                osoby, struktura punktacji prac, potencjał i wnioski — plus podsumowanie jednostek wydziału.
+            </p>
+            <p class="margin-0">
+                Zestawienie zawiera nazwiska i oceny pracowników — przekazuj go tylko osobom
+                uprawnionym. Dane są tak aktualne jak ostatnie przeliczenie metryk.
+            </p>
+        </div>
+
+        {% if wydzialy %}
+            <table class="hover">
+                <thead>
+                    <tr>
+                        <th>Wydział</th>
+                        <th class="text-right">Jednostki z metrykami</th>
+                        <th class="text-right">Autorzy z metrykami</th>
+                        <th class="text-right">Punkty nazbierane</th>
+                        <th>Metryki wydziału</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for w in wydzialy %}
+                        <tr>
+                            <td>{{ w.wydzial.nazwa }}</td>
+                            <td class="text-right">{{ w.liczba_jednostek }}</td>
+                            <td class="text-right">{{ w.liczba_autorow }}</td>
+                            <td class="text-right">{{ w.punkty|floatformat:0|intcomma }}</td>
+                            <td>
+                                <a class="button tiny margin-0" href="{% url 'ewaluacja_metryki:metryki_wydzialu' w.wydzial.pk %}">
+                                    <span class="fi-download"></span> PDF
+                                </a>
+                                <a class="button tiny secondary margin-0" href="{% url 'ewaluacja_metryki:metryki_wydzialu' w.wydzial.pk %}?format=html">
+                                    <span class="fi-eye"></span> podgląd
+                                </a>
+                            </td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        {% else %}
+            {% include "ewaluacja_metryki/_brak_metryk.html" with brak_dostepu="Brak wydziałów z metrykami ewaluacyjnymi w tym okresie, do których masz dostęp." %}
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

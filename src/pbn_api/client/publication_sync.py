@@ -4,7 +4,6 @@ import logging
 import sys
 import time
 
-import rollbar
 from django.contrib.contenttypes.models import ContentType
 from django.core.mail import mail_admins
 from django.db import transaction
@@ -15,6 +14,7 @@ from pbn_client.const import (
 )
 from pbn_client.statements import StatementsMixin
 
+from bpp.zglaszanie_bledow import capture_exception
 from pbn_api.adapters.wydawnictwo import (
     OplataZaWydawnictwoPBNAdapter,
     WydawnictwoPBNAdapter,
@@ -350,7 +350,7 @@ class PublicationSyncMixin(StatementsMixin):
         gdy brak) — ``sync_publication`` wywołuje ``pobierz_publikacje_instytucji_v2``
         przed tym helperem, więc V2 powinno istnieć.
 
-        Retry z exponential backoff. Po wyczerpaniu: rollbar + raise
+        Retry z exponential backoff. Po wyczerpaniu: zgłoszenie błędu + raise
         ``StatementsResendFailedException``.
 
         Gdy ``filter_keys`` jest pustym setem albo po filtrowaniu zestaw
@@ -491,7 +491,7 @@ class PublicationSyncMixin(StatementsMixin):
         try:
             raise NoPBNUIDException(msg)
         except NoPBNUIDException:
-            rollbar.report_exc_info(sys.exc_info())
+            capture_exception(sys.exc_info())
 
         mail_admins("Serwer PBN nie zwrocil ID publikacji", msg, fail_silently=True)
 
@@ -568,7 +568,7 @@ class PublicationSyncMixin(StatementsMixin):
         try:
             raise PBNUIDChangedException(message)
         except PBNUIDChangedException:
-            rollbar.report_exc_info(sys.exc_info())
+            capture_exception(sys.exc_info())
 
         mail_admins(
             "Zmiana PBN UID publikacji przez serwer PBN", message, fail_silently=True
@@ -616,7 +616,7 @@ class PublicationSyncMixin(StatementsMixin):
         try:
             raise PBNUIDSetToExistentException(message)
         except PBNUIDSetToExistentException:
-            rollbar.report_exc_info(sys.exc_info())
+            capture_exception(sys.exc_info())
 
         mail_admins(
             "Ustawienie ISTNIEJĄCEGO JUŻ W BAZIE PBN UID publikacji przez serwer PBN",

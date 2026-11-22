@@ -147,14 +147,14 @@ def sprawdz_pojedynczy_arkusz(zrodlo):
     """Wymusza regułę „jeden arkusz = jeden import".
 
     Plik z więcej niż jednym arkuszem z danymi (np. dwie uczelnie w jednym
-    skoroszycie — jak ``Pracownicy_..._UAFM_x_MWSL.xlsx``) jest ODRZUCANY:
+    skoroszycie — jak ``Pracownicy_..._UCZELNIA_x_MWSL.xlsx``) jest ODRZUCANY:
     auto-sklejenie mieszałoby rozłączne zbiory, a auto-podział na osobne
     importy zakładałby, że arkusze są porównywalne (nie są — inne kolumny,
     inna uczelnia). Świadomie NIE obsługujemy plików wieloarkuszowych —
     użytkownik dzieli plik i importuje każdy arkusz osobno.
 
     Podnosi ``BadNoOfSheetsException`` z czytelnym komunikatem (ekran
-    mapowania go łapie i pokazuje; w tle wyjątek trafia na konsolę/rollbar/
+    mapowania go łapie i pokazuje; w tle wyjątek trafia na konsolę/monitoring/
     admin). CSV to zawsze jeden arkusz — nigdy nie wyzwala tej reguły.
     """
     from import_common.exceptions import BadNoOfSheetsException

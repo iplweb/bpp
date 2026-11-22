@@ -1,9 +1,12 @@
 # Duplikaty autorów i źródeł — jak je scalić
 
 Ta sama osoba wpisana dwa razy („Geralt z Rivii” i „G. z Rivii”), to samo
-czasopismo pod dwiema nazwami („Acta Oxenfurcka” i „ACTA OXENFURCKA”) —
+czasopismo pod dwiema nazwami („Acta Aretuzańska” i „ACTA ARETUZAŃSKA”) —
 takie duplikaty powstają najczęściej przy imporcie danych. Rozbijają dorobek
 na dwa rekordy, więc raporty, sloty i eksport do PBN widzą tylko część prac.
+
+Prace wpisane dwa razy wyszukuje osobne narzędzie — opisuje je strona
+[Duplikaty publikacji (deduplikator)](duplikaty-publikacji.md).
 
 Ta strona prowadzi po kolei przez:
 
@@ -69,7 +72,7 @@ do kolejki eksportu do PBN. Jeśli uczelnia wysyła dane do PBN, przeczytaj
    tylko wśród głównych rekordów). Przyciski **PBN / Ogólny / Oba** zawężają
    listę do jednej części skanowania.
 
-    ![Wyszukiwanie po nazwisku i przycisk „Następny”](../images/redaktor/duplikaty/03-wyszukiwanie.png)
+    ![Wyszukiwanie duplikatów po nazwisku „Rivii”](../images/redaktor/duplikaty/03-wyszukiwanie.png)
 
 4. Niebieska ramka **„Główny rekord autora”** to rekord, który **zostaje**.
    System wybiera go sam: wygrywa rekord z ORCID, potem z identyfikatorem
@@ -261,7 +264,8 @@ Scalenie nie zmienia jednostki przy pracach — prace duplikatu zostają
 przypisane do jednostki, którą miał duplikat (po imporcie często
 niewłaściwej). Do przeniesienia ich hurtem służy **„Przemapuj prace”**.
 To narzędzie przenosi prace **jednego autora** między **jednostkami** —
-nie łączy dwóch autorów.
+nie łączy dwóch autorów. Pełny opis (co się zmienia, cofanie, historia):
+[Przemapowanie prac autora](przemapowanie-prac-autora.md).
 
 1. Na stronie autora kliknij **„Przemapuj prace”**.
 
@@ -328,10 +332,10 @@ można przemapować prac do "Jednostki Domyślnej".” oraz „Autor … nie ma
       wraca przyciskiem **„Cofnij”** albo **„Przywróć wszystkie
       odłożone”**.
 
-    Na tej liście trzy pary dotyczą „Acta Oxenfurcka”: dwie mają taką samą
-    nazwę, ale **inny ISSN** (pewność 60 i 45) — to raczej różne
-    czasopisma, więc **„Nie duplikat”**. Para z tym samym ISSN (pewność
-    160) to prawdziwy duplikat.
+    Na tej liście jest para „Acta Aretuzańska” i „ACTA ARETUZAŃSKA”
+    z tym samym ISSN (pewność 160) — to prawdziwy duplikat. Pary o takiej
+    samej nazwie, ale z **innym ISSN** (niższa pewność) to raczej różne
+    czasopisma — wtedy **„Nie duplikat”**.
 
 ## Przemapuj źródło {#przemapuj-zrodlo}
 
@@ -357,7 +361,7 @@ można przemapować prac do "Jednostki Domyślnej".” oraz „Autor … nie ma
    przemapowano N publikacji ze źródła … do źródła …”. Źródło-duplikat
    zostaje w bazie, ale już bez publikacji.
 
-    ![Komunikat „Pomyślnie przemapowano 4 publikacji ze źródła "ACTA OXENFURCKA" do źródła "Acta Oxenfurcka"”](../images/redaktor/duplikaty/16-przemapowano-zrodlo.png)
+    ![Komunikat „Pomyślnie przemapowano 4 publikacji ze źródła "ACTA ARETUZAŃSKA" do źródła "Acta Aretuzańska"”](../images/redaktor/duplikaty/16-przemapowano-zrodlo.png)
 
 **Cofnięcie.** Przemapowania źródeł są zapisywane w historii:
 **Przemapowania źródeł** w module redagowania (adres

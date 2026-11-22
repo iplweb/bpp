@@ -81,15 +81,22 @@ dopiero na obrazku.
 
 ## Artykuły w bazie wiedzy (Freshdesk)
 
-Artykuł we Freshdesku to **skrót** strony z `docs/`, nie jej kopia. Widżet
+Artykuł we Freshdesku to **zajawka** strony z `docs/`, nie jej kopia. Widżet
 pomocy wyświetla go w małym okienku, więc:
 
-- zostaje tylko: **gdzie kliknąć**, **skąd skopiować**, co się stanie,
+- początek instrukcji — **gdzie kliknąć**, **skąd skopiować** — do
+  pierwszego istotnego momentu; resztę zostawiamy dokumentacji,
 - obrazki te same co w `docs/` (adres z GitHub Pages), w krokach, których
-  dotyczą,
+  dotyczą; każdy owinięty w `<a href="…png" target="_blank" rel="noopener">`,
+  żeby klik otwierał pełny rozmiar w nowym oknie,
 - **bez uwag technicznych** — parametrów, klas CSS, stylów, szczegółów
   konfiguracji; te zostają w `docs/`,
-- na końcu odnośnik **„Szczegóły”** do strony w dokumentacji.
+- na końcu, pogrubiony, zawsze ten sam odnośnik do strony w dokumentacji
+  (`target="_blank"`): **„Ciąg dalszy w dokumentacji systemu. Kliknij
+  tutaj”**,
+- bez emoji — Freshdesk zamienia je na „?”,
+- przy zapisie przez API zawsze `status: 2` (inaczej zmiana zostaje
+  szkicem), a potem sprawdzenie na publicznym portalu.
 
 ## Jak wygenerować
 
@@ -105,9 +112,14 @@ pomocy wyświetla go w małym okienku, więc:
     uv run python src/manage.py create_demo_data --motyw wiedzmin --bez-prefiksu \
         --wydzialow 4 --jednostek-na-wydzial 3 --autorow 120 \
         --ile-ciaglych 600 --ile-zwartych 300 --zrodel 20 --wydawcow 8 \
-        --seed 42 --yes-i-am-sure --confirm-db bpp
+        --seed 42 --bez-dodatkow --yes-i-am-sure --confirm-db bpp
     uv run python src/manage.py denorm_flush
     ```
+
+    `--bez-dodatkow` trzyma dane takie, jak przy istniejących zrzutach
+    (celowe duplikaty mogłyby np. przenieść pracę Yennefer na jej
+    „duplikat”). Do zrzutów ekranów PBN, deduplikatorów czy
+    dwudyscyplinowców pomiń tę flagę — patrz [Dane demo](dane-demo.md).
 
     `.run-site-env.sh` eksportuje tylko `DATABASE_URL`/`PG*`, a ustawienia
     BPP czytają `DJANGO_BPP_DB_*` — stąd drugi `export`.
@@ -136,13 +148,28 @@ pomocy wyświetla go w małym okienku, więc:
     z autorem”), **`filippa`** — w grupie **„generowanie raportów”**
     (menu raporty/ewaluacja, raporty slotów).
 
-3. Sloty. Generator danych demo nie wpisuje dyscyplin przy autorach prac,
-   więc raporty slotów byłyby puste. Uzupełnia to skrypt:
+3. Stan danych pod scenariusze. Generator nie wpisuje np. dyscyplin przy
+   autorach prac (raporty slotów byłyby puste), nie tworzy duplikatów, plików
+   zgłoszeń ani pracy z przyszłego roku. Dokładają to skrypty
+   `bin/docs-demo-*.py` (każdy opisuje w nagłówku, co robi). Uruchom
+   **wszystkie, w tej kolejności** — kilka z nich nadpisuje to, co ustawiają
+   inne (np. `liczba-n-faq` zaczyna od wyzerowania przypisań do dyscyplin,
+   `wyszukiwanie-precyzyjne` usuwa DOI co dziesiątej pracy):
 
     ```bash
-    uv run python src/manage.py shell < bin/docs-demo-sloty.py
+    PIERWSZE="sloty liczba-n-faq wyszukiwanie-precyzyjne"
+    RESZTA=$(ls bin/docs-demo-*.py | sed 's|bin/docs-demo-||; s|\.py$||' \
+        | grep -vxF -e sloty -e liczba-n-faq -e wyszukiwanie-precyzyjne)
+    for n in $PIERWSZE $RESZTA; do
+        echo "== $n"
+        uv run python src/manage.py shell < bin/docs-demo-$n.py || break
+    done
     uv run python src/manage.py denorm_flush
     ```
+
+    Skrypty wypisują, które obiekty wybrały. Scenariusze, które zmieniają
+    dane (scalanie duplikatów, importy, przemapowania), opisują to
+    w docstringu — po nich wracaj do zrzutu bazy z kroku 4.
 
 4. Gotową bazę warto zrzucić (`pg_dump -Fc`) i następnym razem startować z
    niej: `uv run run-site run --from-dump <plik>` — kroki 1–3 odpadają.
@@ -160,6 +187,43 @@ pomocy wyświetla go w małym okienku, więc:
     uv run python bin/docs-screenshots.py --list
     uv run python bin/docs-screenshots.py --base http://localhost:PORT moj-profil-autora
     ```
+
+## Obiekty demo w scenariuszach (bez pk i nazw na sztywno)
+
+Scenariusze **nie wpisują** identyfikatorów ani nazw obiektów (autorów,
+jednostek, prac, czasopism, zgłoszeń). Klucze główne zależą od tego, czy baza
+była już zapełniana, a nazwy jednostek i czasopism losuje generator z puli
+motywu — po zmianie puli albo `--seed` zrzut z wpisanym `pk=1130` czy
+„Klinika Mutacji” po cichu pokazuje co innego albo pada.
+
+Zamiast tego obiekty wybierają funkcje z `src/bpp/demo_data/zrzuty.py`.
+Tych samych funkcji używają skrypty `bin/docs-demo-*.py`, więc skrypt
+przygotowujący dane i scenariusz zrzutu trafiają w **ten sam** obiekt.
+Reguły wyboru:
+
+- autorzy obowiązkowi motywu (Yennefer Merigold, Margarita Merigold,
+  Regis z Cintry…) — po imieniu i nazwisku, bo motyw tworzy ich zawsze;
+  Yennefer — przez konto `yennefer`,
+- poza tym pierwsze alfabetycznie obiekty spełniające warunek (np.
+  „pierwsza alfabetycznie para imienników”, „obecna jednostka Yennefer”,
+  „pierwsze alfabetycznie zgłoszenie monografii do obsługi”),
+- obiekty tworzone przez skrypty — po tym, co skrypt ustawia (ISSN
+  z wymyślonego wykazu, ORCID, stały tytuł),
+- brak potrzebnych danych kończy się czytelnym komunikatem, który skrypt
+  uruchomić.
+
+Scenariusze działają w Playwright, poza ORM, więc `bin/docs-screenshots.py`
+na starcie raz uruchamia `manage.py obiekty_demo_zrzutow` (osobny proces,
+baza ze stosu `run-site` z plików `.dev_helpers_*`, chyba że ustawiłeś
+`DJANGO_BPP_DB_*`) i dostaje JSON z pk, nazwami i adresami. W scenariuszu:
+`demo("yennefer", "url")`, `demo("import_pracownikow", "wydzial")` itd.
+Obiekty są pobierane **przed** pierwszym scenariuszem — scenariusze, które
+zmieniają dane, nie przesuwają wyboru w trakcie przebiegu.
+
+Nowy obiekt do zrzutu = funkcja w `zrzuty.py` + klucz w `obiekty()` (i użycie
+tej funkcji w skrypcie `docs-demo-*`, jeśli skrypt coś przy nim zmienia).
+Teksty w `docs/` piszemy pod obiekty, które te reguły wybierają na świeżych
+danych demo (patrz „Jak wygenerować”).
 
 ## Nowy scenariusz
 

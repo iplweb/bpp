@@ -6,13 +6,13 @@ import logging
 import sys
 from typing import TYPE_CHECKING
 
-import rollbar
 from django.db.models import Q
 from tqdm import tqdm
 
 from bpp.const import PBN_MIN_ROK
 from bpp.models import Wydawnictwo_Ciagle, Wydawnictwo_Zwarte
 from bpp.util import pbar
+from bpp.zglaszanie_bledow import capture_exception
 from pbn_api.exceptions import (
     CannotUploadPublicationFee,
     HttpException,
@@ -290,15 +290,15 @@ def _handle_no_pbn_uid(client: PBNClient, elem, upload_publication: bool) -> Non
             client.upload_publication(elem)
         except Exception as e:
             # Catch-all — błąd uploadu nie może zostać tylko na ekranie
-            # (tqdm.write). Pełny traceback do logów + Rollbar.
+            # (tqdm.write). Pełny traceback do logów + monitoring błędów.
             logger.exception(
                 "Błąd uploadu publikacji %s (pk=%s) do PBN",
                 elem.tytul_oryginalny,
                 elem.pk,
             )
-            rollbar.report_exc_info(
+            capture_exception(
                 sys.exc_info(),
-                extra_data={"pk": elem.pk, "phase": "upload_publication"},
+                extra={"pk": elem.pk, "phase": "upload_publication"},
             )
             tqdm.write(
                 f"Podczas aktualizacji pracy {elem.tytul_oryginalny, elem.pk} wystąpił błąd: {e}. "

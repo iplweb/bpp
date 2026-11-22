@@ -176,7 +176,7 @@ PRZYKŁADY UŻYCIA:
                         "Błąd przetwarzania oświadczenia książki "
                         f"{book.pbn_uid_id} / osoba {oswiadczenie.personId}",
                         logger=logger,
-                        do_rollbar=False,
+                        do_monitoringu=False,
                     )
                     errors.append(
                         f"{book.tytul_oryginalny[:50]} / {oswiadczenie.personId}: {e}"
@@ -296,7 +296,7 @@ PRZYKŁADY UŻYCIA:
                     "Błąd integracji dyscyplin oświadczenia "
                     f"{oswiadczenie.publicationId}",
                     logger=logger,
-                    do_rollbar=False,
+                    do_monitoringu=False,
                 )
                 if verbose:
                     self.stdout.write(

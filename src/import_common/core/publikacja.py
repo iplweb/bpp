@@ -70,6 +70,14 @@ def _is_title_long_enough(title: str | None) -> bool:
     return len(title) >= TITLE_LIMIT_SINGLE_WORD
 
 
+def _exclude(queryset, exclude_pks):
+    """Pomija rekordy o podanych kluczach (np. rekord, dla którego szukamy
+    duplikatu). Bez ``exclude_pks`` zwraca zapytanie bez zmian."""
+    if exclude_pks:
+        return queryset.exclude(pk__in=list(exclude_pks))
+    return queryset
+
+
 def _check_candidate(candidate, title: str, threshold: float) -> bool:
     """Sprawdza czy kandydat spełnia próg podobieństwa i ma zgodny numer części."""
     if candidate.podobienstwo >= threshold:
@@ -78,13 +86,17 @@ def _check_candidate(candidate, title: str, threshold: float) -> bool:
     return False
 
 
-def _try_match_pub_by_doi(klass, title, year, doi, doi_matchuj_tylko_nadrzedne, debug):
+def _try_match_pub_by_doi(
+    klass, title, year, doi, doi_matchuj_tylko_nadrzedne, debug, exclude_pks=None
+):
     """Próbuje dopasować publikację po DOI."""
     doi = normalize_doi(doi)
     if not doi:
         return None
 
-    zapytanie = klass.objects.filter(doi__istartswith=doi, rok=year)
+    zapytanie = _exclude(
+        klass.objects.filter(doi__istartswith=doi, rok=year), exclude_pks
+    )
     if doi_matchuj_tylko_nadrzedne and hasattr(klass, "wydawnictwo_nadrzedne_id"):
         zapytanie = zapytanie.filter(wydawnictwo_nadrzedne_id=None)
 
@@ -100,12 +112,12 @@ def _try_match_pub_by_doi(klass, title, year, doi, doi_matchuj_tylko_nadrzedne, 
     return None
 
 
-def _try_match_pub_by_zrodlo(klass, title, year, zrodlo):
+def _try_match_pub_by_zrodlo(klass, title, year, zrodlo, exclude_pks=None):
     """Próbuje dopasować publikację po źródle."""
     if zrodlo is None or not hasattr(klass, "zrodlo"):
         return None
     try:
-        return klass.objects.get(
+        return _exclude(klass.objects.all(), exclude_pks).get(
             tytul_oryginalny__istartswith=title, rok=year, zrodlo=zrodlo
         )
     except klass.DoesNotExist:
@@ -149,13 +161,17 @@ def _build_isbn_query(klass, isbn_matchuj_tylko_nadrzedne):
     return zapytanie
 
 
-def _try_match_pub_by_isbn(klass, title, isbn, isbn_matchuj_tylko_nadrzedne, debug):
+def _try_match_pub_by_isbn(
+    klass, title, isbn, isbn_matchuj_tylko_nadrzedne, debug, exclude_pks=None
+):
     """Próbuje dopasować publikację po ISBN."""
     if not isbn or not hasattr(klass, "isbn") or not hasattr(klass, "e_isbn"):
         return None
 
     ni = normalize_isbn(isbn)
-    zapytanie = _build_isbn_query(klass, isbn_matchuj_tylko_nadrzedne)
+    zapytanie = _exclude(
+        _build_isbn_query(klass, isbn_matchuj_tylko_nadrzedne), exclude_pks
+    )
 
     res = (
         zapytanie.filter(Q(isbn=ni) | Q(e_isbn=ni))
@@ -171,14 +187,17 @@ def _try_match_pub_by_isbn(klass, title, isbn, isbn_matchuj_tylko_nadrzedne, deb
     return None
 
 
-def _try_match_pub_by_uri(klass, title, public_uri, debug):
+def _try_match_pub_by_uri(klass, title, public_uri, debug, exclude_pks=None):
     """Próbuje dopasować publikację po public_uri."""
     public_uri = normalize_public_uri(public_uri)
     if not public_uri:
         return None
 
     res = (
-        klass.objects.filter(Q(www=public_uri) | Q(public_www=public_uri))
+        _exclude(
+            klass.objects.filter(Q(www=public_uri) | Q(public_www=public_uri)),
+            exclude_pks,
+        )
         .annotate(podobienstwo=TrigramSimilarity(normalized_db_title, title.lower()))
         .order_by("-podobienstwo")[:2]
     )
@@ -223,7 +242,7 @@ def _isbn_matches(candidate, isbn):
     return ni in normalized_candidate_isbns
 
 
-def _try_match_pub_by_title(klass, title, year, debug, isbn=None):
+def _try_match_pub_by_title(klass, title, year, debug, isbn=None, exclude_pks=None):
     """Próbuje dopasować publikację po podobieństwie tytułu.
 
     Jeśli podano isbn, sprawdza dodatkowo czy kandydat ma zgodny ISBN.
@@ -232,7 +251,10 @@ def _try_match_pub_by_title(klass, title, year, debug, isbn=None):
     """
     # Najpierw próba z istartswith
     res = (
-        klass.objects.filter(tytul_oryginalny__istartswith=title, rok=year)
+        _exclude(
+            klass.objects.filter(tytul_oryginalny__istartswith=title, rok=year),
+            exclude_pks,
+        )
         .annotate(podobienstwo=TrigramSimilarity(normalized_db_title, title.lower()))
         .order_by("-podobienstwo")[:2]
     )
@@ -246,7 +268,7 @@ def _try_match_pub_by_title(klass, title, year, debug, isbn=None):
 
     # Ostatnia szansa - tylko po roku z niskim progiem
     res = (
-        klass.objects.filter(rok=year)
+        _exclude(klass.objects.filter(rok=year), exclude_pks)
         .annotate(podobienstwo=TrigramSimilarity(normalized_db_title, title.lower()))
         .order_by("-podobienstwo")[:2]
     )
@@ -272,11 +294,30 @@ def matchuj_publikacje(
     DEBUG_MATCHOWANIE=False,
     isbn_matchuj_tylko_nadrzedne=True,
     doi_matchuj_tylko_nadrzedne=True,
+    exclude_pks=None,
+    matchuj_po_tytule=True,
 ):
+    """Zwraca jeden, najlepiej pasujący rekord ``klass`` albo None.
+
+    ``exclude_pks`` — klucze rekordów ``klass``, których nie wolno zwrócić
+    (np. rekord, dla którego szuka się duplikatów, i duplikaty już
+    znalezione). Domyślnie nic nie jest pomijane.
+
+    ``matchuj_po_tytule=False`` wyłącza ostatni krok -- dopasowanie po samym
+    podobieństwie tytułu (kosztowne: liczy podobieństwo dla wszystkich prac
+    z danego roku). Używa tego deduplikator publikacji, który porównuje
+    tytuły osobnym zapytaniem.
+    """
     # Próba po DOI (przed normalizacją tytułu)
     if doi is not None:
         result = _try_match_pub_by_doi(
-            klass, title, year, doi, doi_matchuj_tylko_nadrzedne, DEBUG_MATCHOWANIE
+            klass,
+            title,
+            year,
+            doi,
+            doi_matchuj_tylko_nadrzedne,
+            DEBUG_MATCHOWANIE,
+            exclude_pks=exclude_pks,
         )
         if result:
             return result
@@ -285,26 +326,40 @@ def matchuj_publikacje(
 
     # Próba po źródle
     if _is_title_long_enough(title):
-        result = _try_match_pub_by_zrodlo(klass, title, year, zrodlo)
+        result = _try_match_pub_by_zrodlo(
+            klass, title, year, zrodlo, exclude_pks=exclude_pks
+        )
         if result:
             return result
 
     # Próba po ISBN
     result = _try_match_pub_by_isbn(
-        klass, title, isbn, isbn_matchuj_tylko_nadrzedne, DEBUG_MATCHOWANIE
+        klass,
+        title,
+        isbn,
+        isbn_matchuj_tylko_nadrzedne,
+        DEBUG_MATCHOWANIE,
+        exclude_pks=exclude_pks,
     )
     if result:
         return result
 
     # Próba po URI
-    result = _try_match_pub_by_uri(klass, title, public_uri, DEBUG_MATCHOWANIE)
+    result = _try_match_pub_by_uri(
+        klass, title, public_uri, DEBUG_MATCHOWANIE, exclude_pks=exclude_pks
+    )
     if result:
         return result
 
     # Próba po podobieństwie tytułu
-    if _is_title_long_enough(title):
+    if matchuj_po_tytule and _is_title_long_enough(title):
         result = _try_match_pub_by_title(
-            klass, title, year, DEBUG_MATCHOWANIE, isbn=isbn
+            klass,
+            title,
+            year,
+            DEBUG_MATCHOWANIE,
+            isbn=isbn,
+            exclude_pks=exclude_pks,
         )
         if result:
             return result

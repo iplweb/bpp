@@ -4,6 +4,7 @@ from django.contrib import admin
 from django.forms.utils import flatatt
 from django.utils.safestring import mark_safe
 from mptt.forms import TreeNodeChoiceField
+from reversion_compare.admin import CompareVersionAdmin
 from taggit.forms import TextareaTagWidget
 
 from bpp.admin.filters import (
@@ -28,8 +29,6 @@ from bpp.admin.helpers.fieldsets import (
     MODEL_Z_ROKIEM,
     MODEL_ZE_SZCZEGOLAMI,
     OPENACCESS_FIELDSET,
-    OPENACCESS_HELP_TEXTS,
-    OPENACCESS_LABELS,
     POZOSTALE_MODELE_WYDAWNICTWO_CIAGLE_FIELDSET,
     PRACA_WYBITNA_FIELDSET,
     PRZED_PO_LISCIE_AUTOROW_FIELDSET,
@@ -40,6 +39,7 @@ from bpp.admin.helpers.mixins import (
     DomyslnyStatusKorektyMixin,
     OdroczPunktyDyscyplinMixin,
 )
+from bpp.admin.helpers.openaccess import OpenAccessDataUdostepnieniaFormMixin
 from bpp.admin.helpers.pbn_api.gui import sprobuj_policzyc_sloty
 from bpp.admin.helpers.widgets import (
     COMMA_DECIMAL_FIELD_OVERRIDE,
@@ -92,7 +92,12 @@ from .helpers.fieldsets import (
     MODEL_Z_OPLATA_ZA_PUBLIKACJE_FIELDSET,
     MODEL_Z_POLAMI_EWALUACJI_PBN_FIELDSET,
 )
-from .helpers.mixins import OptionalPBNSaveMixin, RestrictDeletionWhenPBNUIDSetMixin
+from .helpers.mixins import (
+    BppSoftDeleteAdminMixin,
+    OptionalPBNSaveMixin,
+    RestrictDeletionWhenPBNUIDSetMixin,
+)
+from .helpers.wersje import HistoriaWersjiMixin
 from .xlsx_export import resources
 from .xlsx_export.mixins import EksportDanychZFormatowanieMixin, ExportActionsMixin
 from .zglos_publikacje_helpers import UzupelniajWstepneDanePoNumerzeZgloszeniaMixin
@@ -132,7 +137,9 @@ class CleanDOIWWWPublicWWWMixin:
         return v
 
 
-class Wydawnictwo_CiagleForm(CleanDOIWWWPublicWWWMixin, forms.ModelForm):
+class Wydawnictwo_CiagleForm(
+    OpenAccessDataUdostepnieniaFormMixin, CleanDOIWWWPublicWWWMixin, forms.ModelForm
+):
     zrodlo = forms.ModelChoiceField(
         queryset=Zrodlo.objects.all(),
         widget=autocomplete.ModelSelect2(url="bpp:admin-zrodlo-autocomplete"),
@@ -233,7 +240,6 @@ class Wydawnictwo_CiagleForm(CleanDOIWWWPublicWWWMixin, forms.ModelForm):
             "openaccess_licencja",
             "openaccess_czas_publikacji",
             "openaccess_ilosc_miesiecy",
-            "openaccess_data_opublikowania",
             "liczba_cytowan",
             "numer_odbitki",
             "nie_eksportuj_przez_api",
@@ -249,8 +255,6 @@ class Wydawnictwo_CiagleForm(CleanDOIWWWPublicWWWMixin, forms.ModelForm):
             "nr_zeszytu": forms.TextInput(attrs={"class": "bpp-input-narrow"}),
             "slowa_kluczowe": TextareaTagWidget(attrs={"rows": 2}),
         }
-        labels = OPENACCESS_LABELS
-        help_texts = OPENACCESS_HELP_TEXTS
 
 
 class Wydawnictwo_Ciagle_Zewnetrzna_Baza_DanychForm(forms.ModelForm):
@@ -296,7 +300,11 @@ class Wydawnictwo_CiagleAdmin(
     ExportActionsMixin,
     BppDynamicColumnsMixin,
     RestrictDeletionWhenPBNUIDSetMixin,
-    admin.ModelAdmin,
+    # OSTATNI przed ModelAdmin — patrz docstring BppSoftDeleteAdminMixin.
+    BppSoftDeleteAdminMixin,
+    # Historia zmian (FD#587): tuż przed terminalną klasą admina.
+    HistoriaWersjiMixin,
+    CompareVersionAdmin,
 ):
     change_list_template = "admin/bpp/wydawnictwo_ciagle/change_list.html"
     import_export_change_list_template = "admin/bpp/wydawnictwo_ciagle/change_list.html"

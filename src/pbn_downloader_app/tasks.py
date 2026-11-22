@@ -3,8 +3,7 @@ import sys
 from contextlib import contextmanager
 from threading import Lock
 
-import rollbar
-
+from bpp.zglaszanie_bledow import capture_exception
 from django_bpp.celery_tasks import app
 
 logger = logging.getLogger(__name__)
@@ -81,7 +80,7 @@ class TqdmProgressPatcher:
 
                         task.save()
                 except Exception:
-                    rollbar.report_exc_info(sys.exc_info())
+                    capture_exception(sys.exc_info())
                     logger.debug("Błąd aktualizacji postępu zadania", exc_info=True)
 
             return result
@@ -108,7 +107,7 @@ class TqdmProgressPatcher:
                         task.progress_percentage = min(90, int(total_progress))
                         task.save()
                 except Exception:
-                    rollbar.report_exc_info(sys.exc_info())
+                    capture_exception(sys.exc_info())
                     logger.debug(
                         "Błąd aktualizacji postępu zadania (close)", exc_info=True
                     )
@@ -241,8 +240,8 @@ def mark_task_failed(task_record, error):
     """Mark a task as failed with error message."""
     from django.utils import timezone
 
-    # Raportuj błąd do Rollbar
-    rollbar.report_exc_info(sys.exc_info())
+    # Raportuj błąd do monitoringu
+    capture_exception(sys.exc_info())
 
     if task_record:
         task_record.status = "failed"

@@ -4,6 +4,7 @@ from django.shortcuts import get_object_or_404
 from django.views.generic import TemplateView, View
 
 from bpp.models import Autor, Uczelnia
+from bpp.rekord_usuniety import kosz_modelu, rzuc_jesli_w_koszu
 from bpp.util.ukryte_statusy import ukryte_statusy_dla, widoczni_autorzy
 
 from .queries import (
@@ -41,7 +42,12 @@ def _autor_centralny(request, pk, select_related=()):
     qs = Autor.objects.all()
     if select_related:
         qs = qs.select_related(*select_related)
-    autor = get_object_or_404(widoczni_autorzy(qs, request), pk=pk)
+    try:
+        autor = get_object_or_404(widoczni_autorzy(qs, request), pk=pk)
+    except Http404:
+        # Autor w koszu → 410 (te same reguły widoczności co dla żywego).
+        rzuc_jesli_w_koszu(widoczni_autorzy(kosz_modelu(Autor), request), pk=pk)
+        raise
     if not siec_powiazan_wlaczona(autor, request):
         raise Http404("Sieć powiązań jest wyłączona dla tego autora.")
     return autor

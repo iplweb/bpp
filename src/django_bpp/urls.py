@@ -23,6 +23,7 @@ from bpp.views.admin import (
     WydawnictwoCiagleTozView,
     WydawnictwoZwarteTozView,
 )
+from bpp.views.formdefaults import BppSystemFormDefaultsView, BppUserFormDefaultsView
 from bpp.views.global_nav import global_nav_redir
 from bpp.views.mymultiseek import (
     BppMultiseekSaveForm,
@@ -32,6 +33,7 @@ from bpp.views.mymultiseek import (
     bpp_load_form,
     bpp_remove_by_hand,
     bpp_remove_from_removed_by_hand,
+    zmien_rodzaj_raportu,
 )
 from bpp.views.sentry_tester import (
     test_403_view,
@@ -80,10 +82,31 @@ urlpatterns = (
             "setup/",
             include("first_run_wizard.urls", namespace="first_run_wizard"),
         ),
-        path("formdefaults/", include("formdefaults.urls")),
+        # Własne widoki zamiast ``formdefaults.urls``: 404 zamiast 500 dla
+        # nieaktualnej klasy formularza (FD#528). Te same nazwy URL-i.
+        path(
+            "formdefaults/",
+            include(
+                (
+                    [
+                        path(
+                            "edit/<path:form_full_name>/",
+                            BppUserFormDefaultsView.as_view(),
+                            name="user-edit",
+                        ),
+                        path(
+                            "system-edit/<path:form_full_name>/",
+                            BppSystemFormDefaultsView.as_view(),
+                            name="system-edit",
+                        ),
+                    ],
+                    "formdefaults",
+                )
+            ),
+        ),
         path("", include("oauth_mcp.urls")),
         path("mcp/", include("mcp_server.urls", namespace="mcp_server")),
-        url(r"^favicon\.ico$", cache_page(60 * 60)(favicon)),
+        url(r"^favicon\.ico$", favicon),
         path("test_403/", tylko_superuser(test_403_view)),
         path("test_500/", tylko_superuser(test_500_view)),
         path("test_exception/", tylko_superuser(test_exception_view)),
@@ -122,6 +145,10 @@ urlpatterns = (
             include(
                 "ewaluacja_liczba_n.urls",
             ),
+        ),
+        path(
+            "ewaluacja_common/",
+            include("ewaluacja_common.urls"),
         ),
         path(
             "ewaluacja_metryki/",
@@ -355,6 +382,11 @@ urlpatterns = (
                 )
             ),
             name="multiseek-export",
+        ),
+        url(
+            r"^multiseek/rodzaj-raportu/$",
+            zmien_rodzaj_raportu,
+            name="multiseek-rodzaj-raportu",
         ),
         # Nadpisania upstreamowych load_form/save_form (kontrola właściciela
         # zapisanego formularza) — MUSZĄ być PRZED include("multiseek.urls").

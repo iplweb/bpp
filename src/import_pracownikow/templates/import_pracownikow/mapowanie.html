@@ -29,7 +29,7 @@
                 <tbody>
                     {% for kolumny in probka_rows %}
                         <tr>
-                            {% for kom in kolumny %}<td>{{ kom }}</td>{% endfor %}
+                            {% for kom in kolumny %}<td>{{ kom|default_if_none:"" }}</td>{% endfor %}
                         </tr>
                     {% endfor %}
                 </tbody>

@@ -7,7 +7,6 @@ from django.contrib.contenttypes.models import ContentType
 from django.core.exceptions import ValidationError
 from django.db import models
 from django.db.models import Q
-from django_softdelete.models import SoftDeleteModel
 
 from bpp.models import Autor_Dyscyplina, Uczelnia
 from bpp.models.abstract import (
@@ -16,6 +15,12 @@ from bpp.models.abstract import (
     ModelZDOI,
     ModelZOplataZaPublikacje,
     ModelZRokiem,
+)
+from bpp.models.soft_delete import (
+    BppDzieckoPublikacjiMixin,
+    BppSoftDeleteSlownikMixin,
+    BppWszystkieWierszeManager,
+    BppZywyRodzicManager,
 )
 from bpp.models.wydawca import Wydawca
 from bpp.models.wydawnictwo_zwarte import Wydawnictwo_Zwarte
@@ -58,8 +63,28 @@ def zgloszenie_publikacji_upload_to(instance, filename):
 
 
 class Zgloszenie_Publikacji(
-    ModelZRokiem, DwaTytuly, ModelZDOI, ModelZOplataZaPublikacje, SoftDeleteModel
+    # Kosz jak w reszcie BPP (``docs/deweloper/soft-delete.md``): ``objects``
+    # ukrywa kosz, ``global_objects``/``deleted_objects``, ``delete()`` /
+    # ``restore()`` bez kaskady pakietu (autorzy i załączniki zostają przy
+    # zgłoszeniu i wracają z nim), trigger ``bpp_kosz_straznik`` zamraża
+    # zgłoszenie w koszu (migracja ``0031``).
+    BppSoftDeleteSlownikMixin,
+    ModelZRokiem,
+    DwaTytuly,
+    ModelZDOI,
+    ModelZOplataZaPublikacje,
 ):
+    #: Nic nie blokuje kosza zgłoszenia: autorzy i załączniki znikają razem
+    #: z nim (bez własnego kosza), a sesja importu to log — importer i tak
+    #: nie domyka zgłoszenia z kosza (``importer_publikacji.zgloszenia``).
+    pomijane_relacje_kosza = frozenset(
+        {
+            "zglos_publikacje.Zgloszenie_Publikacji_Autor.rekord",
+            "zglos_publikacje.Zgloszenie_Publikacji_Zalacznik.zgloszenie",
+            "importer_publikacji.ImportSession.zgloszenie",
+        }
+    )
+
     email = models.EmailField("E-mail zgłaszającego")
 
     utworzono = models.DateTimeField(
@@ -312,7 +337,12 @@ class Zgloszenie_Publikacji(
         return self.status == Zgloszenie_Publikacji.Statusy.ZAIMPORTOWANY
 
 
-class Zgloszenie_Publikacji_Autor(BazaModeluOdpowiedzialnosciAutorow):
+class Zgloszenie_Publikacji_Autor(
+    # Bez własnego kosza: ``objects`` ukrywa autorów zgłoszeń z kosza,
+    # ``all_objects`` widzi wszystko (jak ``*_Autor`` publikacji).
+    BppDzieckoPublikacjiMixin,
+    BazaModeluOdpowiedzialnosciAutorow,
+):
     rekord = models.ForeignKey(Zgloszenie_Publikacji, on_delete=models.CASCADE)
 
     rok = models.PositiveSmallIntegerField()
@@ -342,6 +372,32 @@ class Zgloszenie_Publikacji_Autor(BazaModeluOdpowiedzialnosciAutorow):
                 }
             )
 
+        if (
+            self.dyscyplina_naukowa is not None
+            and getattr(self, "dopusc_propozycje_dyscypliny", False)
+            and not przypisanie_na_rok_istnieje
+        ):
+            # FD#620: formularz zgłoszenia — autor bez przypisania na rok
+            # pracy; dyscyplina z podpowiadanej listy zostanie mu przypisana
+            # przy zapisie zgłoszenia (``zglos_publikacje.dyscypliny``).
+            from zglos_publikacje.dyscypliny import (
+                dyscyplina_z_propozycji,
+                ma_przypisanie_na_rok,
+            )
+
+            if not ma_przypisanie_na_rok(self.autor_id, self.rok):
+                if dyscyplina_z_propozycji(
+                    self.autor_id, self.rok, self.dyscyplina_naukowa
+                ):
+                    return
+                raise ValidationError(
+                    {
+                        "dyscyplina_naukowa": f"Autor {self.autor} nie ma "
+                        f"przypisanej dyscypliny na rok {self.rok}. Wybierz "
+                        "dyscyplinę z podpowiadanej listy."
+                    }
+                )
+
         if self.dyscyplina_naukowa is not None:
             try:
                 Autor_Dyscyplina.objects.get(
@@ -357,6 +413,18 @@ class Zgloszenie_Publikacji_Autor(BazaModeluOdpowiedzialnosciAutorow):
                         f"rok {self.rok} do dyscypliny {self.dyscyplina_naukowa}."
                     }
                 ) from e
+
+
+class ZywyRodzicZalacznikaManager(BppZywyRodzicManager):
+    """``objects`` załącznika: ukrywa załączniki zgłoszeń z kosza.
+
+    Osobna klasa z domyślnym ``pole_rodzica``: menedżer relacji odwrotnej
+    (``zgloszenie.zalaczniki``) Django tworzy z KLASY domyślnego menedżera,
+    bez argumentów — z bazowym ``"rekord"`` filtr byłby błędny.
+    """
+
+    def __init__(self, pole_rodzica="zgloszenie"):
+        super().__init__(pole_rodzica)
 
 
 class Zgloszenie_Publikacji_Zalacznik(models.Model):
@@ -377,6 +445,10 @@ class Zgloszenie_Publikacji_Zalacznik(models.Model):
         default="",
     )
     kolejnosc = models.PositiveSmallIntegerField(default=0)
+
+    # Bez własnego kosza — znika i wraca razem ze zgłoszeniem.
+    objects = ZywyRodzicZalacznikaManager()
+    all_objects = BppWszystkieWierszeManager()
 
     class Meta:
         verbose_name = "załącznik zgłoszenia publikacji"
@@ -416,13 +488,19 @@ class Obslugujacy_Zgloszenia_Wydzialow(models.Model):
         db_index=False,
     )
     # Faza B (#438) II-2: FK→Jednostka (korzeń drzewa, mirror dawnego
-    # Wydzial). Nazwa pola i ``verbose_name`` zostają — patrz brief II-2.
-    wydzial = models.ForeignKey("bpp.Jednostka", models.CASCADE, verbose_name="Wydział")
+    # Wydzial). Nazwa pola zostaje — patrz brief II-2. ``verbose_name`` jest
+    # zgodny z etykietą formularza w adminie: przypisanie obejmuje jednostkę
+    # razem z jej jednostkami podrzędnymi.
+    wydzial = models.ForeignKey(
+        "bpp.Jednostka", models.CASCADE, verbose_name="Jednostka (i podrzędne)"
+    )
 
     objects = Obslugujacy_Zgloszenia_WydzialowManager()
 
     class Meta:
-        verbose_name = "obsługujący zgłoszenia dla wydziału"
-        verbose_name_plural = "obsługujący zgłoszenia dla wydziałów"
+        # Rzeczownik o bierniku równym mianownikowi — admin buduje z tego
+        # „Dodaj …" / „Zmień …", więc „przydział" czyta się poprawnie.
+        verbose_name = "przydział obsługi zgłoszeń"
+        verbose_name_plural = "przydziały obsługi zgłoszeń"
         ordering = ("user__username", "wydzial__nazwa")
         unique_together = [("user", "wydzial")]

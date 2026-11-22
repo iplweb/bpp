@@ -104,7 +104,7 @@ class StatementImporter(ImportStepBase):
             zaloguj_polkniety_wyjatek(
                 "Nie udało się pobrać oświadczeń z instytucji z PBN",
                 logger=logger,
-                do_rollbar=False,  # Rollbar już w handle_error
+                do_monitoringu=False,  # zgłoszenie już w handle_error
             )
             self.handle_error(e, "Nie udało się pobrać oświadczeń")
         finally:
@@ -165,7 +165,7 @@ class StatementImporter(ImportStepBase):
             zaloguj_polkniety_wyjatek(
                 "Nie udało się zintegrować oświadczeń z instytucji",
                 logger=logger,
-                do_rollbar=False,  # Rollbar już w handle_error
+                do_monitoringu=False,  # zgłoszenie już w handle_error
             )
             self.handle_error(e, "Nie udało się zintegrować oświadczeń")
 
@@ -241,7 +241,7 @@ class StatementImporter(ImportStepBase):
             zaloguj_polkniety_wyjatek(
                 "Nie udało się pobrać brakujących publikacji dla oświadczeń",
                 logger=logger,
-                do_rollbar=False,  # Rollbar już w handle_error
+                do_monitoringu=False,  # zgłoszenie już w handle_error
             )
             self.handle_error(e, "Nie udało się pobrać brakujących publikacji")
             return None

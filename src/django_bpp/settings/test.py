@@ -163,3 +163,8 @@ PASSWORD_HASHERS = ["django.contrib.auth.hashers.MD5PasswordHasher"]
 # Walidator wycieków (HIBP) idzie do sieci — w testach wyłączony; testy
 # walidatora włączają go jawnie i mockują requests.
 BPP_HASLA_SPRAWDZAJ_WYCIEKI = False
+
+# Testy nigdy nie wysyłają do Sentry/GlitchTip, nawet gdy deweloper ma
+# SENTRY_DSN w swoim .env (testy bpp.zglaszanie_bledow inicjalizują SDK same,
+# z atrapą transportu).
+SENTRY_DSN = ""

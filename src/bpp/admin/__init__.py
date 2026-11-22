@@ -49,6 +49,7 @@ from .dyscyplina_naukowa import Dyscyplina_NaukowaAdmin  # noqa
 from .jednostka import JednostkaAdmin  # NOQA
 from .kierunek_studiow import Kierunek_StudiowAdmin  # noqa
 from .konferencja import KonferencjaAdmin  # noqa
+from .nieuzywane import UkryjNieuzywaneMixin
 from .patent import Patent_Admin  # noqa
 from .praca_doktorska import Praca_DoktorskaAdmin  # noqa
 from .praca_habilitacyjna import Praca_HabilitacyjnaAdmin  # noqa
@@ -57,6 +58,7 @@ from .rodzaj_jednostki import RodzajJednostkiAdmin  # noqa
 from .seria_wydawnicza import Seria_WydawniczaAdmin  # noqa
 from .szablondlaopisubibliograficznego import SzablonDlaOpisuBibliograficznego  # noqa
 from .uczelnia import UczelniaAdmin  # NOQA
+from .wersja_przeliczenia import Wersja_PrzeliczeniaAdmin  # noqa
 from .wydawca import WydawcaAdmin  # noqa
 from .wydawnictwo_ciagle import Wydawnictwo_CiagleAdmin  # noqa
 from .wydawnictwo_ciagle_autor import Wydawnictwo_Ciagle_Autor_Admin  # noqa
@@ -67,7 +69,7 @@ from .wydawnictwo_zwarte import (  # noqa
 from .wydawnictwo_zwarte_autor import Wydawnictwo_Zwarte_Autor_Admin  # noqa
 
 
-class JezykAdmin(RestrictDeletionToAdministracjaGroupAdmin):
+class JezykAdmin(UkryjNieuzywaneMixin, RestrictDeletionToAdministracjaGroupAdmin):
     list_display = [
         "nazwa",
         "skrot",
@@ -129,7 +131,10 @@ class RzeczownikAdmin(
 
 
 class Charakter_PBNAdmin(
-    RestrictDeletionToAdministracjaGroupMixin, BaseBppAdminMixin, admin.ModelAdmin
+    UkryjNieuzywaneMixin,
+    RestrictDeletionToAdministracjaGroupMixin,
+    BaseBppAdminMixin,
+    admin.ModelAdmin,
 ):
     list_display = [
         "identyfikator",
@@ -168,7 +173,10 @@ admin.site.register(StanowiskoDydaktyczne, NazwaISkrotAdmin)
 
 
 class Typ_KBNAdmin(
-    RestrictDeletionToAdministracjaGroupAdmin, BaseBppAdminMixin, admin.ModelAdmin
+    UkryjNieuzywaneMixin,
+    RestrictDeletionToAdministracjaGroupAdmin,
+    BaseBppAdminMixin,
+    admin.ModelAdmin,
 ):
     list_display = ["nazwa", "skrot", "artykul_pbn", "charakter_pbn", "ukryty"]
     list_editable = ["ukryty"]
@@ -288,6 +296,16 @@ class BppUserAdmin(UserAdmin):
             {"fields": ("przedstawiaj_w_pbn_jako",)},
         ),
         (
+            "Metryki jednostek",
+            {
+                "fields": ("jednostki_metryk",),
+                "description": "Wgląd w zestawienie „Metryki jednostek” (PDF "
+                "z imiennymi ocenami pracowników) wybranych jednostek, bez "
+                "innych uprawnień. Kierownik jednostki ma wgląd w swoją "
+                "jednostkę automatycznie.",
+            },
+        ),
+        (
             "Dostęp do uczelni",
             {
                 "fields": ("accessible_uczelnie",),
@@ -297,7 +315,7 @@ class BppUserAdmin(UserAdmin):
         ),
     )
 
-    autocomplete_fields = ["autor"]
+    autocomplete_fields = ["autor", "jednostki_metryk"]
 
     list_filter = (*UserAdmin.list_filter, filters.KontaStaffBezUczelniFilter)
 
@@ -477,6 +495,15 @@ class SearchFormAdmin(admin.ModelAdmin):
 
 SearchForm._meta.verbose_name = "formularz wyszukiwania"
 SearchForm._meta.verbose_name_plural = "formularze wyszukiwania"
+# Model pochodzi z pakietu multiseek: pole „owner” nie ma tam etykiety, więc
+# w panelu wyświetlało się angielskie „Owner”. Nadajemy polskie nazwy kolumn.
+for _pole, _etykieta in (
+    ("name", "nazwa"),
+    ("owner", "właściciel"),
+    ("public", "publiczny"),
+    ("data", "dane formularza (JSON)"),
+):
+    SearchForm._meta.get_field(_pole).verbose_name = _etykieta
 
 admin.site.register(SearchForm, SearchFormAdmin)
 

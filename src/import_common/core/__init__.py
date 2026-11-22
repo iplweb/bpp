@@ -36,9 +36,11 @@ from .autor import (
     znajdz_kandydatow_autora,
 )
 from .dyscyplina import (
+    DZIEN_SLOWNIKA_PBN_2017_2021,
+    DZIEN_SLOWNIKA_PBN_2022_2023,
     matchuj_aktualna_dyscypline_pbn,
     matchuj_dyscypline,
-    matchuj_nieaktualna_dyscypline_pbn,
+    matchuj_dyscypline_pbn_na_dzien,
     normalize_kod_dyscypliny_pbn,
 )
 from .jednostka import matchuj_jednostke, wytnij_skrot
@@ -82,6 +84,7 @@ from .zrodlo import (
     _try_match_zrodlo_by_mnisw_id,
     _try_match_zrodlo_by_title_single,
     matchuj_zrodlo,
+    zrodla_po_tytule_bez_diakrytykow,
 )
 
 __all__ = [
@@ -100,9 +103,11 @@ __all__ = [
     "_try_match_autor_in_jednostka",
     "_try_match_autor_with_orcid_or_tytul",
     # dyscyplina
+    "DZIEN_SLOWNIKA_PBN_2017_2021",
+    "DZIEN_SLOWNIKA_PBN_2022_2023",
     "matchuj_dyscypline",
     "matchuj_aktualna_dyscypline_pbn",
-    "matchuj_nieaktualna_dyscypline_pbn",
+    "matchuj_dyscypline_pbn_na_dzien",
     "normalize_kod_dyscypliny_pbn",
     # jednostka
     "matchuj_jednostke",
@@ -146,4 +151,5 @@ __all__ = [
     "_try_match_zrodlo_by_issn",
     "_try_match_zrodlo_by_mnisw_id",
     "_try_match_zrodlo_by_title_single",
+    "zrodla_po_tytule_bez_diakrytykow",
 ]

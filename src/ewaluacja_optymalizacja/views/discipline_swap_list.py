@@ -12,6 +12,7 @@ from django.shortcuts import redirect, render
 from django.views.decorators.http import require_POST
 
 from bpp.models import Dyscyplina_Naukowa
+from ewaluacja_common.okres import okres_dla_request
 from raport_slotow.uczelnia_helper import uczelnia_dla_odczytu
 
 logger = logging.getLogger(__name__)
@@ -121,7 +122,9 @@ def discipline_swap_opportunities_list(request):
         )
 
     # Podstawowe filtrowanie
-    opportunities_qs = DisciplineSwapOpportunity.objects.filter(uczelnia=uczelnia)
+    opportunities_qs = DisciplineSwapOpportunity.objects.filter(
+        uczelnia=uczelnia, okres=okres_dla_request(request)
+    )
 
     # Zastosuj filtry
     opportunities_qs = _apply_filters(opportunities_qs, request)
@@ -157,9 +160,11 @@ def discipline_swap_opportunities_list(request):
     opportunities = paginator.get_page(page_number)
 
     # Statystyki
-    total_count = DisciplineSwapOpportunity.objects.filter(uczelnia=uczelnia).count()
+    total_count = DisciplineSwapOpportunity.objects.filter(
+        uczelnia=uczelnia, okres=okres_dla_request(request)
+    ).count()
     sensible_count = DisciplineSwapOpportunity.objects.filter(
-        uczelnia=uczelnia, makes_sense=True
+        uczelnia=uczelnia, okres=okres_dla_request(request), makes_sense=True
     ).count()
     sensible_percentage = (
         round((sensible_count / total_count) * 100, 1) if total_count > 0 else 0
@@ -170,7 +175,9 @@ def discipline_swap_opportunities_list(request):
 
     # Lista lat dostępnych w danych
     years = (
-        DisciplineSwapOpportunity.objects.filter(uczelnia=uczelnia)
+        DisciplineSwapOpportunity.objects.filter(
+            uczelnia=uczelnia, okres=okres_dla_request(request)
+        )
         .values_list("rekord_rok", flat=True)
         .distinct()
         .order_by("rekord_rok")
@@ -178,7 +185,9 @@ def discipline_swap_opportunities_list(request):
 
     # Data ostatniej analizy
     last_analysis = (
-        DisciplineSwapOpportunity.objects.filter(uczelnia=uczelnia)
+        DisciplineSwapOpportunity.objects.filter(
+            uczelnia=uczelnia, okres=okres_dla_request(request)
+        )
         .order_by("-created_at")
         .first()
     )
@@ -396,7 +405,9 @@ def export_discipline_swap_xlsx(request):
         return redirect("ewaluacja_optymalizacja:discipline-swap-list")
 
     # Filtrowanie
-    opportunities_qs = DisciplineSwapOpportunity.objects.filter(uczelnia=uczelnia)
+    opportunities_qs = DisciplineSwapOpportunity.objects.filter(
+        uczelnia=uczelnia, okres=okres_dla_request(request)
+    )
     opportunities_qs = _apply_filters(opportunities_qs, request)
 
     opportunities_qs = opportunities_qs.select_related(

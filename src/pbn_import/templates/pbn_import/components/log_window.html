@@ -26,7 +26,7 @@
 }
 
 .log-timestamp {
-    color: #888;
+    color: var(--bpp-tekst-przygaszony, #888);
     margin-right: 10px;
 }
 
@@ -50,7 +50,7 @@
 }
 
 .log-debug .log-level {
-    color: #6c757d;
+    color: var(--bpp-tekst-przygaszony, #6c757d);
 }
 
 .log-info {
@@ -58,7 +58,7 @@
 }
 
 .log-info .log-level {
-    color: #17a2b8;
+    color: var(--bpp-akcent, #17a2b8);
 }
 
 .log-warning {
@@ -74,7 +74,7 @@
 }
 
 .log-error .log-level {
-    color: #dc3545;
+    color: var(--bpp-tekst-blad, #dc3545);
 }
 
 .log-error .log-message {
@@ -86,7 +86,7 @@
 }
 
 .log-success .log-level {
-    color: #28a745;
+    color: var(--bpp-tekst-sukces, #28a745);
 }
 
 .log-success .log-message {
@@ -99,7 +99,7 @@
 }
 
 .log-critical .log-level {
-    color: #ff1744;
+    color: var(--bpp-tekst-blad, #ff1744);
     animation: blink 1s infinite;
 }
 

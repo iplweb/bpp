@@ -18,7 +18,7 @@ from bpp.demo_data.themes.registry import THEMES
 class Command(BaseCommand):
     help = (
         "Generuje syntetyczne dane demo (wydzialy, jednostki, autorzy, "
-        "prace WC+WZ). Wymaga PODWOJNEGO potwierdzenia interaktywnie "
+        "prace WC+WZ, zgloszenia publikacji). Wymaga PODWOJNEGO potwierdzenia interaktywnie "
         "(prompt + exact DB name) lub flag --yes-i-am-sure + --confirm-db."
     )
 
@@ -46,6 +46,13 @@ class Command(BaseCommand):
         parser.add_argument("--procent-ze-streszczeniem", type=int, default=70)
         parser.add_argument("--bez-prefiksu", action="store_true")
         parser.add_argument(
+            "--zgloszen",
+            type=int,
+            default=40,
+            help="Ile zgloszen publikacji (zglos_publikacje) utworzyc; "
+            "0 = bez zgloszen.",
+        )
+        parser.add_argument(
             "--polon-plik",
             type=str,
             default=None,
@@ -71,12 +78,72 @@ class Command(BaseCommand):
             action="store_true",
             help="Nie dodawaj do pliku POL-on celowo blednych wierszy.",
         )
+        parser.add_argument(
+            "--uzytkownik",
+            type=str,
+            default=None,
+            metavar="LOGIN",
+            help="Komu przypisac wpisy 'utworzono' w historii rekordow "
+            "(admin 'Historia'); domyslnie konto techniczne bpp-system.",
+        )
+        parser.add_argument(
+            "--bez-ewaluacji",
+            action="store_true",
+            help="Nie przeliczaj cache punktów/slotów, liczby N ani metryk "
+            "na końcu generowania.",
+        )
+
+        parser.add_argument(
+            "--dwudyscyplinowcow",
+            type=int,
+            default=8,
+            help="Ilu autorów w dwóch dyscyplinach (60/40, pseudonim "
+            "„dwudyscyplinowy”) dodać; 0 — żadnego.",
+        )
+        parser.add_argument(
+            "--bez-rzadkich-typow",
+            action="store_true",
+            help="Bez prac doktorskich/habilitacyjnych, patentów, konferencji, "
+            "serii wydawniczych, grantów i nagród.",
+        )
+        parser.add_argument(
+            "--bez-brudow",
+            action="store_true",
+            help="Bez celowych duplikatów i rozbieżności oraz bez skanów "
+            "deduplikatorów na końcu.",
+        )
+        parser.add_argument(
+            "--bez-pbn",
+            action="store_true",
+            help="Bez lokalnego lustra danych PBN (i porównań BPP↔PBN).",
+        )
+        parser.add_argument(
+            "--bez-dodatkow",
+            action="store_true",
+            help="Bez dodatków: dwudyscyplinowców, rzadszych typów, brudów "
+            "i lustra PBN (np. dla zrzutów ekranu do dokumentacji).",
+        )
+        parser.add_argument(
+            "--konta-demo",
+            action="store_true",
+            help="Załóż konta admin/admin, redaktor/redaktor, raporty/raporty, "
+            "user/user (istniejących nie zmienia). Hasła są jawne — tylko dla "
+            "instancji demonstracyjnych.",
+        )
 
     def handle(self, *args, **options):
         manifest_out = options.get("manifest_out")
         if not manifest_out:
             ts = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
             manifest_out = f"demo_data_manifest_{ts}.json"
+
+        if options["bez_dodatkow"]:
+            options.update(
+                dwudyscyplinowcow=0,
+                bez_rzadkich_typow=True,
+                bez_brudow=True,
+                bez_pbn=True,
+            )
 
         opts = CreateOptions(
             wydzialow=options["wydzialow"],
@@ -104,6 +171,14 @@ class Command(BaseCommand):
             ),
             polon_dyscypliny=options.get("polon_dyscypliny"),
             polon_bez_blednych_wierszy=options.get("polon_bez_blednych_wierszy", False),
+            bez_ewaluacji=options["bez_ewaluacji"],
+            zgloszen=options["zgloszen"],
+            dwudyscyplinowcow=options["dwudyscyplinowcow"],
+            bez_rzadkich_typow=options["bez_rzadkich_typow"],
+            bez_brudow=options["bez_brudow"],
+            bez_pbn=options["bez_pbn"],
+            konta_demo=options["konta_demo"],
+            uzytkownik=options.get("uzytkownik"),
         )
         # BaseCommand ma self.stdout (OutputWrapper) ale NIE ma self.stdin —
         # passujemy sys.stdin explicit (potrzebne dla double_confirm w trybie

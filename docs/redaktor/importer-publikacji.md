@@ -128,6 +128,17 @@ Importer otworzysz na dwa sposoby:
 
     ![Dopasowanie autorów: statusy dokładne, luźne i niedopasowany oraz przycisk „Edytuj”](../images/redaktor/importer-publikacji/09-autorzy.png)
 
+    **Redaktorzy.** Przy książce (monografii, książce redagowanej,
+    materiałach konferencyjnych) importer pobiera też redaktorów —
+    z CrossRef (pole `editor`), PBN, BibTeX-a (pole `editor` w `@book`,
+    `@collection`, `@proceedings`) i DSpace. Trafiają na listę przed
+    autorami, z wartością **„redaktor”** w kolumnie **„Typ”**, i dopasowuje
+    się ich tak samo jak autorów; w rekordzie dostają typ odpowiedzialności
+    „red.”. Monografia redagowana bez autorów ma na liście samych
+    redaktorów. Przy rozdziale lub referacie redaktorzy dotyczą książki
+    nadrzędnej, więc importer ich nie dodaje. Typ możesz zmienić w oknie
+    **„Edytuj”** (pole **„Typ autora”**).
+
     Przy każdym wierszu ze statusem innym niż „dokładne” kliknij
     **„Edytuj”**.
 
@@ -139,6 +150,30 @@ Importer otworzysz na dwa sposoby:
    dyscyplinę autora z roku publikacji, gdy jest tylko jedna (i uczelnia
    ma włączone podpowiadanie dyscyplin). Kliknij
    **„Zapisz”**.
+
+    Lista **„Dyscyplina”** zawiera dyscypliny przypisane autorowi na rok
+    publikacji. Jeśli autor **nie ma przypisanej dyscypliny na ten rok**,
+    pod polem pojawia się żółty komunikat *„Autor nie ma przypisanej
+    dyscypliny na rok …”*, a lista podpowiada:
+
+    - dyscypliny autora z **ubiegłego roku** (albo z najbliższego
+      wcześniejszego roku, w którym autor miał przypisanie — komunikat
+      mówi, z którego roku pochodzą),
+    - gdy autor nie miał dyscypliny **nigdy** — dyscypliny **typowe dla
+      uczelni**, czyli najczęściej przypisywane autorom w pracach z ostatnich
+      trzech lat (od najczęstszej; lista jest przeliczana raz na dobę),
+    - gdy w bazie nie ma jeszcze prac z dyscyplinami — wszystkie dyscypliny.
+
+    Wybrana w ten sposób dyscyplina zostanie przy **„Utwórz publikację”**
+    **przypisana autorowi na rok publikacji** (w module redagowania:
+    autor → „Powiązania autor-dyscyplina”) i użyta w tworzonej pracy.
+    W wierszu autora widać wtedy etykietę **„przypiszę na rok …”**.
+    Przypisanie zostaje odnotowane w historii autora (i samego przypisania)
+    z Twoim loginem, tytułem pracy oraz numerem sesji importu i rekordu,
+    np. *„Przypisano dyscyplinę „nauki o bezpieczeństwie” na rok 2026 przez
+    użytkownika Jan Kowalski (jkowalski) podczas importu pracy „…”
+    (sesja importu #116, rekord #9398)”*. Autorowi, który ma już
+    przypisanie na ten rok, importer niczego nie zmienia.
 
     ![Okno edycji autora: lista kandydatów i przycisk „Zapisz”](../images/redaktor/importer-publikacji/10-kandydaci.png)
 
@@ -210,6 +245,42 @@ Importer otworzysz na dwa sposoby:
 Przerwany import możesz w każdej chwili dokończyć (**„Powrót do listy”**,
 potem **„Importy w toku / ostatnie”**) albo porzucić przyciskiem
 **„Anuluj import”**.
+
+## Lista „Sesje importu”: filtry i zapamiętany widok
+
+Przycisk **„Importy w toku / ostatnie”** otwiera listę **„Sesje importu”**.
+Nad tabelą są filtry: **„Data od”**, **„Data do”**, **„Tytuł”**, **„DOI”**,
+**„Źródło”**, **„Utworzył”**, **„Zmodyfikował”** oraz:
+
+- **„Status”** — można zaznaczyć kilka statusów naraz (np. „Błąd importu”
+  i „Zakończono”). Poza zwykłymi etapami importu („Pobrano dane”,
+  „Dopasowano źródło”, „Punktacja”…) jest tu też **„Anulowano”** (bez
+  zaznaczenia tego statusu anulowane importy są ukryte, jak dotąd) oraz
+  **„Utknięte”** — importy, w których pobieranie danych albo tworzenie
+  rekordu od kilku minut nie robi postępu;
+- przycisk **„Tylko błędy importu”** — jednym kliknięciem zostawia na
+  liście tylko importy zakończone błędem; drugie kliknięcie wyłącza filtr;
+- **„Etap błędu”** — „Pobieranie danych” albo „Tworzenie rekordu”, czyli
+  etap, na którym import się nie powiódł (ten sam etap widać w tabeli pod
+  czerwoną etykietą „Błąd importu”; po najechaniu na etykietę widać treść
+  błędu);
+- **„Rekord wynikowy”** — „Z rekordem” (import utworzył publikację)
+  albo „Bez rekordu”. W kolumnie **„Rekord”** są odnośniki **„Pokaż”**
+  (strona publikacji w BPP) i **„Edytuj”** (moduł redagowania). Jeśli
+  utworzoną publikację później usunięto, w kolumnie widać „usunięty”,
+  a import nadal liczy się jako „Z rekordem”.
+
+Przycisk **„Reset”** czyści filtry (sortowanie zostaje). Kliknięcie
+nagłówka kolumny zmienia sortowanie.
+
+Lista pamięta ustawienia. Filtry i sortowanie są w adresie strony, więc
+odświeżenie (F5) i przycisk „Wstecz” w przeglądarce pokazują ten sam
+widok, a adres można zapisać w zakładkach. Ostatni zestaw jest też
+zapamiętany na czas zalogowania: gdy wrócisz na listę przyciskiem
+„Importy w toku / ostatnie”, zobaczysz ten sam widok z komunikatem
+*„Pokazuję zapamiętane filtry i sortowanie z Twojej ostatniej wizyty na
+tej liście: …”*. Przycisk **„Wyczyść”** w komunikacie przywraca widok
+domyślny.
 
 ## Co może pójść nie tak
 
@@ -351,6 +422,28 @@ część autorów jest przypisana z afiliacją do jednostki, która nie
 przyjmuje afiliacji (np. wydział).”* z listą osób. Wróć do autorów
 (**„Wstecz”**) i zmień tym osobom jednostkę na katedrę/zakład albo na
 obcą jednostkę.
+
+### Autor ma na ten rok inną dyscyplinę
+
+Przy **„Utwórz publikację”** może pojawić się żółta ramka *„Nie można
+utworzyć pracy — dyscypliny autorów”* z listą osób, które mają na rok
+publikacji przypisane dyscypliny, ale nie tę wybraną w imporcie (np.
+dyscyplina przyszła ze zgłoszenia publikacji albo przypisania autora
+zmieniono w międzyczasie). Przy każdej osobie widać wybraną dyscyplinę
+i dyscypliny przypisane na ten rok. Nic nie zostaje zapisane, dane
+importu są zachowane. Możesz:
+
+- w kroku **„Autorzy”** (odnośnik w ramce) wybrać autorowi jedną
+  z przypisanych mu dyscyplin, albo
+- kliknąć nazwisko — strona autora w module redagowania otworzy się
+  w nowej karcie — i poprawić jego przypisanie dyscyplin na ten rok,
+
+a potem kliknąć ponownie **„Utwórz publikację”**. Ta sama lista pojawia
+się w ramce **„Wystąpił błąd”**, jeśli przypisania zmieniły się już po
+kliknięciu — po poprawce kliknij **„Spróbuj ponownie”**.
+
+Autorowi, który na rok publikacji **nie ma żadnej** dyscypliny, importer
+sam przypisze dyscyplinę wybraną w kroku autorów (patrz wyżej).
 
 ### Błąd serwera lub połączenia
 

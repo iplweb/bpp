@@ -57,6 +57,8 @@ rocznego.
 
 3. Raport wyświetlony w przeglądarce ma u góry przyciski **„pobierz jako MS
    Word”** i **„pobierz jako XLSX”** — nie trzeba wracać do formularza.
+   Opis bibliograficzny każdej pracy jest odnośnikiem — kliknięcie otwiera
+   stronę tej pracy. W plikach Word i Excel opisy zostają zwykłym tekstem.
 
     ![Wynik raportu jednostki z przyciskami „pobierz jako MS Word” i „pobierz jako XLSX”](../images/uzytkownik/raporty/03-raport-jednostek-wynik.png)
 

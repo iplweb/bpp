@@ -124,7 +124,10 @@ class TestImportujOpenaccess:
             klasa_bazowa_tryb_dostepu=Tryb_OpenAccess_Wydawnictwo_Ciagle,
         )
 
-        assert wydawnictwo_ciagle.openaccess_data_opublikowania == date(2020, 3, 1)
+        # FD#281: miesiąc i rok w osobnych polach, bez zmyślonego dnia 1.
+        assert wydawnictwo_ciagle.openaccess_data_opublikowania is None
+        assert wydawnictwo_ciagle.openaccess_rok_udostepnienia == 2020
+        assert wydawnictwo_ciagle.openaccess_miesiac_udostepnienia == 3
         assert pbn_json == {}
 
     def test_brak_licencji_w_slowniku_zglasza_blad(self, wydawnictwo_ciagle):

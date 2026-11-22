@@ -529,6 +529,10 @@ DJANGO_BPP_REDIS_DB_BROKER, DJANGO_BPP_REDIS_DB_CELERY
 DJANGO_BPP_SECRET_KEY
 ROLLBAR_ACCESS_TOKEN (optional)         # Rollbar serwerowy (post_server_item) — sekretny
 ROLLBAR_CLIENT_ACCESS_TOKEN (optional)  # Rollbar front-end (post_client_item) — publiczny
+SENTRY_DSN (optional)                   # Sentry/GlitchTip serwerowy; pusty = wyłączony
+SENTRY_ENVIRONMENT (optional)           # domyślnie jak Rollbar (production/staging/…)
+SENTRY_TRACES_SAMPLE_RATE (optional)    # domyślnie 0 = bez śledzenia wydajności
+SENTRY_SEND_DEFAULT_PII (optional)      # domyślnie False
 MICROSOFT_AUTH_CLIENT_ID (optional)
 AUTH_LDAP_SERVER_URI (optional)
 ```
@@ -547,6 +551,38 @@ samego projektu — nie wolno ich mylić:
   Rollbar wyłączony (no-op). Wpisywany w `.env` (wzorzec w `.env.example`).
   Token `post_client_item` generuje się w dashboardzie Rollbara:
   Project Settings → Project Access Tokens.
+
+### Zgłaszanie błędów — Rollbar i/lub Sentry (GlitchTip)
+
+Błędy serwerowe trafiają do **każdego skonfigurowanego** backendu:
+
+- **Rollbar** — gdy ustawiony `ROLLBAR_ACCESS_TOKEN`,
+- **Sentry / GlitchTip** — gdy ustawiony `SENTRY_DSN` (oficjalne
+  `sentry-sdk`; GlitchTip mówi protokołem Sentry).
+
+Oba mogą działać równolegle (okres przejściowy). Wyłączenie Rollbara =
+usunięcie `ROLLBAR_ACCESS_TOKEN`; bez `SENTRY_DSN` BPP działa jak dotąd (sam
+Rollbar).
+
+| Zmienna | Domyślnie | Znaczenie |
+|---|---|---|
+| `SENTRY_DSN` | (pusta) | DSN projektu w GlitchTip; pusty = Sentry wyłączony |
+| `SENTRY_ENVIRONMENT` | jak Rollbar | `development`, `production` albo `staging` (gdy `DJANGO_BPP_ENABLE_TEST_CONFIGURATION`) |
+| `SENTRY_TRACES_SAMPLE_RATE` | `0` | ułamek żądań do śledzenia wydajności; `0` = wyłączone |
+| `SENTRY_SEND_DEFAULT_PII` | `False` | czy wysyłać dane użytkownika, IP, ciasteczka |
+
+W kodzie **nie wołamy** `rollbar.report_*` ani `sentry_sdk.capture_*`
+bezpośrednio — tylko `bpp.zglaszanie_bledow.capture_exception()` /
+`capture_message()` (sygnatury zbliżone do Rollbara: `extra_data` → `extra`).
+Do „połykanych" wyjątków służy `bpp.util.zaloguj_polkniety_wyjatek`
+(parametr `do_monitoringu`).
+
+Co łapie Sentry bez udziału kodu: nieobsłużone wyjątki widoków
+(`DjangoIntegration`), błędy zadań Celery (`CeleryIntegration`) i wpisy
+ERROR z loggerów z handlerem `sentry` w `LOGGING` (dziś: `denorm_queue`).
+Inicjalizacja i filtry: `src/bpp/sentry_config.py` — wyciszenia z
+`django_bpp.rollbar_filters` (np. `DJANGO_BPP_ROLLBAR_IGNORE_SMTP_AUTH_ERRORS`)
+obowiązują oba backendy. Front-end (Rollbar JS) na razie zostaje bez zmian.
 
 ---
 

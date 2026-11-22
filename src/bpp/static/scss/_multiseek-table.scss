@@ -59,6 +59,41 @@
     }
   }
 
+  // Szerokości kolumn: opis pracy bierze większość miejsca, liczby są
+  // wąskie, a teksty słownikowe (charakter, typ) mają ograniczoną szerokość
+  // — bez tego przeglądarka oddawała resztę strony ostatniej kolumnie.
+  .kol-lp,
+  .kol-liczba {
+    width: 1%;
+    white-space: nowrap;
+  }
+
+  td.kol-liczba,
+  th.kol-liczba {
+    text-align: right;
+  }
+
+  // `overflow-wrap: anywhere` — długi ciąg bez spacji (DOI, URL, śmieć
+  // w słowniku) inaczej wymusza szerokość kolumny i rozpycha tabelę.
+  .kol-opis,
+  .kol-tekst {
+    overflow-wrap: anywhere;
+  }
+
+  .kol-opis {
+    width: 70%;
+    min-width: 20rem;
+  }
+
+  th.kol-tekst {
+    white-space: normal;
+  }
+
+  .kol-tekst {
+    width: 12%;
+    min-width: 7rem;
+  }
+
   .multiseek-element {
     a {
       color: inherit;

@@ -75,20 +75,29 @@ class FikcyjnyProvider:
             pozostale = [o for o in pozostale if self._klucz(o) > granica]
 
         partia = pozostale[:rozmiar]
+        # Od fazy 05b kontrakt to pary ``(obiekt, czy_nagrobek)``. Atrapa
+        # trzyma wyłącznie żywe rekordy — nagrobki mają własną suitę
+        # (``test_nagrobki.py``), która chodzi po REALNYCH providerach.
+        oznaczone = [(obiekt, False) for obiekt in partia]
         if len(pozostale) > rozmiar:
             ostatni = partia[-1]
-            return partia, Kursor(
+            return oznaczone, Kursor(
                 slug=identyfikatory.slug_dla(ostatni),
                 ts=na_datestamp(getattr(ostatni, ADNOTACJA_TS)),
                 pk=ostatni.pk,
             )
-        return partia, None
+        return oznaczone, None
 
     def pojedynczy(self, uczelnia, model, pk):
         for obiekt in self.obiekty:
             if type(obiekt) is model and obiekt.pk == pk:
                 return obiekt
         return None
+
+    def widoczne_pk_ze_strony(self, uczelnia, model, obiekty):
+        # Atrapa trzyma wyłącznie żywe rekordy — wszystko, co w niej jest,
+        # jest z definicji wystawiane. Nagrobki ma ``test_nagrobki.py``.
+        return frozenset(obiekt.pk for obiekt in obiekty)
 
     def zbiory_widocznosci(self, uczelnia, obiekty):
         return ZbioryWidocznosci()
@@ -807,7 +816,7 @@ def test_zepsuty_rekord_jest_pomijany_a_harvest_leci_dalej(
     )
     zgloszenia = []
     monkeypatch.setattr(
-        czasowniki.rollbar, "report_exc_info", lambda *a, **kw: zgloszenia.append(1)
+        czasowniki, "capture_exception", lambda *a, **kw: zgloszenia.append(1)
     )
 
     korzen = wykonaj(
@@ -835,7 +844,7 @@ def test_zepsuty_rekord_podnosi_wyjatek_gdy_wlaczone_przerywanie(
     monkeypatch.setattr(
         czasowniki, "serializer_dla", lambda slug: _serializer_wybuchajacy_na(2)
     )
-    monkeypatch.setattr(czasowniki.rollbar, "report_exc_info", lambda *a, **kw: None)
+    monkeypatch.setattr(czasowniki, "capture_exception", lambda *a, **kw: None)
 
     with pytest.raises(RuntimeError):
         wykonaj(
@@ -851,7 +860,7 @@ def test_zepsuty_rekord_w_get_record_nie_jest_pomijany(monkeypatch, uczelnia, re
     monkeypatch.setattr(
         czasowniki, "serializer_dla", lambda slug: _serializer_wybuchajacy_na(2)
     )
-    monkeypatch.setattr(czasowniki.rollbar, "report_exc_info", lambda *a, **kw: None)
+    monkeypatch.setattr(czasowniki, "capture_exception", lambda *a, **kw: None)
 
     with pytest.raises(RuntimeError):
         wykonaj(

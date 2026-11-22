@@ -1,37 +1,15 @@
-@import "settings";
-@import "common";
-@import "checkbox";
-@import "main_page_buttons";
-@import "browse";
-@import "browse_autorzy";
-@import "browse_jednostki";
-@import "external_links";
-@import "ranking_autorow";
-@import "pagination";
-@import "wizard_forms";
+// Motyw niebieski (jasny). Treść motywu: _app-blue-baza.scss.
+@import "app-blue-baza";
+@import "tryb-ciemny";
 
-@import "foundation-includes";
-/* Blue theme checkbox and radio button accent color */
-/* Using Foundation's primary color (#1779ba) for the blue theme */
-input[type=checkbox],
-input[type=radio] {
-  accent-color: #1779ba;
-}
-
-
-.dyscypliny .dyscyplina-3\.1 {
-  background-color: #bfe1bc;
-  border-color: gray;
-}
-
-.dyscypliny .dyscyplina-3\.2 {
-  background-color: #f2d397;
-  border-color: gray;
-}
-
-.dyscypliny .dyscyplina-3\.4 {
-  background-color: #d4bafb;
-  border-color: gray;
+// Domyślnie jasny niezależnie od ustawień systemu. Wersja ciemna — tylko
+// gdy odwiedzający wybierze ją pigułką ☀ | ☾ na pasku menu
+// (`<html data-tryb-kolorow="ciemny">`). `screen` — wydruk zawsze jasny.
+@media screen {
+  @include bpp-tryb-ciemny(
+    $primary-color,
+    $korzen: 'html:where([data-tryb-kolorow="ciemny"])'
+  );
 }
 
 // Print styles — MUSZA byc ostatnie: Foundation (foundation-print-styles

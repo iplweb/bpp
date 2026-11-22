@@ -42,7 +42,7 @@
     // Status section styles
     &__status-excluded {
         margin-top: 10px;
-        color: #6c757d;
+        color: var(--bpp-tekst-przygaszony, #6c757d);
     }
 
     &__status-excluded-text {
@@ -56,7 +56,7 @@
     }
 
     &__error-title {
-        color: #c60f13;
+        color: var(--bpp-tekst-blad, #c60f13);
     }
 
     &__error-message {
@@ -70,7 +70,7 @@
 
     // JSON code block styling
     &__json-pre {
-        background: #fff5f5;
+        background: var(--bpp-tlo-pow-2, #fff5f5);
         padding: 12px 15px;
         border-radius: 5px;
         border: 2px solid #ffc9c9;
@@ -87,7 +87,7 @@
 
     &__details-summary {
         cursor: pointer;
-        color: #1779ba;
+        color: var(--bpp-akcent, #1779ba);
         font-weight: 500;
         padding: 8px 0;
     }
@@ -98,10 +98,10 @@
 
     // JSON data display pre block
     &__json-data-pre {
-        background: #f8f9fa;
+        background: var(--bpp-tlo-pow-2, #f8f9fa);
         padding: 15px;
         border-radius: 5px;
-        border: 1px solid #e9ecef;
+        border: 1px solid var(--bpp-ramka, #e9ecef);
         overflow-x: auto;
         max-height: 500px;
         overflow-y: auto;
@@ -117,7 +117,7 @@
     &__hint {
         margin-top: 15px;
         font-size: 0.9em;
-        color: #666;
+        color: var(--bpp-tekst-przygaszony, #666);
     }
 
     // Message history styles
@@ -131,7 +131,7 @@
     }
 
     &__message-block {
-        background: white;
+        background: var(--bpp-tlo-pow, white);
         border-radius: 4px;
         padding: 12px;
         margin-bottom: 12px;
@@ -165,7 +165,7 @@
         margin-right: 10px;
 
         &--info {
-            color: #1779ba;
+            color: var(--bpp-akcent, #1779ba);
         }
 
         &--success {
@@ -177,12 +177,12 @@
         }
 
         &--error {
-            color: #cc4b37;
+            color: var(--bpp-tekst-blad, #cc4b37);
         }
     }
 
     &__message-datetime {
-        color: #2c3e50;
+        color: var(--bpp-tekst, #2c3e50);
     }
 
     &__message-label {
@@ -190,20 +190,20 @@
     }
 
     &__message-content {
-        color: #495057;
+        color: var(--bpp-tekst, #495057);
         font-size: 0.95em;
     }
 
     &__traceback-summary {
         cursor: pointer;
-        color: #dc3545;
+        color: var(--bpp-tekst-blad, #dc3545);
         font-weight: 500;
     }
 
     &__traceback-pre {
         margin-top: 10px;
         padding: 10px;
-        background: #f8f9fa;
+        background: var(--bpp-tlo-pow-2, #f8f9fa);
         border-radius: 4px;
         font-size: 0.85em;
         overflow-x: auto;
@@ -217,7 +217,7 @@
     // Raw messages view
     &__raw-messages {
         display: none;
-        background-color: #f4f4f4;
+        background-color: var(--bpp-tlo-pow-2, #f4f4f4);
         padding: 10px;
         border-radius: 3px;
         max-height: 500px;
@@ -252,7 +252,7 @@
 
     // Filter section
     &__filter-fieldset {
-        border: 1px solid #cacaca;
+        border: 1px solid var(--bpp-ramka, #cacaca);
         padding: 15px;
         margin: 20px 0;
     }
@@ -332,7 +332,7 @@
 
     // Excluded icon in table
     &__icon--excluded {
-        color: #6c757d;
+        color: var(--bpp-tekst-przygaszony, #6c757d);
     }
 
     // Error row
@@ -377,7 +377,7 @@
 
 // JSON syntax colors (used by JavaScript highlighting)
 .json-highlight__key {
-    color: #d63031;
+    color: var(--bpp-tekst-blad, #d63031);
     font-weight: 700;
 }
 
@@ -387,17 +387,17 @@
 }
 
 .json-highlight__boolean {
-    color: #0984e3;
+    color: var(--bpp-akcent, #0984e3);
     font-weight: 600;
 }
 
 .json-highlight__null {
-    color: #636e72;
+    color: var(--bpp-tekst-przygaszony, #636e72);
     font-weight: 600;
 }
 
 .json-highlight__number {
-    color: #6c5ce7;
+    color: var(--bpp-akcent, #6c5ce7);
     font-weight: 600;
 }
 
@@ -415,17 +415,17 @@
 
     h4 {
         font-size: 0.9rem;
-        color: #666;
+        color: var(--bpp-tekst-przygaszony, #666);
         margin-bottom: 10px;
     }
 
     .button-group .button.secondary {
         background-color: transparent;
-        border: 1px solid #cacaca;
-        color: #333;
+        border: 1px solid var(--bpp-ramka, #cacaca);
+        color: var(--bpp-tekst, #333);
 
         &:hover {
-            background-color: #f0f0f0;
+            background-color: var(--bpp-tlo-hover, #f0f0f0);
         }
     }
 }
@@ -442,7 +442,7 @@
 .progress-bar-container {
     width: 100px;
     height: 6px;
-    background-color: #e0e0e0;
+    background-color: var(--bpp-tlo-pow-2, #e0e0e0);
     border-radius: 3px;
     overflow: hidden;
     display: none;

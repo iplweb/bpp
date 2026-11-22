@@ -6,10 +6,22 @@ from django.db.models import JSONField
 
 from bpp.fields import YearField
 from bpp.models import ModelZNazwa, ModelZPBN_UID
+from bpp.models.soft_delete import BppSoftDeleteSlownikMixin
 from bpp.util.text import slugify_wydawca
 
 
-class Wydawca(ModelZNazwa, ModelZPBN_UID):
+class Wydawca(BppSoftDeleteSlownikMixin, ModelZNazwa, ModelZPBN_UID):
+    """Wydawca. Kosz: tylko wydawca, na którego nie wskazuje żaden żywy rekord
+    (publikacje — także doktoraty i habilitacje — aliasy, zgłoszenia;
+    rekordy z kosza nie blokują); poziomy wydawcy zostają przy nim."""
+
+    pomijane_relacje_kosza = frozenset(
+        {
+            "bpp.Poziom_Wydawcy.wydawca",
+            "importer_publikacji.ImportSession.wydawca",
+        }
+    )
+
     alias_dla = models.ForeignKey(
         "self", on_delete=models.CASCADE, null=True, blank=True
     )
@@ -24,7 +36,11 @@ class Wydawca(ModelZNazwa, ModelZPBN_UID):
 
     # Slug nigdy nie składa się z samych cyfr — patrz ``slugify_wydawca``.
     slug = AutoSlugField(
-        populate_from="nazwa", unique=True, max_length=512, slugify=slugify_wydawca
+        populate_from="nazwa",
+        unique=True,
+        max_length=512,
+        slugify=slugify_wydawca,
+        manager_name="global_objects",
     )
 
     class Meta:

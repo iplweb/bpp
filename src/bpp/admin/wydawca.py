@@ -2,14 +2,18 @@ from dal import autocomplete
 from django import forms
 from django.contrib import admin
 from django.core.exceptions import ValidationError
+from reversion_compare.admin import CompareVersionAdmin
 
 from bpp.admin.core import DynamicAdminFilterMixin
 from bpp.admin.filters import PBN_UID_IDObecnyFilter
 from bpp.admin.helpers.djangoql import BppDjangoQLSearchMixin
+from bpp.admin.helpers.mixins import BppSoftDeleteAdminMixin
 from bpp.const import PBN_UID_LEN
 from bpp.models import Wydawca
 from bpp.models.wydawca import Poziom_Wydawcy
 from pbn_api.models import Publisher
+
+from .helpers.wersje import HistoriaWersjiMixin
 
 
 class Poziom_WydawcyInlineForm(forms.ModelForm):
@@ -92,7 +96,14 @@ class WydawcaForm(forms.ModelForm):
 
 
 @admin.register(Wydawca)
-class WydawcaAdmin(DynamicAdminFilterMixin, BppDjangoQLSearchMixin, admin.ModelAdmin):
+class WydawcaAdmin(
+    DynamicAdminFilterMixin,
+    BppDjangoQLSearchMixin,
+    BppSoftDeleteAdminMixin,
+    # Historia zmian (FD#587): tuż przed terminalną klasą admina.
+    HistoriaWersjiMixin,
+    CompareVersionAdmin,
+):
     djangoql_completion_enabled_by_default = False
     djangoql_completion = True
 

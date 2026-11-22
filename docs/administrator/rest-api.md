@@ -4,15 +4,22 @@ BPP wystawia publiczne REST API pod adresem `/api/v1/`. Domyślnie działa
 w całości — ta strona opisuje, jak wyłączyć jego części, gdy z jakiegoś
 powodu nie chcesz ich udostępniać.
 
-Ustawienia znajdziesz w panelu administracyjnym: **Uczelnia** → sekcja
-**REST API (/api/v1/)**.
+Ustawienia znajdziesz w panelu administracyjnym (konto z prawem edycji uczelni):
+
+1. Przejdź do **Redagowanie → Struktura → Uczelnia** i kliknij nazwę swojej uczelni.
+2. Rozwiń sekcję **REST API (/api/v1/)** — domyślnie jest zwinięta.
+3. Zaznacz lub odznacz przełączniki i kliknij **Zapisz**.
+
+![Sekcja „REST API (/api/v1/)” formularza uczelni z sześcioma ponumerowanymi przełącznikami](../images/administrator/rest-api/01-przelaczniki.png)
+
+Numery na zrzucie odpowiadają kolejności opisu poniżej.
 
 Przełączniki dotyczą wyłącznie `/api/v1/`. Nie wpływają na OAI-PMH
 (`/oai/`), eksport CERIF (`/cerif-oai/`) ani na działanie samej strony WWW.
 
 ## Sześć przełączników
 
-### Włącz REST API (/api/v1/)
+### 1. Włącz REST API (/api/v1/)
 
 Główny wyłącznik. Odznaczenie sprawia, że całe `/api/v1/` odpowiada kodem
 404 z informacją, że API zostało wyłączone przez administratora.
@@ -21,7 +28,7 @@ Główny wyłącznik. Odznaczenie sprawia, że całe `/api/v1/` odpowiada kodem
 i działają niezależnie. Dzięki temu wyłączenie API nie psuje list
 publikacji wklejonych na stronach WWW jednostek.
 
-### REST API tylko dla zalogowanych
+### 2. REST API tylko dla zalogowanych
 
 Domyślnie **odznaczone**. Po zaznaczeniu niezalogowany klient dostaje kod
 401 zamiast danych; zalogowany pracuje normalnie.
@@ -33,18 +40,18 @@ Użyj tego, gdy chcesz udostępniać dane integracjom (które potrafią się
 uwierzytelnić), ale nie chcesz, żeby ktokolwiek mógł anonimowo pobrać
 całą bazę.
 
-### Udostępniaj dane bibliograficzne
+### 3. Udostępniaj dane bibliograficzne
 
 Słowniki (charaktery formalne, języki, dyscypliny), struktura uczelni,
 autorzy, rekordy publikacji, źródła i wydawcy. To główna zawartość API.
 
-### Udostępniaj wyszukiwanie
+### 4. Udostępniaj wyszukiwanie
 
 Endpoint `/api/v1/szukaj/` — pełnotekstowe wyszukiwanie po wszystkich
 publikacjach. Jest kosztowny obliczeniowo i objęty osobnym limitem
 zapytań; odznacz, jeśli mimo limitu obciąża serwer.
 
-### Udostępniaj kafelki do osadzania
+### 5. Udostępniaj kafelki do osadzania
 
 Endpointy `/api/v1/recent_author_publications/`
 i `/api/v1/recent_unit_publications/`, z których korzysta widget
@@ -61,7 +68,7 @@ i `/api/v1/recent_unit_publications/`, z których korzysta widget
     HTML widocznego w „pokaż źródło", żeby osoba opiekująca się tamtą
     stroną mogła się zorientować, co się stało.
 
-### Udostępniaj narzędzia redaktorskie
+### 6. Udostępniaj narzędzia redaktorskie
 
 Zapytania DjangoQL (`/api/v1/zapytanie/`) i raport slotów uczelni.
 
@@ -77,7 +84,12 @@ zaznaczony — decyduje on wyłącznie o tym, czy w ogóle istnieją.
 | „Tylko dla zalogowanych", klient anonimowy | 401 | REST API tego serwisu jest dostępne wyłącznie dla zalogowanych użytkowników. |
 
 Strona `/api/v1/` przy częściowym wyłączeniu pokazuje wyłącznie czynne
-grupy — nie reklamuje adresów, które i tak nie odpowiedzą.
+grupy — nie reklamuje adresów, które i tak nie odpowiedzą. Na zrzucie
+poniżej odznaczono **Udostępniaj dane bibliograficzne**: z listy zniknęły
+publikacje, autorzy, źródła i słowniki, a adres `/api/v1/autor/` odpowiada
+kodem 404 z komunikatem i polem `powod`.
+
+![Strona /api/v1/ bez danych bibliograficznych oraz odpowiedź 404 z polem powod dla /api/v1/autor/](../images/administrator/rest-api/02-wylaczona-grupa.png)
 
 Odpowiedzi wynikające z tych przełączników zawierają dodatkowe pole
 `powod`. Dzięki niemu program po drugiej stronie odróżnia świadomą decyzję

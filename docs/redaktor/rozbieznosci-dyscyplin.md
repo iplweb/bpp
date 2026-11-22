@@ -197,11 +197,11 @@ dyscyplina autora **nie należy** do dyscyplin czasopisma przypisanych na
 rok artykułu. Tak jak lista autorów, z menu **operacje** otwiera się
 zawężona do lat od 2022 i autorów pracujących na uczelni.
 
-![Rozbieżności dyscyplin źródeł: kolumny „Zrodlo” i „Dyscyplina naukowa”](../images/redaktor/rozbieznosci-dyscyplin/09-zrodla.png)
+![Rozbieżności dyscyplin źródeł: kolumny „Źródło” i „Dyscyplina naukowa”](../images/redaktor/rozbieznosci-dyscyplin/09-zrodla.png)
 
-Kolumny: tytuł artykułu, **Rok**, **Zrodlo** (czasopismo), **Autor**,
-**Dyscyplina naukowa** (dyscyplina autora w tym artykule), **Punkty kbn**
-(punkty MNiSW artykułu) i **Charakter formalny**. W panelu **Filtruj**
+Kolumny: **Wydawnictwo ciągłe** (tytuł artykułu), **Rok**, **Źródło**
+(czasopismo), **Autor**, **Dyscyplina naukowa** (dyscyplina autora w tym
+artykule), **Punkty MNiSW** (punkty artykułu) i **Charakter formalny**. W panelu **Filtruj**
 są m.in. filtry **rok**, **dyscyplina naukowa**, **Autor pracuje na
 uczelni?**, **punkty MNISW/MEIN** (np. „większe niż 20”) i **charakter
 formalny**.

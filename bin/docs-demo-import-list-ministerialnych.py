@@ -10,6 +10,10 @@ What this does:
 - wipes the points and disciplines of the demo journals for the demo year
   (``WYKAZ_DEMO_ROK`` in bin/docs-screenshots.py) and the editor's earlier
   ministerial-list imports,
+- makes sure the BPP journals of the made-up list (WYKAZ_DEMO_WIERSZE in
+  bin/docs-screenshots.py) exist: generator danych demo losuje nazwy i ISSN-y
+  czasopism, więc brakujące dostają nazwę i ISSN z wykazu — kolejne
+  alfabetycznie czasopisma spoza wykazu,
 - seeds a few values the made-up ministerial list then compares against:
   one journal with different points, one with identical points and
   disciplines, one with a discipline the list no longer has.
@@ -21,10 +25,13 @@ Idempotent: re-running restores the same state, so the scenario
 from django.contrib.auth.models import Group
 from password_policies.models import PasswordHistory
 
+from bpp.demo_data.zrzuty import ZRODLA_Z_WYKAZU, brak, issn_zdublowane
 from bpp.models import BppUser, Dyscyplina_Naukowa, Zrodlo
 from import_list_ministerialnych.models import ImportListMinisterialnych
 
 ROK = 2025  # keep in sync with WYKAZ_DEMO_ROK in bin/docs-screenshots.py
+# Czasopisma z wykazu, które mają być w BPP (nazwa, ISSN): ZRODLA_Z_WYKAZU
+# w bpp.demo_data.zrzuty — zgodnie z WYKAZ_DEMO_WIERSZE w bin/docs-screenshots.py.
 
 u, _ = BppUser.objects.get_or_create(
     username="vesemir",
@@ -42,6 +49,26 @@ if not PasswordHistory.objects.filter(user=u).exists():
 for op in ImportListMinisterialnych.objects.filter(owner=u):
     op.plik.delete(save=False)  # keeps file names (and breadcrumbs) suffix-free
     op.delete()
+
+# Generator danych demo losuje nazwy i ISSN-y czasopism (po rozszerzeniu puli
+# nazw motywu w commicie 4be76d7aa ten sam --seed daje inne), więc czasopisma
+# z wykazu, których brakuje, tworzymy z kolejnych alfabetycznie czasopism
+# spoza wykazu — deterministycznie i z ich dotychczasowymi pracami. Bez
+# czasopism, których ISSN ma też inne czasopismo (np. pary z
+# bin/docs-demo-duplikaty.py): zmiana nazwy rozbiłaby taką parę.
+issny = [issn for _, issn in ZRODLA_Z_WYKAZU]
+wolne = iter(
+    Zrodlo.objects.exclude(issn__in=issny + issn_zdublowane()).order_by("nazwa", "pk")
+)
+for nazwa, issn in ZRODLA_Z_WYKAZU:
+    if Zrodlo.objects.filter(issn=issn).exists():
+        continue
+    z = next(wolne, None)
+    if z is None:
+        brak(f"czasopismo, które można przemianować na „{nazwa}”")
+    print(f"{z.nazwa} ({z.issn}) -> {nazwa} ({issn})")
+    z.nazwa, z.issn = nazwa, issn
+    z.save()
 
 for z in Zrodlo.objects.all():
     z.punktacja_zrodla_set.filter(rok=ROK).delete()

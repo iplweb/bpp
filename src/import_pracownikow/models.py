@@ -1,4 +1,5 @@
 # Create your models here.
+import os
 from datetime import date
 
 from django import forms
@@ -212,6 +213,12 @@ class ImportPracownikow(LiveOperation):
     stages = ["Wczytywanie", "Integracja"]
 
     @property
+    def nazwa_pliku(self):
+        """Sama nazwa pliku do pokazania użytkownikowi — bez wewnętrznej
+        ścieżki w storage (``protected/import_pracownikow/…``)."""
+        return os.path.basename(self.plik_xls.name or "")
+
+    @property
     def faza_struktury(self):
         """Krok 1: podgląd po analizie — rozstrzygamy jednostki (i tytuły) oraz
         zapisujemy strukturę. Import osób i szczegóły autorów są tu ZABLOKOWANE."""
@@ -266,7 +273,7 @@ class ImportPracownikow(LiveOperation):
         # liveops.runner._handle_error zapisuje traceback WYŁĄCZNIE do bazy (pole
         # `traceback`) — bez śladu na konsoli workera i bez zgłoszenia do
         # rollbara. Owijamy właściwy przebieg, żeby błąd był WIDOCZNY: surowy
-        # traceback na stderr (konsola celery/run-site) + rollbar (konwencja
+        # traceback na stderr (konsola celery/run-site) + monitoring błędów (konwencja
         # bg-tasków w projekcie), po czym re-raise — liveops i tak zapisze
         # traceback do bazy i pokaże błąd w UI/adminie.
         try:
@@ -275,10 +282,10 @@ class ImportPracownikow(LiveOperation):
             import sys
             import traceback as _traceback
 
-            import rollbar
+            from bpp.zglaszanie_bledow import capture_exception
 
             _traceback.print_exc()
-            rollbar.report_exc_info(sys.exc_info())
+            capture_exception(sys.exc_info())
             raise
 
     def _wykonaj(self, p):
@@ -291,10 +298,12 @@ class ImportPracownikow(LiveOperation):
             with p.stage("Wczytywanie"):
                 analizuj(self, p)
         elif self.stan == self.STAN_ZATWIERDZONY:
+            from bpp.wersjonowanie import jako_uzytkownik
             from import_pracownikow.pipeline.integrate import integruj
 
-            # Etap „Integracja" (zapis do bazy).
-            with p.stage("Integracja"):
+            # Etap „Integracja" (zapis do bazy). Utworzone rekordy mają
+            # w historii (admin „Historia") właściciela importu.
+            with p.stage("Integracja"), jako_uzytkownik(self.owner):
                 integruj(self, p)
         else:
             p.log(f"run() w nieoczekiwanym stanie: {self.stan!r} — pomijam")
@@ -1595,9 +1604,22 @@ class ImportPracownikowRow(ImportRowMixin, models.Model):
         if self.stany_pol_snapshot is None:
             self.stany_pol_snapshot = self.stany_pol()
         self.log_zmian = {"autor": [], "autor_jednostka": []}
-        self._integrate_autor()
-        self._przepnij_aj_po_defragmentacji()
-        self._integrate_autor_jednostka()
+        # Historia autora w adminie (LogEntry + wersja). Autor wpisu:
+        # właściciel importu (``jako_uzytkownik`` w ``run``) albo konto
+        # systemowe.
+        from bpp.wersjonowanie import zmiana_rekordu
+
+        with zmiana_rekordu(None, self.autor, "") as zmiana:
+            self._integrate_autor()
+            self._przepnij_aj_po_defragmentacji()
+            self._integrate_autor_jednostka()
+            zmiany = self.log_zmian["autor"] + [
+                f"zatrudnienie: {z}" for z in self.log_zmian["autor_jednostka"]
+            ]
+            zmiana.pomin = not zmiany
+            zmiana.komentarz = (
+                f"Import pracowników nr {self.parent_id}: {'; '.join(zmiany)}."
+            )
         self.save()
 
     def _przepnij_aj_po_defragmentacji(self):

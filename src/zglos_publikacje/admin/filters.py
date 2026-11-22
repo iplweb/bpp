@@ -107,7 +107,16 @@ class StanObslugiFilter(SimpleListFilter):
     #: „Do obsługi". Bez nich koniunkcja jest sprzeczna z definicji
     #: i kliknięcie osoby w filtrze „zaimportował" ZAWSZE dawało zero
     #: wyników — dokładnie ta klasa błędu, którą naprawia ``status``.
-    POLA_WYLACZAJACE_ZAWEZENIE = ("status", "zaimportowal", "zaimportowano")
+    #:
+    #: ``is_deleted`` — filtr „♻️ Kosz": „🗑️ Tylko skasowane" ma pokazać
+    #: CAŁY kosz (jak w reszcie admina), a nie tylko skasowane zgłoszenia
+    #: „do obsługi" — spam i odrzucone to najczęstsi lokatorzy kosza.
+    POLA_WYLACZAJACE_ZAWEZENIE = (
+        "status",
+        "zaimportowal",
+        "zaimportowano",
+        "is_deleted",
+    )
 
     DO_OBSLUGI = "do_obslugi"
     ZALATWIONE = "zalatwione"

@@ -451,6 +451,24 @@ cerif-validate: ## Waliduj endpoint CERIF (URL=...) walidatorem euroCRIS
 tests-only-playwright: playwright-check ## Tylko testy Playwright (wolne; -n wg RAM-u)
 	$(XDIST_GUARD) uv run pytest -n $(PLAYWRIGHT_WORKERS) $(XDIST_MEMORY) $(if $(XDIST_MEMORY),--xdist-memory-performance-cores --xdist-memory-default-worker 1900) -m "playwright" $(_store_durations) $(_normalize_durations)
 
+# Benchmark liczby workerow xdist na tej maszynie (bin/xdist_bench.py):
+# kolejne przebiegi z roznym -n, najlepszy wynik laduje w
+# `.pytest-xdist-bench.json` (gitignored) i od tej pory przycina `-n auto`
+# (hook w conftest.py: min(RAM, bench)). Wolne -- pelna suita na kazde -n.
+# Opcje: XDIST_BENCH_CANDIDATES=12,16,20  XDIST_BENCH_REPEAT=2
+XDIST_BENCH_CANDIDATES ?=
+XDIST_BENCH_REPEAT ?= 1
+_xdist_bench_opts = $(if $(XDIST_BENCH_CANDIDATES),--candidates $(XDIST_BENCH_CANDIDATES),) --repeat $(XDIST_BENCH_REPEAT)
+
+xdist-bench: ## Zmierz najlepsze -n dla testów bez Playwright i zapisz per maszyna
+	uv run python bin/xdist_bench.py --marker "not playwright" $(_xdist_bench_opts)
+
+xdist-bench-playwright: playwright-check ## Zmierz najlepsze -n dla testów Playwright i zapisz per maszyna
+	uv run python bin/xdist_bench.py --marker "playwright" $(_xdist_bench_opts)
+
+xdist-bench-show: ## Pokaż zapisane wyniki xdist-bench dla tej maszyny
+	uv run python bin/xdist_bench.py --show
+
 uv-sync: ## uv sync --all-extras (synchronizacja zależności Pythona)
 	uv sync --no-install-project --all-extras
 
@@ -862,7 +880,7 @@ loc: clean ## Pokaż statystyki liczby linii (pygount)
 	pygount -N ... -F "...,staticroot,migrations,fixtures" src --format=summary
 
 
-DOCKER_VERSION=202611.1408
+DOCKER_VERSION=202611.1409
 
 # Cache configuration for docker buildx bake
 # - local: use local cache (default for local builds)

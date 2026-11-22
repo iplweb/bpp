@@ -6,6 +6,8 @@ from django.http.response import (
 )
 from django.urls.base import reverse
 
+from bpp.rekord_usuniety import RekordUsuniety
+
 lookup_map_user = {
     "bpp.autor": ("bpp:browse_autor", lambda x: (None, {"slug": x.slug})),
     "bpp.jednostka": ("bpp:browse_jednostka", lambda x: (None, {"slug": x.slug})),
@@ -63,6 +65,17 @@ def _resolve_lookup_url(lookup_map, klass, source):
     return url, f
 
 
+def _obiekt_spoza_kosza(klass, object_id):
+    """``get_object_for_this_type`` pyta ``_base_manager`` (widzi kosz) —
+    przekierowanie zdradziłoby slug rekordu z kosza. Zamiast tego 410:
+    ten sam wynik, który dałaby docelowa strona publiczna rekordu z kosza,
+    tylko bez przekierowania niosącego slug (``bpp.rekord_usuniety``)."""
+    obiekt = klass.get_object_for_this_type(pk=object_id)
+    if getattr(obiekt, "deleted_at", None) is not None:
+        raise RekordUsuniety(type(obiekt))
+    return obiekt
+
+
 def global_nav_redir(request, param):
     if request.method != "GET":
         return HttpResponseNotAllowed(["GET"])
@@ -99,7 +112,7 @@ def global_nav_redir(request, param):
             for x in object_id.replace("(", "").replace(")", "").split(",")
         ]
 
-    object = klass.get_object_for_this_type(pk=object_id)
+    object = _obiekt_spoza_kosza(klass, object_id)
 
     url, f = _resolve_lookup_url(lookup_map, klass, source)
     args, kwargs = f(object)

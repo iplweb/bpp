@@ -1,5 +1,6 @@
 {% extends "base.html" %}
 {% load static %}
+{% load polish_inflection %}
 
 {% block extratitle %}
     Szukaj zapytaniem
@@ -15,9 +16,9 @@
         .zapytanie-model-group .button {
             margin: 0;
             cursor: pointer;
-            background: #fff;
-            color: #2c3e50;
-            border: 1px solid #cfd8dc;
+            background: var(--bpp-tlo-pow, #fff);
+            color: var(--bpp-tekst, #2c3e50);
+            border: 1px solid var(--bpp-ramka, #cfd8dc);
             font-weight: 500;
             display: inline-flex;
             align-items: center;
@@ -31,7 +32,7 @@
             height: 1px;
         }
         .zapytanie-model-group .button:hover {
-            background: #f1f5f9;
+            background: var(--bpp-tlo-hover, #f1f5f9);
         }
         .zapytanie-model-group .button:has(input[type="radio"]:checked) {
             background: #1779ba;
@@ -90,8 +91,8 @@
         }
 
         .zapytanie-help-card {
-            background: #f8fafc;
-            border: 1px solid #e2e8f0;
+            background: var(--bpp-tlo-pow-2, #f8fafc);
+            border: 1px solid var(--bpp-ramka, #e2e8f0);
             border-radius: 4px;
             padding: 0.75rem 1rem;
             margin-top: 0.5rem;
@@ -99,15 +100,15 @@
         .zapytanie-help-card summary {
             cursor: pointer;
             font-weight: 600;
-            color: #1779ba;
+            color: var(--bpp-akcent, #1779ba);
         }
         .zapytanie-help-card kbd {
             display: inline-block;
             padding: 1px 6px;
             font-family: monospace;
             font-size: 0.85em;
-            background: #fff;
-            border: 1px solid #cbd5e0;
+            background: var(--bpp-tlo-pow, #fff);
+            border: 1px solid var(--bpp-ramka, #cbd5e0);
             border-radius: 3px;
         }
         .zapytanie-help-card table { margin-top: 0.5rem; }
@@ -123,7 +124,7 @@
         }
         .zapytanie-history-card .history-remove {
             background: transparent;
-            border: 1px solid #e2e8f0;
+            border: 1px solid var(--bpp-ramka, #e2e8f0);
             border-radius: 3px;
             color: #94a3b8;
             cursor: pointer;
@@ -133,9 +134,9 @@
             padding: 2px 6px;
         }
         .zapytanie-history-card .history-remove:hover {
-            color: #dc2626;
+            color: var(--bpp-tekst-blad, #dc2626);
             border-color: #fca5a5;
-            background: #fef2f2;
+            background: var(--bpp-tlo-hover, #fef2f2);
         }
         .zapytanie-history-card td { vertical-align: top; }
         .zapytanie-history-card .history-count-cell {
@@ -158,7 +159,7 @@
             margin-bottom: 0.7rem;
         }
         .zapytanie-help-sublevel ul.examples > li > em {
-            color: #475569;
+            color: var(--bpp-tekst-przygaszony, #475569);
             font-size: 0.85rem;
         }
         .zapytanie-help-sublevel ul.examples code {
@@ -167,10 +168,10 @@
             padding: 0.5rem 0.7rem;
             font-family: 'SF Mono', Monaco, 'Cascadia Code', 'Roboto Mono', Consolas, monospace;
             font-size: 0.85rem;
-            background: #f1f5f9;
-            border: 1px solid #cbd5e1;
+            background: var(--bpp-tlo-pow-2, #f1f5f9);
+            border: 1px solid var(--bpp-ramka, #cbd5e1);
             border-radius: 4px;
-            color: #0f172a;
+            color: var(--bpp-akcent, #0f172a);
             cursor: pointer;
             white-space: pre-wrap;
             word-break: break-word;
@@ -179,7 +180,7 @@
             user-select: text;
         }
         .zapytanie-help-sublevel ul.examples code:hover {
-            background: #e0f2fe;
+            background: var(--bpp-tlo-info, #e0f2fe);
             border-color: #38bdf8;
         }
         .zapytanie-help-sublevel ul.examples code:active {
@@ -191,15 +192,15 @@
         }
         /* Klikalny wiersz tabeli wynikow */
         tr[data-href] { cursor: pointer; }
-        tr[data-href]:hover { background: #f8fafc; }
+        tr[data-href]:hover { background: var(--bpp-tlo-hover, #f8fafc); }
         tr[data-href] a, tr[data-href] button { cursor: auto; }
         .rekord-id-cell {
             font-family: 'SF Mono', Monaco, monospace;
             font-size: 0.85rem;
-            color: #64748b;
+            color: var(--bpp-tekst-przygaszony, #64748b);
             white-space: nowrap;
         }
-        /* Inline error dla AJAX (Sformatuj / Wyjasnij liczby) */
+        /* Inline error dla AJAX (Sformatuj / Wyjaśnij liczby) */
         #zapytanie-error[hidden] { display: none; }
         #zapytanie-error {
             white-space: pre-wrap;
@@ -216,7 +217,7 @@
         #zapytanie-explain-panel[hidden] { display: none; }
         #zapytanie-explain-panel { margin-top: 1.2rem; }
         .zapytanie-explain-legend {
-            font-size: 0.8rem; color: #6b7280; margin: 0.2rem 0 0.6rem;
+            font-size: 0.8rem; color: var(--bpp-tekst-przygaszony, #6b7280); margin: 0.2rem 0 0.6rem;
         }
         ul.zapytanie-explain-tree,
         ul.zapytanie-explain-tree ul {
@@ -230,8 +231,8 @@
             text-align: right; font-variant-numeric: tabular-nums;
             font-weight: 600; color: #9ca3af;
         }
-        .zapytanie-explain-tree .node-count.zero { color: #dc2626; }
-        .zapytanie-explain-tree .node-count.dead { color: #b45309; }
+        .zapytanie-explain-tree .node-count.zero { color: var(--bpp-tekst-blad, #dc2626); }
+        .zapytanie-explain-tree .node-count.dead { color: var(--bpp-tekst-ostrzezenie, #b45309); }
         .zapytanie-explain-tree .node-label {
             font-family: 'SF Mono', Monaco, 'Cascadia Code', monospace;
             font-size: 0.85rem;
@@ -258,14 +259,14 @@
 
         <div class="callout secondary" role="note" style="border-left: 4px solid #f39c12;">
             <p style="margin: 0;">
-                <strong>Podglad technologiczny.</strong>
-                Ta funkcja jest udostepniona w ramach <em>podgladu
-                technologicznego</em> &mdash; pozwala przeszukiwac rekordy
-                i autorow zapytaniami w jezyku
+                <strong>Podgląd technologiczny.</strong>
+                Ta funkcja jest udostępniona w ramach <em>podglądu
+                technologicznego</em> &mdash; pozwala przeszukiwać rekordy
+                i autorów zapytaniami w języku
                 <a href="https://github.com/ivelum/djangoql" target="_blank" rel="noopener">DjangoQL</a>,
                 podobnie jak w panelu administracyjnym Django. Interfejs
-                i zakres dostepnych pol moga sie zmieniac. Jesli cos nie
-                dziala albo masz pomysl na ulepszenie &mdash; daj znac.
+                i zakres dostępnych pól mogą się zmieniać. Jeśli coś nie
+                działa albo masz pomysł na ulepszenie &mdash; daj znac.
             </p>
         </div>
 
@@ -274,7 +275,7 @@
                 {% for radio in form.model %}
                     <label class="button" title="Przeszukaj model {{ radio.choice_label }}">
                         {{ radio.tag }}
-                        {% if radio.choice_value == "rekord" %}
+                        {% if radio.data.value == "rekord" %}
                             <span class="fi-page-multiple" aria-hidden="true"></span>
                         {% else %}
                             <span class="fi-torso" aria-hidden="true"></span>
@@ -298,30 +299,30 @@
             <details class="zapytanie-help-card">
                 <summary>
                     <span class="fi-info" aria-hidden="true"></span>
-                    Skladnia DjangoQL &mdash; rozwin pomoc i przyklady
+                    Składnia DjangoQL &mdash; rozwiń pomoc i przykłady
                 </summary>
                 <p style="margin-top: 0.75rem;">
-                    Zapytania pisz w postaci <code>pole operator wartosc</code>,
-                    laczone przez <kbd>and</kbd> / <kbd>or</kbd>. Stringi
-                    obejmij cudzyslowem. Edytor podpowiada nazwy pol i
-                    wartosci &mdash; uzyj klawiszy <kbd>&uarr;</kbd>
-                    <kbd>&darr;</kbd> do wyboru, <kbd>Tab</kbd> aby wstawic.
+                    Zapytania pisz w postaci <code>pole operator wartość</code>,
+                    łączone przez <kbd>and</kbd> / <kbd>or</kbd>. Stringi
+                    obejmij cudzysłowem. Edytor podpowiada nazwy pól i
+                    wartości &mdash; użyj klawiszy <kbd>&uarr;</kbd>
+                    <kbd>&darr;</kbd> do wyboru, <kbd>Tab</kbd>, aby wstawić.
                 </p>
                 <table class="hover stack unstriped">
                     <thead>
                         <tr><th>Operator</th><th>Znaczenie</th></tr>
                     </thead>
                     <tbody>
-                        <tr><td>=, !=</td><td>rowne / rozne</td></tr>
-                        <tr><td>&gt;, &gt;=, &lt;, &lt;=</td><td>porownania liczbowe / dat</td></tr>
+                        <tr><td>=, !=</td><td>równe / różne</td></tr>
+                        <tr><td>&gt;, &gt;=, &lt;, &lt;=</td><td>porównania liczbowe / dat</td></tr>
                         <tr><td>~, !~</td><td>zawiera / nie zawiera (tekst)</td></tr>
-                        <tr><td>startswith, endswith</td><td>zaczyna sie / konczy</td></tr>
-                        <tr><td>in, not in</td><td>nalezy do listy: <code>rok in (2023, 2024)</code></td></tr>
+                        <tr><td>startswith, endswith</td><td>zaczyna się / kończy</td></tr>
+                        <tr><td>in, not in</td><td>należy do listy: <code>rok in (2023, 2024)</code></td></tr>
                     </tbody>
                 </table>
                 <p style="margin-top: 1rem;">
-                    <strong>Przyklady &mdash; rozwin wg poziomu trudnosci.
-                    Kliknij wybrane zapytanie, zeby je wstawic do edytora.</strong>
+                    <strong>Przykłady &mdash; rozwiń wg poziomu trudności.
+                    Kliknij wybrane zapytanie, żeby je wstawić do edytora.</strong>
                 </p>
 
                 {% for level in examples %}
@@ -339,7 +340,7 @@
                                         <code data-model="{{ group.model }}"
                                               role="button"
                                               tabindex="0"
-                                              title="Kliknij, aby wstawic do zapytania (model: {{ group.model }})">{{ query }}</code>
+                                              title="Kliknij, aby wstawić do zapytania (model: {{ group.model }})">{{ query }}</code>
                                     </li>
                                 {% endfor %}
                             </ul>
@@ -348,43 +349,43 @@
                 {% endfor %}
 
                 <details class="zapytanie-help-sublevel">
-                    <summary><strong>Wskazowki dla power-userow</strong></summary>
+                    <summary><strong>Wskazówki dla power-userów</strong></summary>
                     <ul>
                         <li>
                             <strong>Grupowanie</strong> &mdash; nawiasy do logicznych grup: <code>(A or B) and C</code>.
                         </li>
                         <li>
-                            <strong>Negacja</strong> &mdash; <code>not</code> przed wyrazeniem: <code>not (charakter_formalny.skrot = "AC")</code>.
+                            <strong>Negacja</strong> &mdash; <code>not</code> przed wyrażeniem: <code>not (charakter_formalny.skrot = "AC")</code>.
                         </li>
                         <li>
-                            <strong>Pola relacji</strong> &mdash; po kropce, mozna zagniezdzac: <code>charakter_formalny.skrot</code>, <code>zrodlo.wydawca.nazwa</code>.
+                            <strong>Pola relacji</strong> &mdash; po kropce, można zagnieżdżać: <code>charakter_formalny.skrot</code>, <code>zrodlo.wydawca.nazwa</code>.
                         </li>
                         <li>
-                            <strong>Listy wartosci</strong> &mdash; <code>in (...)</code> oszczedza wielu <code>or</code>.
+                            <strong>Listy wartości</strong> &mdash; <code>in (...)</code> oszczędza wielu <code>or</code>.
                         </li>
                         <li>
-                            <strong>Daty / datetime</strong> &mdash; ISO-string w cudzyslowie: <code>"2025-01-01"</code>.
+                            <strong>Daty / datetime</strong> &mdash; ISO-string w cudzysłowie: <code>"2025-01-01"</code>.
                         </li>
                         <li>
                             <strong>Pusty FK</strong> &mdash; <code>pole != None</code> / <code>pole = None</code>; dla stringa <code>pole = ""</code>.
                         </li>
                         <li>
-                            <strong>Granice zakresow</strong> &mdash; brak <code>between</code>, zlozyc z <code>&gt;= X and &lt;= Y</code>.
+                            <strong>Granice zakresów</strong> &mdash; brak <code>between</code>, złóż z <code>&gt;= X and &lt;= Y</code>.
                         </li>
                     </ul>
                 </details>
 
                 {% if pivot_presety %}
                     <details class="zapytanie-help-sublevel">
-                        <summary><strong>Gotowe tabele krzyzowe</strong> &mdash; jeden klik do macierzy</summary>
+                        <summary><strong>Gotowe tabele krzyżowe</strong> &mdash; jeden klik do macierzy</summary>
                         {% if query %}
                             <p>
-                                Linki dokladaja wiersz/kolumne/metryke tabeli
-                                krzyzowej do WYSLANEGO zapytania
-                                (<code>{{ query }}</code>) i przelaczaja postac
-                                wyniku na "tabela krzyzowa". Zmiany wpisane w
-                                pole powyzej, ale niewyslane, nie sa w nich
-                                uwzglednione &mdash; najpierw kliknij "Szukaj".
+                                Linki dokładają wiersz/kolumnę/metrykę tabeli
+                                krzyżowej do WYSŁANEGO zapytania
+                                (<code>{{ query }}</code>) i przełączają postać
+                                wyniku na „tabela krzyżowa”. Zmiany wpisane w
+                                pole powyżej, ale niewysłane, nie są w nich
+                                uwzględnione &mdash; najpierw kliknij „Szukaj”.
                             </p>
                             <ul class="examples">
                                 {% for preset in pivot_presety %}
@@ -401,11 +402,11 @@
                             {# robil NIC. Pokazujemy wiec, co jest w ofercie, #}
                             {# ale bez klikalnej obietnicy. #}
                             <p>
-                                Skroty do gotowych macierzy pojawia sie tutaj
+                                Skróty do gotowych macierzy pojawią się tutaj
                                 <strong>po wykonaniu zapytania</strong> &mdash;
-                                dokladaja wiersz/kolumne/metryke do wyslanego
-                                zapytania, a puste zapytanie nie zwraca zadnych
-                                wynikow. W ofercie:
+                                dokładają wiersz/kolumnę/metrykę do wysłanego
+                                zapytania, a puste zapytanie nie zwraca żadnych
+                                wyników. W ofercie:
                             </p>
                             <ul class="examples">
                                 {% for preset in pivot_presety %}
@@ -433,15 +434,15 @@
                     <span class="fi-magnifying-glass" aria-hidden="true"></span> Szukaj
                 </button>
                 <button type="button" class="button secondary" id="zapytanie-format"
-                        title="Sformatuj zapytanie — wciecia, wieloliniowo (Shift+Enter wstawia nowa linie)">
+                        title="Sformatuj zapytanie — wcięcia, wieloliniowo (Shift+Enter wstawia nową linię)">
                     <span class="fi-indent-more" aria-hidden="true"></span> Sformatuj
                 </button>
                 <button type="button" class="button secondary" id="zapytanie-explain"
-                        title="Pokaz liczbe trafien dla kazdej galezi zapytania">
-                    <span class="fi-results" aria-hidden="true"></span> Wyjasnij liczby
+                        title="Pokaż liczbę trafień dla każdej gałęzi zapytania">
+                    <span class="fi-results" aria-hidden="true"></span> Wyjaśnij liczby
                 </button>
                 <a href="{% url 'bpp:zapytanie' %}" class="button secondary">
-                    Wyczysc
+                    Wyczyść
                 </a>
             </p>
             <div id="zapytanie-error" class="callout alert" role="alert" hidden></div>
@@ -451,19 +452,19 @@
                  id="zapytanie-history" style="display: none; margin-top: 1rem;">
             <summary>
                 <span class="fi-clock" aria-hidden="true"></span>
-                Historia zapytan
+                Historia zapytań
                 (<span id="zapytanie-history-count">0</span>)
             </summary>
-            <p style="margin-top: 0.5rem; color: #64748b; font-size: 0.85rem;">
-                <em>Historia ostatnich 20 roznych zapytan z tej przegladarki.
-                Kliknij wpis, zeby je przywrocic.</em>
+            <p style="margin-top: 0.5rem; color: var(--bpp-tekst-przygaszony, #64748b); font-size: 0.85rem;">
+                <em>Historia ostatnich 20 różnych zapytań z tej przeglądarki.
+                Kliknij wpis, żeby je przywrócić.</em>
             </p>
             <table class="hover stack unstriped" style="margin-top: 0.5rem;">
                 <thead>
                     <tr>
                         <th style="width: 5rem;">Model</th>
                         <th>Zapytanie</th>
-                        <th style="text-align: right; width: 5rem;">Wynikow</th>
+                        <th style="text-align: right; width: 5rem;">Wyników</th>
                         <th style="width: 9rem;">Kiedy</th>
                         <th style="width: 2rem;"></th>
                     </tr>
@@ -474,34 +475,34 @@
                 <button type="button"
                         class="button tiny alert hollow"
                         id="zapytanie-history-clear">
-                    Wyczysc cala historie
+                    Wyczyść całą historię
                 </button>
             </p>
         </details>
 
         <section id="zapytanie-explain-panel" hidden>
             <h3 style="margin-bottom: 0.2rem;">
-                Rozbicie zapytania &mdash; liczba trafien w galeziach
+                Rozbicie zapytania &mdash; liczba trafień w gałęziach
             </h3>
             <p class="zapytanie-explain-legend">
-                Ile rekordow pasuje do kazdej galezi z osobna.
-                <span style="color:#dc2626;font-weight:600;">Czerwone</span> &mdash;
-                tu przeciecie schodzi do zera (koncza sie dane);
-                <span style="color:#b45309;font-weight:600;">bursztynowe</span> &mdash;
-                martwa galaz <code>or</code>, ktora nic nie wnosi.
+                Ile rekordów pasuje do każdej gałęzi z osobna.
+                <span style="color:var(--bpp-tekst-blad, #dc2626);font-weight:600;">Czerwone</span> &mdash;
+                tu przecięcie schodzi do zera (kończą się dane);
+                <span style="color:var(--bpp-tekst-ostrzezenie, #b45309);font-weight:600;">bursztynowe</span> &mdash;
+                martwa gałąź <code>or</code>, która nic nie wnosi.
             </p>
             <div id="zapytanie-explain-tree"></div>
         </section>
 
         {% if error %}
             <div class="callout alert" role="alert">
-                <strong>Blad zapytania:</strong>
+                <strong>Błąd zapytania:</strong>
                 <pre style="white-space: pre-wrap; word-break: break-word; margin: 0;">{{ error }}</pre>
             </div>
         {% endif %}
 
         {% if results is not None %}
-            <h2>Wyniki ({{ count }} rekord{{ count|pluralize:"y,ow" }})</h2>
+            <h2>Wyniki ({{ count }} {% odmiana_liczebnikowa "rekord" count %})</h2>
             {% if query %}
                 <p><em>Zapytanie:</em> <code>{{ query }}</code> na modelu <strong>{{ model_key }}</strong></p>
             {% endif %}
@@ -593,8 +594,8 @@
                     {% include "bpp/_zapytanie_pager.html" %}
                 {% endif %}
             {% else %}
-                <p><em>Brak rekordow pasujacych do zapytania.</em></p>
-                {# „Dlaczego 0?" pokazuje auto-otwierany panel „Wyjasnij liczby" #}
+                <p><em>Brak rekordów pasujących do zapytania.</em></p>
+                {# „Dlaczego 0?" pokazuje auto-otwierany panel „Wyjaśnij liczby" #}
                 {# (z podswietlaniem skladni) — patrz autoExplain + zapytanie.js. #}
             {% endif %}
         {% endif %}
@@ -633,7 +634,7 @@
 
     function fmtRelative(ts) {
         var diff = (Date.now() - ts) / 1000;
-        if (diff < 60) return "przed chwila";
+        if (diff < 60) return "przed chwilą";
         if (diff < 3600) return Math.floor(diff / 60) + " min temu";
         if (diff < 86400) return Math.floor(diff / 3600) + " godz. temu";
         if (diff < 7 * 86400) return Math.floor(diff / 86400) + " dni temu";
@@ -675,7 +676,7 @@
         link.href = "?model=" + encodeURIComponent(item.model) +
             "&query=" + encodeURIComponent(item.query);
         link.className = "history-query";
-        link.title = "Kliknij, aby przywrocic to zapytanie";
+        link.title = "Kliknij, aby przywrócić to zapytanie";
         link.textContent = item.query;
         queryTd.appendChild(link);
 
@@ -691,8 +692,8 @@
         var rm = document.createElement("button");
         rm.type = "button";
         rm.className = "history-remove";
-        rm.title = "Usun ten wpis z historii";
-        rm.setAttribute("aria-label", "Usun wpis");
+        rm.title = "Usuń ten wpis z historii";
+        rm.setAttribute("aria-label", "Usuń wpis");
         rm.textContent = "✕"; // ✕
         rm.dataset.ts = String(item.ts);
         rm.addEventListener("click", function(e) {
@@ -738,7 +739,7 @@
         var clearBtn = document.getElementById("zapytanie-history-clear");
         if (clearBtn) {
             clearBtn.addEventListener("click", function() {
-                if (window.confirm("Wyczyscic cala historie zapytan?")) {
+                if (window.confirm("Wyczyścić całą historię zapytań?")) {
                     save([]);
                     render();
                 }
@@ -784,7 +785,7 @@
         document.querySelectorAll(".zapytanie-help-sublevel")
             .forEach(function(level) {
                 var summary = level.querySelector("summary");
-                if (summary && /Wskazowki/i.test(summary.textContent)) return;
+                if (summary && /Wskaz[oó]wki/i.test(summary.textContent)) return;
                 var currentModel = null;
                 // querySelectorAll daje elementy w kolejnosci dokumentu.
                 level.querySelectorAll("p > em, ul").forEach(function(el) {
@@ -802,7 +803,7 @@
                                 code.setAttribute("role", "button");
                                 code.setAttribute("tabindex", "0");
                                 code.title =
-                                    "Kliknij, aby wstawic do zapytania " +
+                                    "Kliknij, aby wstawić do zapytania " +
                                     "(model: " + currentModel + ")";
                             });
                     }

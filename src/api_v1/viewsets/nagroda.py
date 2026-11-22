@@ -35,7 +35,7 @@ def _modele_rekordow():
 def warunek_ukrytych_nagrod(ukryte_statusy):
     """``Q`` dopasowujące nagrody przypięte do obiektów niewidocznych w API
     (autor z ``pokazuj_w_api=False``, rekord z ``nie_eksportuj_przez_api`` albo
-    ze statusem korekty z ``ukryte_statusy``).
+    ze statusem korekty z ``ukryte_statusy``, obiekt w koszu).
 
     Jedno podzapytanie ``object_id IN (SELECT pk …)`` na typ obiektu — bez
     iterowania po wierszach w Pythonie.
@@ -57,6 +57,16 @@ def warunek_ukrytych_nagrod(ukryte_statusy):
             content_type=ContentType.objects.get_for_model(model),
             object_id__in=model.objects.filter(ukryj).values("pk"),
         )
+
+    # Nagrody obiektów z kosza (publikacje, autor) też są niewidoczne.
+    for model in apps.get_app_config("bpp").get_models():
+        if hasattr(model, "deleted_objects") and isinstance(
+            model._meta.pk, IntegerField
+        ):
+            warunek |= Q(
+                content_type=ContentType.objects.get_for_model(model),
+                object_id__in=model.deleted_objects.values("pk"),
+            )
 
     return warunek
 

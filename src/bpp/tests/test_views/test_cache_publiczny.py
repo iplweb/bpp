@@ -839,6 +839,20 @@ def test_strona_rekordu_naprawde_sie_cachuje(
     """
     from django.contrib.contenttypes.models import ContentType
 
+    from bpp.models import Charakter_Formalny, Status_Korekty, Typ_KBN
+
+    # The fixture lets model_bakery invent the required FKs (charakter
+    # formalny, typ KBN, status korekty) with random ~255-char names, and the
+    # record page renders them. Roughly 1 in 500 runs such a name contains
+    # "csrf" (case-insensitive), the safeguard rightly refuses to cache the
+    # page and the test flakes. Pin real dictionary entries instead.
+    wydawnictwo_ciagle.charakter_formalny = Charakter_Formalny.objects.get(skrot="AC")
+    wydawnictwo_ciagle.typ_kbn = Typ_KBN.objects.get(skrot="PO")
+    wydawnictwo_ciagle.status_korekty = Status_Korekty.objects.get(
+        nazwa="przed korektą"
+    )
+    wydawnictwo_ciagle.save()
+
     # Wzorzec jak w istniejących testach (``test_autorzy_dla_opisu_skrocony``):
     # ``browse_praca`` przekierowuje na URL ze slugiem, stąd ``follow=True``.
     url = reverse(

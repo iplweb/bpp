@@ -322,7 +322,7 @@ class LogScalaniaAdmin(DynamicAdminFilterMixin, admin.ModelAdmin):
                     "Budowanie linku do zmodyfikowanego rekordu w adminie "
                     f"LogScalania (object_id={obj.object_id})",
                     logger=logger,
-                    do_rollbar=True,
+                    do_monitoringu=True,
                 )
                 return f"{obj.content_type.name} #{obj.object_id}"
         return "-"
@@ -348,7 +348,7 @@ class LogScalaniaAdmin(DynamicAdminFilterMixin, admin.ModelAdmin):
                         "Pobieranie reprezentacji tekstowej zmodyfikowanego "
                         f"rekordu LogScalania (object_id={obj.object_id})",
                         logger=logger,
-                        do_rollbar=True,
+                        do_monitoringu=True,
                     )
                     obj_str = f"{obj.content_type.name} #{obj.object_id}"
 
@@ -358,7 +358,7 @@ class LogScalaniaAdmin(DynamicAdminFilterMixin, admin.ModelAdmin):
                     "Budowanie linku do zmodyfikowanego rekordu w widoku "
                     f"szczegółów LogScalania (object_id={obj.object_id})",
                     logger=logger,
-                    do_rollbar=True,
+                    do_monitoringu=True,
                 )
                 return f"{obj.content_type.name} #{obj.object_id}"
         return "-"
@@ -488,7 +488,11 @@ class DuplicateScanRunAdmin(DynamicAdminFilterMixin, admin.ModelAdmin):
             return
 
         # Start new scan
-        scan_for_duplicates.delay(user_id=request.user.pk)
+        from .views.helpers import okres_pk_dla_skanu
+
+        scan_for_duplicates.delay(
+            user_id=request.user.pk, okres_pk=okres_pk_dla_skanu(request)
+        )
         self.message_user(
             request,
             "Nowe skanowanie duplikatów zostało uruchomione w tle.",

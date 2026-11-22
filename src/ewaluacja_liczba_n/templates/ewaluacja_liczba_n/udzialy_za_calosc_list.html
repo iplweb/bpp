@@ -13,7 +13,7 @@
 {% block content %}
 <div class="row">
     <div class="large-12 columns">
-        <h1><i class="fi-list"></i> Lista udziałów za cały okres (2022-2025)</h1>
+        <h1><i class="fi-list"></i> Lista udziałów za cały okres ({{ okres_ewaluacji }})</h1>
 
         <div class="row">
             <div class="medium-8 columns">
@@ -139,7 +139,7 @@
                         <th class="text-center">
                             <a href="{% get_sort_url 'udzialy' %}"
                                class="sort-link">
-                                Ilość udziałów<br>(2022-2025)
+                                Ilość udziałów<br>({{ okres_ewaluacji }})
                                 {% if current_sort == 'udzialy' %}
                                     <i class="fi-arrow-down"></i>
                                 {% elif current_sort == '-udzialy' %}
@@ -242,8 +242,8 @@
     .form-inline .input-group-label {
         display: table-cell;
         padding: 0.5rem 1rem;
-        background: #e6e6e6;
-        border: 1px solid #cacaca;
+        background: var(--bpp-tlo-pow-2, #e6e6e6);
+        border: 1px solid var(--bpp-ramka, #cacaca);
         border-right: 0;
         white-space: nowrap;
         vertical-align: middle;
@@ -254,7 +254,7 @@
         height: 2.5rem;
     }
     tfoot tr {
-        background-color: #f0f0f0;
+        background-color: var(--bpp-tlo-pow-2, #f0f0f0);
         font-weight: bold;
     }
     .sort-link {
@@ -263,7 +263,7 @@
         display: block;
     }
     .sort-link:hover {
-        color: #1779ba;
+        color: var(--bpp-akcent, #1779ba);
     }
     .sort-link i {
         font-size: 0.9em;

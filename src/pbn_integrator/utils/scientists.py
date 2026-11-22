@@ -8,13 +8,14 @@ import sys
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from typing import TYPE_CHECKING
 
-import rollbar
 from django.db import IntegrityError, transaction
 from django.db.models import Q
 from pbn_client.const import DELETED
 
 from bpp.models import Autor, Autor_Dyscyplina, Tytul, Uczelnia
 from bpp.util import pbar
+from bpp.wersjonowanie import zarejestruj_utworzenie, zmiana_rekordu
+from bpp.zglaszanie_bledow import capture_exception
 from pbn_api.models import Scientist
 from pbn_integrator.utils.constants import CPU_COUNT
 from pbn_integrator.utils.django_imports import _ensure_django_imports
@@ -87,7 +88,7 @@ def _zapisz_osobe_z_instytucji(person):
     Returns:
         True if saved successfully, False if the person was skipped — brak
         ``polonUuid`` (tylko log) albo błąd integralności, np. kolizja
-        ``personId`` (log + Rollbar). Import całej kadry leci dalej.
+        ``personId`` (log + monitoring błędów). Import całej kadry leci dalej.
     """
     from pbn_api.models.institution import Institution
     from pbn_api.models.osoba_z_instytucji import OsobaZInstytucji
@@ -145,11 +146,11 @@ def _zapisz_osobe_z_instytucji(person):
         #    nie poprawka techniczna),
         #  - NOT NULL na polach, które PBN przysłał jako null,
         #  - każdy inny błąd integralności.
-        # Dlatego do Rollbara idzie treść naruszonego ograniczenia — bez niej
+        # Dlatego do monitoringu idzie treść naruszonego ograniczenia — bez niej
         # wszystkie te przypadki wyglądają w raporcie identycznie.
-        rollbar.report_exc_info(
+        capture_exception(
             sys.exc_info(),
-            extra_data={
+            extra={
                 "personId": person.get("personId"),
                 "polonUuid": polon_uuid,
                 "firstName": person.get("firstName"),
@@ -159,7 +160,7 @@ def _zapisz_osobe_z_instytucji(person):
         )
         logger.info(
             f"UWAGA: Błąd integralności dla osoby {person.get('personId')} "
-            f"(polonUuid {polon_uuid}): {e}. Pomijam wpis (zalogowano do Rollbar)."
+            f"(polonUuid {polon_uuid}): {e}. Pomijam wpis (zgłoszono do monitoringu błędów)."
         )
         return False
 
@@ -231,12 +232,12 @@ def pobierz_ludzi_z_uczelni(
             try:
                 future.result()
             except Exception:
-                # Catch-all w wątku — pełny traceback + Rollbar, żeby błąd
+                # Catch-all w wątku — pełny traceback + monitoring błędów, żeby błąd
                 # przetwarzania naukowca nie zniknął bez śladu.
                 logger.exception("Błąd przetwarzania naukowca")
-                rollbar.report_exc_info(
+                capture_exception(
                     sys.exc_info(),
-                    extra_data={"phase": "integruj_scientists_future_result"},
+                    extra={"phase": "integruj_scientists_future_result"},
                 )
 
     from pbn_api.models.institution import Institution
@@ -253,6 +254,15 @@ def pobierz_ludzi_z_uczelni(
             )
 
         _zapisz_osobe_z_instytucji(person)
+
+
+def _powiaz_autora_z_pbn(autor, scientist_pk, skad):
+    """Ustaw autorowi ``pbn_uid`` — z wpisem i wersją w historii autora."""
+    with zmiana_rekordu(
+        None, autor, f"Powiązano z naukowcem PBN {scientist_pk} ({skad})."
+    ):
+        autor.pbn_uid_id = scientist_pk
+        autor.save()
 
 
 def utworz_wpis_dla_jednego_autora(person):
@@ -280,11 +290,27 @@ def utworz_wpis_dla_jednego_autora(person):
     if not orcid:
         orcid = None
 
+    pbn_id = pbn_json_wez_pbn_id_stare(person)
+
+    # ORCID / PBN ID / PBN UID autora z KOSZA → pomiń i zgłoś (nie tworzymy
+    # duplikatu, nie wskrzeszamy).
+    from pbn_integrator.kosz import pomin_jesli_koliduje
+
+    if pomin_jesli_koliduje(
+        Autor,
+        "scientists",
+        f"autor {person.pk} (ORCID {orcid})",
+        orcid=orcid,
+        pbn_id=pbn_id,
+        pbn_uid=person,
+    ):
+        return None
+
     autor = Autor.objects.create(
         imiona=cv["object"].pop("name", "[brak danych]"),
         nazwisko=cv["object"].pop("lastName", "[brak danych]"),
         orcid=orcid,
-        pbn_id=pbn_json_wez_pbn_id_stare(person),
+        pbn_id=pbn_id,
         pbn_uid_id=person.pk,
         tytul=bpp_tytul,
     )
@@ -304,6 +330,7 @@ def utworz_wpis_dla_jednego_autora(person):
     from pbn_integrator.importer import assert_dictionary_empty
 
     assert_dictionary_empty(cv["object"])
+    zarejestruj_utworzenie(None, autor, "Zaimportowano z PBN.")
     return autor
 
 
@@ -338,8 +365,7 @@ def integruj_autorow_z_uczelni(
 
         if autor is not None:
             if autor.pbn_uid_id is None:
-                autor.pbn_uid_id = person.mongoId
-                autor.save()
+                _powiaz_autora_z_pbn(autor, person.mongoId, "integracja autorów")
             else:
                 if autor.pbn_uid_id != person.pk:
                     logger.info(
@@ -383,8 +409,7 @@ def weryfikuj_orcidy(client: PBNClient, instutition_id):
             continue
 
         sciencist = zapisz_mongodb(res[0], Scientist)
-        autor.pbn_uid = sciencist
-        autor.save()
+        _powiaz_autora_z_pbn(autor, sciencist.pk, "weryfikacja ORCID w PBN")
         logger.info(
             f"Dla autora {autor} utworzono powiazanie z rekordem PBN {sciencist} po ORCID"
         )
@@ -574,5 +599,4 @@ def integruj_wszystkich_niezintegrowanych_autorow():
             logger.info(
                 f"==> integracja wszystkich: ustawiam {autor} na {sciencist.pk}"
             )
-            autor.pbn_uid = sciencist
-            autor.save()
+            _powiaz_autora_z_pbn(autor, sciencist.pk, "integracja niezintegrowanych")

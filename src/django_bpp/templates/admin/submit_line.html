@@ -7,6 +7,18 @@
                 {% url opts|admin_urlname:'delete' original.pk|admin_urlquote as delete_url %}
                 <li class="grp-float-left"><a href="{% add_preserved_filters delete_url %}"
                                               class="grp-button grp-delete-link">{% trans "Delete" %}</a></li>
+            {% elif usun_zablokowany_powod %}
+                {# FD#539: zamiast znikać, przycisk jest wyszarzony; wyjaśnienie w dymku (title). #}
+                {# Ten sam element <a> co aktywny „Usuń" (bez href) — ten sam rozmiar w stopce. #}
+                <li class="grp-float-left"><a class="grp-button grp-delete-link" role="link" aria-disabled="true"
+                                              title="{{ usun_zablokowany_powod }}"
+                                              style="opacity: .45; cursor: not-allowed;">🔒 {% trans "Delete" %}</a></li>
+            {% endif %}
+            {% if kosz_przywroc_url %}
+                {# Rekord z kosza (tylko do odczytu): przywrócenie tego jednego rekordu. #}
+                {# formaction wysyła formularz zmiany (z csrf) na widok przywracania. #}
+                <li><input type="submit" value="♻️ Przywróć" class="grp-button grp-default" name="_przywroc"
+                           formaction="{{ kosz_przywroc_url }}" formnovalidate/></li>
             {% endif %}
             {% if show_save %}
                 <li><input type="submit" value="{% trans 'Save' %}" class="grp-button grp-default" name="_save"/></li>
@@ -23,7 +35,7 @@
                            name="_continue"/></li>
             {% endif %}
             {% if show_save_and_pbn %}
-                <li><input type="submit" value="Zapisz i wyślij do PBN" class="grp-button" name="_continue_and_pbn"/>
+                <li><input type="submit" value="Zapisz i wyślij do PBN" class="grp-button" name="_continue_and_pbn"/></li>
                 <li><input type="submit" value="Zapisz i wyślij do PBN w tle" class="grp-button"
                            name="_continue_and_pbn_later"/>
                 </li>

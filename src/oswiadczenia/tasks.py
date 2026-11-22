@@ -6,7 +6,6 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 from io import BytesIO
 from typing import Any
 
-import rollbar
 from celery import shared_task
 from django.core.files.base import ContentFile
 from django.db.models import Q
@@ -14,6 +13,8 @@ from django.template.loader import render_to_string
 from django.utils import timezone
 
 from bpp.models import Autor_Dyscyplina, Autorzy, Uczelnia
+from bpp.zglaszanie_bledow import capture_message
+from oswiadczenia.templatetags.oswiadczenia_tags import szablony_oswiadczenia
 
 
 @functools.cache
@@ -37,7 +38,7 @@ DEJAVU_BOLD_FONT_PATH = "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf"
 
 
 def check_fonts_available():
-    """Check if DejaVuSans fonts are available, report to Rollbar if not."""
+    """Check if DejaVuSans fonts are available, report to error monitoring if not."""
     missing_fonts = []
     if not os.path.exists(DEJAVU_FONT_PATH):
         missing_fonts.append(DEJAVU_FONT_PATH)
@@ -45,10 +46,10 @@ def check_fonts_available():
         missing_fonts.append(DEJAVU_BOLD_FONT_PATH)
 
     if missing_fonts:
-        rollbar.report_message(
+        capture_message(
             "DejaVuSans fonts not found - Polish characters in PDFs will not render correctly",
             level="warning",
-            extra_data={"missing_fonts": missing_fonts},
+            extra={"missing_fonts": missing_fonts},
         )
         return False
     return True
@@ -175,7 +176,7 @@ def build_queryset_for_task(task, uczelnia=None):
 def render_declaration_html(decl, uczelnia):
     """Render a single declaration to full HTML document."""
     html_content = render_to_string(
-        "oswiadczenia/tresc_jednego_oswiadczenia.html",
+        szablony_oswiadczenia(decl["rekord"].rok),
         {
             "autor": decl["autor"],
             "object": decl["rekord"],
@@ -322,7 +323,7 @@ def generate_docx_sequential(zf, declarations, uczelnia, task):
 def render_declaration_content_only(decl, uczelnia):
     """Render a single declaration content (without full HTML wrapper)."""
     return render_to_string(
-        "oswiadczenia/tresc_jednego_oswiadczenia.html",
+        szablony_oswiadczenia(decl["rekord"].rok),
         {
             "autor": decl["autor"],
             "object": decl["rekord"],

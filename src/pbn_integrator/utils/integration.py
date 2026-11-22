@@ -2,15 +2,15 @@
 
 from __future__ import annotations
 
+import contextvars
 import logging
 import os
 import sys
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from typing import TYPE_CHECKING
 
-import rollbar
-
 from bpp.models import Rekord
+from bpp.zglaszanie_bledow import capture_exception
 from pbn_api.models import OswiadczenieInstytucji, Publication
 from pbn_integrator.utils.multiprocessing_utils import (
     _bede_uzywal_bazy_danych_z_multiprocessing_z_django,
@@ -49,6 +49,25 @@ def ustaw_pbn_uid_jesli_brak(elem, bpp_rekord):
             return
 
         if bpp_rekord.pbn_uid_id is None:
+            from pbn_integrator.kosz import (
+                rekord_w_koszu_po_pbn_uid,
+                zglos_rekord_w_koszu,
+            )
+
+            # PBN UID trzyma rekord z kosza (duplikat usunięty w BPP) — nie
+            # przepinamy go (bezwarunkowe UNIQUE → IntegrityError), tylko
+            # pomijamy i raportujemy, jak import (``pbn_integrator/kosz.py``).
+            w_koszu = rekord_w_koszu_po_pbn_uid(elem.pk)
+            if w_koszu is not None:
+                zglos_rekord_w_koszu(
+                    w_koszu,
+                    elem,
+                    "integracja:ustaw-pbn-uid",
+                    dopisek=f"Rekord „{bpp_rekord}” pasuje do tej publikacji, "
+                    f"ale PBN UID trzyma rekord z kosza — przywróć tamten rekord "
+                    f"albo scal je ręcznie. ",
+                )
+                return
             p = bpp_rekord.original
             p.pbn_uid_id = elem.pk
             p.save(update_fields=["pbn_uid_id"])
@@ -190,12 +209,12 @@ def _integruj_publikacje_threaded(  # noqa: C901
 
         except Exception as e:
             # Catch-all w wątku roboczym — błąd MUSI zostawić ślad (pełny
-            # traceback + Rollbar), inaczej cały batch znika po cichu.
+            # traceback + monitoring błędów), inaczej cały batch znika po cichu.
             with _print_lock:
                 logger.exception("Błąd w batchu integracji %s", batch_no)
-            rollbar.report_exc_info(
+            capture_exception(
                 sys.exc_info(),
-                extra_data={"batch_no": batch_no, "phase": "integruj_single_part"},
+                extra={"batch_no": batch_no, "phase": "integruj_single_part"},
             )
             return batch_no, False, str(e)
 
@@ -224,8 +243,12 @@ def _integruj_publikacje_threaded(  # noqa: C901
         with ThreadPoolExecutor(max_workers=max_workers) as executor:
             # Submit all tasks
             futures = {
+                # copy_context: wątek roboczy nie dziedziczy ContextVar-ów,
+                # a z nich bierze się autor wpisów historii (bpp.wersjonowanie).
                 executor.submit(
-                    _thread_safe_integruj_single_part, batch_data
+                    contextvars.copy_context().run,
+                    _thread_safe_integruj_single_part,
+                    batch_data,
                 ): batch_data[1]
                 for batch_data in batches
             }
@@ -244,9 +267,9 @@ def _integruj_publikacje_threaded(  # noqa: C901
                         logger.exception(
                             "Nieoczekiwany błąd przy odbiorze batcha %s", batch_no
                         )
-                    rollbar.report_exc_info(
+                    capture_exception(
                         sys.exc_info(),
-                        extra_data={
+                        extra={
                             "batch_no": batch_no,
                             "phase": "integruj_future_result",
                         },

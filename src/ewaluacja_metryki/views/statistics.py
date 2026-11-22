@@ -1,6 +1,7 @@
 from django.db.models import Avg, Count, Sum
 from django.views.generic import ListView
 
+from ewaluacja_common.okres import okres_dla_request
 from raport_slotow.uczelnia_helper import uczelnia_dla_odczytu
 
 from ..models import MetrykaAutora
@@ -31,19 +32,22 @@ class StatystykiView(
     def get_queryset(self):
         # Top 20 autorów wg średniej PKDaut/slot (scoped do uczelni)
         uczelnia = uczelnia_dla_odczytu(self.request)
+        okres = okres_dla_request(self.request)
         return scope_metryki(
             MetrykaAutora.objects.select_related(
                 "autor", "dyscyplina_naukowa", "jednostka"
             ),
             uczelnia,
+            okres,
         ).order_by("-srednia_za_slot_nazbierana")[:20]
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
 
         uczelnia = uczelnia_dla_odczytu(self.request)
+        okres = okres_dla_request(self.request)
         # Scoped base queryset — wszystkie metryki dla oglądanej uczelni
-        wszystkie = scope_metryki(MetrykaAutora.objects.all(), uczelnia)
+        wszystkie = scope_metryki(MetrykaAutora.objects.all(), uczelnia, okres)
 
         # Keep the old name for backward compatibility in template
         context["top_autorzy"] = context["top_autorzy_pkd"]
@@ -55,6 +59,7 @@ class StatystykiView(
                     "autor", "dyscyplina_naukowa", "jednostka"
                 ),
                 uczelnia,
+                okres,
             )
             .filter(slot_nazbierany__gt=0)
             .order_by("-slot_nazbierany", "-srednia_za_slot_nazbierana")[:20]
@@ -77,6 +82,7 @@ class StatystykiView(
                     "autor", "dyscyplina_naukowa", "jednostka"
                 ),
                 uczelnia,
+                okres,
             )
             .filter(srednia_za_slot_nazbierana__gt=0)
             .order_by("srednia_za_slot_nazbierana")[:20]
@@ -89,6 +95,7 @@ class StatystykiView(
                     "autor", "dyscyplina_naukowa", "jednostka"
                 ),
                 uczelnia,
+                okres,
             )
             .filter(slot_nazbierany__gt=0)
             .order_by("slot_nazbierany")[:20]
@@ -103,6 +110,7 @@ class StatystykiView(
                     "autor", "dyscyplina_naukowa", "jednostka"
                 ),
                 uczelnia,
+                okres,
             )
             .filter(srednia_za_slot_nazbierana=0)
             .order_by("autor__nazwisko", "autor__imiona")

@@ -2,24 +2,129 @@
 
 ## Dodawanie autorów do rekordów
 
-Aby dodać autora do rekordu, podczas dodawania lub edycji nowego rekordu kliknij
-"Dodaj kolejne powiązanie autora z wyd. ciągłym / wyd. zwartym / patentem ...".
+Aby dodać autora do rekordu, podczas dodawania lub edycji rekordu kliknij
+„Dodaj kolejne(go)(-ną)(-ny) powiązanie autora z wyd. ciągłym” (w wydawnictwie
+zwartym — „…z wyd. zwartym”, w patencie — „…z patentem”) pod listą autorów.
+
+W formularzu rekordu można w ten sposób wpisać do 25 autorów. Przy dłuższej
+liście autorów skorzystaj z przycisku **Autorzy** u góry formularza rekordu.
 
 ## Zmiana kolejności autorów
 
-Aby zmienić kolejność autorów, skorzystaj z przycisku przeciągania oraz techniki
-"przeciągnij i upuść". Po prostu kliknij i przytrzymaj lewym przyciskiem myszy na
-przycisku przeciągania i przeciągnij dane powiązanie autora z rekordem w górę
-lub w dół. Przycisk przeciągania wygląda w następujący sposób:
+Kolejność autorów zmienia się techniką „przeciągnij i upuść”:
 
-![Przycisk przeciągania](../images/editor/przycisk_przeciagania.png)
+1. Zwiń powiązania autorów — ikoną ⇑ („zwiń wszystkie”) na pasku
+   „Powiązania autorów z rekordem” albo klikając nagłówek pojedynczego
+   powiązania. Zwinięta lista mieści się na ekranie, co ma znaczenie
+   zwłaszcza na mniejszych monitorach.
+2. Chwyć lewym przyciskiem myszy przycisk przeciągania (ikona ⇕ po prawej
+   stronie nagłówka powiązania) i przeciągnij powiązanie w górę lub w dół.
+3. Zapisz rekord.
 
-Możesz "zwinąć" formularz powiązania autora z rekordem aby zmiana kolejności autorów
-była łatwiejsza, co ma szczególne znaczenie na monitorach o niewielkiej rozdzielczości.
+![Zwinięta lista autorów rekordu z zaznaczonym przyciskiem przeciągania i odnośnikiem dodawania autora](../images/redaktor/wydawnictwa/01-kolejnosc-autorow.png)
 
 Działania te również prezentuje film [Zmiana kolejności autorów](https://www.youtube.com/embed/oruEX3CykH8) .
 
 <iframe width="560" height="315" src="https://www.youtube.com/embed/oruEX3CykH8" frameborder="0" allow="autoplay; encrypted-media" allowfullscreen></iframe>
+
+## Data udostępnienia w otwartym dostępie {#data-udostepnienia-oa}
+
+W formularzu artykułu (wydawnictwa ciągłego) oraz książki i rozdziału
+(wydawnictwa zwartego), w zwijanej sekcji **OpenAccess**, jest pole
+**OpenAccess: data udostępnienia (dzień lub miesiąc i rok)**. Wpisz w nim:
+
+- **pełną datę**, gdy znasz dzień udostępnienia — np. `30.12.2025`,
+  `2025-12-30` albo `2025.12.30`,
+- **sam miesiąc i rok**, gdy dnia nie znasz — np. `12.2025`, `2025-12`
+  albo `2025.12`.
+
+**Sam rok (np. `2025`) nie wystarczy** — formularz go nie przyjmie, bo PBN
+wymaga co najmniej miesiąca i roku udostępnienia. Po zapisie pole pokazuje
+wartość w jednym formacie: `30.12.2025` albo `12.2025`. Rok musi mieścić się
+w zakresie od 1900 do bieżącego roku powiększonego o 10 lat.
+
+Przy wysyłce do PBN:
+
+- pełna data trafia do PBN jako data udostępnienia,
+- miesiąc i rok trafiają do PBN jako miesiąc i rok udostępnienia — BPP
+  **nie dopisuje** żadnego dnia,
+- gdy pole jest puste, BPP użyje daty dostępu do strony WWW
+  („Dostęp dnia (wolny dostęp)”, a potem „Dostęp dnia (płatny dostęp)”),
+  o ile ją podano; inaczej data udostępnienia nie jest wysyłana.
+  Data wpisana w sekcji OpenAccess ma zawsze pierwszeństwo przed tymi
+  datami.
+
+Prace pobierane z PBN, dla których PBN podaje miesiąc i rok udostępnienia,
+mają w tym polu wpisany miesiąc i rok (bez zmyślonego dnia). Jeśli PBN
+podaje sam rok, BPP nie wpisuje daty — uzupełnij ją ręcznie przed wysyłką
+do PBN (raport kompletności danych POL-on pokaże taki brak).
+
+## Historia zmian i przywracanie poprzedniej wersji {#historia-zmian}
+
+Każda zmiana rekordu publikacji (wydawnictwa ciągłego, zwartego, patentu,
+pracy doktorskiej i habilitacyjnej) jest zapisywana jako **wersja**. Tak
+samo każdy inny rekord edytowany w module redagowania: zgłoszenia
+publikacji, źródła, wydawcy, konferencje, serie wydawnicze, jednostki,
+wszystkie słowniki (charaktery formalne, języki, typy, dyscypliny…),
+użytkownicy, grupy i ustawienia. Wersja publikacji obejmuje także **listę
+autorów** (z jednostką, dyscypliną, afiliacją i kolejnością), streszczenia,
+dodatkowe tytuły, zewnętrzne bazy danych, granty, nagrody, pliki
+w repozytorium i słowa kluczowe.
+
+Historię otwiera przycisk **„Historia”** w prawym górnym rogu formularza.
+Przy każdej wersji widać **kto i kiedy** wprowadził zmianę, **skąd**
+przyszła (moduł redagowania, strona — np. edycja profilu, import lub
+narzędzie, API / MCP z nazwą aplikacji, system) i co zmieniono (np.
+„Zmodyfikowano Tytuł oryginalny”, „Przeniesiono do kosza (powód: …)”,
+„Ustawiono status korekty: po korekcie (akcja masowa)”).
+
+- **Porównanie wersji** — zaznacz wersję starszą (lewe kółko, kolumna
+  „starsza”) i nowszą (prawe kółko, kolumna „nowsza”), a potem kliknij
+  **„Porównaj zaznaczone wersje”**. Tabela pokazuje tylko pola, które się
+  zmieniły, w czterech kolumnach: nazwa pola, **wersja starsza**,
+  **zmiana** i **wersja nowsza**. Kolumny boczne zawierają pełne wartości
+  z obu wersji, a środkowa samą różnicę: usunięte słowa przekreślone na
+  czerwono, dodane podświetlone na zielono, w pozostałych polach „stare →
+  nowe”. Dla list (autorzy, granty, pliki…) po bokach są pełne listy, a
+  w środku pozycje usunięte (−), dodane (+) i zmienione, np. „Afiliuje:
+  tak → nie”. Plakietki „wersja aktualna” i „wersja najstarsza” pokazują,
+  gdzie w historii leży wersja. W ostatnim wierszu tabeli, pod każdą
+  wersją, jest przycisk „♻️ Przywróć…” — otwiera podgląd tej wersji
+  z przyciskiem przywracania (pod wersją aktualną go nie ma). Pod tabelą
+  „← Poprzednia zmiana” / „Następna zmiana →” przechodzą po kolejnych
+  parach wersji, a „✏️ Edytuj rekord” i „📜 Historia” prowadzą do
+  formularza i listy wersji.
+- **Przywrócenie wersji** — kliknięcie daty pokazuje rekord w stanie z tej
+  wersji (tylko do podglądu, bez edycji). Przycisk **„♻️ Przywróć tę
+  wersję”** na dole strony przywraca rekord do tego stanu (samo
+  przywrócenie też trafia do historii, więc da się je cofnąć). Przy wersji
+  aktualnej przycisku nie ma — nie ma czego przywracać. Przywrócenie wersji
+  publikacji przywraca też listy powiązane — nad formularzem wypisane są
+  pozycje, które **zostaną usunięte** (np. autorzy dopisani po tej wersji)
+  i które **zostaną przywrócone**.
+
+Uwagi:
+
+- Wersje są zapisywane od chwili aktualizacji systemu. Rekord, który nie
+  był od tego czasu edytowany, dostaje pierwszą wersję automatycznie tuż
+  przed pierwszą zmianą (komentarz „Stan sprzed pierwszej zarejestrowanej
+  zmiany”) — dzięki temu i tę zmianę można cofnąć. Starsze zmiany widać
+  w tabeli **„Wcześniejsza historia”** (kto i kiedy, bez przywracania).
+- Przywrócenie wersji z plikiem w repozytorium przywraca wpis o pliku,
+  ale nie treść pliku usuniętego z serwera.
+- Historia jest przechowywana bez limitu czasu.
+- Historię i porównanie wersji rekordu z kosza można oglądać, ale
+  przywrócić wersję da się dopiero po wyjęciu rekordu z kosza — strona
+  „Historia” pokazuje wtedy ramkę z przyciskiem **„♻️ Przywróć z kosza”**.
+- Najnowsza wersja (obecny stan rekordu) ma w historii zieloną plakietkę
+  **„wersja aktualna”**. Podgląd wersji o tej samej treści co aktualna
+  (np. tej, do której rekord właśnie przywrócono) mówi wprost, że zapis
+  niczego nie zmieni.
+- Po przywróceniu wersji opis bibliograficzny i punktacja są przeliczane
+  tak jak po zwykłym zapisie formularza.
+- Przywrócenie wersji jednego rekordu nigdy nie zmienia innych rekordów —
+  także po akcji masowej (np. zmianie statusu korekty wielu prac) każdy
+  rekord ma własną wersję.
 
 ## Dlaczego nie można usunąć pracy z wpisanym „Odpowiednikiem w PBN"
 

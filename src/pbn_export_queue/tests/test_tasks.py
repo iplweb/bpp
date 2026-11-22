@@ -447,16 +447,16 @@ def test_report_technical_errors_to_rollbar_with_errors(mocker, admin_user):
         content_type=ContentType.objects.get_for_model(Wydawnictwo_Ciagle),
     )
 
-    mock_rollbar = mocker.patch("pbn_export_queue.tasks.rollbar.report_message")
+    mock_zgloszenie = mocker.patch("pbn_export_queue.tasks.capture_message")
 
     result = report_technical_errors_to_rollbar()
 
     assert result == 3
-    mock_rollbar.assert_called_once()
-    call_args = mock_rollbar.call_args
+    mock_zgloszenie.assert_called_once()
+    call_args = mock_zgloszenie.call_args
     assert "3 TECHNICAL errors" in call_args[0][0]
     assert call_args[1]["level"] == "warning"
-    assert call_args[1]["extra_data"]["technical_errors_count"] == 3
+    assert call_args[1]["extra"]["technical_errors_count"] == 3
 
 
 @pytest.mark.django_db
@@ -477,11 +477,11 @@ def test_report_technical_errors_wskazuje_konkretne_wpisy(
     )
     wpis.save()
 
-    mock_rollbar = mocker.patch("pbn_export_queue.tasks.rollbar.report_message")
+    mock_zgloszenie = mocker.patch("pbn_export_queue.tasks.capture_message")
 
     report_technical_errors_to_rollbar()
 
-    wpisy = mock_rollbar.call_args[1]["extra_data"]["wpisy"]
+    wpisy = mock_zgloszenie.call_args[1]["extra"]["wpisy"]
     assert [w["pk"] for w in wpisy] == [wpis.pk]
     assert wpisy[0]["rekord"] == str(wydawnictwo_ciagle)
     assert wpisy[0]["komunikat"].startswith("Wystąpił błąd HTTP z PBN")
@@ -503,11 +503,11 @@ def test_report_technical_errors_mowi_ile_wpisow_pominieto(mocker, admin_user):
             object_id=0xBEEF,
         )
 
-    mock_rollbar = mocker.patch("pbn_export_queue.tasks.rollbar.report_message")
+    mock_zgloszenie = mocker.patch("pbn_export_queue.tasks.capture_message")
 
     report_technical_errors_to_rollbar()
 
-    extra = mock_rollbar.call_args[1]["extra_data"]
+    extra = mock_zgloszenie.call_args[1]["extra"]
     assert extra["technical_errors_count"] == 12
     assert len(extra["wpisy"]) == 10
     assert extra["wpisy_pominieto"] == 2
@@ -525,9 +525,9 @@ def test_report_technical_errors_to_rollbar_no_errors(mocker, admin_user):
         content_type=ContentType.objects.get_for_model(Wydawnictwo_Ciagle),
     )
 
-    mock_rollbar = mocker.patch("pbn_export_queue.tasks.rollbar.report_message")
+    mock_zgloszenie = mocker.patch("pbn_export_queue.tasks.capture_message")
 
     result = report_technical_errors_to_rollbar()
 
     assert result == 0
-    mock_rollbar.assert_not_called()
+    mock_zgloszenie.assert_not_called()

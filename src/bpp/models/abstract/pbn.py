@@ -48,13 +48,14 @@ class LinkDoPBNMixin:
             f"Znaleziono duplikaty PublikacjaInstytucji_V2 dla "
             f"objectId_id={lookup_id}. Duplikaty: {duplicates}. Obiekt: {self}"
         )
-        import rollbar
         from django.core.mail import mail_admins
 
-        rollbar.report_message(
+        from bpp.zglaszanie_bledow import capture_message
+
+        capture_message(
             msg,
             level="warning",
-            extra_data={
+            extra={
                 "lookup_id": str(lookup_id),
                 "self_class": self.__class__.__name__,
                 "self_pk": getattr(self, "pk", None),

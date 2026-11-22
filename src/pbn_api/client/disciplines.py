@@ -10,8 +10,10 @@ from django.db import IntegrityError, transaction
 from django_pbn_client import sync_dictionary
 
 from import_common.core import (
+    DZIEN_SLOWNIKA_PBN_2017_2021,
+    DZIEN_SLOWNIKA_PBN_2022_2023,
     matchuj_aktualna_dyscypline_pbn,
-    matchuj_nieaktualna_dyscypline_pbn,
+    matchuj_dyscypline_pbn_na_dzien,
 )
 from import_common.normalization import normalize_kod_dyscypliny
 from pbn_api.models import TlumaczDyscyplin
@@ -125,14 +127,19 @@ class DisciplinesMixin:
             wpis_tlumacza.pbn_2024_now = matchuj_aktualna_dyscypline_pbn(
                 dyscyplina.kod, dyscyplina.nazwa
             )
-            # Domyślnie szuka dla lat 2018-2022
-            wpis_tlumacza.pbn_2017_2021 = matchuj_nieaktualna_dyscypline_pbn(
-                dyscyplina.kod, dyscyplina.nazwa, rok_min=2018, rok_max=2022
-            )
-
-            wpis_tlumacza.pbn_2022_2023 = matchuj_nieaktualna_dyscypline_pbn(
-                dyscyplina.kod, dyscyplina.nazwa, rok_min=2023, rok_max=2024
-            )
+            # Słowniki dla okresów 2017-2021 i 2022-2023: ten, który
+            # obowiązywał w dniu z danego okresu (nie para lat od-do, FD#608).
+            # Te słowniki już się nie zmieniają, więc brak dopasowania NIE
+            # kasuje istniejącego wpisu (np. uzupełnionego ręcznie w adminie).
+            for pole, dzien in (
+                ("pbn_2017_2021", DZIEN_SLOWNIKA_PBN_2017_2021),
+                ("pbn_2022_2023", DZIEN_SLOWNIKA_PBN_2022_2023),
+            ):
+                znaleziona = matchuj_dyscypline_pbn_na_dzien(
+                    dyscyplina.kod, dyscyplina.nazwa, dzien
+                )
+                if znaleziona is not None:
+                    setattr(wpis_tlumacza, pole, znaleziona)
 
             wpis_tlumacza.save()
 

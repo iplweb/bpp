@@ -20,6 +20,8 @@
                     <input type="hidden"
                            name="suggested-title"
                            value="{{ w.autor }} — {{ kontekst }}"/>
+                    {# Od razu lista prac (cel=wyniki), bez formularza multiseek. #}
+                    <input type="hidden" name="cel" value="wyniki"/>
                     <button type="submit"
                             class="autor-page__staty-link"
                             title="Pokaż prace: {{ w.autor }} — {{ kontekst }}">{% include "browse/autor_sekcje/_wspolautor_nazwa.html" with a=w.autor %}</button>

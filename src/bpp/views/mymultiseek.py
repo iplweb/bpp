@@ -13,6 +13,7 @@ from django.http import (
 )
 from django.shortcuts import redirect
 from django.views.decorators.cache import never_cache
+from django.views.decorators.http import require_POST
 from django.views.generic import View
 from multiseek.logic import get_registry
 from multiseek.models import SearchForm
@@ -164,6 +165,13 @@ class MyMultiseekResults(MultiseekResults):
 
     def get_context_data(self, **kwargs):
         ctx = super().get_context_data()
+
+        # Menu „Widok” na stronie wyników: rodzaje raportu dostępne dla tego
+        # użytkownika (niepubliczne tylko dla zalogowanych).
+        ctx["rodzaje_raportu"] = [
+            {"id": typ.id, "nazwa": typ.label}
+            for typ in get_registry(self.registry).get_report_types(self.request)
+        ]
 
         if ctx.get("report_type") == "pivot":
             from bpp.multiseek_registry import pivot as pivot_mod
@@ -464,3 +472,22 @@ class MultiseekToDjangoQLView(WprowadzanieDanychOrSuperuserMixin, View):
                 "editor_url": result.editor_url,
             }
         )
+
+
+@require_POST
+def zmien_rodzaj_raportu(request):
+    """Zmiana rodzaju raportu (lista / tabela / …) prosto ze strony wyników —
+    bez wracania do formularza wyszukiwarki. Zapytanie zostaje bez zmian;
+    w sesji podmieniamy tylko ``report_type``."""
+    from bpp.views.browse import ustawienia_typu_raportu
+
+    ustawienia = ustawienia_typu_raportu(request, request.POST.get("raport"))
+    if ustawienia:
+        zapisane = request.session.get(MULTISEEK_SESSION_KEY)
+        dane = json.loads(zapisane) if zapisane else {}
+        if not isinstance(dane, dict):
+            # Starszy zapis: sama lista warunków, bez ustawień raportu.
+            dane = {"form_data": dane}
+        dane.update(ustawienia)
+        request.session[MULTISEEK_SESSION_KEY] = json.dumps(dane)
+    return redirect("multiseek:results")

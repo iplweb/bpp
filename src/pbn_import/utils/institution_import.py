@@ -1,8 +1,11 @@
 """Institution import utilities"""
 
 from bpp.models import Jednostka, Jednostka_Rodzic
+from bpp.wersjonowanie import zarejestruj_utworzenie
 
 from .base import ImportStepBase
+
+KOMENTARZ_IMPORTU = "Utworzono automatycznie (domyślna struktura jednostek uczelni)."
 
 
 def zrob_skrot(s: str) -> str:
@@ -46,16 +49,15 @@ def znajdz_lub_utworz_wydzial_domyslny(uczelnia, nazwa_domyslna="Wydział Domyś
     # skrótem uczelni, żeby druga uczelnia nie wpadła w IntegrityError na "Wydział
     # Domyślny". Ścieżka FIND (istartswith) i tak matchuje legacy rekordy bez
     # sufiksu, więc istniejące instalacje nie widzą churnu.
-    return (
-        Jednostka.objects.create(
-            nazwa=f"{nazwa_domyslna} {uczelnia.skrot}",
-            # Jednostka.skrot to varchar(128) — przycinamy defensywnie.
-            skrot=f"{zrob_skrot(nazwa_domyslna)}-{uczelnia.skrot}"[:128],
-            uczelnia=uczelnia,
-            parent=None,
-        ),
-        True,
+    wydzial = Jednostka.objects.create(
+        nazwa=f"{nazwa_domyslna} {uczelnia.skrot}",
+        # Jednostka.skrot to varchar(128) — przycinamy defensywnie.
+        skrot=f"{zrob_skrot(nazwa_domyslna)}-{uczelnia.skrot}"[:128],
+        uczelnia=uczelnia,
+        parent=None,
     )
+    zarejestruj_utworzenie(None, wydzial, KOMENTARZ_IMPORTU)
+    return wydzial, True
 
 
 def znajdz_lub_utworz_jednostke_domyslna(uczelnia, nazwa_domyslna="Jednostka Domyślna"):
@@ -79,15 +81,14 @@ def znajdz_lub_utworz_jednostke_domyslna(uczelnia, nazwa_domyslna="Jednostka Dom
     # Multi-hosted: Jednostka.nazwa/.skrot są unique=True GLOBALNIE — sufiksujemy
     # skrótem uczelni, by druga uczelnia nie wpadła w IntegrityError na "Jednostka
     # Domyślna"/"JD". FIND (istartswith) wciąż matchuje legacy rekordy bez sufiksu.
-    return (
-        Jednostka.objects.create(
-            nazwa=f"{nazwa_domyslna} {uczelnia.skrot}",
-            # Jednostka.skrot to varchar(128) — przycinamy defensywnie.
-            skrot=f"JD-{uczelnia.skrot}"[:128],
-            uczelnia=uczelnia,
-        ),
-        True,
+    jednostka = Jednostka.objects.create(
+        nazwa=f"{nazwa_domyslna} {uczelnia.skrot}",
+        # Jednostka.skrot to varchar(128) — przycinamy defensywnie.
+        skrot=f"JD-{uczelnia.skrot}"[:128],
+        uczelnia=uczelnia,
     )
+    zarejestruj_utworzenie(None, jednostka, KOMENTARZ_IMPORTU)
+    return jednostka, True
 
 
 def znajdz_lub_utworz_obca_jednostke(uczelnia, wydzial=None):
@@ -145,6 +146,7 @@ def znajdz_lub_utworz_obca_jednostke(uczelnia, wydzial=None):
             uczelnia=uczelnia,
             skupia_pracownikow=False,
         )
+        zarejestruj_utworzenie(None, obca, KOMENTARZ_IMPORTU)
         created = True
 
     # Podpięcie do wydziału TYLKO gdy caller poda jawny `wydzial` (ścieżka

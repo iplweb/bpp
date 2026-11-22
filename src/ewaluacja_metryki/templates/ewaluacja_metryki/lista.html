@@ -20,8 +20,6 @@
             <span class="fi-graph-trend"></span> Metryki ewaluacyjne autorów
         </h1>
 
-        <!-- Disclaimer komunikat -->
-        {% include "ewaluacja_metryki/disclaimer.html" %}
 
 
         {% if not autor_only_mode %}
@@ -53,14 +51,14 @@
                 {% if not autor_only_mode and request.GET.autor_id %}
                 <input type="hidden" name="autor_id" value="{{ request.GET.autor_id }}">
                 {% endif %}
-                <div class="medium-3 columns">
+                <div class="small-12 medium-3 columns">
                     <label><span class="fi-torso"></span> Nazwisko/Imię
                         <input type="text" name="nazwisko" value="{{ request.GET.nazwisko }}" placeholder="Wpisz nazwisko lub imię" class="auto-submit-field">
                     </label>
                 </div>
 
                 {% if uzywa_wydzialow and not tylko_jeden_wydzial %}
-                <div class="medium-3 columns">
+                <div class="small-12 medium-3 columns">
                     <label><span class="fi-building"></span> Wydział
                         <select name="wydzial" class="auto-submit-field">
                             <option value="">-- Wszystkie --</option>
@@ -74,7 +72,7 @@
                 </div>
                 {% endif %}
 
-                <div class="medium-3 columns">
+                <div class="small-12 medium-3 columns">
                     <label><span class="fi-home"></span> Jednostka
                         <select name="jednostka" class="auto-submit-field">
                             <option value="">-- Wszystkie --</option>
@@ -87,7 +85,7 @@
                     </label>
                 </div>
 
-                <div class="medium-3 columns">
+                <div class="small-12 medium-3 columns">
                     <label><span class="fi-clipboard-pencil"></span> Rodzaj autora
                         <select name="rodzaj_autora" class="auto-submit-field">
                             <option value="">-- Wszystkie --</option>
@@ -103,7 +101,7 @@
                     </label>
                 </div>
 
-                <div class="medium-3 columns">
+                <div class="small-12 medium-3 columns">
                 {% if not tylko_jedna_dyscyplina %}
                     <label><span class="fi-book"></span> Dyscyplina
                         <select name="dyscyplina" class="auto-submit-field">
@@ -118,7 +116,7 @@
                     </label>
                 {% endif %}
                 </div>
-                <div class="medium-3 columns">
+                <div class="small-12 medium-3 columns">
                     <label><span class="fi-eye"></span> Widok
                         <select name="widok" class="auto-submit-field" id="widok-select">
                             <option value="tabela" {% if widok == "tabela" %}selected{% endif %}>Tabela</option>
@@ -135,7 +133,7 @@
                     </label>
                 </div>
 
-                <div class="medium-6 columns">
+                <div class="small-12 medium-6 columns">
                     <div class="button-container ewaluacja-metryki__filter-buttons">
                         <button type="submit" class="button ewaluacja-metryki__filter-btn">
                             <span class="fi-magnifying-glass"></span> Filtruj
@@ -150,6 +148,14 @@
                         <a href="{% url 'ewaluacja_metryki:statystyki' %}" class="button success">
                             <span class="fi-graph-bar"></span> Statystyki
                         </a>
+                        <a href="{% url 'ewaluacja_metryki:metryki_jednostek' %}" class="button">
+                            <span class="fi-page-pdf"></span> Metryki jednostek (PDF) <span class="label warning" title="Wersja testowa">beta</span>
+                        </a>
+                        {% if uczelnia.uzywaj_wydzialow %}
+                        <a href="{% url 'ewaluacja_metryki:metryki_wydzialow' %}" class="button">
+                            <span class="fi-page-pdf"></span> Metryki wydziałów (PDF) <span class="label warning" title="Wersja testowa">beta</span>
+                        </a>
+                        {% endif %}
                         {% endif %}
                     </div>
                 </div>
@@ -160,19 +166,19 @@
         {% if statystyki %}
         <div class="callout secondary">
             <div class="row">
-                <div class="medium-3 columns text-center">
+                <div class="small-12 medium-3 columns text-center">
                     <h5>Liczba wierszy</h5>
                     <p class="stat">{{ statystyki.liczba_wierszy|default:"0" }}</p>
                 </div>
-                <div class="medium-3 columns text-center">
+                <div class="small-12 medium-3 columns text-center">
                     <h5>Liczba autorów</h5>
                     <p class="stat">{{ statystyki.liczba_autorow|default:"0" }}</p>
                 </div>
-                <div class="medium-3 columns text-center">
+                <div class="small-12 medium-3 columns text-center">
                     <h5>Średnie wykorzystanie slotów</h5>
                     <p class="stat">{{ statystyki.srednia_wykorzystania|floatformat:1|default:"0" }}%</p>
                 </div>
-                <div class="medium-3 columns text-center">
+                <div class="small-12 medium-3 columns text-center">
                     <h5>Średnia PKDaut/slot</h5>
                     <p class="stat">{{ statystyki.srednia_pkd_slot|floatformat:2|default:"0" }}</p>
                 </div>
@@ -274,7 +280,7 @@
                 {% empty %}
                 <tr>
                     <td colspan="{% if tylko_jedna_dyscyplina %}6{% else %}7{% endif %}" class="text-center">
-                        <em>Brak danych do wyświetlenia. Uruchom komendę 'python manage.py oblicz_metryki' aby wygenerować dane.</em>
+                        <em>Brak danych do wyświetlenia. Aby je wygenerować, użyj przycisku „Uruchom generowanie” u góry strony.</em>
                     </td>
                 </tr>
                 {% endfor %}
@@ -287,7 +293,7 @@
         <div class="circle-grid-container">
             <div class="row">
                 {% for metryka in metryki %}
-                <div class="medium-1 columns text-center circle-grid-item">
+                <div class="small-12 medium-1 columns text-center circle-grid-item">
                     <a href="{% url 'ewaluacja_metryki:szczegoly' autor_slug=metryka.autor.slug dyscyplina_kod=metryka.dyscyplina_naukowa.kod %}" class="circle-link" title="{{ metryka.autor }}">
                         <div class="circular-progress-wrapper-grid">
                             <div class="circle-progress-grid-{{ metryka.pk }}"
@@ -301,8 +307,8 @@
                     </a>
                 </div>
                 {% empty %}
-                <div class="medium-12 columns text-center">
-                    <em>Brak danych do wyświetlenia. Uruchom komendę 'python manage.py oblicz_metryki' aby wygenerować dane.</em>
+                <div class="small-12 medium-12 columns text-center">
+                    <em>Brak danych do wyświetlenia. Aby je wygenerować, użyj przycisku „Uruchom generowanie” u góry strony.</em>
                 </div>
                 {% endfor %}
             </div>
@@ -314,7 +320,7 @@
         <div class="badge-grid-container">
             <div class="row">
                 {% for metryka in metryki %}
-                <div class="medium-1 columns text-center badge-grid-item">
+                <div class="small-12 medium-1 columns text-center badge-grid-item">
                     <a href="{% url 'ewaluacja_metryki:szczegoly' autor_slug=metryka.autor.slug dyscyplina_kod=metryka.dyscyplina_naukowa.kod %}"
                        class="badge-link"
                        title="{{ metryka.autor }}">
@@ -325,8 +331,8 @@
                     </a>
                 </div>
                 {% empty %}
-                <div class="medium-12 columns text-center">
-                    <em>Brak danych do wyświetlenia. Uruchom komendę 'python manage.py oblicz_metryki' aby wygenerować dane.</em>
+                <div class="small-12 medium-12 columns text-center">
+                    <em>Brak danych do wyświetlenia. Aby je wygenerować, użyj przycisku „Uruchom generowanie” u góry strony.</em>
                 </div>
                 {% endfor %}
             </div>
@@ -345,7 +351,7 @@
             <div id="heatmap-container" class="ewaluacja-metryki__chart-container ewaluacja-metryki__chart-container--large"></div>
             {% if not metryki %}
             <div class="text-center">
-                <em>Brak danych do wyświetlenia. Uruchom komendę 'python manage.py oblicz_metryki' aby wygenerować dane.</em>
+                <em>Brak danych do wyświetlenia. Aby je wygenerować, użyj przycisku „Uruchom generowanie” u góry strony.</em>
             </div>
             {% endif %}
         </div>
@@ -362,7 +368,7 @@
             <div id="heatmap-blocky-container" class="ewaluacja-metryki__chart-container ewaluacja-metryki__chart-container--large"></div>
             {% if not metryki %}
             <div class="text-center">
-                <em>Brak danych do wyświetlenia. Uruchom komendę 'python manage.py oblicz_metryki' aby wygenerować dane.</em>
+                <em>Brak danych do wyświetlenia. Aby je wygenerować, użyj przycisku „Uruchom generowanie” u góry strony.</em>
             </div>
             {% endif %}
         </div>
@@ -379,7 +385,7 @@
             <div id="contour-container" class="ewaluacja-metryki__chart-container ewaluacja-metryki__chart-container--large"></div>
             {% if not metryki %}
             <div class="text-center">
-                <em>Brak danych do wyświetlenia. Uruchom komendę 'python manage.py oblicz_metryki' aby wygenerować dane.</em>
+                <em>Brak danych do wyświetlenia. Aby je wygenerować, użyj przycisku „Uruchom generowanie” u góry strony.</em>
             </div>
             {% endif %}
         </div>
@@ -397,7 +403,7 @@
             <div id="bubble-container" class="ewaluacja-metryki__chart-container ewaluacja-metryki__chart-container--large"></div>
             {% if not metryki %}
             <div class="text-center">
-                <em>Brak danych do wyświetlenia. Uruchom komendę 'python manage.py oblicz_metryki' aby wygenerować dane.</em>
+                <em>Brak danych do wyświetlenia. Aby je wygenerować, użyj przycisku „Uruchom generowanie” u góry strony.</em>
             </div>
             {% endif %}
         </div>
@@ -415,7 +421,7 @@
             <div id="contour-scatter-container" class="ewaluacja-metryki__chart-container ewaluacja-metryki__chart-container--large"></div>
             {% if not metryki %}
             <div class="text-center">
-                <em>Brak danych do wyświetlenia. Uruchom komendę 'python manage.py oblicz_metryki' aby wygenerować dane.</em>
+                <em>Brak danych do wyświetlenia. Aby je wygenerować, użyj przycisku „Uruchom generowanie” u góry strony.</em>
             </div>
             {% endif %}
         </div>
@@ -434,7 +440,7 @@
             <div id="efektywnosc-babelki-container" class="ewaluacja-metryki__chart-container ewaluacja-metryki__chart-container--large"></div>
             {% if not metryki %}
             <div class="text-center">
-                <em>Brak danych do wyświetlenia. Uruchom komendę 'python manage.py oblicz_metryki' aby wygenerować dane.</em>
+                <em>Brak danych do wyświetlenia. Aby je wygenerować, użyj przycisku „Uruchom generowanie” u góry strony.</em>
             </div>
             {% endif %}
         </div>
@@ -452,7 +458,7 @@
             <div id="efektywnosc-mapa-ciepla-container" class="ewaluacja-metryki__chart-container ewaluacja-metryki__chart-container--large"></div>
             {% if not metryki %}
             <div class="text-center">
-                <em>Brak danych do wyświetlenia. Uruchom komendę 'python manage.py oblicz_metryki' aby wygenerować dane.</em>
+                <em>Brak danych do wyświetlenia. Aby je wygenerować, użyj przycisku „Uruchom generowanie” u góry strony.</em>
             </div>
             {% endif %}
         </div>
@@ -467,7 +473,7 @@
     .stat {
         font-size: 2rem;
         font-weight: bold;
-        color: #1779ba;
+        color: var(--bpp-akcent, #1779ba);
     }
 
     /* Circular Progress Bar Styles */
@@ -494,14 +500,14 @@
         transform: translate(-50%, -50%);
         font-size: 14px;
         font-weight: 600;
-        color: #333;
+        color: var(--bpp-tekst, #333);
         z-index: 1;
     }
 
     .circular-progress-wrapper .progress-label {
         display: block;
         margin-top: 5px;
-        color: #666;
+        color: var(--bpp-tekst-przygaszony, #666);
         font-size: 0.85rem;
         white-space: nowrap;
     }
@@ -511,7 +517,7 @@
         display: inline-block;
         min-width: 200px;
         padding: 10px;
-        background: #f8f9fa;
+        background: var(--bpp-tlo-pow-2, #f8f9fa);
         border-radius: 8px;
         box-shadow: 0 2px 4px rgba(0,0,0,0.1);
     }
@@ -523,12 +529,12 @@
 
     .pkd-value-label strong {
         font-size: 1.25rem;
-        color: #2c3e50;
+        color: var(--bpp-tekst, #2c3e50);
         display: block;
     }
 
     .pkd-value-label small {
-        color: #7f8c8d;
+        color: var(--bpp-tekst-przygaszony, #7f8c8d);
         font-size: 0.75rem;
     }
 
@@ -538,7 +544,7 @@
 
     .pkd-progress-track {
         height: 20px;
-        background: #e0e0e0;
+        background: var(--bpp-tlo-pow-2, #e0e0e0);
         border-radius: 10px;
         overflow: hidden;
         position: relative;
@@ -629,7 +635,7 @@
     }
     .pkd-quality-label.temp-100 {
         background: #fcb69f;
-        color: #333;
+        color: var(--bpp-tekst, #333);
     }
 
     .pkd-progress-fill.temp-120 {
@@ -721,7 +727,7 @@
         margin-top: 8px;
         font-size: 0.75rem;
         font-weight: 600;
-        color: #333;
+        color: var(--bpp-tekst, #333);
         white-space: nowrap;
     }
 
@@ -845,25 +851,23 @@
         {% csrf_token %}
 
         <div class="row">
-            <div class="medium-6 columns">
-                <label>Rok początkowy
-                    <input type="number" name="rok_min" value="2022" min="2000" max="2050">
-                </label>
-            </div>
-            <div class="medium-6 columns">
-                <label>Rok końcowy
-                    <input type="number" name="rok_max" value="2025" min="2000" max="2050">
-                </label>
+            <div class="small-12 medium-12 columns">
+                {# Okres wybiera się na pasku okresu strony; tu tylko informacja. #}
+                <p>
+                    <span class="fi-calendar"></span>
+                    Okres ewaluacji: <strong>{{ okres_ewaluacji }}</strong>
+                    (zmienisz go na pasku okresu strony)
+                </p>
             </div>
         </div>
 
         <div class="row">
-            <div class="medium-6 columns">
+            <div class="small-12 medium-6 columns">
                 <label>Minimalny próg punktów
                     <input type="number" name="minimalny_pk" value="0.01" step="0.01" min="0">
                 </label>
             </div>
-            <div class="medium-6 columns">
+            <div class="small-12 medium-6 columns">
                 <label>
                     <input type="checkbox" name="nadpisz" checked>
                     Nadpisz istniejące metryki
@@ -872,12 +876,12 @@
         </div>
 
         <div class="row">
-            <div class="medium-12 columns">
+            <div class="small-12 medium-12 columns">
                 <fieldset class="ewaluacja-metryki__fieldset-padded">
                     <legend>Rodzaje autorów do przetworzenia:</legend>
                     <div class="row">
                         {% for rodzaj in dostepne_rodzaje_autorow %}
-                            <div class="medium-12 columns">
+                            <div class="small-12 medium-12 columns">
                                 <label>
                                     <input type="checkbox" name="rodzaj_autora" value="{{ rodzaj.skrot }}" checked>
                                     <strong>{{ rodzaj.skrot }}</strong> - {{ rodzaj.nazwa }}
@@ -885,7 +889,7 @@
                                 </label>
                             </div>
                         {% endfor %}
-                        <div class="medium-12 columns">
+                        <div class="small-12 medium-12 columns">
                             <label>
                                 <input type="checkbox" name="rodzaj_autora" value=" " checked>
                                 Brak danych
@@ -922,6 +926,8 @@
 <!-- Plotly.js for data visualization (only on this page) -->
 <script src="{% static 'plotly.js/dist/plotly.min.js' %}"></script>
 <script src="{% static 'plotly.js/dist/plotly-locale-pl.js' %}"></script>
+{# Kolory wykresów w trybie ciemnym (owija Plotly.newPlot i circleProgress). #}
+<script src="{% static 'ewaluacja_metryki/js/wykresy-motyw.js' %}"></script>
 
 <script>
 // Polski locale; bez przycisku "Upload to Cloud" (plotly.js 4.x wysyła wykres na cloud.plotly.com)
@@ -1889,15 +1895,8 @@ $(document).ready(function() {
         }
     });
 
-    // Dodaj efekt hover dla klikalnych wierszy
-    $('.clickable-row').hover(
-        function() {
-            $(this).css('background-color', '#f0f8ff');
-        },
-        function() {
-            $(this).css('background-color', '');
-        }
-    );
+    // Efekt hover klikalnych wierszy: _ewaluacja-metryki-kolory.scss (styl
+    // inline z JS był jasny także w trybie ciemnym).
 
     // Initialize efektywność mapa ciepła visualization
     {% if widok == "efektywnosc_mapa_ciepla" and metryki %}

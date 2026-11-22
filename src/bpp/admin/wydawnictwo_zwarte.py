@@ -4,6 +4,7 @@ from django.contrib import admin, messages
 from django.core.exceptions import ValidationError
 from django.utils.html import format_html
 from mptt.forms import TreeNodeChoiceField
+from reversion_compare.admin import CompareVersionAdmin
 from taggit.forms import TextareaTagWidget
 
 from bpp.admin import helpers
@@ -23,6 +24,7 @@ from bpp.admin.filters import (
 from bpp.admin.helpers import fieldsets
 from bpp.admin.helpers.djangoql import BppDjangoQLSearchMixin
 from bpp.admin.helpers.dynamic_columns import BppDynamicColumnsMixin
+from bpp.admin.helpers.openaccess import OpenAccessDataUdostepnieniaFormMixin
 from bpp.admin.helpers.widgets import COMMA_DECIMAL_FIELD_OVERRIDE
 from bpp.models import (
     Charakter_Formalny,
@@ -62,10 +64,12 @@ from .helpers import (
 from .helpers.constance_field_mixin import ConstanceScoringFieldsMixin
 from .helpers.mixins import (
     BlokujRekordPrzedZapisemMixin,
+    BppSoftDeleteAdminMixin,
     OdroczPunktyDyscyplinMixin,
     OptionalPBNSaveMixin,
     RestrictDeletionWhenPBNUIDSetMixin,
 )
+from .helpers.wersje import HistoriaWersjiMixin
 from .nagroda import NagrodaInline
 
 # Proste tabele
@@ -93,7 +97,9 @@ class Wydawnictwo_ZwarteAdmin_Baza(
     OdroczPunktyDyscyplinMixin,
     BlokujRekordPrzedZapisemMixin,
     BaseBppAdminMixin,
-    admin.ModelAdmin,
+    # Historia zmian (FD#587): tuż przed terminalną klasą admina.
+    HistoriaWersjiMixin,
+    CompareVersionAdmin,
 ):
     formfield_overrides = {
         **helpers.widgets.NIZSZE_TEXTFIELD_Z_MAPA_ZNAKOW,
@@ -201,6 +207,7 @@ class Wydawnictwo_ZwarteAdmin_Baza(
 
 
 class Wydawnictwo_ZwarteForm(
+    OpenAccessDataUdostepnieniaFormMixin,
     helpers.mixins.Wycinaj_W_z_InformacjiMixin,
     CleanDOIWWWPublicWWWMixin,
     forms.ModelForm,
@@ -451,7 +458,6 @@ class Wydawnictwo_ZwarteForm(
             "openaccess_licencja",
             "openaccess_czas_publikacji",
             "openaccess_ilosc_miesiecy",
-            "openaccess_data_opublikowania",
             "liczba_cytowan",
             "numer_odbitki",
             "nie_eksportuj_przez_api",
@@ -472,8 +478,6 @@ class Wydawnictwo_ZwarteForm(
             "tom": forms.TextInput(attrs={"class": "bpp-input-narrow"}),
             "slowa_kluczowe": TextareaTagWidget(attrs={"rows": 2}),
         }
-        labels = fieldsets.OPENACCESS_LABELS
-        help_texts = fieldsets.OPENACCESS_HELP_TEXTS
 
     class Media:
         # Freshdesk #385: podświetlenie wymaganego pola "wydawca" przy
@@ -509,6 +513,8 @@ class Wydawnictwo_ZwarteAdmin(
     AdminCrossrefAPIMixin,
     AdminCrossrefPBNAPIMixin,
     RestrictDeletionWhenPBNUIDSetMixin,
+    # OSTATNI przed baza terminalna — patrz docstring BppSoftDeleteAdminMixin.
+    BppSoftDeleteAdminMixin,
     Wydawnictwo_ZwarteAdmin_Baza,
 ):
     change_list_template = "admin/bpp/wydawnictwo_zwarte/change_list.html"

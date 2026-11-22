@@ -46,6 +46,12 @@ class NoweRaportyConfig(AppConfig):
         # Inwalidacja cache menu - zawsze (także w testach).
         _polacz_inwalidacje_menu()
 
+        # FD#523: źródła danych raportów na schemacie DjangoQL BPP
+        # (pickery ``<pole>__rel``) + podpowiedzi w błędach walidacji.
+        from nowe_raporty.query_backends import zainstaluj
+
+        zainstaluj()
+
         if settings.TESTING:
             return
         # Kolejnosc wazna: seed tworzy DefinicjaRaportu, potem create_entries

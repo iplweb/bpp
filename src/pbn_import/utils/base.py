@@ -6,8 +6,9 @@ import time
 import traceback
 from typing import Any
 
-import rollbar
 from django.db import transaction
+
+from bpp.zglaszanie_bledow import capture_exception
 
 from ..models import ImportLog, ImportSession
 
@@ -226,10 +227,10 @@ class ImportStepBase:
         error_msg = f"{context}: {str(error)}" if context else str(error)
         self.errors.append(error_msg)
 
-        # Report to Rollbar
-        rollbar.report_exc_info(
+        # Zgłoś do monitoringu błędów
+        capture_exception(
             sys.exc_info(),
-            extra_data={
+            extra={
                 "step": self.step_name,
                 "session_id": self.session.id,
                 "context": context,
@@ -259,9 +260,9 @@ class ImportStepBase:
             or "authorization" in error_str.lower()
         ):
             # This is an authorization error - should stop the import
-            rollbar.report_exc_info(
+            capture_exception(
                 sys.exc_info(),
-                extra_data={
+                extra={
                     "step": self.step_name,
                     "session_id": self.session.id,
                     "error_type": "authorization",

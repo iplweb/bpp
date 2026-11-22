@@ -13,11 +13,11 @@
 <div class="row">
     <div class="large-12 columns">
         <h1><i class="fi-magnifying-glass"></i> Weryfikacja poprawności bazy danych</h1>
-        <p class="lead">Analiza poprawności danych Autor_Dyscyplina dla lat 2022-2025</p>
+        <p class="lead">Analiza poprawności danych Autor_Dyscyplina dla lat {{ okres_ewaluacji }}</p>
 
         <!-- Section 1: By rodzaj_pracownika -->
         <div class="callout">
-            <h3>1. Autor_Dyscyplina według rodzaju pracownika (2022-2025)</h3>
+            <h3>1. Autor_Dyscyplina według rodzaju pracownika ({{ okres_ewaluacji }})</h3>
             <table class="hover stack">
                 <thead>
                     <tr>
@@ -52,7 +52,7 @@
 
             {% if bez_rodzaju_zatrudnienia > 0 %}
             <div class="callout alert" style="margin-top: 1rem;">
-                <h5 style="color: #cc4b37;">
+                <h5 style="color: var(--bpp-tekst-blad, #cc4b37);">
                     <span class="fi-alert"></span> Ostrzeżenie: Autor_Dyscyplina bez rodzaju zatrudnienia
                 </h5>
                 <div class="grid-x grid-margin-x">
@@ -167,7 +167,7 @@
                                 <i class="fi-wrench"></i> Ustaw procent dyscypliny 100%
                             </button>
                         </form>
-                        <p><small style="color: #666;">Dotyczy tylko autorów z jedną
+                        <p><small style="color: var(--bpp-tekst-przygaszony, #666);">Dotyczy tylko autorów z jedną
                             dyscypliną ({{ bez_procent_n_sloty_do_naprawy }} rek.)</small></p>
                         {% endif %}
                     {% else %}
@@ -210,7 +210,7 @@
                                 <i class="fi-wrench"></i> Ustaw procent dyscypliny 100%
                             </button>
                         </form>
-                        <p><small style="color: #666;">Dotyczy tylko autorów z jedną
+                        <p><small style="color: var(--bpp-tekst-przygaszony, #666);">Dotyczy tylko autorów z jedną
                             dyscypliną ({{ bez_procent_dowolny_do_naprawy }} rek.)</small></p>
                         {% endif %}
                     {% else %}
@@ -300,7 +300,7 @@
                 <li>Liczba autorów (unikalnych):
                     <strong>{{ distinct_authors_count }}</strong>
                 </li>
-                <li>Całkowita liczba rekordów Autor_Dyscyplina (2022-2025):
+                <li>Całkowita liczba rekordów Autor_Dyscyplina ({{ okres_ewaluacji }}):
                     <strong>{{ total_count }}</strong>
                 </li>
                 {% if bez_wymiaru_etatu > 0 %}
@@ -339,7 +339,7 @@
 
 <style>
     .alert-text {
-        color: #cc4b37;
+        color: var(--bpp-tekst-blad, #cc4b37);
         font-weight: bold;
     }
     .success-text {

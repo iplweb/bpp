@@ -18,7 +18,7 @@ logger = logging.getLogger(__name__)
     bind=True,
     time_limit=7200,
 )
-def unpin_all_sensible_task(self, uczelnia_id, min_slot_filled=0.8):
+def unpin_all_sensible_task(self, uczelnia_id, min_slot_filled=0.8, okres_pk=None):
     """Cienki wrapper z barierą bazodanową wokół ``_unpin_all_sensible``.
 
     Bariera (niezależna od Redisa) chroni przed duplikatem masowego odpinania
@@ -40,12 +40,16 @@ def unpin_all_sensible_task(self, uczelnia_id, min_slot_filled=0.8):
         }
 
     try:
-        return _unpin_all_sensible(self, uczelnia_id, min_slot_filled)
+        return _unpin_all_sensible(
+            self, uczelnia_id, min_slot_filled, okres_pk=okres_pk
+        )
     finally:
         StatusOdpinaniaWszystkich.zwolnij_slot(self.request.id)
 
 
-def _unpin_all_sensible(self, uczelnia_id, min_slot_filled=0.8):  # noqa: C901
+def _unpin_all_sensible(  # noqa: C901
+    self, uczelnia_id, min_slot_filled=0.8, okres_pk=None
+):
     """
     Odpina wszystkie sensowne możliwości odpinania (makes_sense=True),
     czeka na denormalizację i przelicza metryki + analizę unpinning.
@@ -53,6 +57,8 @@ def _unpin_all_sensible(self, uczelnia_id, min_slot_filled=0.8):  # noqa: C901
     Args:
         uczelnia_id: ID uczelni dla której wykonać odpinanie
         min_slot_filled: Minimalny próg wypełnienia slotów dla ponownej analizy (domyślnie 0.8 = 80%)
+        okres_pk: PK okresu ewaluacji (``None`` = okres domyślny); odpinane są
+            tylko możliwości znalezione dla tego okresu
 
     Returns:
         Dictionary z informacją o wykonanych operacjach
@@ -63,7 +69,6 @@ def _unpin_all_sensible(self, uczelnia_id, min_slot_filled=0.8):  # noqa: C901
 
     from bpp.models import (
         Patent,
-        Patent_Autor,
         Uczelnia,
         Wydawnictwo_Ciagle,
         Wydawnictwo_Ciagle_Autor,
@@ -75,9 +80,11 @@ def _unpin_all_sensible(self, uczelnia_id, min_slot_filled=0.8):  # noqa: C901
     from snapshot_odpiec.models import SnapshotOdpiec
 
     from ..models import UnpinningOpportunity
+    from ..okres import pobierz_okres
     from .unpinning import run_unpinning_after_metrics_wrapper
 
     uczelnia = Uczelnia.objects.get(pk=uczelnia_id)
+    okres = pobierz_okres(okres_pk)
 
     logger.info(f"Starting unpin_all_sensible_task for {uczelnia}")
 
@@ -91,7 +98,7 @@ def _unpin_all_sensible(self, uczelnia_id, min_slot_filled=0.8):  # noqa: C901
 
     # Query all sensible unpinning opportunities for this uczelnia
     opportunities = UnpinningOpportunity.objects.filter(
-        uczelnia=uczelnia, makes_sense=True
+        uczelnia=uczelnia, okres=okres, makes_sense=True
     ).select_related("autor_could_benefit", "dyscyplina_naukowa")
 
     total_opportunities = opportunities.count()
@@ -123,7 +130,11 @@ def _unpin_all_sensible(self, uczelnia_id, min_slot_filled=0.8):  # noqa: C901
         # Create snapshot before unpinning
         snapshot = SnapshotOdpiec.objects.create(
             owner=None,  # System tworzy snapshot
-            comment=f"przed odpięciem wszystkich sensownych możliwości - uczelnia {uczelnia}",
+            comment=(
+                "przed odpięciem wszystkich sensownych możliwości - uczelnia "
+                f"{uczelnia} ({okres})"
+            ),
+            okres=okres,
         )
 
         logger.info(
@@ -146,7 +157,6 @@ def _unpin_all_sensible(self, uczelnia_id, min_slot_filled=0.8):  # noqa: C901
     unpinned_count = 0
     unpinned_ciagle = 0
     unpinned_zwarte = 0
-    unpinned_patent = 0
 
     for idx, opportunity in enumerate(opportunities, 1):
         try:
@@ -169,11 +179,9 @@ def _unpin_all_sensible(self, uczelnia_id, min_slot_filled=0.8):  # noqa: C901
                 ).update(przypieta=False)
                 unpinned_zwarte += updated
             elif content_type_id == ct_patent.pk:
-                # Patent_Autor
-                updated = Patent_Autor.objects.filter(
-                    rekord_id=object_id, autor=autor, dyscyplina_naukowa=dyscyplina
-                ).update(przypieta=False)
-                unpinned_patent += updated
+                # Patenty nie biorą udziału w przypięciach/odpięciach.
+                logger.info(f"Pomijam patent w możliwości odpięcia {opportunity.pk}")
+                continue
             else:
                 logger.warning(
                     f"Unknown content_type_id {content_type_id} for opportunity {opportunity.pk}"
@@ -204,7 +212,7 @@ def _unpin_all_sensible(self, uczelnia_id, min_slot_filled=0.8):  # noqa: C901
 
     logger.info(
         f"Unpinning complete. Total unpinned: {unpinned_count} "
-        f"(Ciągłe: {unpinned_ciagle}, Zwarte: {unpinned_zwarte}, Patent: {unpinned_patent})"
+        f"(Ciągłe: {unpinned_ciagle}, Zwarte: {unpinned_zwarte})"
     )
 
     # Update task state
@@ -218,7 +226,6 @@ def _unpin_all_sensible(self, uczelnia_id, min_slot_filled=0.8):  # noqa: C901
             "unpinned_count": unpinned_count,
             "unpinned_ciagle": unpinned_ciagle,
             "unpinned_zwarte": unpinned_zwarte,
-            "unpinned_patent": unpinned_patent,
         },
     )
 
@@ -234,7 +241,6 @@ def _unpin_all_sensible(self, uczelnia_id, min_slot_filled=0.8):  # noqa: C901
             "unpinned_count": unpinned_count,
             "unpinned_ciagle": unpinned_ciagle,
             "unpinned_zwarte": unpinned_zwarte,
-            "unpinned_patent": unpinned_patent,
         },
         logger_func=logger.info,
     )
@@ -257,12 +263,18 @@ def _unpin_all_sensible(self, uczelnia_id, min_slot_filled=0.8):  # noqa: C901
 
     workflow = chain(
         generuj_metryki_task_parallel.s(
+            rok_min=okres.rok_od,
+            rok_max=okres.rok_do,
             rodzaje_autora=get_default_rodzaje_autora(),
             nadpisz=True,
             przelicz_liczbe_n=True,
+            okres_pk=okres.pk,
         ),
         run_unpinning_after_metrics_wrapper.s(
-            uczelnia_id=uczelnia.pk, dyscyplina_id=None, min_slot_filled=min_slot_filled
+            uczelnia_id=uczelnia.pk,
+            dyscyplina_id=None,
+            min_slot_filled=min_slot_filled,
+            okres_pk=okres.pk,
         ),
     )
 
@@ -354,7 +366,6 @@ def _unpin_all_sensible(self, uczelnia_id, min_slot_filled=0.8):  # noqa: C901
         "unpinned_count": unpinned_count,
         "unpinned_ciagle": unpinned_ciagle,
         "unpinned_zwarte": unpinned_zwarte,
-        "unpinned_patent": unpinned_patent,
         "workflow_task_id": workflow_result.id,
         "workflow_result": workflow_final_result,
         "completed_at": datetime.now().isoformat(),

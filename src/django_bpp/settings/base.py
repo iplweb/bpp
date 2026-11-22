@@ -16,6 +16,7 @@ from django.core.exceptions import ImproperlyConfigured
 from bpp.auth.microsoft_conf import normalize_microsoft_tenant_id
 from bpp.util import slugify_function
 from django_bpp.channels_prefix import get_channels_prefix
+from django_bpp.motywy_z_konfiguracji import wczytaj_motywy
 from django_bpp.rollbar_filters import zbuduj_exception_level_filters
 from django_bpp.version import VERSION
 
@@ -198,6 +199,17 @@ env = environ.Env(
     # stronie, której nie naprawimy kodem.
     DJANGO_BPP_ROLLBAR_IGNORE_SMTP_AUTH_ERRORS=(bool, False),
     #
+    # Sentry / GlitchTip (protokół Sentry) — patrz bpp.sentry_config.
+    # Pusty DSN = Sentry wyłączony (zachowanie jak przed jego dodaniem).
+    #
+    SENTRY_DSN=(str, ""),
+    # Pusty = to samo środowisko, które dostaje Rollbar
+    # (development / production / staging).
+    SENTRY_ENVIRONMENT=(str, ""),
+    # 0 = bez śledzenia wydajności (serwer GlitchTip jest mały).
+    SENTRY_TRACES_SAMPLE_RATE=(float, 0.0),
+    SENTRY_SEND_DEFAULT_PII=(bool, False),
+    #
     # Prometheus
     #
     DJANGO_BPP_ENABLE_PROMETHEUS=(bool, False),
@@ -336,6 +348,7 @@ TEMPLATES = [
                 "django.contrib.messages.context_processors.messages",
                 "django_bpp.context_processors.conditional_password_status",
                 "bpp.context_processors.uczelnia.uczelnia",
+                "ewaluacja_common.context_processors.okres_ewaluacji",
                 "bpp.context_processors.config.bpp_configuration",
                 "bpp.context_processors.constance_config.constance_config",
                 "bpp.context_processors.global_nav.user",
@@ -357,6 +370,10 @@ TEMPLATES = [
 ]
 
 MIDDLEWARE = [
+    # First (outermost): fixes Content-Length of X-Accel-Redirect responses
+    # from django-sendfile as the very last step; under ASGI a mismatch makes
+    # uvicorn raise "Response content shorter than Content-Length".
+    "django_bpp.middleware.OffloadedFileContentLengthMiddleware",
     "django.middleware.locale.LocaleMiddleware",
     "django.middleware.security.SecurityMiddleware",
     # Zaraz po SecurityMiddleware: nagłówek CSP trafia też do odpowiedzi
@@ -367,7 +384,15 @@ MIDDLEWARE = [
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
     "django.contrib.auth.middleware.AuthenticationMiddleware",
+    # Right after auth (needs request.user), outside every middleware that may
+    # redirect to a login page: anonymous HTMX requests get HX-Redirect to the
+    # login page instead of a login form swapped into a fragment.
+    "django_bpp.middleware.HtmxLoginRedirectMiddleware",
     "bpp.middleware.SiteResolutionMiddleware",  # After auth - resolves Site/Uczelnia from hostname
+    "bpp.middleware.UzytkownikHistoriiMiddleware",  # After auth - author of history entries
+    "bpp.middleware.PodgladJakoGoscMiddleware",  # After auth - konfigurator wyglądu
+    # After auth: okres ewaluacji z adresu URL (/ewaluacja_metryki/2026-2030/...)
+    "ewaluacja_common.url_okres.OkresWUrlMiddleware",
     "django_countdown.middleware.CountdownBlockingMiddleware",  # After auth - needs request.user
     # After auth middleware to have request.user. BPP-owa podklasa: dopóki
     # kreator niedokończony, kto nie ma dostępu do kroku → logowanie admina.
@@ -381,6 +406,9 @@ MIDDLEWARE = [
     # 'rollbar.contrib.django.middleware.RollbarNotifierMiddleware',
     "bpp.middleware.CustomRollbarNotifierMiddleware",
     "oauth_mcp.middleware.ApiReadOnlyForBearerMiddleware",
+    # Trashed record -> 410 Gone page. Below Rollbar so its process_exception
+    # runs first (an expected signal, not an error to report).
+    "bpp.middleware.RekordUsunietyMiddleware",
     # AxesMiddleware MUSI być ostatnie — przechwytuje AxesBackendPermissionDenied
     # z backendu logowania i renderuje odpowiedź "konto zablokowane".
     "axes.middleware.AxesMiddleware",
@@ -452,6 +480,7 @@ INSTALLED_APPS = [
     "denorm.apps.DenormAppConfig",
     "reversion",
     "reversion_compare",
+    "historia_zmian",  # źródło zmiany rewizji (FD#587)
     "djangoql",
     "cacheops",
     "constance",
@@ -691,12 +720,38 @@ COMPRESS_ROOT = STATIC_ROOT
 # modelu, dzięki czemu zmiana listy nie wymaga migracji.
 BPP_THEMES = [
     ("app-green", "Zielony"),
+    ("app-green-auto", "Zielony (jasny lub ciemny wg ustawień systemu)"),
+    ("app-green-ciemny", "Zielony ciemny"),
     ("app-blue", "Niebieski"),
+    ("app-blue-auto", "Niebieski (jasny lub ciemny wg ustawień systemu)"),
+    ("app-blue-ciemny", "Niebieski ciemny"),
     ("app-orange", "Pomarańczowy"),
+    ("app-orange-auto", "Pomarańczowy (jasny lub ciemny wg ustawień systemu)"),
+    ("app-orange-ciemny", "Pomarańczowy ciemny"),
     ("app-vizja", "Bursztynowo-granatowy (VIZJA)"),
+    (
+        "app-vizja-auto",
+        "Bursztynowo-granatowy (jasny lub ciemny wg ustawień systemu; VIZJA)",
+    ),
+    ("app-vizja-ciemny", "Bursztynowo-granatowy ciemny (VIZJA)"),
     ("app-mwsl", "Pomarańczowo-granatowy (MWSL)"),
-    ("app-uafm", "Czerwono-błękitny (UAFM)"),
+    (
+        "app-mwsl-auto",
+        "Pomarańczowo-granatowy (jasny lub ciemny wg ustawień systemu; MWSL)",
+    ),
+    ("app-mwsl-ciemny", "Pomarańczowo-granatowy ciemny (MWSL)"),
+    ("app-uafm", "Czerwono-błękitny"),
+    ("app-uafm-auto", "Czerwono-błękitny (jasny lub ciemny wg ustawień systemu)"),
+    ("app-uafm-ciemny", "Czerwono-błękitny ciemny"),
 ]
+
+# Motywy z konfiguratora wyglądu (src/bpp/static/scss/motywy/*.json) — bez
+# wpisu tutaj ani targetu w Gruntfile.js (kompiluje je task `motywy`).
+BPP_THEMES += wczytaj_motywy(zajete=[value for value, _label in BPP_THEMES])
+
+# Kompilator motywów konfiguratora wyglądu (osobny kontener, patrz
+# bpp/motyw_kompilator.py). Pusty = dev: jednorazowe `node serwer.js`.
+BPP_MOTYW_KOMPILATOR_URL = os.environ.get("DJANGO_BPP_MOTYW_KOMPILATOR_URL", "")
 
 COMPRESS_OFFLINE_CONTEXT = [
     {
@@ -929,6 +984,14 @@ CELERYBEAT_SCHEDULE = {
     "oauth-mcp-usun-osierocone-rejestracje-dcr": {
         "task": "oauth_mcp.tasks.usun_osierocone_aplikacje_oauth",
         "schedule": crontab(hour=1, minute=45),  # Daily at 1:45 AM
+    },
+    # Typowe dyscypliny uczelni (najczęściej przypisywane w pracach z ostatnich
+    # lat) — podpowiedź w importerze i formularzu zgłoszeń, gdy autor nie ma
+    # dyscypliny na rok pracy (FD#620). Wynik siedzi w cache na dobę; przy
+    # pustym cache liczony na żądanie. Lekkie zapytanie GROUP BY.
+    "odswiez-typowe-dyscypliny": {
+        "task": "bpp.tasks.odswiez_typowe_dyscypliny",
+        "schedule": crontab(hour=5, minute=15),  # Daily at 5:15 AM
     },
 }
 
@@ -1295,6 +1358,12 @@ COMPRESS_OUTPUT_DIR = "CACHE"
 
 DBTEMPLATES_USE_REVERSION = True
 DBTEMPLATES_USE_REVERSION_COMPARE = True
+
+# Porównanie wersji (reversion-compare, strona „Historia" w adminie): klucze
+# obce porównujemy po ID. Domyślnie biblioteka uznaje KAŻDE pole FK za
+# zmienione, gdy w wersji zmieniło się cokolwiek (np. sam tytuł), i zalewa
+# diff niezmienionymi słownikami.
+REVERSION_COMPARE_FOREIGN_OBJECTS_AS_ID = True
 
 # Nasza tabela django_template ma kilka wierszy (override'y frontendu), a admin
 # rozwiazuje ~150 szablonow na strone. Bez tej flagi dbtemplates pytalby DB o
@@ -1937,6 +2006,18 @@ ROLLBAR = {
     ),
 }
 
+#
+# Sentry / GlitchTip — inicjalizacja w bpp.sentry_config.configure_sentry()
+# (z BppConfig.ready, obok Rollbara), TYLKO gdy SENTRY_DSN jest niepusty.
+# Oba backendy mogą działać równolegle; zgłoszenia z kodu idą przez
+# bpp.zglaszanie_bledow do każdego skonfigurowanego.
+#
+SENTRY_DSN = env("SENTRY_DSN")
+# production.py przelicza to ponownie po ustawieniu środowiska Rollbara.
+SENTRY_ENVIRONMENT = env("SENTRY_ENVIRONMENT") or ROLLBAR["environment"]
+SENTRY_TRACES_SAMPLE_RATE = env("SENTRY_TRACES_SAMPLE_RATE")
+SENTRY_SEND_DEFAULT_PII = env("SENTRY_SEND_DEFAULT_PII")
+
 # Publiczny token klienta (post_client_item) do frontendowego Rollbara.
 # INNY niż sekretny ROLLBAR["access_token"] (post_server_item) — ten można
 # bezpiecznie renderować w przeglądarce. Pusty = front-end Rollbar wyłączony.
@@ -2004,6 +2085,13 @@ LOGGING = {
         # errors have no other path to Rollbar (see denorm_queue below).
         "rollbar": {
             "class": "rollbar.logger.RollbarHandler",
+            "level": "ERROR",
+        },
+        # Odpowiednik handlera "rollbar" dla Sentry/GlitchTip. Bez SENTRY_DSN
+        # (sentry_sdk nie zainicjalizowany) nic nie wysyła. Podpinany do tych
+        # samych loggerów co "rollbar" — patrz bpp.sentry_config.
+        "sentry": {
+            "class": "sentry_sdk.integrations.logging.EventHandler",
             "level": "ERROR",
         },
     },
@@ -2081,13 +2169,14 @@ LOGGING = {
         },
         # denorm_queue daemon (the LISTEN/NOTIFY -> Celery bridge). It is a
         # plain management command, not a Celery task or a request, so its
-        # errors reach Rollbar only through this handler. It reconnects on its
-        # own after a database restart and only WARNs; it logs an ERROR when
+        # errors reach Rollbar/Sentry only through these handlers. It
+        # reconnects on its own after a database restart and only WARNs; it
+        # logs an ERROR when
         # the database stays unreachable longer than DENORM_QUEUE_OUTAGE_GRACE
         # (django-denorm-iplweb, default 15 min), then every
         # DENORM_QUEUE_OUTAGE_REPEAT (default 30 min).
         "denorm.management.commands.denorm_queue": {
-            "handlers": ["console", "rollbar"],
+            "handlers": ["console", "rollbar", "sentry"],
             "level": "INFO",
             "propagate": False,
         },

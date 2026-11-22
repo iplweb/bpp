@@ -1,5 +1,6 @@
 from django import forms
 from django.contrib import admin
+from reversion_compare.admin import CompareVersionAdmin
 from siteblog.admin import SmallerTextarea
 
 from bpp.admin.helpers import LimitingFormset
@@ -8,6 +9,8 @@ from bpp.models import Wydawnictwo_Ciagle, Wydawnictwo_Zwarte
 from ..models.konferencja import Konferencja
 from .core import BaseBppAdminMixin
 from .helpers.fieldsets import ADNOTACJE_FIELDSET
+from .helpers.mixins import BppSoftDeleteAdminMixin
+from .helpers.wersje import HistoriaWersjiMixin
 
 
 class Wydawnictwo_Zwarte_Konferencja_Form(forms.ModelForm):
@@ -54,7 +57,13 @@ class Wydawnictwo_Ciagle_KonferencjaInline(admin.TabularInline):
     extra = 0
 
 
-class KonferencjaAdmin(BaseBppAdminMixin, admin.ModelAdmin):
+class KonferencjaAdmin(
+    BaseBppAdminMixin,
+    BppSoftDeleteAdminMixin,
+    # Historia zmian (FD#587): tuż przed terminalną klasą admina.
+    HistoriaWersjiMixin,
+    CompareVersionAdmin,
+):
     list_display = [
         "nazwa",
         "typ_konferencji",

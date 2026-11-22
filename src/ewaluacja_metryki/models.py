@@ -1,9 +1,21 @@
 from django.db import models
+from django.db.models import Value
+from django.db.models.functions import Coalesce
 from django.utils import timezone
 
 from bpp.models.autor import Autor
 from bpp.models.dyscyplina_naukowa import Dyscyplina_Naukowa
 from bpp.models.jednostka import Jednostka
+
+
+def _domyslny_okres_pk():
+    """Domyślny okres ewaluacji dla nowej metryki (okres zawierający bieżący
+    rok). Kod generujący metryki zawsze podaje okres jawnie — ta wartość
+    domyślna chroni tylko ręcznie tworzone wiersze (admin, testy)."""
+    from ewaluacja_common.okres import okres_domyslny
+
+    okres = okres_domyslny()
+    return okres.pk if okres is not None else None
 
 
 class MetrykaAutora(models.Model):
@@ -39,6 +51,14 @@ class MetrykaAutora(models.Model):
         help_text="Uczelnia, dla której policzono metrykę (multi-hosted)",
     )
 
+    okres = models.ForeignKey(
+        "ewaluacja_common.OkresEwaluacji",
+        on_delete=models.PROTECT,
+        default=_domyslny_okres_pk,
+        related_name="metryki_autorow",
+        help_text="Okres ewaluacji, za który policzono metrykę",
+    )
+
     # Dane z algorytmu plecakowego (nazbierane optymalne)
     slot_maksymalny = models.DecimalField(
         max_digits=10,
@@ -69,7 +89,7 @@ class MetrykaAutora(models.Model):
         help_text="Średnia punktów PKDaut za slot (nazbierane)",
     )
 
-    # Dane za wszystkie prace autora w okresie 2022-2025
+    # Dane za wszystkie prace autora w okresie ewaluacji
     slot_wszystkie = models.DecimalField(
         max_digits=10, decimal_places=4, help_text="Suma slotów za wszystkie prace"
     )
@@ -129,7 +149,7 @@ class MetrykaAutora(models.Model):
     class Meta:
         verbose_name = "Metryka autora"
         verbose_name_plural = "Metryki autorów"
-        unique_together = [("autor", "dyscyplina_naukowa", "uczelnia")]
+        unique_together = [("autor", "dyscyplina_naukowa", "uczelnia", "okres")]
         ordering = ["-srednia_za_slot_nazbierana", "autor__nazwisko", "autor__imiona"]
         indexes = [
             models.Index(fields=["-srednia_za_slot_nazbierana"]),
@@ -142,6 +162,14 @@ class MetrykaAutora(models.Model):
         return f"{self.autor} - {self.dyscyplina_naukowa.nazwa}"
 
     def save(self, *args, **kwargs):
+        # Lata metryki muszą mieścić się w jej okresie — gdy nie (np. wiersz
+        # utworzony bez jawnych lat), przyjmij granice okresu.
+        if self.okres_id is not None and not (
+            self.okres.zawiera(self.rok_min) and self.okres.zawiera(self.rok_max)
+        ):
+            self.rok_min = self.okres.rok_od
+            self.rok_max = self.okres.rok_do
+
         # Wylicz średnie przed zapisem
         if self.slot_nazbierany and self.slot_nazbierany > 0:
             self.srednia_za_slot_nazbierana = (
@@ -163,18 +191,37 @@ class MetrykaAutora(models.Model):
         else:
             self.procent_wykorzystania_slotow = 0
 
+        # ``update_or_create`` (Django ≥ 4.2) zapisuje z ``update_fields`` =
+        # klucze ``defaults`` — bez tego wyliczone wyżej pola zostałyby
+        # w bazie ze starymi wartościami po ponownym generowaniu metryk.
+        update_fields = kwargs.get("update_fields")
+        if update_fields is not None:
+            kwargs["update_fields"] = set(update_fields) | {
+                "srednia_za_slot_nazbierana",
+                "srednia_za_slot_wszystkie",
+                "procent_wykorzystania_slotow",
+                "rok_min",
+                "rok_max",
+            }
+
         super().save(*args, **kwargs)
 
     def get_absolute_url(self):
-        """Zwraca URL do widoku szczegółów metryki używając stabilnych identyfikatorów"""
+        """URL szczegółów metryki (stabilne identyfikatory) z okresem metryki
+        w adresie — otwiera dokładnie ten okres, niezależnie od okresu
+        wybranego przez oglądającego."""
         from django.urls import reverse
 
-        return reverse(
-            "ewaluacja_metryki:szczegoly",
-            kwargs={
-                "autor_slug": self.autor.slug,
-                "dyscyplina_kod": self.dyscyplina_naukowa.kod,
-            },
+        from ewaluacja_common.url_okres import reverse_w_okresie
+
+        kwargs = {
+            "autor_slug": self.autor.slug,
+            "dyscyplina_kod": self.dyscyplina_naukowa.kod,
+        }
+        if self.okres_id is None:
+            return reverse("ewaluacja_metryki:szczegoly", kwargs=kwargs)
+        return reverse_w_okresie(
+            "ewaluacja_metryki:szczegoly", self.okres, kwargs=kwargs
         )
 
     @property
@@ -239,7 +286,7 @@ class StatusGenerowania(models.Model):
     # (views/unpinning_analysis.py:39,149, views/unpinning_list.py:137),
     # co rozwiązuje się do wiersza uczelnia=None. Pełny per-uczelnia status
     # należy do późniejszych prac federacyjnych.
-    uczelnia = models.OneToOneField(
+    uczelnia = models.ForeignKey(
         "bpp.Uczelnia",
         on_delete=models.CASCADE,
         null=True,
@@ -247,26 +294,35 @@ class StatusGenerowania(models.Model):
         help_text="Uczelnia, której dotyczy ten status (multi-hosted)",
     )
 
+    # Status jest per (uczelnia, okres): generowanie metryk jednego okresu nie
+    # blokuje przeglądania ani generowania metryk innego okresu (metryki,
+    # liczba N i udziały są przechowywane osobno dla każdego okresu).
+    okres = models.ForeignKey(
+        "ewaluacja_common.OkresEwaluacji",
+        on_delete=models.CASCADE,
+        null=True,
+        blank=True,
+        related_name="+",
+        help_text="Okres ewaluacji, którego dotyczy ten status",
+    )
+
     class Meta:
         verbose_name = "Status generowania metryk"
         verbose_name_plural = "Status generowania metryk"
         constraints = [
-            # OneToOneField(null=True) daje zwykły indeks unikalny, a w
-            # PostgreSQL NULL-e są w nim wzajemnie rozróżnialne — nie
-            # ogranicza więc liczby wierszy z ``uczelnia IS NULL``. Dwa
-            # równoległe żądania tworzyły dwa takie wiersze i od tej chwili
-            # każde ``get_or_create()`` bez argumentu rzucało
-            # ``MultipleObjectsReturned`` (trwałe 500).
-            #
-            # Wyrażenie ``uczelnia IS NULL`` jest dla wierszy objętych
-            # warunkiem zawsze równe TRUE, więc częściowy indeks unikalny na
-            # nim dopuszcza dokładnie jeden taki wiersz. (Indeksu na samej
-            # kolumnie ``uczelnia`` użyć nie można — znów porównywałby NULL-e.)
+            # Jeden status na (uczelnia, okres). NULL-e w zwykłym indeksie
+            # unikalnym PostgreSQL są wzajemnie rozróżnialne — stąd COALESCE
+            # i osobny indeks częściowy dla wierszy bez uczelni (dwa
+            # równoległe ``get_or_create()`` bez argumentu tworzyły kiedyś
+            # dwa takie wiersze → trwałe ``MultipleObjectsReturned``).
             models.UniqueConstraint(
-                models.ExpressionWrapper(
-                    models.Q(uczelnia__isnull=True),
-                    output_field=models.BooleanField(),
-                ),
+                "uczelnia",
+                Coalesce("okres", Value(0)),
+                condition=models.Q(uczelnia__isnull=False),
+                name="ewaluacja_metryki_status_uczelnia_okres",
+            ),
+            models.UniqueConstraint(
+                Coalesce("okres", Value(0)),
                 condition=models.Q(uczelnia__isnull=True),
                 name="ewaluacja_metryki_status_jeden_wiersz_bez_uczelni",
             ),
@@ -281,13 +337,17 @@ class StatusGenerowania(models.Model):
             return "Brak informacji o generowaniu"
 
     @classmethod
-    def get_or_create(cls, uczelnia=None):
-        """Pobierz lub utwórz status dla danej uczelni (per-uczelnia, multi-hosted)."""
-        obj, created = cls.objects.get_or_create(uczelnia=uczelnia)
+    def get_or_create(cls, uczelnia=None, okres=None):
+        """Pobierz lub utwórz status generowania dla uczelni i okresu
+        ewaluacji (obiekt albo pk)."""
+        okres_id = getattr(okres, "pk", okres)
+        obj, created = cls.objects.get_or_create(uczelnia=uczelnia, okres_id=okres_id)
         return obj
 
-    def rozpocznij_generowanie(self, task_id="", liczba_do_przetworzenia=0):
+    def rozpocznij_generowanie(self, task_id="", liczba_do_przetworzenia=0, okres=None):
         """Oznacz rozpoczęcie generowania"""
+        if okres is not None:
+            self.okres = okres
         self.data_rozpoczecia = timezone.now()
         self.data_zakonczenia = None
         self.w_trakcie = True

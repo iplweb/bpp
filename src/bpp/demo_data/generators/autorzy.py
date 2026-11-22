@@ -37,8 +37,12 @@ def create_autorzy(
         raise ValueError("Brak Jednostek do podpiecia Autorow.")
 
     autorzy_objs: list[Autor] = []
+    obowiazkowi = theme.autorzy_obowiazkowi
     for i in range(n):
-        imiona, nazwisko = compose_autor(theme, rng)
+        if i < len(obowiazkowi):
+            imiona, nazwisko = obowiazkowi[i]
+        else:
+            imiona, nazwisko = compose_autor(theme, rng)
         # AutoSlugField.populate_from="get_full_name" + bulk_create:
         # find_unique() nie widzi instancji ze swojego batcha (sa jeszcze
         # nieinsertowane), wiec dwa Autorzy z identycznym (imiona, nazwisko)
@@ -98,3 +102,55 @@ def create_autorzy(
         manifest.save()
 
     return created
+
+
+def utworz_autorow(
+    dane: list[tuple[str, str, Jednostka | int, dict]],
+    *,
+    slug_tag: str,
+    manifest: Manifest,
+    batch_size: int = 500,
+    disable_progress: bool = False,
+    desc: str = "Autorzy",
+) -> list[Autor]:
+    """Tworzy autorów z listy ``(imiona, nazwisko, jednostka lub jej PK, pola)`` + ich
+    ``Autor_Jednostka``. ``pola`` to dodatkowe pola Autora (np. pseudonim).
+
+    Slug dostaje ``slug_tag`` i numer, żeby nie zderzyć się z autorami
+    z ``create_autorzy`` (bulk_create nie widzi rodzeństwa w paczce)."""
+    from bpp.demo_data.db import bulk_create_z_manifestem
+
+    autorzy = [
+        Autor(
+            imiona=imiona,
+            nazwisko=nazwisko,
+            sort=_make_sort_key(nazwisko, imiona),
+            slug=slugify(f"{imiona} {nazwisko}-{slug_tag}-{i + 1}"),
+            **pola,
+        )
+        for i, (imiona, nazwisko, _jednostka, pola) in enumerate(dane)
+    ]
+    bulk_create_z_manifestem(
+        autorzy,
+        model=Autor,
+        label="bpp.Autor",
+        desc=desc,
+        manifest=manifest,
+        batch_size=batch_size,
+        disable_progress=disable_progress,
+    )
+    bulk_create_z_manifestem(
+        [
+            Autor_Jednostka(
+                autor=autor, jednostka_id=getattr(jednostka, "pk", jednostka)
+            )
+            for autor, (_i, _n, jednostka, _p) in zip(autorzy, dane, strict=True)
+        ],
+        model=Autor_Jednostka,
+        label="bpp.Autor_Jednostka",
+        desc=f"{desc} — jednostki",
+        manifest=manifest,
+        batch_size=batch_size,
+        disable_progress=disable_progress,
+    )
+    return autorzy

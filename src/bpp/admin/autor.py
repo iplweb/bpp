@@ -5,7 +5,7 @@ from django.contrib.admin.utils import unquote
 from django.core.exceptions import ValidationError
 from django.core.files.uploadedfile import UploadedFile
 from django.forms.models import BaseInlineFormSet
-from reversion.admin import VersionAdmin
+from reversion_compare.admin import CompareVersionAdmin
 
 from bpp.admin.helpers.djangoql import BppDjangoQLSearchMixin
 from bpp.admin.helpers.dynamic_columns import BppDynamicColumnsMixin
@@ -24,7 +24,12 @@ from ..models import (  # Publikacja_Habilitacyjna
 from ..util.identyfikatory import IdentyfikatoryProfiliFormMixin
 from ..util.obrazy import MAKS_ROZMIAR_PLIKU_ZDJECIA, przetworz_zdjecie_autora
 from ..wersjonowanie import przelicz_aktualna_jednostke
-from .actions import ustaw_pokazuj_false, ustaw_pokazuj_true
+from .actions import (
+    pokaz_autorow_wszedzie,
+    ukryj_autorow_wszedzie,
+    ustaw_pokazuj_false,
+    ustaw_pokazuj_true,
+)
 from .core import BaseBppAdminMixin
 from .filters import (
     AutorZmarlFilter,
@@ -38,6 +43,7 @@ from .filters import (
     WydzialAutoraFilter,
 )
 from .helpers.fieldsets import ADNOTACJE_FIELDSET, ZapiszZAdnotacjaMixin
+from .helpers.mixins import BppSoftDeleteAdminMixin
 from .helpers.site_filtered import SiteFilteredAdminMixin
 from .helpers.wersje import HistoriaWersjiMixin
 from .helpers.widgets import CHARMAP_SINGLE_LINE
@@ -342,8 +348,13 @@ class AutorAdmin(
     EksportDanychMixin,
     BaseBppAdminMixin,
     BppDynamicColumnsMixin,
+    # Soft-delete: OSTATNI mixin z własnym ``get_queryset`` (nie woła
+    # ``super()``) — patrz docstring BppSoftDeleteAdminMixin. Stoi przed
+    # ``HistoriaWersjiMixin``, który zgodnie ze swoim docstringiem musi być
+    # tuż przed ``VersionAdmin`` (żaden z nich nie nadpisuje get_queryset).
+    BppSoftDeleteAdminMixin,
     HistoriaWersjiMixin,
-    VersionAdmin,
+    CompareVersionAdmin,
 ):
     uczelnia_field_path = "aktualna_jednostka__uczelnia"
 
@@ -381,7 +392,12 @@ class AutorAdmin(
     form = AutorForm
     autocomplete_fields = ["pbn_uid"]
     resource_classes = [resources.AutorResource]
-    actions = [ustaw_pokazuj_true, ustaw_pokazuj_false]
+    actions = [
+        ustaw_pokazuj_true,
+        ustaw_pokazuj_false,
+        pokaz_autorow_wszedzie,
+        ukryj_autorow_wszedzie,
+    ]
 
     list_display_always = ["nazwisko", "imiona"]
 

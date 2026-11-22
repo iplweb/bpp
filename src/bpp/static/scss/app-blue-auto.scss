@@ -1,0 +1,27 @@
+// Motyw niebieski: jasny, a ciemny wtedy, gdy odwiedzający ma w systemie
+// (przeglądarce) włączony tryb ciemny. Mechanizm: _tryb-ciemny.scss.
+@import "app-blue-baza";
+@import "tryb-ciemny";
+
+// Przełącznik trybu kolorów na pasku menu (top_bar.html) ustawia na <html>
+// `data-tryb-kolorow="jasny|ciemny"`; bez atrybutu — jak system.
+// `:where()` — warunek bez wpływu na specyficzność: reguły zachowują się jak
+// pod zwykłym `html` (np. `html a` nie przebija koloru `.button`).
+// `screen` — wydruk zawsze jasny.
+@media screen and (prefers-color-scheme: dark) {
+  @include bpp-tryb-ciemny(
+    $primary-color,
+    $korzen: 'html:where(:not([data-tryb-kolorow="jasny"]))'
+  );
+}
+
+@media screen {
+  @include bpp-tryb-ciemny(
+    $primary-color,
+    $korzen: 'html:where([data-tryb-kolorow="ciemny"])'
+  );
+}
+
+// Print styles — MUSZA byc ostatnie: Foundation (foundation-print-styles
+// wyzej) emituje wlasny blok @media print i chcemy byc za nim w kaskadzie.
+@import "print";

@@ -5,11 +5,11 @@ from django.shortcuts import redirect
 from django.utils.decorators import method_decorator
 from django.views import View
 
-from ewaluacja_common.models import Rodzaj_Autora
+from ewaluacja_common.okres import okres_dla_request
 from raport_slotow.uczelnia_helper import uczelnia_dla_odczytu
 
+from ..brak_metryk import uruchom_generowanie_metryk
 from ..models import StatusGenerowania
-from ..tasks import generuj_metryki_task_parallel
 from .mixins import ma_pelne_uprawnienia_ewaluacji, ma_uprawnienia_ewaluacji
 
 
@@ -38,7 +38,9 @@ class UruchomGenerowanieView(View):
 
         # Sprawdź czy generowanie nie jest już w trakcie
         uczelnia = uczelnia_dla_odczytu(request)
-        status = StatusGenerowania.get_or_create(uczelnia=uczelnia)
+        status = StatusGenerowania.get_or_create(
+            uczelnia=uczelnia, okres=okres_dla_request(request)
+        )
         if status.w_trakcie:
             if request.headers.get("HX-Request"):
                 # Dla HTMX zwróć aktualny status
@@ -54,47 +56,24 @@ class UruchomGenerowanieView(View):
             )
             return redirect("ewaluacja_metryki:lista")
 
+        # Okres ewaluacji: ten wybrany na pasku okresu (albo domyślny)
+        okres = okres_dla_request(request)
+        if okres is None:
+            messages.error(request, "Brak zdefiniowanych okresów ewaluacji.")
+            return redirect("ewaluacja_metryki:lista")
+
         # Pobierz parametry z formularza (jeśli są)
-        rok_min = int(request.POST.get("rok_min", 2022))
-        rok_max = int(request.POST.get("rok_max", 2025))
         minimalny_pk = float(request.POST.get("minimalny_pk", 0.01))
         nadpisz = request.POST.get("nadpisz", "on") == "on"
-
-        # Pobierz zaznaczone rodzaje autorów
+        # Puste = wszystkie rodzaje z licz_sloty=True (domyślne w helperze).
         rodzaje_autora = request.POST.getlist("rodzaj_autora")
-        if not rodzaje_autora:
-            # Domyślnie wszystkie rodzaje z licz_sloty=True jeśli nic nie zaznaczono
-            rodzaje_autora = list(
-                Rodzaj_Autora.objects.filter(licz_sloty=True).values_list(
-                    "skrot", flat=True
-                )
-            )
 
-        # Oblicz liczbę autorów do przetworzenia (aby ustawić status od razu)
-        from ewaluacja_liczba_n.models import IloscUdzialowDlaAutoraZaCalosc
-
-        if uczelnia:
-            total_count = IloscUdzialowDlaAutoraZaCalosc.objects.filter(
-                uczelnia=uczelnia
-            ).count()
-        else:
-            total_count = IloscUdzialowDlaAutoraZaCalosc.objects.count()
-
-        # Uruchom równoległy task (z domyślnym przeliczaniem liczby N)
-        result = generuj_metryki_task_parallel.delay(
-            rok_min=rok_min,
-            rok_max=rok_max,
+        status, result = uruchom_generowanie_metryk(
+            uczelnia,
+            okres,
             minimalny_pk=minimalny_pk,
             nadpisz=nadpisz,
-            przelicz_liczbe_n=True,  # Zawsze przeliczaj liczbę N przy generowaniu metryk
             rodzaje_autora=rodzaje_autora,
-            uczelnia_id=uczelnia.pk if uczelnia else None,
-        )
-
-        # KLUCZOWE: Ustaw status w_trakcie=True OD RAZU w widoku
-        # (task będzie tylko aktualizował postęp, nie rozpoczynał od nowa)
-        status.rozpocznij_generowanie(
-            task_id=str(result.id), liczba_do_przetworzenia=total_count
         )
 
         # Jeśli to żądanie HTMX, zwróć fragment HTML ze statusem
@@ -135,7 +114,9 @@ class StatusGenerowaniaView(View):
 
     def get(self, request, *args, **kwargs):
         uczelnia = uczelnia_dla_odczytu(request)
-        status = StatusGenerowania.get_or_create(uczelnia=uczelnia)
+        status = StatusGenerowania.get_or_create(
+            uczelnia=uczelnia, okres=okres_dla_request(request)
+        )
 
         return JsonResponse(
             {
@@ -179,7 +160,9 @@ class StatusGenerowaniaPartialView(View):
 
         # Pobierz status generowania
         uczelnia = uczelnia_dla_odczytu(request)
-        status = StatusGenerowania.get_or_create(uczelnia=uczelnia)
+        status = StatusGenerowania.get_or_create(
+            uczelnia=uczelnia, okres=okres_dla_request(request)
+        )
 
         # Sprawdź czy poprzedni status był w trakcie (dla odświeżenia strony po zakończeniu)
         previous_status_was_running = (

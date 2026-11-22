@@ -47,7 +47,7 @@ class AuthorImporter(ImportStepBase):
                 "Nie udało się pobrać autorów z PBN "
                 f"(uczelnia pbn_uid={uczelnia.pbn_uid_id})",
                 logger=logger,
-                do_rollbar=False,  # Rollbar już w handle_error
+                do_monitoringu=False,  # zgłoszenie już w handle_error
             )
             self.handle_error(e, "Nie udało się pobrać autorów")
         finally:
@@ -95,7 +95,7 @@ class AuthorImporter(ImportStepBase):
                 "Nie udało się zintegrować autorów z uczelnią "
                 f"(uczelnia pbn_uid={uczelnia.pbn_uid_id})",
                 logger=logger,
-                do_rollbar=False,  # Rollbar już w handle_error
+                do_monitoringu=False,  # zgłoszenie już w handle_error
             )
             self.handle_error(e, "Nie udało się zintegrować autorów")
             if hasattr(self.session, "statistics"):

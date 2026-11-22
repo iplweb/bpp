@@ -6,6 +6,8 @@ from django.contrib.auth.decorators import login_required
 from django.db.models import Count, Q
 from django.shortcuts import get_object_or_404, render
 
+from ewaluacja_common.okres import okres_dla_request
+
 from ..models import OptimizationRun
 from .helpers import _calculate_liczba_n_stats, _get_discipline_pin_stats
 
@@ -17,9 +19,12 @@ def run_list(request):
     """
     Lista wszystkich wykonanych optymalizacji
     """
-    runs = OptimizationRun.objects.select_related(
-        "dyscyplina_naukowa", "uczelnia"
-    ).order_by("-started_at")
+    okres = okres_dla_request(request)
+    runs = (
+        OptimizationRun.objects.select_related("dyscyplina_naukowa", "uczelnia")
+        .filter(okres=okres)
+        .order_by("-started_at")
+    )
 
     # Dla każdego run oblicz procent slotów poza N oraz statystyki przypięć
     runs_with_stats = []
@@ -32,12 +37,14 @@ def run_list(request):
         run.outside_n_slots_pct = stats["non_n_slots_pct"]
 
         # Dodaj statystyki przypięć dla dyscypliny
-        run.pin_stats = _get_discipline_pin_stats(run.dyscyplina_naukowa)
+        run.pin_stats = _get_discipline_pin_stats(run.dyscyplina_naukowa, okres)
 
         runs_with_stats.append(run)
 
     return render(
-        request, "ewaluacja_optymalizacja/run_list.html", {"runs": runs_with_stats}
+        request,
+        "ewaluacja_optymalizacja/run_list.html",
+        {"runs": runs_with_stats, "okres": okres},
     )
 
 
@@ -68,7 +75,9 @@ def run_detail(request, pk):
     autor_ids = [ar.autor_id for ar in author_results]
     existing_metrics = set(
         MetrykaAutora.objects.filter(
-            autor_id__in=autor_ids, dyscyplina_naukowa=run.dyscyplina_naukowa
+            autor_id__in=autor_ids,
+            dyscyplina_naukowa=run.dyscyplina_naukowa,
+            okres_id=run.okres_id,
         ).values_list("autor_id", flat=True)
     )
 
@@ -112,7 +121,8 @@ def discipline_comparison(request):
     # Get latest run for each discipline
 
     latest_runs = {}
-    all_runs = OptimizationRun.objects.filter(status="completed")
+    okres = okres_dla_request(request)
+    all_runs = OptimizationRun.objects.filter(status="completed", okres=okres)
 
     for run in all_runs:
         disc_id = run.dyscyplina_naukowa_id
@@ -149,6 +159,7 @@ def discipline_comparison(request):
 
     context = {
         "discipline_stats": discipline_stats,
+        "okres": okres,
     }
 
     return render(

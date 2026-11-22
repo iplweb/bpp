@@ -229,6 +229,23 @@ class PublicAutorAutocomplete(AutorAutocompleteBase):
         return str(result)
 
 
+class WyszukiwarkaAutorAutocomplete(PublicAutorAutocomplete):
+    """Picker autora w publicznej wyszukiwarce (pole „Nazwisko i imię”).
+
+    Jak ``PublicAutorAutocomplete``, ale pomija autorów z
+    ``pokazuj_w_wyszukiwaniu=False`` (FD#561); redakcja widzi wszystkich.
+    Raporty i formularz zgłaszania publikacji celowo zostają przy
+    ``PublicAutorAutocomplete`` — ukryty autor musi móc wybrać sam siebie.
+    """
+
+    def get_queryset(self):
+        return widoczni_autorzy(
+            super().get_queryset(),
+            getattr(self, "request", None),
+            lookup="pokazuj_w_wyszukiwaniu",
+        )
+
+
 class AutorAktualnieZatrudnionyNaUczelni(AutorAutocomplete):
     """Autocomplete autorów AKTUALNIE zatrudnionych w oglądającej uczelni.
 
@@ -236,8 +253,9 @@ class AutorAktualnieZatrudnionyNaUczelni(AutorAutocomplete):
     i tylko tyle. Bez grup „naszej/historycznie/zewnętrzni", bez autorów spoza
     uczelni, bez historycznie związanych. Lista jest płaska (override
     ``get_results``), więc nagłówki optgroup nie powielają się przy przewijaniu
-    Select2. Używany w adminie prac doktorskich/habilitacyjnych, gdzie kandydat
-    z definicji jest pracownikiem uczelni.
+    Select2. Admin prac doktorskich/habilitacyjnych NIE używa go od FD#445 —
+    autor/promotor bywa z obcej jednostki albo jest byłym pracownikiem, więc
+    tam działa pełny ``autor-autocomplete`` (``AutorAutocomplete``).
 
     Dziedziczy po ``AutorAutocomplete`` dla kontroli dostępu (``group_required``)
     i możliwości tworzenia nowego autora — ale całkowicie nadpisuje wybór i
@@ -488,6 +506,11 @@ class Dyscyplina_Naukowa_PrzypisanieAutocomplete(
 
     def _validate_autor(self, autor):
         """Validate and convert autor parameter."""
+        # FD#620: importer publikacji przekazuje ID autora jako liczbę JSON
+        # (jQuery ``.data()`` zamienia atrybut ``data-autor-pk`` na Number),
+        # widżety DAL — jako napis. Oba warianty są poprawne.
+        if isinstance(autor, int) and not isinstance(autor, bool):
+            return autor, None
         if autor is None or not isinstance(autor, str) or not autor.strip():
             return None, "Podaj autora"
 
@@ -532,6 +555,63 @@ class Dyscyplina_Naukowa_PrzypisanieAutocomplete(
         res = list(res)
         res.sort(key=lambda obj: obj[1])
         return res, None
+
+    def _propozycja_gdy_brak_przypisania(self):
+        """FD#620: gdy klient poprosił (``forward`` ``typowe``) i autor nie ma
+        ŻADNEGO przypisania dyscypliny na dany rok — zwróć ``(rok,
+        propozycja)``: dyscypliny autora z najbliższego wcześniejszego roku,
+        a gdy nie miał ich nigdy — typowe dla uczelni. W każdym innym
+        przypadku ``None`` (zachowanie jak dotąd)."""
+        if not self.forwarded.get("typowe"):
+            return None
+        autor, error = self._validate_autor(self.forwarded.get("autor", None))
+        if error:
+            return None
+        rok, error = self._validate_rok(self.forwarded.get("rok", None))
+        if error:
+            return None
+        # Autor ukryty przed oglądającym (np. niezalogowanym w formularzu
+        # zgłoszeń) albo w koszu — zachowanie jak dotąd, bez zdradzania jego
+        # dyscyplin z innych lat ani tego, czy ma przypisanie na ten rok.
+        if not widoczni_autorzy(
+            Autor.objects.filter(pk=autor),
+            getattr(self, "request", None),
+            lookup="pokazuj_w_wyszukiwaniu",
+        ).exists():
+            return None
+        # ``all_objects``: przypisanie z kosza też blokuje (unique rok+autor).
+        if Autor_Dyscyplina.all_objects.filter(autor_id=autor, rok=rok).exists():
+            return None
+
+        from bpp.models import Uczelnia
+        from bpp.util.typowe_dyscypliny import propozycja_dla_autora_bez_przypisania
+
+        uczelnia = Uczelnia.objects.get_for_request(self.request)
+        return rok, propozycja_dla_autora_bez_przypisania(autor, rok, uczelnia)
+
+    def get(self, request, *args, **kwargs):
+        wynik = self._propozycja_gdy_brak_przypisania()
+        if wynik is None:
+            return super().get(request, *args, **kwargs)
+
+        rok, propozycja = wynik
+        dzieci = [{"id": d.pk, "text": d.nazwa} for d in propozycja.dyscypliny]
+        if self.q:
+            dzieci = [d for d in dzieci if self.q.lower() in d["text"].lower()]
+        etykieta = f"Autor nie ma dyscypliny na rok {rok} — {propozycja.opis_zrodla()}"
+        return http.JsonResponse(
+            {
+                "results": [{"text": etykieta, "children": dzieci}],
+                "brak_przypisania": {
+                    "rok": rok,
+                    "zrodlo": propozycja.zrodlo,
+                    "rok_zrodla": propozycja.rok_zrodla,
+                    "rok_od": propozycja.rok_od,
+                    "rok_do": propozycja.rok_do,
+                    "opis_zrodla": propozycja.opis_zrodla(),
+                },
+            }
+        )
 
     def get_list(self):
         # Validate autor

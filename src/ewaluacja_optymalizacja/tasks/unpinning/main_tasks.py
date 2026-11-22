@@ -12,7 +12,12 @@ logger = logging.getLogger(__name__)
 
 @shared_task(bind=True)
 def run_unpinning_after_metrics_wrapper(
-    self, metrics_result, uczelnia_id, dyscyplina_id=None, min_slot_filled=0.8
+    self,
+    metrics_result,
+    uczelnia_id,
+    dyscyplina_id=None,
+    min_slot_filled=0.8,
+    okres_pk=None,
 ):
     """
     Wrapper wywołujący analizę unpinning po zakończeniu metryk.
@@ -23,11 +28,14 @@ def run_unpinning_after_metrics_wrapper(
         uczelnia_id: ID uczelni
         dyscyplina_id: ID dyscypliny (opcjonalnie, jeśli None to wszystkie)
         min_slot_filled: Minimalny próg wypełnienia slotów (domyślnie 0.8 = 80%)
+        okres_pk: PK okresu ewaluacji (``None`` = okres domyślny)
 
     Returns:
         Dictionary z wynikami analizy unpinning
     """
     from ewaluacja_metryki.models import MetrykaAutora
+
+    from ...okres import pobierz_okres
 
     logger.info(
         f"Metrics task completed with result: {metrics_result}. "
@@ -36,7 +44,7 @@ def run_unpinning_after_metrics_wrapper(
     )
 
     # Sprawdź ile metryk zostało utworzonych
-    metrics_count = MetrykaAutora.objects.count()
+    metrics_count = MetrykaAutora.objects.filter(okres=pobierz_okres(okres_pk)).count()
     logger.info(f"Found {metrics_count} metrics in database")
 
     if metrics_count == 0:
@@ -58,7 +66,12 @@ def run_unpinning_after_metrics_wrapper(
 
     # Wywołaj analizę unpinning z offsetem 50 (metryki zajęły 0-50%)
     result = _analyze_multi_author_works_impl(
-        self, uczelnia_id, dyscyplina_id, min_slot_filled, progress_offset=50
+        self,
+        uczelnia_id,
+        dyscyplina_id,
+        min_slot_filled,
+        progress_offset=50,
+        okres_pk=okres_pk,
     )
 
     # Dodaj informacje o metrykach do wyniku
@@ -84,6 +97,7 @@ def analyze_multi_author_works_task(
     min_slot_filled=0.8,
     parallel=True,
     num_workers=4,
+    okres_pk=None,
 ):
     """
     Analizuje prace wieloautorskie szukając możliwości odpinania.
@@ -101,6 +115,7 @@ def analyze_multi_author_works_task(
         min_slot_filled: Minimalny próg wypełnienia slotów (domyślnie 0.8 = 80%)
         parallel: Czy używać równoległego przetwarzania (domyślnie True)
         num_workers: Liczba workerów (domyślnie 4)
+        okres_pk: PK okresu ewaluacji (``None`` = okres domyślny)
 
     Returns:
         Dictionary z wynikami analizy
@@ -113,4 +128,5 @@ def analyze_multi_author_works_task(
         progress_offset=0,
         parallel=parallel,
         num_workers=num_workers,
+        okres_pk=okres_pk,
     )

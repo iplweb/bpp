@@ -146,9 +146,12 @@ def test_GetPBNPublicationsByISBN_wiele_isbn(
     pbn_client.transport.return_values[f"/api/v1/publications/id/{UID_REKORDU}"] = pub1
     pbn_client.transport.return_values[f"/api/v1/publications/id/{UID_REKORDU}2"] = pub2
 
-    res = GetPBNPublicationsByISBN(request=req).post(req)
+    res = json.loads(GetPBNPublicationsByISBN(request=req).post(req).content)
 
-    assert json.loads(res.content)["id"] == UID_REKORDU
+    # Kilka rekordów PBN — do wyszukiwarki pola „Odpowiednik w PBN" trafia
+    # ISBN, a redaktor wybiera właściwy rekord z listy (FD#622).
+    assert res["id"] == ISBN
+    assert {k["id"] for k in res["kandydaci"]} == {UID_REKORDU, UID_REKORDU + "2"}
 
 
 @pytest.fixture
@@ -267,11 +270,18 @@ def test_rok_habilitacji_view():
     assert str(CURRENT_YEAR) in res.content.decode()
     assert json.loads(res.content)["rok"] == CURRENT_YEAR
 
-    h.delete()
+    h.delete()  # od fazy 02 MIĘKKO
     res = rhv.post(request)
     assert res.status_code == 404
     assert "Habilitacja" in res.content.decode()
 
+    # ⚠️ Soft-delete ZOSTAWIA wiersz, a `Praca_Habilitacyjna.autor` to O2O
+    # z PROTECT — więc dopóki habilitacja siedzi w koszu, autora nie da się
+    # skasować (`ProtectedError`). To NIE jest regresja: rekord nadal
+    # istnieje i nie wolno go osierocić. Ten test sprawdza ścieżki 404
+    # widoku, a nie semantykę kasowania, więc usuwamy habilitację trwale,
+    # żeby dojść do gałęzi „nie ma autora".
+    h.hard_delete()
     a.delete()
     res = rhv.post(request)
     assert res.status_code == 404

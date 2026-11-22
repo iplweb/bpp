@@ -6,11 +6,24 @@ from bpp.demo_data.themes.base import Theme
 from bpp.demo_data.themes.disney import DISNEY
 from bpp.demo_data.themes.harry_potter import HARRY_POTTER
 from bpp.demo_data.themes.lem import LEM
+from bpp.demo_data.themes.miks import MIKS
+from bpp.demo_data.themes.mitologia import MITOLOGIA
 from bpp.demo_data.themes.realistyczny import REALISTYCZNY
+from bpp.demo_data.themes.trylogia import TRYLOGIA
 from bpp.demo_data.themes.wiedzmin import WIEDZMIN
 
 THEMES: dict[str, Theme] = {
-    t.key: t for t in (REALISTYCZNY, LEM, WIEDZMIN, HARRY_POTTER, DISNEY)
+    t.key: t
+    for t in (
+        REALISTYCZNY,
+        LEM,
+        WIEDZMIN,
+        HARRY_POTTER,
+        DISNEY,
+        MITOLOGIA,
+        TRYLOGIA,
+        MIKS,
+    )
 }
 
 

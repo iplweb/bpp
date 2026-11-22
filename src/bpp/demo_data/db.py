@@ -38,3 +38,26 @@ def retry_write(func, *args, **kwargs):
     deadlock/serialization. Do użycia tam, gdzie zapis nie jest ``bulk_create``,
     ale też odpala triggery denorm (masowy UPDATE)."""
     return func(*args, **kwargs)
+
+
+def bulk_create_z_manifestem(
+    objs, *, model, label, desc, manifest, batch_size=500, disable_progress=False
+):
+    """``bulk_create_retry`` w paczkach + dopisanie PK do manifestu po każdej.
+
+    Zwraca listę utworzonych obiektów (z PK)."""
+    from bpp.demo_data.progress import make_progress
+
+    objs = list(objs)
+    pbar = make_progress(
+        range(0, len(objs), batch_size),
+        desc=desc,
+        total=(len(objs) + batch_size - 1) // batch_size,
+        disable=disable_progress,
+    )
+    for start in pbar:
+        chunk = objs[start : start + batch_size]
+        bulk_create_retry(model.objects, chunk)
+        manifest.append(label, [o.pk for o in chunk])
+        manifest.save()
+    return objs

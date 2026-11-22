@@ -183,7 +183,7 @@ def _run_landing(request, token="pbn_user_token_123", side_effect=None):
         patch("pbn_api.views.OAuthMixin.get_user_token") as mock_get_token,
         patch("pbn_api.autoryzacja.token_set_successfully.send") as mock_signal,
         patch(_DELAY) as mock_delay,
-        patch("pbn_api.views.rollbar.report_exc_info"),
+        patch("pbn_api.views.capture_exception"),
     ):
         mock_get_token.return_value = token
         if side_effect is not None:

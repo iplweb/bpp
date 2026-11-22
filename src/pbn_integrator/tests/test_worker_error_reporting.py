@@ -29,7 +29,7 @@ def test_process_journal_thread_safe_reports_on_failure():
         # czy wcześniejszy test otworzył połączenie).
         patch.object(sources, "close_old_connections"),
         patch.object(sources, "logger") as mock_logger,
-        patch.object(sources, "rollbar") as mock_rollbar,
+        patch.object(sources, "capture_exception") as mock_zgloszenie,
     ):
         mock_journal_cls.objects.get.return_value = MagicMock(pk=journal_id)
         result = sources._process_journal_thread_safe(journal_id, None, {})
@@ -41,7 +41,7 @@ def test_process_journal_thread_safe_reports_on_failure():
 
     # Ślad MUSI powstać: pełny traceback w logach + zgłoszenie do Rollbara.
     mock_logger.exception.assert_called_once()
-    mock_rollbar.report_exc_info.assert_called_once()
+    mock_zgloszenie.assert_called_once()
 
 
 def test_download_and_import_single_publication_reports_on_failure():
@@ -55,7 +55,7 @@ def test_download_and_import_single_publication_reports_on_failure():
             side_effect=ValueError("boom"),
         ),
         patch.object(publications, "logger") as mock_logger,
-        patch.object(publications, "rollbar") as mock_rollbar,
+        patch.object(publications, "capture_exception") as mock_zgloszenie,
     ):
         pbn_uid_id, success, error = (
             publications._download_and_import_single_publication(
@@ -70,4 +70,4 @@ def test_download_and_import_single_publication_reports_on_failure():
     assert "boom" in error
 
     mock_logger.exception.assert_called_once()
-    mock_rollbar.report_exc_info.assert_called_once()
+    mock_zgloszenie.assert_called_once()

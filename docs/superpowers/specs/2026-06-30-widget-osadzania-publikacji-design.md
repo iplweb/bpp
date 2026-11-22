@@ -26,7 +26,7 @@ Wady obecnego podejścia ("copy the whole blob"):
    właśnie jednostek.
 
 Dodatkowo instancje serwują globalnie `x-frame-options: SAMEORIGIN`
-(potwierdzone na `bpp.umlub.pl`), co czyni wariant iframe ze zgłoszenia
+(potwierdzone na `bpp.example.edu.pl`), co czyni wariant iframe ze zgłoszenia
 kosztownym i ryzykownym (clickjacking, zdejmowanie nagłówka per-URL). Wariant
 loadera `<script>` ta polityka nie dotyczy.
 
@@ -56,8 +56,8 @@ okienko** demonstracyjne.
 Klient wkleja jedną linię:
 
 ```html
-<script src="https://bpp.umlub.pl/static/embed/bpp-publikacje.js"
-        data-autor="Kazimierz-Pasternak" data-limit="25" async></script>
+<script src="https://bpp.example.edu.pl/static/embed/bpp-publikacje.js"
+        data-autor="Jan-Kowalski" data-limit="25" async></script>
 ```
 
 Działanie loadera:
@@ -145,7 +145,7 @@ ostrzeżeniem o niepublicznych danych z notatki w zgłoszeniu.
 
 - Link prowadzi do strony dokumentacji na GitHub Pages, **z kontekstem encji w
   query string**, aby generator w docs wypisał gotowy snippet:
-  `https://iplweb.github.io/bpp/uzytkownik/widget-publikacji/?autor=Kazimierz-Pasternak&serwer=https://bpp.umlub.pl`
+  `https://iplweb.github.io/bpp/uzytkownik/widget-publikacji/?autor=Jan-Kowalski&serwer=https://bpp.example.edu.pl`
 - Analogiczna linijka na stronie jednostki (`browse/jednostka.html`) z tekstem
   "…tej jednostki…" i `?jednostka=<slug>&serwer=<host>`.
 
@@ -159,12 +159,12 @@ Nowa strona `docs/uzytkownik/widget-publikacji.md` (+ wpis w nav w `mkdocs.yml`)
 - **Po co to i jak osadzić** — wprowadzenie, jednolinijkowy snippet.
 - **Interaktywny generator snippetu** — pola: serwer, autor (slug) / jednostka
   (slug), limit, zakres lat, styl, no-css. **Domyślne wartości:
-  `serwer = https://bpp.umlub.pl`, `autor = Kazimierz-Pasternak`.** Zmiana pól →
+  `serwer = https://bpp.example.edu.pl`, `autor = Jan-Kowalski`.** Zmiana pól →
   przeliczenie tekstu snippetu (pole do skopiowania) **oraz** live-podglądu.
   Czyta też query string (`?autor=`/`?jednostka=`/`?serwer=`), więc link ze
   strony BPP otwiera generator z już wstawioną encją.
 - **Live okienko** — domyślny podgląd generatora to działający widget UM Lublin /
-  autor Kazimierz Pasternak (renderowany na żywo przez ten sam loader).
+  autor Jan Kowalski (renderowany na żywo przez ten sam loader).
 - **Tabela parametrów `data-*`** (jak wyżej).
 - **Tabela klas CSS** + przykład nadpisania (oficjalna "instrukcja
   customizacji").
@@ -262,7 +262,7 @@ Stan ładowania/błędu: `bpp-publikacje__loading`, `bpp-publikacje__error`.
 - Hosting loadera: **plik statyczny** w `/static/embed/`.
 - Strona BPP: **bez bloba** — drobny link do dokumentacji.
 - Dokumentacja: interaktywny **generator** + **live demo** (UM Lublin, autor 11
-  / slug `Kazimierz-Pasternak`).
+  / slug `Jan-Kowalski`).
 
 ## Poza zakresem (v1)
 
@@ -350,4 +350,3 @@ są sprzeczne.
 - `jednostka.html` nigdy nie miał bloba embed — test sprawdza tylko **obecność
   nowego linku** (nie "brak starego bloba"). Dla `autor.html`: brak starego bloba
   **oraz** obecność nowego linku.
-

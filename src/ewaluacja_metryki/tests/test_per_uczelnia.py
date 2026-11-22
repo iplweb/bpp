@@ -85,7 +85,7 @@ def test_oblicz_metryki_dla_autora_nie_sumuje_slotow_z_innej_uczelni(
 
 @pytest.mark.django_db
 def test_command_oblicz_metryki_scope_uczelnia(
-    autor_jan_kowalski, dyscyplina1, rodzaj_autora_n
+    autor_jan_kowalski, dyscyplina1, rodzaj_autora_n, okres_2022
 ):
     """Komenda oblicz_metryki z --uczelnia-id scope'uje delete i źródłowy QS.
 
@@ -106,6 +106,7 @@ def test_command_oblicz_metryki_scope_uczelnia(
     IloscUdzialowDlaAutoraZaCalosc.objects.create(
         autor=autor_jan_kowalski,
         dyscyplina_naukowa=dyscyplina1,
+        okres=okres_2022,
         rodzaj_autora=None,
         ilosc_udzialow=Decimal("4.0"),
         ilosc_udzialow_monografie=Decimal("0"),
@@ -137,6 +138,8 @@ def test_command_oblicz_metryki_scope_uczelnia(
         call_command(
             "oblicz_metryki",
             "--bez-liczby-n",
+            "--okres",
+            "2022",
             "--nadpisz",
             "--uczelnia-id",
             str(u1.pk),

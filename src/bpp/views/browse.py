@@ -68,7 +68,19 @@ from bpp.multiseek_registry import (
     registry,
 )
 from bpp.multiseek_registry.fields.constants import UNION_NONE
+from bpp.nazwy import lemat
 from bpp.permissions import moze_wprowadzac_dane
+from bpp.punkty_ewaluacji import (
+    okresy_ewaluacji_strony,
+    punkty_ewaluacji_wydawcy,
+    punkty_ewaluacji_zrodla,
+)
+from bpp.rekord_usuniety import (
+    RekordUsunietyDetailMixin,
+    kosz_modelu,
+    rzuc_jesli_obiekt_w_koszu,
+    rzuc_jesli_publikacja_w_koszu_po_slugu,
+)
 from bpp.sekcje_zrodla_wydawcy import sekcje_wydawcy, sekcje_zrodla
 from bpp.util import sanitize_multiseek_title
 from bpp.util.uczelnia_scope import (
@@ -159,9 +171,16 @@ def get_uczelnia_context_data(uczelnia, article_slug=None):
         # JOIN po relacji wielowartościowej (rekord z N autorstwami tej samej
         # uczelni dałby N kopii streszczenia). W single-install filtru nie ma,
         # więc nie ma czego deduplikować.
+        #
+        # ``rekord__deleted_at__isnull=True``: ten JOIN idzie po
+        # SUROWEJ tabeli ``bpp_wydawnictwo_ciagle_autor`` (manager soft-delete
+        # nie jest pytany przy lookupie przez relację), więc bez predykatu
+        # skasowane autorstwo nadal atrybuowałoby streszczenie do uczelni —
+        # czyli publikowałoby je na cudzym hoście.
         if uczelnia is not None and not tylko_jedna_uczelnia():
             recent_abstracts = recent_abstracts.filter(
-                rekord__autorzy_set__jednostka__uczelnia=uczelnia
+                rekord__autorzy_set__jednostka__uczelnia=uczelnia,
+                rekord__deleted_at__isnull=True,
             ).distinct()
         context["recent_abstracts"] = recent_abstracts.order_by(
             "-rekord__ostatnio_zmieniony"
@@ -188,7 +207,7 @@ def conditional(**kwargs):
 
 
 @method_decorator(cache_publiczny(), name="dispatch")
-class UczelniaView(DetailView):
+class UczelniaView(RekordUsunietyDetailMixin, DetailView):
     model = Uczelnia
     template_name = "browse/uczelnia.html"
 
@@ -260,11 +279,41 @@ class JednostkaView(DetailView):
 
     def get_context_data(self, **kwargs):
         ctx = super().get_context_data(typy=TYPY, **(self.podjednostki or {}), **kwargs)
+        ctx.update(self._przycisk_prac())
         if self.podjednostki is None:
             # Wykresy w latach tylko w zwykłym widoku jednostki — styl
             # strukturalny (wydział) nie pokazuje własnych prac.
             ctx.update(self._wykresy())
         return ctx
+
+    def _przycisk_prac(self):
+        """Dane przycisku „Pokaż wszystkie publikacje” i jego menu (lata,
+        typy, charaktery): liczby prac oraz ukryte pola zawężające wyniki do
+        jednostki — te same, których używa główny przycisk w szablonie."""
+        jednostka = self.object
+        request = getattr(self, "request", None)
+        uczelnia = Uczelnia.objects.get_for_request(request)
+        pks = list(
+            jednostka.get_descendants(include_self=True).values_list("pk", flat=True)
+        )
+        pola = [("jednostka", pk) for pk in pks]
+        # Korzeń z poddrzewem (styl wydziału): krótki filtr poddrzewa, jak
+        # w głównym przycisku (por. komentarz w szablonie).
+        pola_struktura = pola
+        if not jednostka.parent_id and len(pks) > 1:
+            if uczelnia is not None and uczelnia.uzywaj_wydzialow:
+                pola_struktura = [("wydzial", jednostka.pk)]
+            else:
+                pola_struktura = [("jednostka_nadrzedna", jednostka.pk)]
+        return {
+            "liczby_prac": liczby_prac_jednostki(
+                pks,
+                uczelnia,
+                zalogowany=request is not None and request.user.is_authenticated,
+            ),
+            "pola_prac": pola,
+            "pola_prac_struktura": pola_struktura,
+        }
 
     def _wykresy(self):
         from bpp.models import Rekord
@@ -286,8 +335,112 @@ class JednostkaView(DetailView):
         }
 
 
+#: Ile najliczniejszych charakterów formalnych pokazuje menu przycisku
+#: „Pokaż wszystkie prace” na stronie autora.
+LICZBA_CHARAKTEROW_W_MENU = 5
+
+
+def _liczby_prac(qs, uczelnia=None, zalogowany=False):
+    """Liczby prac ze zbioru ``qs`` (``Rekord`` bez duplikatów z joinów) do
+    przycisku „Pokaż wszystkie prace (N)” i jego menu: zakresy lat, typy
+    i najliczniejsze charaktery formalne.
+
+    Ten sam zbiór co wyniki multiseek po kliknięciu — dla anonima bez
+    statusów ukrytych w multiwyszukiwarce (por.
+    ``MyMultiseekResults.get_queryset``).
+
+    Zakresy lat (i ich kolejność) bierzemy z ``OkresEwaluacji`` — to TYLKO
+    źródło zakresów: pozycje dostaje każdy zbiór z pracami w danych latach,
+    bez żadnych warunków ewaluacyjnych (N, dyscypliny itp.), a UI nie używa
+    słownictwa ewaluacyjnego. Zakresy — jedno małe zapytanie; liczby —
+    JEDNO zapytanie agregujące (``COUNT … FILTER``); charaktery — jedno
+    grupujące.
+    Zwraca ``{"wszystkie": N, "okresy": [{"rok_od", "rok_do", "liczba"}],
+    "typy": [{"nazwa", "liczba"}], "charaktery": [{"nazwa", "liczba"}],
+    "ma_menu": bool}`` — tylko okresy i typy z co najmniej jedną pracą.
+    ``uczelnia`` — już pobrana przez widok (bez dodatkowego zapytania);
+    ``zalogowany`` — jak w multiseeku, ukryte statusy odcinamy tylko anonimowi.
+    """
+    from ewaluacja_common.models import OkresEwaluacji
+
+    okresy = list(OkresEwaluacji.objects.values_list("rok_od", "rok_do"))
+
+    if not zalogowany and uczelnia is not None:
+        qs = qs.exclude(
+            status_korekty_id__in=uczelnia.ukryte_statusy("multiwyszukiwarka")
+        )
+
+    agregaty = {"wszystkie": Count("*")}
+    for nr, (rok_od, rok_do) in enumerate(okresy):
+        w_okresie = Q(rok__range=(rok_od, rok_do))
+        agregaty[f"okres_{nr}"] = Count("rok", filter=w_okresie)
+    # Typy jak w filtrze „Typ publikacji” (por. ``TypRekorduObject``).
+    publikacja = Q(charakter_formalny__publikacja=True)
+    streszczenie = Q(charakter_formalny__streszczenie=True)
+    agregaty["typ_publikacje"] = Count("pk", filter=publikacja)
+    agregaty["typ_streszczenia"] = Count("pk", filter=streszczenie)
+    agregaty["typ_inne"] = Count(
+        "pk",
+        filter=Q(charakter_formalny__isnull=False) & ~publikacja & ~streszczenie,
+    )
+    liczby = qs.aggregate(**agregaty)
+
+    # Najliczniejsze charaktery formalne — do menu „Według charakteru” przy
+    # przycisku „Pokaż wszystkie prace” (jedno zapytanie grupujące).
+    charaktery = list(
+        qs.exclude(charakter_formalny=None)
+        .values("charakter_formalny__nazwa")
+        .annotate(liczba=Count("*"))
+        .order_by("-liczba", "charakter_formalny__nazwa")[:LICZBA_CHARAKTEROW_W_MENU]
+    )
+
+    wynik = {
+        "wszystkie": liczby["wszystkie"],
+        "charaktery": [
+            {"nazwa": c["charakter_formalny__nazwa"], "liczba": c["liczba"]}
+            for c in charaktery
+        ],
+        "typy": [
+            {"nazwa": typ, "liczba": liczby[f"typ_{typ}"]}
+            for typ in TYPY
+            if liczby[f"typ_{typ}"]
+        ],
+        "okresy": [
+            {"rok_od": rok_od, "rok_do": rok_do, "liczba": liczby[f"okres_{nr}"]}
+            for nr, (rok_od, rok_do) in enumerate(okresy)
+            if liczby[f"okres_{nr}"]
+        ],
+    }
+    wynik["ma_menu"] = bool(wynik["okresy"] or wynik["typy"] or wynik["charaktery"])
+    return wynik
+
+
+def liczby_prac_autora(autor, uczelnia=None, zalogowany=False):
+    """Liczby prac autora („autor = X”; podzapytanie po ``Autorzy`` — bez
+    duplikatów z joinu). Opis wyniku: ``_liczby_prac``."""
+    from bpp.models.cache import Autorzy
+
+    qs = Rekord.objects.filter(
+        pk__in=Autorzy.objects.filter(autor=autor).values("rekord_id")
+    )
+    return _liczby_prac(qs, uczelnia, zalogowany)
+
+
+def liczby_prac_jednostki(pks, uczelnia=None, zalogowany=False):
+    """Liczby prac jednostki razem z jednostkami podrzędnymi — ten sam zbiór,
+    co przycisk „Pokaż wszystkie publikacje” na jej stronie (także w stylu
+    wydziału: całe poddrzewo). ``pks`` — klucze jednostki i jej potomków.
+    Opis wyniku: ``_liczby_prac``."""
+    from bpp.models.cache import Autorzy
+
+    qs = Rekord.objects.filter(
+        pk__in=Autorzy.objects.filter(jednostka__in=pks).values("rekord_id")
+    )
+    return _liczby_prac(qs, uczelnia, zalogowany)
+
+
 @method_decorator(cache_publiczny(), name="dispatch")
-class AutorView(DetailView):
+class AutorView(RekordUsunietyDetailMixin, DetailView):
     template_name = "browse/autor.html"
     model = Autor
 
@@ -297,6 +450,11 @@ class AutorView(DetailView):
         # redaktorskimi, reszta dostaje 404. Pozostałe flagi ``pokazuj_*``
         # (jednostka, ranking, indeks, …) NIE wpływają na tę stronę.
         return widoczni_autorzy(super().get_queryset(), getattr(self, "request", None))
+
+    def get_queryset_kosza(self):
+        # Te same reguły widoczności co dla żywego autora: schowana strona
+        # zostaje 404 także w koszu (410 zdradziłby, że autor istniał).
+        return widoczni_autorzy(kosz_modelu(Autor), getattr(self, "request", None))
 
     def get_context_data(self, **kwargs):
         from powiazania_autorow.models import AuthorConnection
@@ -329,6 +487,12 @@ class AutorView(DetailView):
             historia_zatrudnienia=self.object.historia_zatrudnienia(uczelnia),
             raport_links=self._raport_links(request),
             pokazuj_metryki=self._pokazuj_metryki(request),
+            liczby_prac=liczby_prac_autora(
+                self.object,
+                uczelnia,
+                zalogowany=request is not None and request.user.is_authenticated,
+            ),
+            pola_prac=[("autor", self.object.pk)],
             **kwargs,
         )
         # NIE nadpisuj None-em sentinela ``NiezdefiniowanaUczelnia`` wstrzykiwanego
@@ -337,7 +501,22 @@ class AutorView(DetailView):
         # ``uczelnia.skrot`` twardo). Gdy uczelnia istnieje — przekaż ją jawnie.
         if uczelnia is not None:
             context["uczelnia"] = uczelnia
+        if context["pokazuj_metryki"]:
+            context["metryki_autora"] = self._metryki_autora(request)
         return context
+
+    def _metryki_autora(self, request):
+        """Metryki autora z uczelni oglądającego ze WSZYSTKICH okresów
+        ewaluacji, najnowszy okres pierwszy (szablon grupuje po okresie);
+        link każdej metryki ma okres w adresie (``get_absolute_url``)."""
+        from ewaluacja_metryki.uczelnia_scope import scope_metryki
+        from raport_slotow.uczelnia_helper import uczelnia_dla_odczytu
+
+        return (
+            scope_metryki(self.object.metryki.all(), uczelnia_dla_odczytu(request))
+            .select_related("dyscyplina_naukowa", "jednostka", "okres", "autor")
+            .order_by("-okres__rok_od", "dyscyplina_naukowa__nazwa")
+        )
 
     def _pokazuj_metryki(self, request):
         """Przycisk metryk ewaluacyjnych tylko dla tych, których wpuści
@@ -583,7 +762,8 @@ class Browser(ListView):
         # * ``fulltext_filter`` dla ``Autor`` — UWAGA, tu JOIN JEST:
         #   ``AutorManager.fulltext_annotate`` (``bpp/models/autor.py``)
         #   nadpisuje wersję z ``FulltextSearchMixin`` i zwraca
-        #   ``Count("wydawnictwo_ciagle")``, co dokłada ``LEFT OUTER JOIN
+        #   ``Count("wydawnictwo_ciagle_autor", filter=Q(…deleted_at
+        #   __isnull=True))``, co dokłada ``LEFT OUTER JOIN
         #   bpp_wydawnictwo_ciagle_autor``. Wierszy nie mnoży wyłącznie
         #   dlatego, że agregat wymusza ``GROUP BY`` po pk — deduplikacja
         #   pochodzi stamtąd, nie z braku złączenia. Zmiana tej adnotacji na
@@ -865,6 +1045,10 @@ class JednostkiView(Browser):
     param = "search"
     literka_field = "nazwa"
     paginate_by = 150
+    browse_url_name = "bpp:browse_jednostki"
+
+    def tylko_jednostki_nadrzedne(self, uczelnia):
+        return bool(uczelnia and uczelnia.pokazuj_tylko_jednostki_nadrzedne)
 
     def get_paginate_by(self, queryset):
         uczelnia = Uczelnia.objects.get_for_request(getattr(self, "request", None))
@@ -883,8 +1067,8 @@ class JednostkiView(Browser):
             if uczelnia.sortuj_jednostki_alfabetycznie:
                 ordering = ("nazwa",)
 
-            if uczelnia.pokazuj_tylko_jednostki_nadrzedne:
-                qry = qry.filter(parent=None)
+        if self.tylko_jednostki_nadrzedne(uczelnia):
+            qry = qry.filter(parent=None)
 
         # ``liczba_autorow`` liczona JEDNYM agregatem, a nie per wiersz w
         # szablonie. Wcześniej `browse/jednostki.html` wołał
@@ -925,15 +1109,39 @@ class JednostkiView(Browser):
 
         uczelnia = Uczelnia.objects.get_for_request(self.request)
         base_qry = scope_jednostki_do_uczelni(base_qry, uczelnia)
-        if uczelnia and uczelnia.pokazuj_tylko_jednostki_nadrzedne:
+        if self.tylko_jednostki_nadrzedne(uczelnia):
             base_qry = base_qry.filter(parent=None)
 
         context["available_letters"] = self.zapamietane_literki(base_qry)
+        context["browse_url_name"] = self.browse_url_name
+        return context
+
+
+# ``dispatch`` z cache'em publicznym dziedziczy po ``JednostkiView`` (klucz
+# cache'a zawiera ścieżkę żądania, więc indeksy się nie mieszają).
+class WydzialyView(JednostkiView):
+    """Indeks wydziałów — widoczne jednostki najwyższego poziomu
+    (``parent=None``) uczelni bieżącego hosta. Cel kafla „Wydziały” na
+    stronie głównej (opcja ``Uczelnia.kafel_wydzialy_zamiast_jednostek``,
+    FD#391). Ten sam szablon co indeks jednostek, tylko z nazwą wydziału
+    (lemat ``WYDZIAL``) w nagłówkach i z własnymi adresami literek."""
+
+    browse_url_name = "bpp:browse_wydzialy"
+
+    def tylko_jednostki_nadrzedne(self, uczelnia):
+        return True
+
+    def get_context_data(self, *args, **kw):
+        context = super().get_context_data(*args, **kw)
+        # Osobna zmienna, NIE nadpisanie ``nazwa_jednostki`` z context
+        # processora — tę czyta też menu „przeglądaj” (top_bar.html), którego
+        # pozycja „jednostki” ma zostać „jednostkami” także na tej stronie.
+        context["nazwa_indeksu"] = lemat("WYDZIAL")
         return context
 
 
 @method_decorator(cache_publiczny(), name="dispatch")
-class ZrodloView(DetailView):
+class ZrodloView(RekordUsunietyDetailMixin, DetailView):
     model = Zrodlo
     template_name = "browse/zrodlo.html"
 
@@ -953,6 +1161,9 @@ class ZrodloView(DetailView):
                 context["wykresy"] = {"wykresy": wykresy}
                 context["szukaj_pola"] = [("zrodlo", self.object.pk)]
                 context["szukaj_tytul"] = str(self.object)
+        context["okresy_ewaluacji_ramki"] = okresy_ewaluacji_strony(
+            punkty_ewaluacji_zrodla, self.object
+        )
         # Sekcje „Najczęściej publikujący autorzy” / „Jednostki” + chipy typów.
         context["typy"] = TYPY
         context.update(sekcje_zrodla(self.object, getattr(self, "request", None)))
@@ -1013,7 +1224,7 @@ class WydawcyView(Browser):
 
 
 @method_decorator(cache_publiczny(), name="dispatch")
-class WydawcaView(DetailView):
+class WydawcaView(RekordUsunietyDetailMixin, DetailView):
     model = Wydawca
     template_name = "browse/wydawca.html"
 
@@ -1054,6 +1265,9 @@ class WydawcaView(DetailView):
         # Sekcje autorów/jednostek, znaczek poziomu, chipy typów publikacji.
         context["typy"] = TYPY
         context.update(sekcje_wydawcy(wydawca, request))
+        context["okresy_ewaluacji_ramki"] = okresy_ewaluacji_strony(
+            punkty_ewaluacji_wydawcy, wydawca
+        )
         return context
 
 
@@ -1311,6 +1525,10 @@ def ustawienia_najnowszych_prac(request):
     }
 
 
+# Wartość pola ``cel`` w POST do ``BuildSearch``: przekieruj na listę wyników.
+CEL_WYNIKI = "wyniki"
+
+
 @method_decorator(csrf_exempt, name="dispatch")
 class BuildSearch(RedirectView):
     """Widok przyjmuje zmienne w request.POST i buduje w sesji formularz
@@ -1323,7 +1541,8 @@ class BuildSearch(RedirectView):
     wyszukiwawczego do WŁASNEJ sesji requestującego
     (``request.session[MULTISEEK_SESSION_KEY]`` + tytuł + wyczyszczenie
     listy ręcznie wyrzuconych rekordów) i przekierowanie na
-    ``multiseek:index``. Nie ma tu żadnej uprzywilejowanej akcji, mutacji
+    ``multiseek:index`` (albo ``multiseek:results`` przy ``cel=wyniki``).
+    Nie ma tu żadnej uprzywilejowanej akcji, mutacji
     danych współdzielonych, ujawnienia sekretu ani zmiany stanu poza sesją
     ofiary. Najgorsze, co atak CSRF może osiągnąć, to podsunięcie ofierze
     wyszukiwania, którego sama nie wpisała — zero szkody. Ta sama
@@ -1341,7 +1560,16 @@ class BuildSearch(RedirectView):
     """
 
     def get_redirect_url(self, **kwargs):
-        url = self.request.build_absolute_uri(reverse("multiseek:index"))
+        # ``cel=wyniki`` (przyciski „Pokaż wszystkie prace/publikacje”): od razu
+        # pełnostronicowa lista wyników zamiast formularza wyszukiwarki — na
+        # telefonie formularz zasłaniał cały ekran, a wyniki były dopiero po
+        # kliknięciu „Wyszukaj”. Bez ``cel`` (formularze z filtrami) jak dotąd
+        # formularz multiseek z podglądem wyników.
+        if self.request.POST.get("cel") == CEL_WYNIKI:
+            nazwa = "multiseek:results"
+        else:
+            nazwa = "multiseek:index"
+        url = self.request.build_absolute_uri(reverse(nazwa))
         scheme = self.request.META.get("HTTP_X_SCHEME", "").lower()
         if scheme == "https":
             url = url.replace("http://", "https://").replace("HTTP://", "HTTPS://")
@@ -1515,11 +1743,16 @@ class PracaViewBySlug(PracaViewMixin, DetailView):
                     try:
                         obj = Rekord.objects.get(pk=[content_type_id, object_id])
                     except Rekord.DoesNotExist as e:
+                        rzuc_jesli_publikacja_w_koszu_po_slugu(self.kwargs["slug"])
+                        rzuc_jesli_obiekt_w_koszu(content_type_id, object_id)
                         raise Http404 from e
                     except Rekord.MultipleObjectsReturned as e:
                         raise NotImplementedError("This should never happen") from e
 
                     return obj
+
+            # Rekordu nie ma w ``bpp_rekord_mat`` — może jest w koszu (410).
+            rzuc_jesli_publikacja_w_koszu_po_slugu(self.kwargs["slug"])
 
         raise Http404
 
@@ -1543,6 +1776,7 @@ class PracaView(PracaViewMixin, DetailView):
         try:
             obj = Rekord.objects.get(pk=[model, self.kwargs["pk"]])
         except Rekord.DoesNotExist as e:
+            rzuc_jesli_obiekt_w_koszu(model, self.kwargs["pk"])
             raise Http404 from e
 
         return obj

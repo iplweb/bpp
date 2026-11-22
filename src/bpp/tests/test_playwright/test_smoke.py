@@ -10,6 +10,7 @@ from urllib.parse import urljoin, urlparse
 
 import pytest
 from playwright.sync_api import Page
+from playwright.sync_api import TimeoutError as PlaywrightTimeoutError
 
 # Wzorce błędów konsoli do ignorowania
 CONSOLE_IGNORE_PATTERNS = [
@@ -133,15 +134,14 @@ def _collect_links(page, current_url, base_url):
     """Zbiera wszystkie linki ze strony."""
     hrefs = []
     try:
-        # Wait for JS to remove fouc-hidden class (page uses this pattern)
+        # Czekamy na inicjalizację Foundation (bare.html zdejmuje wtedy klasę
+        # bpp-js-init z <html>).
         page.wait_for_function(
-            "document.querySelector('body') && "
-            "!document.body.classList.contains('fouc-hidden')",
+            "!document.documentElement.classList.contains('bpp-js-init')",
             timeout=5000,
         )
-    except Exception:
-        # Continue even if fouc doesn't clear (might not be present)
-        pass
+    except PlaywrightTimeoutError:
+        pass  # strona bez bare.html (np. admin) — linki zbieramy i tak
 
     try:
         # Use JavaScript to get all links for better reliability
