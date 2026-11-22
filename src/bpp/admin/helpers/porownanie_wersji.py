@@ -18,6 +18,7 @@ zmiana | wersja nowsza”:
 import difflib
 import json
 import re
+from contextvars import ContextVar
 from datetime import date, datetime
 
 from django.db import models
@@ -168,15 +169,28 @@ def _zmiana(pole, stary, nowy):
     return format_html("<del>{}</del> → <ins>{}</ins>", stary, nowy)
 
 
+#: Kolejność pól na porównanie — {model: [nazwy pól w kolejności z
+#: formularza admina]} (ustawia ``porownaj_wersje``).
+_kolejnosc_pol = ContextVar("kolejnosc_pol", default=None)
+
+
 def _pola_modelu(model, pomijane):
+    """Pola modelu do porównania — w kolejności z formularza admina (pola
+    spoza formularza na końcu, w kolejności z modelu)."""
     opts = model._meta
+    pola = []
     for pole in [*opts.concrete_fields, *opts.many_to_many]:
         if pole.name in pomijane or pole.primary_key:
             continue
         through = getattr(pole.remote_field, "through", None)
         if isinstance(pole, models.ManyToManyField) and not through._meta.auto_created:
             continue
-        yield pole
+        pola.append(pole)
+    w_formularzu = (_kolejnosc_pol.get() or {}).get(model)
+    if w_formularzu:
+        pozycja = {nazwa: nr for nr, nazwa in enumerate(w_formularzu)}
+        pola.sort(key=lambda pole: pozycja.get(pole.name, len(pozycja)))
+    yield from pola
 
 
 def _wiersze_pol(model, wersja1, wersja2, pomijane, fmt):
@@ -423,10 +437,17 @@ def _lista(elementy, inne, klucz, model, fmt, zmienione, strona):
     return format_html("<ol>{}</ol>", mark_safe("".join(wiersze)))
 
 
-def porownaj_wersje(model, obj, wersja1, wersja2, pomijane):
-    """Wiersze porównania ``wersja1`` (starsza) z ``wersja2`` (nowsza)."""
+def porownaj_wersje(model, obj, wersja1, wersja2, pomijane, kolejnosc=None):
+    """Wiersze porównania ``wersja1`` (starsza) z ``wersja2`` (nowsza).
+
+    ``kolejnosc`` — {model: [nazwy pól]} z formularza admina (rekord
+    i inline'y), żeby pola szły tak, jak w formularzu edycji."""
     fmt = Formatowanie()
-    return [
-        *_wiersze_pol(model, wersja1, wersja2, set(pomijane), fmt),
-        *_wiersze_list(model, obj, wersja1, wersja2, fmt),
-    ]
+    token = _kolejnosc_pol.set(kolejnosc or {})
+    try:
+        return [
+            *_wiersze_pol(model, wersja1, wersja2, set(pomijane), fmt),
+            *_wiersze_list(model, obj, wersja1, wersja2, fmt),
+        ]
+    finally:
+        _kolejnosc_pol.reset(token)

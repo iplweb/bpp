@@ -637,3 +637,41 @@ def test_porownanie_pokazuje_przeniesienie_do_kosza(admin_client, wydawnictwo_ci
     # Przywracanie wersji zablokowane — wyszarzony, ale prawdziwy przycisk.
     assert "bpp-przycisk-nieaktywny" in tresc
     assert "disabled" in tresc
+
+
+def test_porownanie_pola_w_kolejnosci_formularza(admin_client, wydawnictwo_ciagle):
+    """Pola w porównaniu idą w kolejności z formularza admina (fieldsets),
+    a nie z definicji modelu."""
+    from django.contrib import admin
+    from django.contrib.admin.utils import flatten_fieldsets
+    from django.test import RequestFactory
+
+    with reversion.create_revision():
+        wydawnictwo_ciagle.save()
+    wydawnictwo_ciagle.tytul_oryginalny = "Nowy tytuł FD587"
+    wydawnictwo_ciagle.strony = "1-2"
+    wydawnictwo_ciagle.uwagi = "Uwaga FD587"
+    with reversion.create_revision():
+        wydawnictwo_ciagle.save()
+    nowsza, starsza = Version.objects.get_for_object(wydawnictwo_ciagle)[:2]
+
+    tresc = admin_client.get(
+        reverse("admin:bpp_wydawnictwo_ciagle_compare", args=(wydawnictwo_ciagle.pk,)),
+        {"version_id1": starsza.pk, "version_id2": nowsza.pk},
+    ).content.decode()
+    tabela = tresc[tresc.index('class="grp-table bpp-porownanie"') :]
+
+    model_admin = admin.site._registry[Wydawnictwo_Ciagle]
+    request = RequestFactory().get("/")
+    request.user = baker.make("bpp.BppUser", is_superuser=True, is_staff=True)
+    w_formularzu = flatten_fieldsets(
+        model_admin.get_fieldsets(request, wydawnictwo_ciagle)
+    )
+    etykiety = {
+        "tytul_oryginalny": ">Tytuł oryginalny<",
+        "strony": ">Strony<",
+        "uwagi": ">Uwagi<",
+    }
+    oczekiwana = sorted(etykiety, key=w_formularzu.index)
+    w_tabeli = sorted(etykiety, key=lambda nazwa: tabela.index(etykiety[nazwa]))
+    assert w_tabeli == oczekiwana

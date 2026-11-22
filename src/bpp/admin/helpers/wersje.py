@@ -28,6 +28,7 @@ Dokłada do widoków reversion:
   przebudowa drzewa jednostek).
 """
 
+import logging
 from contextlib import nullcontext
 from contextvars import ContextVar
 
@@ -48,6 +49,8 @@ from bpp.wersjonowanie import (
 )
 
 from .wersje_modele import POLA_WRAZLIWE
+
+logger = logging.getLogger(__name__)
 
 #: Ustawiane na czas przywracania wersji w adminie — receiver
 #: ``zachowaj_pola_wrazliwe`` przepisuje wtedy pola spoza wersji (hasła,
@@ -208,7 +211,7 @@ class HistoriaWersjiMixin:
             "original": obj,
             "compare_data": [
                 *self._wiersz_kosza(obj, wersja1, wersja2),
-                *self.compare(obj, wersja1, wersja2)[0],
+                *self._porownanie_jak_w_formularzu(request, obj, wersja1, wersja2),
             ],
             "version1": wersja1,
             "version2": wersja2,
@@ -340,6 +343,36 @@ class HistoriaWersjiMixin:
                 f"admin:{self._nazwa_url_przywroc()}", args=[obj.pk]
             )
         return stan
+
+    def _kolejnosc_pol_formularza(self, request, obj):
+        """{model: [nazwy pól]} w kolejności z formularza admina — rekordu
+        (``fieldsets``) i jego inline'ów (autorzy itp.)."""
+        from django.contrib.admin.utils import flatten_fieldsets
+
+        kolejnosc = {}
+        try:
+            kolejnosc[self.model] = flatten_fieldsets(self.get_fieldsets(request, obj))
+            for inline in self.get_inline_instances(request, obj):
+                kolejnosc[inline.model] = flatten_fieldsets(
+                    inline.get_fieldsets(request, obj)
+                )
+        except (AttributeError, KeyError, TypeError, ValueError):
+            # Nietypowy formularz (np. dynamiczne pola) — porównanie zostaje
+            # w kolejności z modelu; nie blokujemy podglądu historii.
+            logger.exception("Brak kolejności pól formularza dla %s", self.model)
+        return kolejnosc
+
+    def _porownanie_jak_w_formularzu(self, request, obj, version1, version2):
+        from .porownanie_wersji import porownaj_wersje
+
+        return porownaj_wersje(
+            self.model,
+            obj,
+            version1,
+            version2,
+            self.compare_exclude,
+            kolejnosc=self._kolejnosc_pol_formularza(request, obj),
+        )
 
     def compare(self, obj, version1, version2):
         """Czytelne porównanie (``porownanie_wersji``) zamiast diffu
