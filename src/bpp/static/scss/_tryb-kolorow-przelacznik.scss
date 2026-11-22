@@ -20,16 +20,21 @@ $pigulka-ramka: 1.5px;
 // top_bar.scss) — pigułka nie może na niego wejść.
 $pigulka-miejsce-userway: 4.25rem;
 
-// Warunki „widać tryb ciemny” — te same co w CSS motywu (_tryb-ciemny.scss).
+// Warunki „widać tryb ciemny” — te same co w CSS motywów. Domyślny tryb
+// motywu (bez wyboru odwiedzającego) podaje serwer w <html
+// data-tryb-domyslny="jasny|ciemny|auto"> (bare.html, context processor):
+// zwykłe motywy — jasny, `*-ciemny` — ciemny, `*-auto` — wg systemu;
+// motyw z konfiguratora — wg jego „Trybu kolorów”.
 @mixin pigulka-widac-ciemny {
-    @media (prefers-color-scheme: dark) {
-        html:not([data-tryb-kolorow="jasny"]) & {
-            @content;
-        }
+    html[data-tryb-kolorow="ciemny"] &,
+    html[data-tryb-domyslny="ciemny"]:not([data-tryb-kolorow="jasny"]) & {
+        @content;
     }
 
-    html[data-tryb-kolorow="ciemny"] & {
-        @content;
+    @media (prefers-color-scheme: dark) {
+        html[data-tryb-domyslny="auto"]:not([data-tryb-kolorow="jasny"]) & {
+            @content;
+        }
     }
 }
 

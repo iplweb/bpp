@@ -1,5 +1,17 @@
 // Motyw „Zielony” (jasny). Treść motywu: _app-green-baza.scss.
 @import "app-green-baza";
+@import "tryb-ciemny";
+
+// Domyślnie jasny niezależnie od ustawień systemu. Wersja ciemna — tylko
+// gdy odwiedzający wybierze ją pigułką ☀ | ☾ na pasku menu
+// (`<html data-tryb-kolorow="ciemny">`). `screen` — wydruk zawsze jasny.
+@media screen {
+  @include bpp-tryb-ciemny(
+    $primary-color,
+    $drugi: $secondary-color,
+    $korzen: 'html:where([data-tryb-kolorow="ciemny"])'
+  );
+}
 
 // Print styles — MUSZA byc ostatnie: Foundation (foundation-print-styles
 // wyzej) emituje wlasny blok @media print i chcemy byc za nim w kaskadzie.

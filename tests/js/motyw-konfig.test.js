@@ -192,8 +192,30 @@ describe("przetworzCss — tryb ciemny i tło treści", () => {
         ".top-bar .menu{background:#fff}" +
         "@media print{a{color:#000}}";
 
-    test("tryb jasny i pełne tło: bez zmian (poza BOM)", () => {
-        expect(M.przetworzCss("\uFEFF" + CSS, { tryb_kolorow: "jasny" })).toBe(CSS);
+    test("podgląd jasny i pełne tło: bez zmian (poza BOM)", () => {
+        expect(
+            M.przetworzCss("\uFEFF" + CSS, { tryb_kolorow: "jasny" }, { trybPodgladu: "jasny" }),
+        ).toBe(CSS);
+    });
+
+    test("jasny: jasny CSS + ciemne reguły tylko pod wyborem „Ciemny” (pigułka)", () => {
+        const css = M.przetworzCss("\uFEFF" + CSS, { tryb_kolorow: "jasny" });
+        expect(css.startsWith(CSS + "@media screen{")).toBe(true);
+        expect(css).toContain(
+            'html:where([data-tryb-kolorow="ciemny"]) body{background:#1a1a1a;color:#ececec}',
+        );
+        // Bez wyboru jasny także przy ciemnym systemie.
+        expect(css).not.toContain("prefers-color-scheme");
+        expect(css).not.toContain(':not([data-tryb-kolorow="jasny"])');
+    });
+
+    test("ciemny: ciemne reguły bez wyboru, „Jasny” z pigułki je wyłącza", () => {
+        const css = M.przetworzCss(CSS, { tryb_kolorow: "ciemny" });
+        expect(css.startsWith(CSS + "@media screen{")).toBe(true);
+        expect(css).toContain(
+            'html:where(:not([data-tryb-kolorow="jasny"])) body{background:#1a1a1a;color:#ececec}',
+        );
+        expect(css).not.toContain("prefers-color-scheme");
     });
 
     test("ciemny: jasne tła ciemne, ciemny tekst jasny, przycisk i wydruk bez zmian", () => {
@@ -206,7 +228,7 @@ describe("przetworzCss — tryb ciemny i tło treści", () => {
     });
 
     test("tekst w kolorze głównym zostaje w odcieniu, ale jaśnieje", () => {
-        const css = M.przetworzCss(CSS, { tryb_kolorow: "ciemny" });
+        const css = M.przetworzCss(CSS, { tryb_kolorow: "ciemny" }, { trybPodgladu: "ciemny" });
         const kolor = /a\{color:(#[0-9a-f]{6})\}/.exec(css)[1];
         expect(M.kontrast(kolor, "#1a1a1a")).toBeGreaterThanOrEqual(4.5);
     });
@@ -251,8 +273,10 @@ describe("przetworzCss — tryb ciemny i tło treści", () => {
     });
 
     test("zmienne --bpp-* (style spoza CSS motywu) tylko w wariancie ciemnym", () => {
-        expect(M.przetworzCss(CSS, { tryb_kolorow: "jasny", tlo_tresci: "przezroczyste" }))
-            .not.toContain("--bpp-tlo-pow");
+        const jasny = M.przetworzCss(CSS, { tryb_kolorow: "jasny", tlo_tresci: "przezroczyste" });
+        // Jasny: zmienne tylko pod wyborem „Ciemny”, nie w jasnym CSS.
+        expect(jasny.indexOf("--bpp-tlo-pow")).toBeGreaterThan(jasny.indexOf("@media screen{"));
+        expect(jasny).toContain('html:where([data-tryb-kolorow="ciemny"]){--bpp-tlo-pow:');
         const ciemny = M.przetworzCss(CSS, { tryb_kolorow: "ciemny" });
         const tlo = /--bpp-tlo-pow:(#[0-9a-f]{6})/.exec(ciemny)[1];
         const tekst = /--bpp-tekst:(#[0-9a-f]{6})/.exec(ciemny)[1];
