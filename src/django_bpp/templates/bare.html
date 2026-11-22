@@ -50,12 +50,21 @@
         <meta name="deklaracja-dostępności" content="{% url "bpp:browse_deklaracja_dostepnosci" %}"/>
     {% endif %}
 
-    {# bare.html - FOUC prevention #}
+    {# Do inicjalizacji Foundation ukrywamy tylko to, co bez JS wygląda źle — NIE całą stronę. #}
+    {# Dawne ukrywanie <body> do jQuery-ready dawało puste mignięcie przy każdym przejściu. #}
+    {# CSS motywu i tak blokuje rysowanie strony, więc nieostylowanej treści nie widać. #}
+    {# Klasę ustawia skrypt (bez JS nic nie jest ukryte), zdejmuje ją inicjalizacja niżej. #}
+    {# Bezpiecznik: gdyby JS padł przed inicjalizacją, po 3 s i tak pokaż menu. #}
+    <script>
+        document.documentElement.classList.add("bpp-js-init");
+        setTimeout(function () { document.documentElement.classList.remove("bpp-js-init"); }, 3000);
+    </script>
     <style>
-        .fouc-hidden { visibility: hidden; opacity: 0; transition: opacity 0.3s ease-in-out; }
-        .fouc-visible { visibility: visible; opacity: 1; }
-        @media print {
-            body.fouc-hidden { visibility: visible !important; opacity: 1 !important; }
+        {# Podmenu rozwijanego menu dostają klasy Foundation dopiero od JS. #}
+        html.bpp-js-init .dropdown.menu ul.menu { display: none; }
+        {# Menu na telefonie chowa Foundation (data-responsive-toggle) dopiero przez JS. #}
+        @media screen and (max-width: 39.9375em) {
+            html.bpp-js-init [data-responsive-toggle] + .top-bar { display: none; }
         }
     </style>
 
@@ -193,7 +202,7 @@
     {% endcache %}
 </head>
 {# djlint:off H025 #}
-<body class="fouc-hidden">
+<body>
 {# djlint:on H025 #}
 {% block skip_link %}<a href="#main-content" class="skip-link">Przejdź do głównej zawartości</a>{% endblock %}
 {% block body %}
@@ -214,8 +223,8 @@
         // Tu ich NIE ustawiamy: ready na dole <body> przegrywał wyścig z
         // inline-initami DataTables w blokach content (startowały z „Search").
 
-        // Show body after styles are loaded (FOUC prevention)
-        $('body').removeClass('fouc-hidden').addClass('fouc-visible');
+        // Foundation gotowe — pokaż menu ukryte do inicjalizacji (head).
+        document.documentElement.classList.remove('bpp-js-init');
     });
 
     // Focus search field when Select2 opens
@@ -232,13 +241,5 @@
     <!-- wygenerowano dnia {% bpp_localtime %}, wersja {% bpp_version %} -->
 </footer>
 
-<noscript>
-    <style>
-        body.fouc-hidden {
-            visibility: visible !important;
-            opacity: 1 !important;
-        }
-    </style>
-</noscript>
 
 </html>
