@@ -6,32 +6,32 @@
 <div class="multiseek-table-report">
     <table>
     <tr>
-        <th>Lp.</th>
-        <th>Tytuł, autorzy, źródło</th>
-        <th>IF</th>
+        <th class="kol-lp">Lp.</th>
+        <th class="kol-opis">Tytuł, autorzy, źródło</th>
+        <th class="kol-liczba">IF</th>
 
         {% if report_type == "table_cytowania" or report_type == "pkt_wewn_cytowania" or report_type == "pkt_wewn_bez_cytowania" %}
-            <th>Liczba cytowań</th>
+            <th class="kol-liczba">Liczba cytowań</th>
         {% endif %}
 
-        <th>PK</th>
+        <th class="kol-liczba">PK</th>
 
         {% if report_type == "pkt_wewn" or report_type == "pkt_wewn_cytowania" %}
-            <th>pkt. wewn.</th>
+            <th class="kol-liczba">pkt. wewn.</th>
         {% endif %}
 
         {% if report_type != "pkt_wewn" and report_type != "pkt_wewn_bez" and report_type != "pkt_wewn_cytowania" and report_type != "pkt_wewn_bez_cytowania" %}
-            <th>Charakter</th>
+            <th class="kol-tekst">Charakter</th>
         {% endif %}
 
-        <th>Typ MNiSW/MEiN</th>
+        <th class="kol-tekst">Typ MNiSW/MEiN</th>
     </tr>
     {% for element in object_list %}
         <tr>
-            <td valign="top">
+            <td class="kol-lp">
                 {{ start_index|add:forloop.counter }}.
             </td>
-            <td class="multiseek-row"
+            <td class="multiseek-row kol-opis"
                   id="multiseek-row-{{ element.js_safe_pk }}">
             <span class="multiseek-element">
             {% if export_mode %}
@@ -60,21 +60,21 @@
             </span>
                 {% endif %}
             </td>
-            <td>{{ element.impact_factor }}</td>
+            <td class="kol-liczba">{{ element.impact_factor }}</td>
             {% if report_type == "table_cytowania" or report_type == "pkt_wewn_cytowania" or report_type == "pkt_wewn_bez_cytowania" %}
-                <td>{{ element.liczba_cytowan }}</td>
+                <td class="kol-liczba">{{ element.liczba_cytowan }}</td>
             {% endif %}
 
-            <td>{{ element.punkty_kbn }}</td>
+            <td class="kol-liczba">{{ element.punkty_kbn }}</td>
 
             {% if report_type == "pkt_wewn" or report_type == "pkt_wewn_cytowania" %}
-                <td>{{ element.punktacja_wewnetrzna }}</td>
+                <td class="kol-liczba">{{ element.punktacja_wewnetrzna }}</td>
             {% endif %}
 
         {% if report_type != "pkt_wewn" and report_type != "pkt_wewn_bez" and report_type != "pkt_wewn_cytowania" and report_type != "pkt_wewn_bez_cytowania" %}
-            <td>{{ element.charakter_formalny }}</td>
+            <td class="kol-tekst">{{ element.charakter_formalny }}</td>
         {% endif %}
-            <td>{{ element.typ_kbn }}</td>
+            <td class="kol-tekst">{{ element.typ_kbn }}</td>
         </tr>
     {% empty %}
         <tr>
@@ -89,19 +89,19 @@
             <td colspan="2">
                 Suma:
             </td>
-            <td>
+            <td class="kol-liczba">
                 {{ sumy.impact_factor__sum|default_if_none:"0.00" }}
             </td>
             {% if report_type == "table_cytowania" or report_type == "pkt_wewn_cytowania" or report_type == "pkt_wewn_bez_cytowania" %}
-                <td>
+                <td class="kol-liczba">
                     {{ sumy.liczba_cytowan__sum|default_if_none:"0.00" }}
                 </td>
             {% endif %}
-            <td>
+            <td class="kol-liczba">
                 {{ sumy.punkty_kbn__sum|default_if_none:"0.00" }}
             </td>
             {% if report_type == "pkt_wewn" or report_type == "pkt_wewn_cytowania" %}
-                <td>
+                <td class="kol-liczba">
                     {{ sumy.punktacja_wewnetrzna__sum|default_if_none:"0.00" }}
                 </td>
             {% endif %}
