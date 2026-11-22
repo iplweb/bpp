@@ -41,6 +41,32 @@ function blok(tytul, pozycje) {
 }
 
 /**
+ * Zmień zawartość sekcji tak, żeby strona nie „skoczyła” czytelnikowi:
+ * gdy sekcja leży powyżej widocznego obszaru, różnicę jej wysokości
+ * oddajemy przewinięciem (Safari nie ma scroll anchoring).
+ */
+function bezSkoku(container, zmiana) {
+    const view = container.ownerDocument.defaultView;
+    const przed = container.getBoundingClientRect();
+    zmiana();
+    if (!view || typeof view.scrollBy !== "function") return;
+    if (przed.bottom <= 0) {
+        const po = container.hidden ? 0 : container.getBoundingClientRect().height;
+        if (po !== przed.height) view.scrollBy(0, po - przed.height);
+    }
+}
+
+/** Koniec pobierania: zdejmij wskaźnik; bez danych schowaj całą sekcję. */
+function zakonczLadowanie(container, saDane) {
+    bezSkoku(container, () => {
+        container.removeAttribute("data-radon-laduje");
+        const ladowanie = container.querySelector(".radon-osiagniecia__ladowanie");
+        if (ladowanie) ladowanie.remove();
+        if (!saDane) container.hidden = true;
+    });
+}
+
+/**
  * Wyrenderuj wynik RAD-on do kontenera i pokaż go. Pusty wynik → kontener
  * zostaje bez zmian (ukryty). Wszystko przez textContent (anty-XSS).
  */
@@ -122,15 +148,21 @@ export function wireRadonSections(root = document, opts = {}) {
         kontenery.map(async (container) => {
             try {
                 const orcid = container.dataset.orcid || "";
-                if (!orcid) return null;
+                if (!orcid) {
+                    zakonczLadowanie(container, false);
+                    return null;
+                }
                 const firstName = (container.dataset.imie || "").trim().split(/\s+/)[0] || "";
                 const lastName = container.dataset.nazwisko || "";
                 const result = await fetcher({ firstName, lastName, orcid });
-                if (result && result.hasAny) {
-                    renderRadonAchievements(container, result);
-                }
+                const saDane = Boolean(result && result.hasAny);
+                bezSkoku(container, () => {
+                    if (saDane) renderRadonAchievements(container, result);
+                });
+                zakonczLadowanie(container, saDane);
                 return result;
             } catch (e) {
+                zakonczLadowanie(container, false);
                 if (typeof console !== "undefined") {
                     console.debug("[radon] wireRadonSections", e);
                 }

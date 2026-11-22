@@ -182,9 +182,10 @@ def test_strona_jednostki_podjednostki_bez_powtorzen(client, uczelnia):
     # Trzy kategorie podjednostek (aktualne / koła / historyczne) — po jednym
     # zapytaniu na kategorię. PRZED: 16 (widok liczył je raz, a szablon jeszcze
     # trzy razy każdą: nawigacja, licznik w nagłówku, pętla — plus 3 EXISTS-y
-    # z wymaga_nawigacji()). PO: 5.
+    # z wymaga_nawigacji()). PO: 5. Szóste to lista kluczy jednostki
+    # i potomków do liczb prac w menu przycisku „Pokaż wszystkie publikacje”.
     podjednostki = _queries(ctx, 'FROM "bpp_jednostka"')
-    assert len(podjednostki) <= 5, (
+    assert len(podjednostki) <= 6, (
         f"{len(podjednostki)} zapytań o podjednostki:\n" + "\n".join(podjednostki)
     )
 

@@ -33,6 +33,7 @@ from bpp.views.mymultiseek import (
     bpp_load_form,
     bpp_remove_by_hand,
     bpp_remove_from_removed_by_hand,
+    zmien_rodzaj_raportu,
 )
 from bpp.views.sentry_tester import (
     test_403_view,
@@ -381,6 +382,11 @@ urlpatterns = (
                 )
             ),
             name="multiseek-export",
+        ),
+        url(
+            r"^multiseek/rodzaj-raportu/$",
+            zmien_rodzaj_raportu,
+            name="multiseek-rodzaj-raportu",
         ),
         # Nadpisania upstreamowych load_form/save_form (kontrola właściciela
         # zapisanego formularza) — MUSZĄ być PRZED include("multiseek.urls").

@@ -42,7 +42,15 @@ def _wersje(autor):
 def test_rejestracja_autora_w_reversion():
     assert is_registered(Autor)
     autor = baker.make(Autor, biogram="Biogram")
-    wybrana = baker.make(WybranaPublikacjaAutora, autor=autor)
+    # Jawny typ rekordu: baker losowałby ``content_type`` spośród WSZYSTKICH
+    # modeli i co jakiś czas trafiał na widok bazodanowy z kluczem-tablicą,
+    # na którym wywraca się ``str(wybrana)`` (niestabilny test na CI).
+    wybrana = baker.make(
+        WybranaPublikacjaAutora,
+        autor=autor,
+        content_type=ContentType.objects.get_for_model(Autor),
+        object_id=autor.pk,
+    )
     with reversion.create_revision():
         reversion.add_to_revision(autor)
     wersja = Version.objects.get_for_object(autor).get()
