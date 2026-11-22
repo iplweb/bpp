@@ -134,3 +134,92 @@ Spec: `docs/superpowers/specs/2026-11-22-konfigurator-wygladu-design.md`.
 Testy: `tests/js/motyw-konfig.test.js` (vitest, z prawdziwą kompilacją),
 `src/bpp/tests/test_konfigurator_wygladu.py`,
 `src/django_bpp/tests/test_motywy_z_konfiguracji.py`.
+
+## Tryb ciemny (warianty `-auto` i `-ciemny`)
+
+Ciemny wariant motywu to **osobny plik CSS** — istniejące motywy (`app-blue`
+itd.) kompilują się dokładnie tak jak wcześniej, więc uczelnie, które nic nie
+zmienią, nie zobaczą żadnej różnicy. Uczelnia włącza tryb ciemny, wybierając
+w polu „Motyw kolorystyczny” (`Uczelnia.theme_name`) jeden z wariantów:
+
+| Motyw | Zachowanie |
+|---|---|
+| `app-blue` | zawsze jasny (bez zmian) |
+| `app-blue-auto` | jasny, a ciemny, gdy odwiedzający ma w systemie/przeglądarce tryb ciemny (`prefers-color-scheme: dark`) |
+| `app-blue-ciemny` | zawsze ciemny |
+
+Wydruk jest zawsze jasny (ciemne reguły siedzą w `@media screen`).
+
+### Pliki
+
+- `_tryb-ciemny.scss` — paleta (`--tc-*` na `<html>`), funkcje kontrastu
+  WCAG i mixin `bpp-tryb-ciemny($glowny, ...)`. Kolor akcentu (linki,
+  aktywne elementy) jest wyliczany z `$primary-color` motywu tak, by miał
+  kontrast >= 4.5:1 na ciemnych powierzchniach.
+- `_tryb-ciemny-komponenty.scss` — selektory komponentów BPP i bloków
+  `<style>` z szablonów z jasnym tłem / ciemnym tekstem / jasną ramką,
+  przypisane do kolorów palety. Wygenerowane przez
+  `bin/tryb-ciemny-selektory.py`, potem przejrzane ręcznie.
+- `_app-blue-baza.scss` — treść motywu niebieskiego bez `@import "print"`;
+  importują ją `app-blue.scss`, `app-blue-auto.scss`, `app-blue-ciemny.scss`.
+
+Wszystkie reguły trybu ciemnego mają prefiks `html` (+1 do specyficzności),
+dzięki czemu wygrywają z arkuszami dostawców ładowanymi po motywie
+(select2, jQuery UI, multiseek) i z blokami `<style>` w szablonach. Style
+inline (`style="color: #666"`) nadpisują selektory atrybutów z `!important`
+na końcu `_tryb-ciemny.scss`.
+
+### Jak dodać ciemny wariant do kolejnego `app-*` (np. `app-green`)
+
+1. Przenieś treść `app-green.scss` (bez końcowego `@import "print"`) do
+   `_app-green-baza.scss`; `app-green.scss` zostaje jako
+   `@import "app-green-baza"; @import "print";`. Sprawdź, że
+   `app-green.css` kompiluje się identycznie jak przed zmianą (`cmp`).
+2. Utwórz `app-green-auto.scss` i `app-green-ciemny.scss` na wzór
+   niebieskich — różnią się tylko importem bazy. Mixin dostaje
+   `$primary-color` motywu; w razie potrzeby podaj też inne argumenty
+   (`$tlo`, `$pow`, …), np. lekko zabarwione tło.
+3. Jeśli motyw ma własne nadpisania z jasnymi kolorami (np.
+   `.select2-results__option--highlighted` w `app-green.scss`), dopisz
+   ich ciemne odpowiedniki — najprościej w bloku `@media` w pliku
+   `-auto`/`-ciemny` po `@include`.
+4. Dodaj cele `sass:<motyw>_auto` / `sass:<motyw>_ciemny` w `Gruntfile.js`
+   (sekcja `sass` i lista `concurrent.themes`) i wpisy w `BPP_THEMES`
+   (`src/django_bpp/settings/base.py`). Bez migracji — pole nie ma `choices`.
+5. Dopisz motywy do `CIEMNE_WARIANTY` w `src/bpp/tests/test_tryb_ciemny.py`.
+6. Uruchom `run-site`, ustaw uczelni nowy motyw i odpal audyt (niżej).
+
+### Audyt: białe plamy i kontrast
+
+`bin/tryb-ciemny-audyt.py` otwiera ~25 stron/stanów (lista, szczegóły,
+multiseek z wynikami, raporty, formularze, rozwinięte menu, okno
+wyszukiwania, rozwinięty autocomplete, logowanie) w Playwright z
+`color_scheme="dark"` i zgłasza:
+
+- **plamy** — widoczne elementy > 40×40 px z tłem o luminancji > 0.8,
+- **kontrast** — tekst o kontraście z efektywnym tłem < 4.5:1 (3:1 dla
+  dużego tekstu).
+
+```bash
+uv run python bin/tryb-ciemny-audyt.py --wyjscie /tmp/audyt          # desktop
+uv run python bin/tryb-ciemny-audyt.py --mobile --wyjscie /tmp/audyt-m
+uv run python bin/tryb-ciemny-audyt.py --strony autor,publikacja --szczegoly
+```
+
+Port i token czyta z `.dev_helpers_*` (działający `run-site`). W katalogu
+`--wyjscie` lądują zrzuty i `raport.json`. Nowy komponent z jasnym tłem?
+Najpierw sprawdź, czy wystarczy odświeżyć listę generatorem:
+
+```bash
+npx sass --no-source-map -q \
+    --silence-deprecation=import,global-builtin,if-function \
+    --load-path=node_modules/foundation-sites/scss \
+    src/bpp/static/scss/app-blue.scss /tmp/app-blue.css
+uv run python bin/tryb-ciemny-selektory.py --szablony /tmp/app-blue.css
+```
+
+Wynik (mixin `bpp-tryb-ciemny-komponenty`) wklej w miejsce mixinu w
+`_tryb-ciemny-komponenty.scss`, przejrzyj diff, przebuduj i powtórz audyt.
+Przypadki szczególne (przyciski z kolorowym tłem, ciemne wypełnienia
+wykresów, style inline) dopisuj ręcznie w `bpp-tryb-ciemny-reguly`.
+Test `test_tryb_ciemny_bez_bialych_plam` (Playwright) pilnuje kilku stron.

@@ -1,0 +1,1087 @@
+// =============================================================================
+// TRYB CIEMNY — wspólny partial dla motywów app-*
+// =============================================================================
+//
+// Ten plik NIE emituje żadnego CSS sam z siebie — definiuje tylko funkcje
+// i mixin `bpp-tryb-ciemny(...)`. Motyw włącza ciemny wariant, wywołując
+// mixin na końcu swojego pliku (PO `foundation-includes`, PRZED `print`):
+//
+//   app-blue-auto.scss   — jasny, a ciemny wg ustawień systemu:
+//       @media screen and (prefers-color-scheme: dark) {
+//           @include bpp-tryb-ciemny($primary-color);
+//       }
+//   app-blue-ciemny.scss — zawsze ciemny:
+//       @media screen { @include bpp-tryb-ciemny($primary-color); }
+//
+// Zasada działania: warstwa nadpisań. Komponenty BPP i Foundation mają
+// jasne kolory wpisane na sztywno (`#fff`, `$light-gray`, gradienty), więc
+// mixin nadpisuje je selektorami poprzedzonymi `html` (+1 do specyficzności
+// typu). Dzięki temu wygrywa też z arkuszami dostawców ładowanymi w
+// bare.html PO motywie (jquery-ui, select2, multiseek, datatables), które
+// mają tę samą specyficzność bazową.
+//
+// Kolory ciemnej palety są jako zmienne CSS (`--tc-*`) na elemencie <html>
+// — reguły niżej odwołują się do nich, a motyw może podmienić paletę
+// argumentami mixinu. Kolor akcentu (linki, aktywne elementy) wyliczamy
+// z koloru głównego motywu, rozjaśniając go do kontrastu >= 4.5:1
+// (WCAG AA) względem najjaśniejszej ciemnej powierzchni.
+//
+// Gdzie szukać jasnych plam po zmianach: bin/tryb-ciemny-audyt.py.
+// =============================================================================
+
+@use "sass:color";
+@use "sass:math";
+
+@import "tryb-ciemny-komponenty";
+
+// --- Funkcje kontrastu (WCAG 2.x) -------------------------------------------
+
+@function tc-kanal($wartosc) {
+  $v: math.div($wartosc, 255);
+  @if $v <= 0.03928 {
+    @return math.div($v, 12.92);
+  }
+  @return math.pow(math.div($v + 0.055, 1.055), 2.4);
+}
+
+@function tc-luminancja($kolor) {
+  $r: tc-kanal(color.channel($kolor, "red", $space: rgb));
+  $g: tc-kanal(color.channel($kolor, "green", $space: rgb));
+  $b: tc-kanal(color.channel($kolor, "blue", $space: rgb));
+  @return 0.2126 * $r + 0.7152 * $g + 0.0722 * $b;
+}
+
+@function tc-kontrast($a, $b) {
+  $la: tc-luminancja($a);
+  $lb: tc-luminancja($b);
+  @return math.div(math.max($la, $lb) + 0.05, math.min($la, $lb) + 0.05);
+}
+
+// Rozjaśnia `$kolor` (mieszając z białym) aż osiągnie `$min` kontrastu
+// względem tła `$tlo`.
+@function tc-czytelny-na($kolor, $tlo, $min: 4.5) {
+  $wynik: $kolor;
+  $krok: 0;
+  @while tc-kontrast($wynik, $tlo) < $min and $krok < 100 {
+    $krok: $krok + 4;
+    $wynik: color.mix(#fff, $kolor, $krok * 1%);
+  }
+  @return $wynik;
+}
+
+// Przyciemnia kolor tak, żeby biały tekst miał na nim kontrast >= 4.5:1
+// (tło przycisków, aktywnej strony paginacji itp.).
+@function tc-tlo-pod-bialy($kolor, $min: 4.5) {
+  $wynik: $kolor;
+  $krok: 0;
+  @while tc-kontrast(#fff, $wynik) < $min and $krok < 100 {
+    $krok: $krok + 4;
+    $wynik: color.mix(#000, $kolor, $krok * 1%);
+  }
+  @return $wynik;
+}
+
+// --- Mixin -------------------------------------------------------------------
+
+/// Ciemny wariant motywu.
+/// @param $glowny     kolor główny motywu ($primary-color)
+/// @param $tlo        tło strony
+/// @param $pow        powierzchnia (karty, panele, menu)
+/// @param $pow-2      powierzchnia podniesiona (nagłówki tabel, hover)
+/// @param $ramka      obramowania i linie
+/// @param $tekst      tekst podstawowy
+/// @param $przygaszony tekst drugoplanowy
+@mixin bpp-tryb-ciemny(
+  $glowny,
+  $tlo: #15181d,
+  $pow: #1d2127,
+  $pow-2: #272c34,
+  $ramka: #3b424d,
+  $tekst: #e3e6ea,
+  $przygaszony: #a9b2bd
+) {
+  // Akcent liczony względem tła hover (najjaśniejszej powierzchni).
+  $akcent: tc-czytelny-na($glowny, color.mix(#fff, $pow-2, 8%));
+  $akcent-tlo: tc-tlo-pod-bialy($glowny);
+  $akcent-hover: color.mix(#fff, $akcent, 20%);
+
+  html {
+    color-scheme: dark;
+    --tc-tlo: #{$tlo};
+    --tc-pow: #{$pow};
+    --tc-pow-2: #{$pow-2};
+    --tc-ramka: #{$ramka};
+    --tc-tekst: #{$tekst};
+    --tc-przygaszony: #{$przygaszony};
+    --tc-akcent: #{$akcent};
+    --tc-akcent-hover: #{$akcent-hover};
+    --tc-akcent-tlo: #{$akcent-tlo};
+    --tc-akcent-slaby: #{rgba($akcent, 0.14)};
+    // Komunikaty: ciemne, nasycone tła + jasny tekst.
+    --tc-info-tlo: #{color.mix($glowny, $pow, 22%)};
+    --tc-sukces-tlo: #1d3326;
+    --tc-ostrzezenie-tlo: #3a3017;
+    --tc-blad-tlo: #3d1f1c;
+    --tc-sukces-ramka: #3f8f5c;
+    --tc-ostrzezenie-ramka: #a8822a;
+    --tc-blad-ramka: #b3554a;
+    --tc-fiolet-tlo: #2d2440;
+    // Kolorowy tekst (statusy, ikony) — jasne odcienie czytelne na `$pow-2`.
+    --tc-sukces-tekst: #7fd69b;
+    --tc-ostrzezenie-tekst: #f0c96a;
+    --tc-blad-tekst: #ff9b8f;
+    --tc-fiolet-tekst: #c9a7ff;
+    // Hover na powierzchni.
+    --tc-pow-hover: #{color.mix(#fff, $pow-2, 6%)};
+
+    // _layout.scss ustawia tło <html> z !important.
+    background-color: $tlo !important;
+  }
+
+  // Najpierw lista komponentów (półautomatyczna), potem ręczne reguły —
+  // przy równej specyficzności wygrywają te drugie.
+  @include bpp-tryb-ciemny-komponenty;
+  @include bpp-tryb-ciemny-reguly;
+}
+
+// Reguły — osobny mixin, żeby dało się je czytać bez szumu palety.
+// Wszystkie selektory są zagnieżdżone w `html` (patrz komentarz na górze).
+@mixin bpp-tryb-ciemny-reguly {
+  html {
+    // ---------------------------------------------------------------------
+    // Podstawa: tło, tekst, nagłówki, linki
+    // ---------------------------------------------------------------------
+    body {
+      background: var(--tc-tlo);
+      color: var(--tc-tekst);
+    }
+
+    // Gradient tła strony (_layout.scss) siedzi w pseudo-elemencie.
+    body::before,
+    .gradient-background::before {
+      background: var(--tc-tlo);
+    }
+
+    h1, h2, h3, h4, h5, h6,
+    .h1, .h2, .h3, .h4, .h5, .h6,
+    legend, label, dt, strong, b, th {
+      color: var(--tc-tekst);
+    }
+
+    p, li, dd, td, small, .subheader, figcaption, address, cite {
+      color: inherit;
+    }
+
+    .subheader, small, cite, .text-muted, .muted {
+      color: var(--tc-przygaszony);
+    }
+
+    a {
+      color: var(--tc-akcent);
+
+      &:hover, &:focus {
+        color: var(--tc-akcent-hover);
+      }
+    }
+
+    hr {
+      border-color: var(--tc-ramka);
+    }
+
+    code, kbd, pre {
+      background-color: var(--tc-pow-2);
+      border-color: var(--tc-ramka);
+      color: var(--tc-tekst);
+    }
+
+    blockquote {
+      border-color: var(--tc-ramka);
+      color: var(--tc-przygaszony);
+
+      p {
+        color: var(--tc-przygaszony);
+      }
+    }
+
+    ::selection {
+      background: var(--tc-akcent-tlo);
+      color: #fff;
+    }
+
+    // ---------------------------------------------------------------------
+    // Pasek menu, okruszki, stopka
+    // ---------------------------------------------------------------------
+    nav.sticky-header,
+    .top-bar,
+    .top-bar ul,
+    .title-bar {
+      background-color: var(--tc-pow);
+      color: var(--tc-tekst);
+    }
+
+    nav.sticky-header {
+      border-bottom: 1px solid var(--tc-ramka);
+    }
+
+    .top-bar .dropdown.menu > li > a,
+    .top-bar .menu > li > a,
+    .title-bar .menu-text {
+      color: var(--tc-tekst);
+    }
+
+    .dropdown.menu > li.is-dropdown-submenu-parent > a::after {
+      border-top-color: var(--tc-akcent);
+    }
+
+    .is-dropdown-submenu,
+    .top-bar .is-dropdown-submenu,
+    .top-bar .dropdown.menu .menu.vertical,
+    .dropdown-pane,
+    .menu.vertical.submenu {
+      background: var(--tc-pow-2);
+      border-color: var(--tc-ramka);
+      color: var(--tc-tekst);
+    }
+
+    .is-dropdown-submenu a,
+    .dropdown-pane a,
+    .menu.vertical a {
+      color: var(--tc-tekst);
+
+      &:hover, &:focus {
+        background-color: var(--tc-akcent-slaby);
+        color: var(--tc-akcent-hover);
+      }
+    }
+
+    .menu .is-active > a,
+    .menu .active > a {
+      background: var(--tc-akcent-tlo);
+      color: #fff;
+    }
+
+    #breadcrumbs-wrapper,
+    .breadcrumbs,
+    nav[aria-label="Jesteś tutaj:"] {
+      background-color: var(--tc-pow);
+      border-color: var(--tc-ramka);
+    }
+
+    .breadcrumbs li,
+    .breadcrumbs .disabled {
+      color: var(--tc-przygaszony);
+    }
+
+    .breadcrumbs a {
+      color: var(--tc-akcent);
+    }
+
+    footer,
+    .footer,
+    #footer {
+      background-color: var(--tc-pow);
+      color: var(--tc-przygaszony);
+      border-color: var(--tc-ramka);
+    }
+
+    // ---------------------------------------------------------------------
+    // Komponenty Foundation
+    // ---------------------------------------------------------------------
+    .card {
+      background: var(--tc-pow);
+      border-color: var(--tc-ramka);
+      color: var(--tc-tekst);
+    }
+
+    .card-divider,
+    .card-section.card-header {
+      background: var(--tc-pow-2);
+      color: var(--tc-tekst);
+    }
+
+    .callout {
+      background-color: var(--tc-pow);
+      border-color: var(--tc-ramka);
+      color: var(--tc-tekst);
+
+      &.primary {
+        background-color: var(--tc-info-tlo);
+        border-color: var(--tc-akcent);
+      }
+
+      &.secondary {
+        background-color: var(--tc-pow-2);
+      }
+
+      &.success {
+        background-color: var(--tc-sukces-tlo);
+        border-color: var(--tc-sukces-ramka);
+      }
+
+      &.warning {
+        background-color: var(--tc-ostrzezenie-tlo);
+        border-color: var(--tc-ostrzezenie-ramka);
+      }
+
+      &.alert {
+        background-color: var(--tc-blad-tlo);
+        border-color: var(--tc-blad-ramka);
+      }
+
+      h1, h2, h3, h4, h5, h6, p, li {
+        color: var(--tc-tekst);
+      }
+    }
+
+    table {
+      background-color: var(--tc-pow);
+      color: var(--tc-tekst);
+    }
+
+    thead,
+    tbody,
+    tfoot {
+      background-color: var(--tc-pow);
+      border-color: var(--tc-ramka);
+      color: var(--tc-tekst);
+    }
+
+    thead,
+    tfoot,
+    thead tr,
+    tfoot tr {
+      background-color: var(--tc-pow-2);
+    }
+
+    thead th,
+    thead td,
+    tfoot th,
+    tfoot td {
+      color: var(--tc-tekst);
+    }
+
+    tbody tr:nth-child(even) {
+      background-color: #22272e;
+    }
+
+    tbody tr,
+    tbody tr:nth-child(odd) {
+      border-color: var(--tc-ramka);
+    }
+
+    table.hover tbody tr:hover,
+    table.hover:not(.unstriped) tr:nth-of-type(even):hover {
+      background-color: var(--tc-pow-2);
+    }
+
+    .reveal {
+      background-color: var(--tc-pow);
+      border-color: var(--tc-ramka);
+      color: var(--tc-tekst);
+    }
+
+    .reveal-overlay {
+      background-color: rgba(0, 0, 0, 0.7);
+    }
+
+    .close-button {
+      color: var(--tc-przygaszony);
+
+      &:hover, &:focus {
+        color: var(--tc-tekst);
+      }
+    }
+
+    .tabs {
+      background: var(--tc-pow);
+      border-color: var(--tc-ramka);
+    }
+
+    .tabs-title > a {
+      color: var(--tc-akcent);
+
+      &:hover {
+        background: var(--tc-pow-2);
+      }
+
+      &:focus,
+      &[aria-selected="true"] {
+        background: var(--tc-pow-2);
+        color: var(--tc-tekst);
+      }
+    }
+
+    .tabs-content {
+      background: var(--tc-pow);
+      border-color: var(--tc-ramka);
+      color: var(--tc-tekst);
+    }
+
+    .accordion {
+      background: var(--tc-pow);
+    }
+
+    .accordion-title {
+      border-color: var(--tc-ramka);
+      color: var(--tc-akcent);
+
+      &:hover, &:focus {
+        background-color: var(--tc-pow-2);
+      }
+    }
+
+    .accordion-content {
+      background-color: var(--tc-pow);
+      border-color: var(--tc-ramka);
+      color: var(--tc-tekst);
+    }
+
+    :last-child:not(.is-active) > .accordion-title,
+    :last-child > .accordion-content:last-child {
+      border-color: var(--tc-ramka);
+    }
+
+    .pagination {
+      a, button {
+        color: var(--tc-tekst);
+
+        &:hover {
+          background: var(--tc-pow-2);
+        }
+      }
+
+      .current {
+        background: var(--tc-akcent-tlo);
+        color: #fff;
+      }
+
+      .disabled {
+        color: var(--tc-przygaszony);
+      }
+
+      .ellipsis::after {
+        color: var(--tc-przygaszony);
+      }
+    }
+
+    .tooltip {
+      background-color: var(--tc-pow-2);
+      color: var(--tc-tekst);
+
+      &::before {
+        border-color: transparent;
+      }
+    }
+
+    .progress {
+      background-color: var(--tc-pow-2);
+    }
+
+    .label.secondary,
+    .badge.secondary {
+      background: #4a525d;
+      color: #fff;
+    }
+
+    .switch-paddle {
+      background: var(--tc-ramka);
+    }
+
+    // ---------------------------------------------------------------------
+    // Przyciski
+    // ---------------------------------------------------------------------
+    // Foundation: biały tekst na #cc4b37 ma kontrast 4.49:1 — minimalnie
+    // ciemniej, żeby przejść próg AA.
+    .button.alert:not(.hollow):not(.clear) {
+      background-color: #b9412f;
+
+      &:hover, &:focus {
+        background-color: #a33a2a;
+      }
+    }
+
+    .button.secondary:not(.hollow):not(.clear) {
+      background-color: #4a525d;
+      color: #fff;
+
+      &:hover, &:focus {
+        background-color: #5a636f;
+      }
+    }
+
+    .button.hollow,
+    .button.clear {
+      background-color: transparent;
+      border-color: var(--tc-akcent);
+      color: var(--tc-akcent);
+
+      &:hover, &:focus {
+        background-color: var(--tc-akcent-slaby);
+        border-color: var(--tc-akcent-hover);
+        color: var(--tc-akcent-hover);
+      }
+
+      &.secondary {
+        border-color: var(--tc-przygaszony);
+        color: var(--tc-tekst);
+      }
+    }
+
+    .button.clear {
+      border-color: transparent;
+    }
+
+    .button.disabled,
+    .button[disabled] {
+      opacity: 0.45;
+    }
+
+    // ---------------------------------------------------------------------
+    // Formularze
+    // ---------------------------------------------------------------------
+    [type="text"], [type="password"], [type="date"], [type="datetime"],
+    [type="datetime-local"], [type="month"], [type="week"], [type="email"],
+    [type="number"], [type="search"], [type="tel"], [type="time"],
+    [type="url"], [type="color"], textarea, select, input:not([type]) {
+      background-color: var(--tc-tlo);
+      border-color: var(--tc-ramka);
+      color: var(--tc-tekst);
+      box-shadow: none;
+
+      &:focus {
+        background-color: var(--tc-tlo);
+        border-color: var(--tc-akcent);
+        box-shadow: 0 0 0 2px var(--tc-akcent-slaby);
+      }
+
+      &::placeholder {
+        color: var(--tc-przygaszony);
+      }
+
+      &:disabled,
+      &[readonly] {
+        background-color: var(--tc-pow-2);
+        color: var(--tc-przygaszony);
+      }
+    }
+
+    select {
+      // Strzałka Foundation to SVG w kolorze ciemnoszarym — jaśniejszy wariant.
+      background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' version='1.1' width='32' height='24' viewBox='0 0 32 24'><polygon points='0,0 32,0 16,24' style='fill: rgb%28169, 178, 189%29'></polygon></svg>");
+    }
+
+    option {
+      background-color: var(--tc-pow);
+      color: var(--tc-tekst);
+    }
+
+    fieldset,
+    .fieldset {
+      border-color: var(--tc-ramka);
+    }
+
+    .fieldset legend,
+    fieldset legend {
+      background: transparent;
+      color: var(--tc-tekst);
+    }
+
+    .input-group-label {
+      background: var(--tc-pow-2);
+      border-color: var(--tc-ramka);
+      color: var(--tc-tekst);
+    }
+
+    .help-text {
+      color: var(--tc-przygaszony);
+    }
+
+    .form-error,
+    .is-invalid-label {
+      color: #ff8a7a;
+    }
+
+    .is-invalid-input:not(:focus) {
+      background-color: var(--tc-blad-tlo);
+      border-color: var(--tc-blad-ramka);
+    }
+
+    // ---------------------------------------------------------------------
+    // Select2 / django-autocomplete-light
+    // ---------------------------------------------------------------------
+    .select2-container--default,
+    .select2-container--foundation {
+      .select2-selection--single,
+      .select2-selection--multiple {
+        background-color: var(--tc-tlo);
+        border-color: var(--tc-ramka);
+        color: var(--tc-tekst);
+      }
+
+      .select2-selection--single .select2-selection__rendered {
+        color: var(--tc-tekst);
+      }
+
+      .select2-selection__placeholder {
+        color: var(--tc-przygaszony);
+      }
+
+      .select2-selection--multiple .select2-selection__choice {
+        background-color: var(--tc-pow-2);
+        border-color: var(--tc-ramka);
+        color: var(--tc-tekst);
+      }
+
+      .select2-search--dropdown .select2-search__field,
+      .select2-search--inline .select2-search__field {
+        background-color: var(--tc-tlo);
+        border-color: var(--tc-ramka);
+        color: var(--tc-tekst);
+      }
+
+      .select2-results__option[aria-selected="true"],
+      .select2-results__option--selected {
+        background-color: var(--tc-pow-2);
+        color: var(--tc-tekst);
+      }
+
+      .select2-results__option--highlighted[aria-selected],
+      .select2-results__option--highlighted {
+        background-color: var(--tc-akcent-tlo);
+        color: #fff;
+      }
+
+      .select2-results__group {
+        color: var(--tc-przygaszony);
+      }
+    }
+
+    .select2-dropdown {
+      background-color: var(--tc-pow);
+      border-color: var(--tc-ramka);
+      color: var(--tc-tekst);
+    }
+
+    .select2-results__option {
+      color: var(--tc-tekst);
+    }
+
+    // ---------------------------------------------------------------------
+    // jQuery UI (autocomplete, datepicker, dialog)
+    // ---------------------------------------------------------------------
+    .ui-widget-content,
+    .ui-menu,
+    .ui-autocomplete,
+    .ui-dialog,
+    .ui-datepicker {
+      background: var(--tc-pow);
+      border-color: var(--tc-ramka);
+      color: var(--tc-tekst);
+    }
+
+    .ui-widget-header {
+      background: var(--tc-pow-2);
+      border-color: var(--tc-ramka);
+      color: var(--tc-tekst);
+    }
+
+    .ui-state-default,
+    .ui-widget-content .ui-state-default,
+    .ui-widget-header .ui-state-default,
+    .ui-button {
+      background: var(--tc-pow-2);
+      border-color: var(--tc-ramka);
+      color: var(--tc-tekst);
+    }
+
+    .ui-menu .ui-menu-item-wrapper {
+      color: var(--tc-tekst);
+    }
+
+    .ui-state-active,
+    .ui-widget-content .ui-state-active,
+    .ui-state-focus,
+    .ui-menu .ui-state-active {
+      background: var(--tc-akcent-tlo);
+      border-color: var(--tc-akcent-tlo);
+      color: #fff;
+    }
+
+    .ui-state-highlight,
+    .ui-widget-content .ui-state-highlight {
+      background: var(--tc-ostrzezenie-tlo);
+      border-color: var(--tc-ostrzezenie-ramka);
+      color: var(--tc-tekst);
+    }
+
+    // Foundation Datepicker
+    .datepicker {
+      background: var(--tc-pow);
+      color: var(--tc-tekst);
+
+      table tr td.day:hover,
+      table tr td span:hover,
+      th.prev:hover, th.next:hover, th.switch:hover {
+        background: var(--tc-pow-2);
+      }
+    }
+
+    // ---------------------------------------------------------------------
+    // DataTables
+    // ---------------------------------------------------------------------
+    table.dataTable,
+    .dataTables_wrapper {
+      color: var(--tc-tekst);
+    }
+
+    .dataTables_wrapper .dataTables_length,
+    .dataTables_wrapper .dataTables_filter,
+    .dataTables_wrapper .dataTables_info,
+    .dataTables_wrapper .dataTables_processing,
+    .dataTables_wrapper .dataTables_paginate {
+      color: var(--tc-przygaszony);
+    }
+
+    .dataTables_wrapper .dataTables_processing {
+      background: var(--tc-pow-2);
+    }
+
+    table.dataTable tbody tr,
+    table.dataTable.display tbody tr.odd,
+    table.dataTable.stripe tbody tr.odd {
+      background-color: var(--tc-pow);
+    }
+
+    table.dataTable.display tbody tr.even,
+    table.dataTable.stripe tbody tr.even {
+      background-color: #22272e;
+    }
+
+    // ---------------------------------------------------------------------
+    // Komunikaty Foundation/BPP: _callouts.scss maluje je gradientami,
+    // a część komponentów ma własne, bardziej szczegółowe klasy callout.
+    // ---------------------------------------------------------------------
+    .callout,
+    .callout.primary,
+    .callout.secondary,
+    .callout.success,
+    .callout.warning,
+    .callout.alert,
+    .callout.error,
+    .callout.info,
+    .callout.debug {
+      background-image: none;
+    }
+
+    .callout.info {
+      background-color: var(--tc-info-tlo);
+      border-color: var(--tc-akcent);
+      color: var(--tc-tekst);
+    }
+
+    .callout.error {
+      background-color: var(--tc-blad-tlo);
+      border-color: var(--tc-blad-ramka);
+      color: var(--tc-tekst);
+    }
+
+    .callout.debug {
+      background-color: var(--tc-fiolet-tlo);
+      color: var(--tc-tekst);
+    }
+
+    .callout.punkty-ewaluacji {
+      background-color: var(--tc-ostrzezenie-tlo);
+      color: var(--tc-tekst);
+    }
+
+    .punkty-ewaluacji__liczba {
+      color: var(--tc-ostrzezenie-tekst);
+    }
+
+    .source-sidebar .disciplines-panel,
+    .source-sidebar .external-ids-panel,
+    .callout.secondary.disciplines-panel {
+      background-color: var(--tc-pow);
+      border-color: var(--tc-ramka);
+    }
+
+    .source-sidebar .external-ids-panel .id-badge,
+    .callout.id-badge {
+      background-color: var(--tc-pow-2);
+      border-color: var(--tc-ramka);
+      color: var(--tc-tekst);
+
+      small {
+        color: var(--tc-przygaszony);
+      }
+    }
+
+    // ---------------------------------------------------------------------
+    // Paginacja BPP (_pagination.scss) — własne przyciski na tle paska
+    // ---------------------------------------------------------------------
+    .pagination {
+      background-color: var(--tc-pow-2);
+      border-color: var(--tc-ramka);
+    }
+
+    .pagination li a,
+    .pagination li span {
+      background-color: var(--tc-pow);
+      border-color: var(--tc-ramka);
+      color: var(--tc-akcent);
+    }
+
+    .pagination li a:hover {
+      background-color: var(--tc-akcent-tlo);
+      border-color: var(--tc-akcent-tlo);
+      color: #fff;
+    }
+
+    // _pagination.scss zeruje tło <li class="current">, gdy numer siedzi
+    // w wewnętrznym <a>/<span> — ogólna reguła `.current` wyżej by to
+    // nadpisała.
+    .pagination li.current:has(> a, > span) {
+      background: transparent;
+    }
+
+    .pagination li.current a,
+    .pagination li.current span {
+      background-color: var(--tc-akcent-slaby);
+      border-color: var(--tc-akcent);
+      color: var(--tc-tekst);
+    }
+
+    // Zielone „poprzednia/następna” (_pagination.scss) — biały tekst na
+    // #28a745 ma 3.1:1; ciemniejsza zieleń daje > 4.5:1.
+    .pagination .pagination-previous a,
+    .pagination .pagination-next a {
+      background-color: #1e7b34;
+      border-color: #1e7b34;
+      color: #fff;
+
+      &:hover {
+        background-color: #19692c;
+        border-color: #19692c;
+      }
+    }
+
+    .pagination li.disabled a,
+    .pagination li.disabled span,
+    .pagination .pagination-previous.disabled a,
+    .pagination .pagination-next.disabled a {
+      background-color: var(--tc-pow-2);
+      border-color: var(--tc-ramka);
+      color: var(--tc-przygaszony);
+    }
+
+    // ---------------------------------------------------------------------
+    // Przyciski i plakietki: jasny tekst na zbyt jasnym kolorze
+    // ---------------------------------------------------------------------
+    .main-page-button-primary {
+      background: var(--tc-akcent-tlo);
+      color: #fff;
+    }
+
+    .main-page-button-secondary,
+    .main-page-button-search-field {
+      border-color: var(--tc-ramka);
+    }
+
+    .author-type-badge,
+    .praca-mono__author-type-badge {
+      background: #56626a;
+      color: #fff;
+    }
+
+    .praca-mono__metric-label,
+    .metrics-grid > div .metric-label,
+    .autorzy-modern .autorzy-author-card .autorzy-author-institution,
+    .zrodla__publication-count,
+    .jednostka-details,
+    .lata__year-count,
+    .rok__metadata-item {
+      color: var(--tc-przygaszony);
+    }
+
+    // Obramowania przycisków „hollow” z komponentów strony głównej i list.
+    .button.hollow.secondary {
+      border-color: var(--tc-ramka);
+    }
+
+    // ---------------------------------------------------------------------
+    // Pasek ciasteczek
+    // ---------------------------------------------------------------------
+    #CookielawBanner {
+      background-color: var(--tc-pow) !important;
+      border-color: var(--tc-ramka);
+      color: var(--tc-tekst);
+    }
+
+    // ---------------------------------------------------------------------
+    // Kafle strony głównej (uczelnia.scss)
+    // ---------------------------------------------------------------------
+    .browse-tile:hover > .uczelnia__tile,
+    .browse-tile:focus-visible > .uczelnia__tile {
+      background: var(--tc-pow-hover);
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+    }
+
+    // ---------------------------------------------------------------------
+    // Ciemne wypełnienia, które na ciemnym tle znikają
+    // ---------------------------------------------------------------------
+    .autor-page__slupek-bar {
+      background: #6f8193;
+    }
+
+    .autor-page__slupek:hover .autor-page__slupek-bar,
+    .autor-page__slupek:focus-visible .autor-page__slupek-bar {
+      background: var(--tc-akcent);
+    }
+
+    .spinner > div {
+      background-color: var(--tc-przygaszony);
+    }
+
+    // ---------------------------------------------------------------------
+    // Arkusze dostawców ładowane w bare.html (poza listą komponentów)
+    // ---------------------------------------------------------------------
+    .multiseek-fieldset {
+      border-color: var(--tc-ramka);
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.45);
+    }
+
+    .session_security_modal {
+      background: var(--tc-pow);
+      color: var(--tc-tekst);
+    }
+
+    // ---------------------------------------------------------------------
+    // Select2 w motywie Foundation (select2-foundation-theme) — bardziej
+    // szczegółowe selektory niż ogólne reguły wyżej.
+    // ---------------------------------------------------------------------
+    .select2-container--foundation .select2-dropdown,
+    .select2-container--foundation .select2-results__option {
+      background-color: var(--tc-pow);
+      border-color: var(--tc-ramka);
+      color: var(--tc-tekst);
+    }
+
+    .select2-container--foundation
+      .select2-results__option--highlighted[aria-selected],
+    .select2-container--foundation .select2-results__option--highlighted {
+      background-color: var(--tc-akcent-tlo);
+      color: #fff;
+    }
+
+    .select2-container--foundation .select2-results__option--load-more,
+    .select2-container--foundation .select2-results__message {
+      color: var(--tc-przygaszony);
+    }
+
+    // ---------------------------------------------------------------------
+    // Podświetlenia trafień: zostają żółte, ale z ciemnym tekstem
+    // ---------------------------------------------------------------------
+    mark,
+    .bpp-highlight,
+    .praca-mono__search-highlight,
+    [class^="search-highlight"],
+    [class*=" search-highlight"] {
+      background-color: #e8c547;
+      color: #15181d;
+    }
+
+    // _callouts.scss: `.callout a:not(.close-button) { color: inherit }`
+    // przejmuje też przyciski-linki. W jasnym motywie dziedziczą ciemny
+    // tekst, w ciemnym — jasny, nieczytelny na zielonym/żółtym przycisku.
+    .callout a.button:not(.hollow):not(.clear) {
+      color: #fefefe;
+    }
+
+    .callout a.button.success:not(.hollow):not(.clear),
+    .callout a.button.warning:not(.hollow):not(.clear) {
+      color: #0a0a0a;
+    }
+
+    // ---------------------------------------------------------------------
+    // Style inline w szablonach (style="color: #666" itp.) — nadpisujemy
+    // je selektorami atrybutów zamiast ruszać szablony. !important, bo
+    // styl inline wygrywa z każdym selektorem bez niego.
+    // ---------------------------------------------------------------------
+    [style*="color: #666"],
+    [style*="color:#666"],
+    [style*="color: #999"],
+    [style*="color:#999"],
+    [style*="color: #6c757d"],
+    [style*="color:#6c757d"],
+    [style*="color: #64748b"],
+    [style*="color:#64748b"],
+    [style*="color: #333"],
+    [style*="color:#333"],
+    [style*="color: gray"],
+    [style*="color:gray"] {
+      color: var(--tc-przygaszony) !important;
+    }
+
+    [style*="background: #f5f5f5"],
+    [style*="background:#f5f5f5"],
+    [style*="background-color: #f5f5f5"],
+    [style*="background-color:#f5f5f5"],
+    [style*="background: #f4f4f4"],
+    [style*="background:#f4f4f4"],
+    [style*="background-color: #f4f4f4"],
+    [style*="background-color:#f4f4f4"],
+    [style*="background: #e6e6e6"],
+    [style*="background:#e6e6e6"],
+    [style*="background-color: #e6e6e6"],
+    [style*="background-color:#e6e6e6"],
+    [style*="background: #f8f9fa"],
+    [style*="background:#f8f9fa"],
+    [style*="background-color: #f8f9fa"],
+    [style*="background-color:#f8f9fa"],
+    [style*="background: #fff;"],
+    [style*="background:#fff;"],
+    [style*="background-color: #fff;"],
+    [style*="background-color:#fff;"],
+    [style*="background: #ffffff"],
+    [style*="background:#ffffff"],
+    [style*="background-color: #ffffff"],
+    [style*="background-color:#ffffff"],
+    [style*="background: white"],
+    [style*="background:white"],
+    [style*="background-color: white"],
+    [style*="background-color:white"] {
+      background-color: var(--tc-pow-2) !important;
+      color: var(--tc-tekst);
+    }
+
+    [style*="color: #856404"],
+    [style*="background-color: #fff3cd"] {
+      color: var(--tc-ostrzezenie-tekst) !important;
+    }
+
+    [style*="background-color: #fff3cd"] {
+      background-color: var(--tc-ostrzezenie-tlo) !important;
+    }
+
+    [style*="background-color: #d4edda"] {
+      background-color: var(--tc-sukces-tlo) !important;
+    }
+
+    [style*="color: blue"],
+    [style*="color: #0066cc"] {
+      color: var(--tc-akcent) !important;
+    }
+
+    [style*="color: green"] {
+      color: var(--tc-sukces-tekst) !important;
+    }
+
+    [style*="color: red"],
+    [style*="color:red"],
+    [style*="color: #cc4b37"],
+    [style*="color:#dc2626"] {
+      color: var(--tc-blad-tekst) !important;
+    }
+  }
+}
