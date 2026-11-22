@@ -55,6 +55,10 @@
         .tak-nie { display: flex; gap: 0.5rem; align-items: center; font-weight: 600; cursor: pointer; }
         .tak-nie input { width: 1.1rem; height: 1.1rem; }
         .pole[hidden] { display: none; }
+        .pole { position: relative; }
+        .pole .reset-pola { position: absolute; top: 0; right: 0; padding: 0.05rem 0.45rem; font-size: 0.75rem; color: var(--szary); }
+        .pole .reset-pola[hidden] { display: none; }
+        .pole > .etykieta { padding-right: 6.5rem; }
         .pole.inspektor { outline: 3px solid var(--akcent); outline-offset: 6px; border-radius: 4px; background: #eff6ff; }
         #inspektor[aria-pressed="true"] { border-color: var(--akcent); box-shadow: inset 0 0 0 1px var(--akcent); background: #eff6ff; font-weight: 600; }
         select.lista { width: 100%; font: inherit; padding: 0.4rem 0.5rem; border: 1px solid var(--ramka); border-radius: 6px; background: #fff; }
@@ -66,7 +70,7 @@
         .obraz-wybor .obraz-opis { flex: 1; color: #555; }
         .kolor input:disabled { opacity: 0.4; }
         .uklad-podgladow[hidden] { display: none; }
-        .wersje-kolorow { display: flex; flex-wrap: wrap; gap: 0.5rem; align-items: center; flex: 1; }
+        .wersje-kolorow { display: flex; flex-wrap: wrap; gap: 0.5rem; align-items: center; flex: 1 1 20rem; }
         .wersje-kolorow .wersje-opis { color: var(--szary); font-size: 0.85rem; }
         .zakladki { display: flex; gap: 0; }
         .zakladki button { border-radius: 0; font-weight: 600; padding: 0.45rem 1.1rem; }

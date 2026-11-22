@@ -349,6 +349,32 @@
         obraz: poleObraz,
     };
 
+    // „Przywróć domyślne” przy polu, które różni się od wartości domyślnej.
+    function przyciskResetu(p) {
+        var b = el("button", {
+            type: "button",
+            class: "reset-pola",
+            "data-reset": p.klucz,
+            title: "Przywróć wartość domyślną",
+            tekst: "↺ domyślne",
+        });
+        b.addEventListener("click", function () {
+            stan[p.klucz] = p.domyslnie;
+            zapiszWPamieci();
+            zbudujFormularz();
+            pokazWersje();
+            zaplanujKompilacje();
+        });
+        return b;
+    }
+
+    function odswiezResety() {
+        M.SCHEMAT.forEach(function (p) {
+            var b = elPola.querySelector('[data-reset="' + p.klucz + '"]');
+            if (b) b.hidden = stan[p.klucz] === p.domyslnie;
+        });
+    }
+
     function zbudujFormularz() {
         elPola.textContent = "";
         var grupy = {};
@@ -369,6 +395,7 @@
                 if (tag === "label") etykieta.setAttribute("for", "pole-" + p.klucz);
                 pole.appendChild(etykieta);
             }
+            pole.appendChild(przyciskResetu(p));
             if (p.opis) pole.appendChild(el("div", { class: "opis", tekst: p.opis }));
             pole.appendChild(BUDOWNICZOWIE[p.typ](p));
             pole.appendChild(el("div", { class: "blad", id: "blad-" + p.klucz, hidden: "" }));
@@ -454,6 +481,7 @@
 
     // Pola zależne od innych (np. położenie grafiki tylko, gdy jest obrazek).
     function odswiezWidocznosc() {
+        odswiezResety();
         M.SCHEMAT.forEach(function (p) {
             if (!p.pokaz) return;
             var pole = elPola.querySelector('.pole[data-klucz="' + p.klucz + '"]');
