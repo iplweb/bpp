@@ -55,6 +55,11 @@
             font-size: 7.5pt; font-weight: 700; letter-spacing: .14em;
             text-transform: uppercase; color: #2a78d6;
         }
+        .naglowek .beta {
+            display: inline-block; margin-left: 2.5mm; padding: .4mm 2mm;
+            border-radius: 1.2mm; background: #fdf0d2; color: #7a5300;
+            letter-spacing: .06em; font-size: 6.6pt; vertical-align: .3mm;
+        }
         .naglowek h1 {
             font-size: 22pt; line-height: 1.15; font-weight: 700;
             margin: 2mm 0 2.5mm; string-set: jednostka content();
@@ -177,7 +182,7 @@
 
 {# ===== Strona tytułowa ===== #}
 <div class="naglowek">
-    <div class="etykieta">Metryki ewaluacyjne jednostki</div>
+    <div class="etykieta">Metryki ewaluacyjne jednostki <span class="beta">beta · wersja testowa</span></div>
     <h1>{{ raport.jednostka.nazwa }}</h1>
     <div class="meta">
         <span>okres ewaluacji {{ raport.okres }}</span>
@@ -227,6 +232,8 @@
 {% endif %}
 
 <div class="poufne">
+    <strong>Wersja testowa.</strong> To nowe zestawienie — układ, wnioski i progi ocen mogą
+    się jeszcze zmienić; kluczowe wartości warto porównać z metrykami autorów w BPP.<br>
     <strong>Dokument poufny.</strong> Zawiera imienne oceny pracowników — przeznaczony dla
     kierownika jednostki i osób odpowiedzialnych za ewaluację. Liczby pochodzą z ostatniego
     przeliczenia metryk ewaluacyjnych w BPP i są tak dokładne, jak dane wprowadzone do systemu.

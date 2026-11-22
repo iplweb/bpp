@@ -13,7 +13,9 @@
 {% block content %}
 <div class="row">
     <div class="columns">
-        <h1><span class="fi-page-pdf"></span> Metryki jednostek</h1>
+        <h1><span class="fi-page-pdf"></span> Metryki jednostek <span class="label warning" title="Wersja testowa">beta</span></h1>
+
+        {% include "ewaluacja_metryki/_metryki_jednostek_beta.html" %}
 
         <div class="callout secondary">
             <p>
@@ -29,11 +31,27 @@
             </p>
         </div>
 
-        {% if jednostki %}
-            <table class="hover">
+        {% if liczba_wszystkich %}
+            <form method="get" class="metryki-jednostek__szukaj" role="search">
+                <label for="metryki-jednostek-q"><span class="fi-magnifying-glass"></span> Szukaj jednostki</label>
+                <div class="input-group">
+                    <input class="input-group-field" type="search" id="metryki-jednostek-q" name="q"
+                           value="{{ q }}" autocomplete="off" autofocus
+                           placeholder="nazwa, skrót{% if pokaz_wydzial %} albo wydział{% endif %} — np. „klinika pediatrii”">
+                    <div class="input-group-button">
+                        <button type="submit" class="button">Szukaj</button>
+                    </div>
+                </div>
+                <p class="help-text" id="metryki-jednostek-licznik" aria-live="polite">
+                    {% if q %}Znaleziono {{ liczba_pasujacych }} z {{ liczba_wszystkich }} jednostek.{% else %}{{ liczba_wszystkich }} jednostek z metrykami.{% endif %}
+                </p>
+            </form>
+
+            <table class="hover" id="metryki-jednostek-tabela">
                 <thead>
                     <tr>
                         <th>Jednostka</th>
+                        {% if pokaz_wydzial %}<th>Wydział</th>{% endif %}
                         <th class="text-right">Autorzy z metrykami</th>
                         <th class="text-right">Punkty nazbierane</th>
                         <th>Metryki jednostki</th>
@@ -41,8 +59,9 @@
                 </thead>
                 <tbody>
                     {% for j in jednostki %}
-                        <tr>
+                        <tr data-szukaj="{{ j.szukaj }}"{% if not j.pasuje %} hidden{% endif %}>
                             <td>{{ j.jednostka__nazwa }}</td>
+                            {% if pokaz_wydzial %}<td>{{ j.jednostka__wydzial__nazwa|default:"" }}</td>{% endif %}
                             <td class="text-right">{{ j.liczba_autorow }}</td>
                             <td class="text-right">{{ j.punkty|floatformat:0|intcomma }}</td>
                             <td>
@@ -57,6 +76,41 @@
                     {% endfor %}
                 </tbody>
             </table>
+            <div class="callout secondary" id="metryki-jednostek-brak"{% if liczba_pasujacych %} hidden{% endif %}>
+                Żadna jednostka nie pasuje do wyszukiwania. Spróbuj krótszego fragmentu nazwy.
+            </div>
+
+            {# Filtrowanie na żywo bez przeładowania strony. Bez JS działa zwykły formularz ?q=. #}
+            {# Normalizacja jak w do_wyszukiwania() w widoku: małe litery, bez polskich znaków. #}
+            <script>
+            (function () {
+                var pole = document.getElementById("metryki-jednostek-q");
+                var wiersze = document.querySelectorAll("#metryki-jednostek-tabela tbody tr");
+                var brak = document.getElementById("metryki-jednostek-brak");
+                var licznik = document.getElementById("metryki-jednostek-licznik");
+                var wszystkich = {{ liczba_wszystkich }};
+                if (!pole) { return; }
+                function normalizuj(t) {
+                    return t.replace(/ł/g, "l").replace(/Ł/g, "l").toLowerCase()
+                        .normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+                }
+                function filtruj() {
+                    var slowa = normalizuj(pole.value).split(/\s+/).filter(Boolean);
+                    var widoczne = 0;
+                    wiersze.forEach(function (w) {
+                        var tekst = w.getAttribute("data-szukaj");
+                        var pasuje = slowa.every(function (s) { return tekst.indexOf(s) !== -1; });
+                        w.hidden = !pasuje;
+                        if (pasuje) { widoczne++; }
+                    });
+                    brak.hidden = widoczne > 0;
+                    licznik.textContent = slowa.length
+                        ? "Znaleziono " + widoczne + " z " + wszystkich + " jednostek."
+                        : wszystkich + " jednostek z metrykami.";
+                }
+                pole.addEventListener("input", filtruj);
+            })();
+            </script>
         {% else %}
             <div class="callout warning">
                 Brak metryk ewaluacyjnych w okresie {{ okres }}. Wygeneruj metryki

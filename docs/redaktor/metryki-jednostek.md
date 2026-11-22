@@ -15,6 +15,13 @@ Zestawienie liczy się z [metryk ewaluacyjnych autorów](metryki-ewaluacyjne.md)
 Jest tak dobre, jak dane w BPP i ostatnie przeliczenie metryk — patrz
 [Zanim zaczniesz](#zanim-zaczniesz).
 
+!!! note "Wersja testowa (beta)"
+    Metryki jednostek to nowe zestawienie, oznaczone w BPP znaczkiem
+    **„beta”**. Liczby pochodzą z metryk ewaluacyjnych, ale układ, wnioski
+    i progi ocen mogą się jeszcze zmienić. Zanim oprzesz na nim decyzje,
+    porównaj kluczowe wartości z [metrykami autorów](metryki-ewaluacyjne.md).
+    Uwagi zgłaszaj przez pomoc techniczną.
+
 !!! warning "Dane poufne"
     Zestawienie zawiera **imienne oceny pracowników**. Przekazuj je tylko
     osobom, które mają je oglądać, i nadawaj dostęp świadomie — patrz
