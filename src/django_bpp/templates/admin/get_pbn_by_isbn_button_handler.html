@@ -64,6 +64,20 @@
 
                         isbn_button.val("Pobrano!");
 
+                        // FD#622: kilka rekordów (np. książka i jej rozdziały
+                        // z tym samym ISBN) — pokaż listę, żeby redaktor
+                        // wybrał właściwy; nie każdy musi wyjść w wyszukiwarce.
+                        if (data.kandydaci && data.kandydaci.length > 1) {
+                            var linie = $.map(data.kandydaci, function (k) {
+                                return "- " + k.tytul + " (" + k.rok + ") [" +
+                                    (k.typ || "?") + "], UID: " + k.id;
+                            });
+                            alert("Znaleziono w PBN kilka rekordów. Wybierz " +
+                                "właściwy w polu 'Odpowiednik w PBN' (UID " +
+                                "możesz wkleić w wyszukiwarkę pola):\r\n\r\n" +
+                                linie.join("\r\n"));
+                        }
+
                         $("#id_pbn_uid").select2("open");
                         $("input.select2-search__field").val(data.id).trigger("input");
 
