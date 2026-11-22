@@ -1,0 +1,1 @@
+Na listach języków, charakterów formalnych, typów KBN i charakterów PBN w menu „Dane systemowe” jest filtr „używane w rekordach” oraz akcja „Ukryj na listach wyboru zaznaczone pozycje, których nie używa żaden rekord” — chowa z list wyboru tylko pozycje, na które nie wskazuje żaden rekord, więc można ją bezpiecznie uruchomić na całej liście.

@@ -3,11 +3,15 @@ from mptt.admin import DraggableMPTTAdmin
 
 from ..models import Charakter_Formalny  # Publikacja_Habilitacyjna
 from .core import BaseBppAdminMixin, RestrictDeletionToAdministracjaGroupMixin
+from .nieuzywane import UkryjNieuzywaneMixin
 
 
 # Proste tabele
 class Charakter_FormalnyAdmin(
-    RestrictDeletionToAdministracjaGroupMixin, BaseBppAdminMixin, DraggableMPTTAdmin
+    UkryjNieuzywaneMixin,
+    RestrictDeletionToAdministracjaGroupMixin,
+    BaseBppAdminMixin,
+    DraggableMPTTAdmin,
 ):
     list_display_links = ["nazwa"]
     list_display = [
