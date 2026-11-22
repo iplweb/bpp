@@ -72,6 +72,20 @@
             document.documentElement.style.setProperty(
                 '--bpp-sticky-offset',
                 (topBarHeight + breadcrumbsHeight) + 'px');
+
+            /* Środek pierwszego wiersza paska (nie całego <nav>, który na
+               telefonie z rozwiniętym menu bywa wysoki) — tam staje ikona
+               UserWay, patrz top_bar.scss. */
+            var row = document.querySelector('nav.sticky-header .title-bar');
+            if (!row || !row.getBoundingClientRect().height) {
+                row = document.querySelector(
+                    'nav.sticky-header .top-bar-left .dropdown.menu > li:first-child');
+            }
+            if (row && row.getBoundingClientRect().height) {
+                var r = row.getBoundingClientRect();
+                document.documentElement.style.setProperty(
+                    '--bpp-userway-top', (r.top + r.height / 2) + 'px');
+            }
         }
 
         // Adjust on page load
