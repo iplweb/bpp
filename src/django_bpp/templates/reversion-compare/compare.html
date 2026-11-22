@@ -1,6 +1,6 @@
 {% extends "admin/base_site.html" %}
 {% load i18n admin_urls %}
-{# FD#587: porównanie dwóch wersji rekordu pod Grappelli — tabela „pole / wersja A / wersja B” z podświetlonymi zmianami. #}
+{# FD#587: porównanie dwóch wersji rekordu pod Grappelli — tabela „pole / wersja starsza / zmiana / wersja nowsza”. #}
 
 {% block title %}Porównanie wersji: {{ original }} | {{ site_title|default:_('Django site admin') }}{% endblock %}
 
@@ -38,9 +38,9 @@
             </div>
         {% endif %}
         <div class="bpp-wersje">
-            {% for wersja, litera, opis, klasa in wersje_porownania %}
+            {% for wersja, nazwa, klasa in wersje_porownania %}
                 <div class="bpp-wersja {{ klasa }}">
-                    <h3>Wersja {{ litera }} — {{ opis }}{% if wersja.pk == aktualna_wersja_pk %} <span class="bpp-aktualna">wersja aktualna</span>{% endif %}</h3>
+                    <h3>{{ nazwa }}{% if wersja.pk == aktualna_wersja_pk %} <span class="bpp-aktualna">wersja aktualna</span>{% endif %}{% if wersja.pk == najstarsza_wersja_pk %} <span class="bpp-najstarsza">wersja najstarsza</span>{% endif %}</h3>
                     <div><strong>{{ wersja.revision.date_created|date:"j E Y, H:i" }}</strong>,
                         {% if wersja.revision.user %}{{ wersja.revision.user.get_full_name|default:wersja.revision.user.get_username }}{% else %}<span class="bpp-przygaszony">bez użytkownika</span>{% endif %}
                         {% with zrodlo=wersja.revision.zrodlo_zmiany %}{% if zrodlo %}&nbsp;<span class="bpp-zrodlo bpp-zrodlo-{{ zrodlo.zrodlo }}">{{ zrodlo.get_zrodlo_display }}{% if zrodlo.aplikacja_nazwa %}: {{ zrodlo.aplikacja_nazwa }}{% endif %}</span>{% endif %}{% endwith %}
@@ -55,8 +55,9 @@
                 <thead>
                     <tr>
                         <th scope="col" class="bpp-kol-pole">Pole</th>
-                        <th scope="col">Wersja A ({{ version1.revision.date_created|date:"j E Y, H:i" }})</th>
-                        <th scope="col">Wersja B ({{ version2.revision.date_created|date:"j E Y, H:i" }})</th>
+                        <th scope="col">Wersja starsza ({{ version1.revision.date_created|date:"j E Y, H:i" }})</th>
+                        <th scope="col" class="bpp-kol-zmiana-diff">Zmiana</th>
+                        <th scope="col">Wersja nowsza ({{ version2.revision.date_created|date:"j E Y, H:i" }})</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -64,6 +65,7 @@
                         <tr>
                             <th scope="row">{{ wiersz.etykieta }}</th>
                             <td>{{ wiersz.stare }}</td>
+                            <td class="bpp-kol-zmiana-diff">{{ wiersz.zmiana }}</td>
                             <td>{{ wiersz.nowe }}</td>
                         </tr>
                     {% endfor %}
@@ -78,10 +80,13 @@
             {% if next_url %}<a class="grp-button" href="{{ next_url }}">Następna zmiana &rsaquo;</a>{% endif %}
             <a class="grp-button" href="{{ history_url }}">Wróć do historii</a>
             {% if rekord_w_koszu %}
-                <span class="grp-button bpp-nieaktywny" title="Rekord jest w koszu — najpierw przywróć go z kosza, potem przywracaj wcześniejsze wersje" aria-disabled="true">Przywróć wersję A ({{ version1.revision.date_created|date:"j E Y, H:i" }})…</span>
+                <span class="grp-button bpp-nieaktywny" title="Rekord jest w koszu — najpierw przywróć go z kosza, potem przywracaj wcześniejsze wersje" aria-disabled="true">Przywróć wersję starszą…</span>
                 <span class="bpp-historia-pomoc">Najpierw przywróć rekord z kosza.</span>
             {% else %}
-                <a class="grp-button grp-default" href="{{ save_url }}" title="Otwiera formularz w stanie z wersji A — zapisanie go przywraca tę wersję">Przywróć wersję A ({{ version1.revision.date_created|date:"j E Y, H:i" }})…</a>
+                <a class="grp-button grp-default" href="{{ save_url }}" title="Podgląd wersji starszej z przyciskiem „Przywróć tę wersję”">Przywróć wersję starszą ({{ version1.revision.date_created|date:"j E Y, H:i" }})…</a>
+                {% if version2.pk != aktualna_wersja_pk %}
+                    <a class="grp-button" href="{{ przywroc_nowsza_url }}" title="Podgląd wersji nowszej z przyciskiem „Przywróć tę wersję”">Przywróć wersję nowszą ({{ version2.revision.date_created|date:"j E Y, H:i" }})…</a>
+                {% endif %}
             {% endif %}
         </div>
     </div>

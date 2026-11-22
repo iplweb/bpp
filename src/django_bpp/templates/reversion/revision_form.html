@@ -40,11 +40,11 @@
         <li><a href="{% url opts|admin_urlname:'changelist' %}">{{ opts.verbose_name_plural|capfirst }}</a></li>
         <li><a href="{% url opts|admin_urlname:'change' object_id %}">{{ original|truncatewords:"18" }}</a></li>
         <li><a href="{% url opts|admin_urlname:'history' object_id %}">Historia</a></li>
-        <li>Przywróć wersję</li>
+        <li>Wersja z {{ wersja_podgladu.revision.date_created|date:"j E Y, H:i" }}</li>
     </ul>
 {% endblock %}
 
-{% block content_title %}<h1>Przywróć wersję: {{ original|truncatewords:"24" }}</h1>{% endblock %}
+{% block content_title %}<h1>Wersja z {{ wersja_podgladu.revision.date_created|date:"j E Y, H:i" }}: {{ original|truncatewords:"24" }}</h1>{% endblock %}
 
 {% block object-tools %}{% endblock %}
 
@@ -52,13 +52,13 @@
     <div class="bpp-przywracanie">
         {% if wersja_aktualna %}
             <h3>To jest wersja aktualna <span class="bpp-aktualna">wersja aktualna</span></h3>
-            <p>Wersja z {{ wersja_podgladu.revision.date_created|date:"j E Y, H:i" }} to najnowsza zapisana wersja, czyli obecny stan rekordu. Zapisanie formularza niczego nie zmieni. Aby wrócić do wcześniejszego stanu, wybierz starszą wersję na stronie <a href="{% url opts|admin_urlname:'history' object_id %}">Historia</a>.</p>
+            <p>Wersja z {{ wersja_podgladu.revision.date_created|date:"j E Y, H:i" }} to najnowsza zapisana wersja, czyli obecny stan rekordu — nie ma czego przywracać. Aby wrócić do wcześniejszego stanu, wybierz starszą wersję na stronie <a href="{% url opts|admin_urlname:'history' object_id %}">Historia</a>; rekord edytujesz w <a href="{% url opts|admin_urlname:'change' object_id %}">zwykłym formularzu</a>.</p>
         {% elif wersja_jak_aktualna %}
             <h3>Wersja z {{ wersja_podgladu.revision.date_created|date:"j E Y, H:i" }} — taka sama jak aktualna <span class="bpp-aktualna">bez różnic</span></h3>
-            <p>Treść tej wersji niczym się nie różni od obecnego stanu rekordu (np. rekord został do niej właśnie przywrócony). Zapisanie formularza niczego nie zmieni. Aby wrócić do innego stanu, wybierz inną wersję na stronie <a href="{% url opts|admin_urlname:'history' object_id %}">Historia</a>.</p>
+            <p>Treść tej wersji niczym się nie różni od obecnego stanu rekordu (np. rekord został do niej właśnie przywrócony) — nie ma czego przywracać. Aby wrócić do innego stanu, wybierz inną wersję na stronie <a href="{% url opts|admin_urlname:'history' object_id %}">Historia</a>.</p>
         {% else %}
             <h3>Podgląd wcześniejszej wersji z {{ wersja_podgladu.revision.date_created|date:"j E Y, H:i" }}</h3>
-            <p>Formularz pokazuje rekord w stanie z tej wersji (nie obecny stan). Kliknij „Zapisz”, aby przywrócić tę wersję — samo przywrócenie też trafi do historii, więc da się je cofnąć.</p>
+            <p>Poniżej rekord w stanie z tej wersji (nie obecny stan) — tylko do podglądu, bez edycji. {% if pokaz_przywroc %}Przycisk „♻️ Przywróć tę wersję” na dole strony przywraca rekord do tego stanu; samo przywrócenie też trafi do historii, więc da się je cofnąć.{% else %}Nie masz uprawnień do przywracania wersji tego rekordu.{% endif %}</p>
         {% endif %}
         {% if zmiany_powiazanych %}
             <h3 style="margin-top: 10px;">Uwaga: przywrócenie zmieni też listy powiązane z rekordem</h3>
@@ -77,5 +77,15 @@
     </div>
 {% endblock %}
 
-{% block submit_buttons_top %}{% with is_popup=1 %}{{ block.super }}{% endwith %}{% endblock %}
-{% block submit_buttons_bottom %}{% with is_popup=1 %}{{ block.super }}{% endwith %}{% endblock %}
+{# Podgląd wersji jest tylko do odczytu: bez „Zapisz” i „Usuń”, jedyna akcja to przywrócenie (POST na ten sam adres). #}
+{% block submit_buttons_top %}{% endblock %}
+{% block submit_buttons_bottom %}
+    <footer class="grp-module grp-submit-row grp-fixed-footer">
+        <div>
+            <div class="grp-float-left"><a href="{% url opts|admin_urlname:'history' object_id %}" class="grp-button">Wróć do historii</a></div>
+            {% if pokaz_przywroc %}
+                <div><input type="submit" value="♻️ Przywróć tę wersję" class="grp-button grp-default" name="_przywroc_wersje"></div>
+            {% endif %}
+        </div>
+    </footer>
+{% endblock %}

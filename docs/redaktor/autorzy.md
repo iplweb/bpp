@@ -119,11 +119,13 @@ publikacje). Wersja obejmuje dane autora i jego wyróżnione publikacje.
 Historię otwiera przycisk **„Historia”** w prawym górnym rogu formularza
 autora. Przy każdej wersji widać **kto i kiedy** wprowadził zmianę oraz
 **co zmieniono** (np. „Samodzielna edycja profilu przez stronę: Biogram,
-Zdjęcie” albo „…: wyróżniono pracę »Tytuł«”). Kliknięcie daty otwiera
-formularz autora w stanie z tej wersji — **zapisanie go przywraca tę wersję**
-(samo przywrócenie także trafia do historii, więc da się je cofnąć). Dwie
-wersje można też **porównać**: zaznacz je w kolumnie po lewej i kliknij
-„Porównaj wersje” — zobaczysz tylko pola, które się zmieniły.
+Zdjęcie” albo „…: wyróżniono pracę »Tytuł«”). Kliknięcie daty pokazuje
+autora w stanie z tej wersji (tylko do podglądu, bez edycji), a przycisk
+**„♻️ Przywróć tę wersję”** na dole strony przywraca ten stan (samo
+przywrócenie także trafia do historii, więc da się je cofnąć). Dwie wersje
+można też **porównać**: zaznacz wersję starszą (lewe kółko) i nowszą (prawe kółko),
+a potem kliknij „Porównaj zaznaczone wersje” — zobaczysz tylko pola, które
+się zmieniły.
 
 Uwagi:
 

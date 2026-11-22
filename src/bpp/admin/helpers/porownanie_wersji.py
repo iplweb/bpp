@@ -2,16 +2,17 @@
 
 Zastępuje domyślny diff reversion-compare (różnice znak po znaku, surowe
 ``repr``, każde pole w osobnym bloku) tabelą „pole | wersja starsza |
-wersja nowsza”:
+zmiana | wersja nowsza”:
 
 * tylko pola, które się zmieniły, z etykietami jak w formularzu,
-* wartości po ludzku: nazwy ze słowników zamiast numerów, „tak/nie”,
-  daty po polsku, „—” dla pustych,
-* w tekstach podświetlone całe słowa usunięte (lewa kolumna) i dodane
-  (prawa),
-* listy śledzone razem z rekordem (autorzy, granty, pliki…): pozycje
-  usunięte, dodane i zmienione — dla zmienionych konkretne pola,
-  np. „Afiliuje: tak → nie”.
+* kolumny boczne — pełne wartości z obu wersji (bez skreśleń), wartości po
+  ludzku: nazwy ze słowników zamiast numerów, „tak/nie”, daty po polsku,
+  „—” dla pustych,
+* kolumna „zmiana” — sama różnica: w tekstach usunięte słowa w ``del``
+  i dodane w ``ins``, w pozostałych polach „stare → nowe”,
+* listy śledzone razem z rekordem (autorzy, granty, pliki…): po bokach
+  pełne listy z obu wersji, w środku pozycje usunięte (−), dodane (+)
+  i zmienione z konkretnymi polami, np. „Afiliuje: tak → nie”.
 """
 
 import difflib
@@ -93,29 +94,54 @@ class Formatowanie:
         return str(wartosc)
 
 
-#: Słowo razem ze spacjami za nim — zamiana kilku słów daje jeden blok
-#: ``del``/``ins``, a nie osobny na każde słowo.
-_SLOWA = re.compile(r"\s*\S+\s*|\s+")
+#: Słowa i odstępy jako osobne tokeny.
+_SLOWA = re.compile(r"\S+|\s+")
 
 
-def diff_slow(stary, nowy):
-    """(html_stary, html_nowy) z podświetlonymi słowami usuniętymi (``del``)
-    w starym i dodanymi (``ins``) w nowym tekście."""
+def _kawalki(stary, nowy):
+    """Lista (wspólne, usunięte, dodane) kawałków tekstu. Sam odstęp między
+    dwiema zmianami jest doklejany do zmiany — zamiana kilku słów daje
+    jeden blok ``del``/``ins``, a nie osobny na każde słowo."""
     a, b = _SLOWA.findall(stary), _SLOWA.findall(nowy)
-    lewa, prawa = [], []
+    surowe = []
     for op, i1, i2, j1, j2 in difflib.SequenceMatcher(
         None, a, b, autojunk=False
     ).get_opcodes():
-        kawalek_a, kawalek_b = escape("".join(a[i1:i2])), escape("".join(b[j1:j2]))
-        if op == "equal":
-            lewa.append(kawalek_a)
-            prawa.append(kawalek_b)
+        surowe.append((op == "equal", "".join(a[i1:i2]), "".join(b[j1:j2])))
+    wynik = []
+    for nr, (rowne, tekst_a, tekst_b) in enumerate(surowe):
+        odstep_miedzy_zmianami = (
+            rowne
+            and not tekst_a.strip()
+            and 0 < nr < len(surowe) - 1
+            and not surowe[nr - 1][0]
+            and not surowe[nr + 1][0]
+        )
+        if odstep_miedzy_zmianami:
+            rowne = False
+        if wynik and not rowne and not wynik[-1][0]:
+            _, poprz_a, poprz_b = wynik[-1]
+            wynik[-1] = (False, poprz_a + tekst_a, poprz_b + tekst_b)
+        else:
+            wynik.append((rowne, tekst_a, tekst_b))
+    return wynik
+
+
+def diff_slow(stary, nowy):
+    """Jeden tekst z różnicami: słowa usunięte w ``del``, dodane w ``ins``,
+    wspólne bez zmian — do środkowej kolumny „zmiana”."""
+    wynik = []
+    for rowne, tekst_a, tekst_b in _kawalki(stary, nowy):
+        if rowne:
+            wynik.append(escape(tekst_a))
             continue
-        if kawalek_a:
-            lewa.append(f"<del>{kawalek_a}</del>")
-        if kawalek_b:
-            prawa.append(f"<ins>{kawalek_b}</ins>")
-    return mark_safe("".join(lewa)), mark_safe("".join(prawa))
+        if tekst_a.strip():
+            wynik.append(f"<del>{escape(tekst_a)}</del>")
+        if tekst_b.strip():
+            wynik.append(f"<ins>{escape(tekst_b)}</ins>")
+        if not tekst_a.strip() and not tekst_b.strip():
+            wynik.append(escape(tekst_b))
+    return mark_safe("".join(wynik))
 
 
 def _tekstowe(pole):
@@ -126,15 +152,20 @@ def _tekstowe(pole):
     )
 
 
-def _para(pole, stary, nowy):
-    """Para HTML dla zwykłego pola: teksty — diff słów, wartości ze
-    słowników, liczby, daty, tak/nie — całe, podświetlone."""
+def _zmiana(pole, stary, nowy):
+    """Środkowa kolumna dla zwykłego pola: w tekstach diff słów, w
+    wartościach ze słowników, liczbach, datach, tak/nie — „stare → nowe”."""
     if _tekstowe(pole) and stary != "—" and nowy != "—":
         return diff_slow(stary, nowy)
-    return (
-        format_html("<del>{}</del>", stary) if stary != "—" else stary,
-        format_html("<ins>{}</ins>", nowy) if nowy != "—" else nowy,
-    )
+    if stary == "—":
+        return format_html(
+            '<ins>{}</ins> <span class="bpp-przygaszony">(dodano)</span>', nowy
+        )
+    if nowy == "—":
+        return format_html(
+            '<del>{}</del> <span class="bpp-przygaszony">(usunięto)</span>', stary
+        )
+    return format_html("<del>{}</del> → <ins>{}</ins>", stary, nowy)
 
 
 def _pola_modelu(model, pomijane):
@@ -157,10 +188,10 @@ def _wiersze_pol(model, wersja1, wersja2, pomijane, fmt):
         stary, nowy = fmt.wartosc(pole, a), fmt.wartosc(pole, b)
         if stary == nowy:
             continue  # różnica tylko techniczna (np. NULL a pusty tekst)
-        stary, nowy = _para(pole, stary, nowy)
         yield {
             "etykieta": _etykieta(pole),
             "stare": stary,
+            "zmiana": _zmiana(pole, stary, nowy),
             "nowe": nowy,
             "lista": False,
         }
@@ -210,44 +241,60 @@ def _wiersze_list(model, obj, wersja1, wersja2, fmt):
         if not (usuniete or dodane or zmienione):
             continue
         bez_zmian = len(e1.keys() & e2.keys()) - len(zmienione)
-        lewa, prawa = [], []
-        for w in sorted(usuniete, key=lambda v: v.object_repr):
-            lewa.append(format_html("<li><del>{}</del></li>", w.object_repr))
-        for w in sorted(dodane, key=lambda v: v.object_repr):
-            prawa.append(format_html("<li><ins>{}</ins></li>", w.object_repr))
-        for w1, w2, pola in sorted(zmienione, key=lambda z: z[1].object_repr):
-            lewa.append(
-                format_html(
-                    "<li>{}<ul>{}</ul></li>",
-                    w1.object_repr,
-                    format_html_join(
-                        "", "<li>{}: <del>{}</del></li>", ((e, s) for e, s, _ in pola)
-                    ),
-                )
-            )
-            prawa.append(
+        zmiana = [
+            *(
+                format_html("<li><del>− {}</del></li>", w.object_repr)
+                for w in sorted(usuniete, key=lambda v: v.object_repr)
+            ),
+            *(
+                format_html("<li><ins>+ {}</ins></li>", w.object_repr)
+                for w in sorted(dodane, key=lambda v: v.object_repr)
+            ),
+            *(
                 format_html(
                     "<li>{}<ul>{}</ul></li>",
                     w2.object_repr,
                     format_html_join(
-                        "", "<li>{}: <ins>{}</ins></li>", ((e, n) for e, _, n in pola)
+                        "",
+                        "<li>{}: <del>{}</del> → <ins>{}</ins></li>",
+                        pola,
                     ),
                 )
+                for _w1, w2, pola in sorted(zmienione, key=lambda z: z[1].object_repr)
+            ),
+        ]
+        if bez_zmian:
+            zmiana.append(
+                format_html(
+                    '<li class="bpp-bez-zmian">pozostałe bez zmian: {}</li>',
+                    bez_zmian,
+                )
             )
-        stopka = (
-            format_html(
-                '<p class="bpp-bez-zmian">pozostałe bez zmian: {}</p>', bez_zmian
-            )
-            if bez_zmian
-            else ""
-        )
+        nazwa = str(powiazany._meta.verbose_name_plural)
         yield {
-            "etykieta": str(powiazany._meta.verbose_name_plural)[:1].upper()
-            + str(powiazany._meta.verbose_name_plural)[1:],
-            "stare": format_html("<ul>{}</ul>{}", mark_safe("".join(lewa)), stopka),
-            "nowe": format_html("<ul>{}</ul>{}", mark_safe("".join(prawa)), stopka),
+            "etykieta": nazwa[:1].upper() + nazwa[1:],
+            "stare": _lista(e1),
+            "zmiana": format_html("<ul>{}</ul>", mark_safe("".join(zmiana))),
+            "nowe": _lista(e2),
             "lista": True,
         }
+
+
+def _lista(elementy):
+    """Pełna lista pozycji z jednej wersji (kolumny boczne)."""
+    if not elementy:
+        return "—"
+    return format_html(
+        "<ul>{}</ul>",
+        format_html_join(
+            "",
+            "<li>{}</li>",
+            (
+                (v.object_repr,)
+                for v in sorted(elementy.values(), key=lambda v: v.object_repr)
+            ),
+        ),
+    )
 
 
 def porownaj_wersje(model, obj, wersja1, wersja2, pomijane):
