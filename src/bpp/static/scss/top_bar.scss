@@ -43,6 +43,9 @@ nav.sticky-header {
 body .uwy.userway_p1 .userway_buttons_wrapper {
     top: var(--bpp-userway-top, 35px);
     transform: translate(-100%, -50%);
+    // UserWay ma `transition: transform 0.4s` — po wczytaniu widget
+    // „wjeżdżał” z boku na miejsce ustawione powyżej. Od razu na miejscu.
+    transition: none !important;
 }
 
 .top-bar {
