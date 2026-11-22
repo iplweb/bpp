@@ -2,8 +2,11 @@
 Źródła.
 """
 
+from decimal import Decimal
+
 from autoslug import AutoSlugField
 from django.contrib.postgres.search import SearchVectorField as VectorField
+from django.core.validators import MaxValueValidator, MinValueValidator
 from django.db import models
 from django.db.models import CASCADE, SET_NULL, F, Value
 from django.db.models.functions import Replace, Upper
@@ -22,6 +25,23 @@ from bpp.models.abstract import (
 from bpp.models.soft_delete import BppSoftDeleteManager, BppSoftDeleteSlownikMixin
 from bpp.models.system import Jezyk
 from bpp.util import FulltextSearchMixin
+
+
+def kwartyl_scopus_z_percentyla(percentyl):
+    """Kwartyl Scopus (1–4) dla najwyższego percentyla CiteScore (0–100).
+
+    Q1: 75–100, Q2: 50–74, Q3: 25–49, Q4: 0–24. ``None`` dla braku wartości
+    albo wartości spoza zakresu.
+    """
+    if percentyl is None or not 0 <= percentyl <= 100:
+        return None
+    if percentyl >= 75:
+        return 1
+    if percentyl >= 50:
+        return 2
+    if percentyl >= 25:
+        return 3
+    return 4
 
 
 def uzupelnij_punktacje_z_zrodla(rekord, zrodlo, rok):
@@ -104,6 +124,28 @@ class Punktacja_Zrodla(ModelPunktowanyBaza, ModelZKwartylami, models.Model):
     zrodlo = models.ForeignKey("Zrodlo", CASCADE, db_index=False)
     rok = YearField()
 
+    # Wskaźniki Scopus (FD#370). Tylko przy źródle — publikacje ich nie mają,
+    # więc celowo NIE należą do ``POLA_PUNKTACJI`` (lista pól kopiowanych
+    # między źródłem a pracą).
+    citescore = models.DecimalField(
+        "CiteScore",
+        max_digits=6,
+        decimal_places=1,
+        null=True,
+        blank=True,
+        validators=[MinValueValidator(Decimal("0"))],
+        help_text="Wskaźnik CiteScore (Scopus) — liczba nieujemna z jednym "
+        "miejscem po przecinku.",
+    )
+    citescore_percentyl = models.PositiveSmallIntegerField(
+        "CiteScore (najwyższy percentyl)",
+        null=True,
+        blank=True,
+        validators=[MinValueValidator(0), MaxValueValidator(100)],
+        help_text="Najwyższy percentyl CiteScore (Scopus), od 0 do 100. Gdy "
+        "kwartyl w SCOPUS jest pusty, zostanie uzupełniony na jego podstawie.",
+    )
+
     class Meta:
         verbose_name = "punktacja źródła"
         verbose_name_plural = "punktacja źródła"
@@ -113,6 +155,27 @@ class Punktacja_Zrodla(ModelPunktowanyBaza, ModelZKwartylami, models.Model):
 
     def __str__(self):
         return f'Punktacja źródła "{self.zrodlo}" za rok {self.rok}'
+
+    def save(self, *args, **kwargs):
+        if self.uzupelnij_kwartyl_scopus_z_percentyla():
+            update_fields = kwargs.get("update_fields")
+            if update_fields is not None:
+                kwargs["update_fields"] = {*update_fields, "kwartyl_w_scopus"}
+        super().save(*args, **kwargs)
+
+    def uzupelnij_kwartyl_scopus_z_percentyla(self) -> bool:
+        """Wpisuje kwartyl Scopus wynikający z percentyla CiteScore — ale
+        tylko gdy kwartyl jest pusty (wartości wpisanej ręcznie nie rusza).
+
+        Zwraca True, jeżeli kwartyl został ustawiony.
+        """
+        if self.kwartyl_w_scopus is not None:
+            return False
+        kwartyl = kwartyl_scopus_z_percentyla(self.citescore_percentyl)
+        if kwartyl is None:
+            return False
+        self.kwartyl_w_scopus = kwartyl
+        return True
 
 
 class Dyscyplina_Zrodla(models.Model):

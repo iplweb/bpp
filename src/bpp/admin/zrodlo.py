@@ -22,7 +22,7 @@ from .filters import (
     PBN_UID_IDObecnyFilter,
     PBNStatusFilter,
 )
-from .helpers.fieldsets import ADNOTACJE_FIELDSET, MODEL_PUNKTOWANY_Z_KWARTYLAMI_BAZA
+from .helpers.fieldsets import ADNOTACJE_FIELDSET, MODEL_PUNKTOWANY_BAZA
 from .helpers.mixins import BppSoftDeleteAdminMixin, ZapiszZAdnotacjaMixin
 from .helpers.wersje import HistoriaWersjiMixin
 from .helpers.widgets import CHARMAP_SINGLE_LINE, COMMA_DECIMAL_FIELD_OVERRIDE
@@ -50,7 +50,13 @@ class Punktacja_ZrodlaInline(admin.TabularInline):
     model = Punktacja_Zrodla
     form = Punktacja_ZrodlaForm
     formfield_overrides = COMMA_DECIMAL_FIELD_OVERRIDE
-    fields = ("rok",) + MODEL_PUNKTOWANY_Z_KWARTYLAMI_BAZA
+    # CiteScore i jego percentyl (FD#370) tuż przed kwartylami: z percentyla
+    # wynika podpowiedź kwartyla Scopus.
+    fields = (
+        ("rok",)
+        + MODEL_PUNKTOWANY_BAZA
+        + ("citescore", "citescore_percentyl", "kwartyl_w_scopus", "kwartyl_w_wos")
+    )
     extra = 1
 
 

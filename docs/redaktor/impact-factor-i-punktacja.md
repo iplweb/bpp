@@ -137,6 +137,39 @@ Import zmienia w tym wierszu **tylko** IF i kwartyl WoS. Pozostałe pola
 (punkty MNiSW, kwartyl Scopus…) zostają bez zmian, a gdy wiersza za ten rok
 jeszcze nie było, BPP go tworzy z zerami w pozostałych polach.
 
+### CiteScore i najwyższy percentyl (Scopus) {#citescore}
+
+W tej samej tabeli **„Punktacja źródła”**, tuż przed kwartylami, są dwie
+kolumny na wskaźniki z serwisu Scopus. Obie są opcjonalne i wpisuje się je
+ręcznie — import z pliku JCR ich nie dotyczy:
+
+- **„CiteScore”** — liczba nieujemna z jednym miejscem po przecinku, np.
+  `7,3` (przecinek i kropka działają tak samo). Wartość ujemna albo z dwoma
+  miejscami po przecinku nie zostanie zapisana.
+- **„CiteScore (najwyższy percentyl)”** — liczba całkowita od 0 do 100.
+
+Z percentyla BPP **podpowiada kwartyl Scopus**. Jeśli w wierszu danego roku
+pole **„Kwartyl w SCOPUS”** jest ustawione na „brak”, to przy zapisie
+zostanie wypełnione według tabeli:
+
+| Najwyższy percentyl | Kwartyl w SCOPUS |
+|---|---|
+| 75–100 | Q1 |
+| 50–74 | Q2 |
+| 25–49 | Q3 |
+| 0–24 | Q4 |
+
+Kwartyl wybrany ręcznie ma pierwszeństwo: BPP nigdy go nie nadpisuje, także
+wtedy, gdy później zmienisz percentyl. Żeby kwartyl przeliczył się na nowo,
+ustaw go na „brak” i zapisz źródło. Dopóki percentyl jest wpisany, pusty
+kwartyl Scopus zostanie przy zapisie uzupełniony — jeśli ma zostać pusty,
+usuń też percentyl.
+
+!!! note "CiteScore zostaje przy źródle"
+    Publikacje nie mają pól CiteScore, więc przyciski z kroku 4a i strona
+    rozbieżności z kroku 4b ich nie przenoszą. Na prace trafia — jak dotąd —
+    sam **kwartyl Scopus**, także ten podpowiedziany z percentyla.
+
 ## Krok 4a. Jeden rekord: przyciski w formularzu pracy {#krok-4a}
 
 Gdy poprawiasz pojedynczy artykuł, otwórz go w module redagowania
