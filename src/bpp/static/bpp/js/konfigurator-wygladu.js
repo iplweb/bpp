@@ -169,12 +169,21 @@
     // Obrazek: zmniejszany w przeglądarce (canvas → WebP) do limitu
     // M.MAKS_DLUGOSC_OBRAZU, zapisywany w konfigu jako data URL. SVG bez zmian.
     function poleObraz(p) {
+        // Natywne „Choose File / No file chosen” (angielskie, systemowa
+        // czcionka) ukryte — własny opis po lewej, przycisk „Wybierz” po prawej.
         var plik = el("input", { type: "file", id: "pole-" + p.klucz, accept: "image/png,image/jpeg,image/webp,image/gif,image/svg+xml" });
+        plik.hidden = true;
+        var opis = el("span", { class: "obraz-opis" });
+        var wybierz = el("button", { type: "button", class: "obraz-wybierz", tekst: "Wybierz plik…" });
+        wybierz.addEventListener("click", function () {
+            plik.click();
+        });
         var miniatura = el("img", { class: "miniatura", alt: "" });
         var usun = el("button", { type: "button", tekst: "Usuń obrazek" });
         function pokaz() {
             miniatura.hidden = !stan[p.klucz];
             usun.hidden = !stan[p.klucz];
+            opis.textContent = stan[p.klucz] ? "Obrazek wybrany" : "Nie wybrano pliku";
             if (stan[p.klucz]) miniatura.src = bezpiecznyObraz(stan[p.klucz]);
         }
         plik.addEventListener("change", function () {
@@ -201,7 +210,11 @@
             odswiezWidocznosc();
         });
         pokaz();
-        return el("div", { class: "obraz" }, [plik, miniatura, usun]);
+        return el("div", { class: "obraz" }, [
+            el("div", { class: "obraz-wybor" }, [opis, wybierz, plik]),
+            miniatura,
+            usun,
+        ]);
     }
 
     function szerokoscPrzy28(szer, wys) {
