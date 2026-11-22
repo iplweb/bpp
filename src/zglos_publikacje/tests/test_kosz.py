@@ -94,6 +94,22 @@ def test_usun_w_adminie_przenosi_do_kosza_z_powodem(
 
 
 @pytest.mark.django_db
+def test_po_usunieciu_wraca_na_liste_zgloszen(superuser_client, zgloszenie):
+    """Edycja zgłoszeń jest wyłączona (``has_change_permission`` = False),
+    a mimo to po „Usuń do kosza" wracamy na listę zgłoszeń, nie na stronę
+    główną admina — razem z filtrami, z których przyszedł użytkownik."""
+    filtry = "status__exact=1"
+    url = (
+        _url("delete", zgloszenie)
+        + "?_changelist_filters="
+        + filtry.replace("=", "%3D")
+    )
+    resp = superuser_client.post(url, {"post": "yes", "powod": "spam"})
+    assert resp.status_code == 302
+    assert resp["Location"] == reverse(CHANGELIST) + "?" + filtry
+
+
+@pytest.mark.django_db
 def test_filtr_kosza_ostatni_i_domyslnie_bez_kosza(superuser_client, zgloszenie):
     zywe = baker.make(
         Zgloszenie_Publikacji,

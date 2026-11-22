@@ -1,0 +1,1 @@
+Komunikaty wyświetlane podczas filtrowania list w module redagowania są teraz stonowane (bez żartów, które można było wziąć za błąd lub przytyk), a co jakiś czas zamiast nich pojawia się krótka wskazówka, np. o przypinaniu panelu filtrów czy otwieraniu rekordu w nowej karcie.
