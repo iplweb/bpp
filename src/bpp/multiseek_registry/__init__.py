@@ -23,7 +23,7 @@ registry = create_registry(
         Ordering("utworzono", "utworzono"),
         Ordering("ostatnio_zmieniony", "ostatnio zmieniony"),
     ],
-    default_ordering=["-rok", "", ""],
+    default_ordering=["-rok", ""],
     report_types=multiseek_report_types,
 )
 
@@ -45,6 +45,10 @@ def _get_default_queryset_for_model():
 
 
 registry.get_default_queryset_for_model = _get_default_queryset_for_model
+
+# Sortowanie najwyżej na 2 poziomach (multiseek domyślnie daje 3). Formularze
+# zapisane wcześniej z trzecim kryterium działają — trzecie jest pomijane.
+registry.order_boxes = ["Sortuj według", "następnie"]
 
 
 def _get_fields(self, request):

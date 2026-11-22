@@ -160,6 +160,8 @@ def test_save_form_csrf(page: Page, live_server):
 
     page.goto(live_server.url + reverse("multiseek:index"))
     page.evaluate("Cookielaw.accept()")
+    # „Zapisz formularz" siedzi w rozwijanym menu „Formularz".
+    page.click("#multiseekFormularzMenu")
     page.wait_for_selector("#saveFormButton", state="visible")
 
     # saveForm odpala POST po dwoch setTimeout(500ms), wiec czekamy na response.
