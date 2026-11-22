@@ -14,13 +14,14 @@
 {# === Nagłówek (full-width nad gridem): H1 + funkcja + przyciski staff === #}
 <div class="author-header">
     <div class="grid-x grid-margin-x align-middle">
-        <div class="cell auto">
+        {# Telefon: nazwisko i przyciski jeden pod drugim (w wierszu przyciski ściskały nagłówek). #}
+        <div class="cell small-12 medium-auto">
             <h1 class="autor-page__heading">{{ autor }}</h1>
             {% if autor.aktualna_funkcja.pokazuj_za_nazwiskiem %}
                 <div class="author-title">{{ autor.aktualna_funkcja }}</div>
             {% endif %}
         </div>
-        <div class="cell shrink">
+        <div class="cell small-12 medium-shrink">
             <div class="hide-for-print autor-page__actions">
                 {% load user_in_group %}
                 {% if request.user.is_superuser or request.user|has_group:"wprowadzanie danych" %}
