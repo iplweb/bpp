@@ -9,6 +9,7 @@ pobraniu danych) oraz z ``CreateUnmatchedAuthorsView.post``
 from django.db import transaction
 from django.db.models import Count, Q
 
+from bpp import const
 from bpp.models import Autor, Autor_Jednostka
 from bpp.wersjonowanie import zapewnij_wersje_poczatkowa
 from crossref_bpp.core import Komparator, StatusPorownania
@@ -100,12 +101,18 @@ def _auto_match_single_author(session, author_data, order, year):
     family = (author_data.get("family") or "")[:255]
     given = (author_data.get("given") or "")[:255]
     orcid = (author_data.get("orcid") or "")[:50]
+    # Rola od dostawcy (FD#619): redaktorzy monografii przychodzą z
+    # ``typ_ogolny`` = TO_REDAKTOR; brak klucza / nieznana wartość = autor.
+    typ_ogolny = author_data.get("typ_ogolny", const.TO_AUTOR)
+    if typ_ogolny not in (const.TO_AUTOR, const.TO_REDAKTOR):
+        typ_ogolny = const.TO_AUTOR
     imported = ImportedAuthor.objects.create(
         session=session,
         order=order,
         family_name=family,
         given_name=given,
         orcid=orcid,
+        typ_ogolny=typ_ogolny,
         zapisany_jako=f"{family} {given}".strip()[:512],
     )
 

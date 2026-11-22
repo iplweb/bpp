@@ -40,13 +40,15 @@ def _get_dc_value(metadata: list[dict], key: str) -> str | None:
 
 def _parse_dspace_authors(
     metadata: list[dict],
+    key: str = "dc.contributor.author",
 ) -> list[dict]:
-    """Parsuj autorów z dc.contributor.author.
+    """Parsuj autorów z dc.contributor.author (albo redaktorów:
+    ``key="dc.contributor.editor"``).
 
     Format DSpace: "Nazwisko, Imię" lub "Imię Nazwisko".
     """
     authors = []
-    for name in _get_dc_values(metadata, "dc.contributor.author"):
+    for name in _get_dc_values(metadata, key):
         name = name.strip()
         if not name:
             continue

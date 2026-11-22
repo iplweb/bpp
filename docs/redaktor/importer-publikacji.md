@@ -128,6 +128,17 @@ Importer otworzysz na dwa sposoby:
 
     ![Dopasowanie autorów: statusy dokładne, luźne i niedopasowany oraz przycisk „Edytuj”](../images/redaktor/importer-publikacji/09-autorzy.png)
 
+    **Redaktorzy.** Przy książce (monografii, książce redagowanej,
+    materiałach konferencyjnych) importer pobiera też redaktorów —
+    z CrossRef (pole `editor`), PBN, BibTeX-a (pole `editor` w `@book`,
+    `@proceedings`) i DSpace. Trafiają na listę przed autorami, z wartością
+    **„redaktor”** w kolumnie **„Typ”**, i dopasowuje się ich tak samo jak
+    autorów; w rekordzie dostają typ odpowiedzialności „red.”.
+    Monografia redagowana bez autorów ma na liście samych redaktorów.
+    Przy rozdziale lub referacie redaktorzy dotyczą książki nadrzędnej,
+    więc importer ich nie dodaje. Typ możesz zmienić w oknie **„Edytuj”**
+    (pole **„Typ autora”**).
+
     Przy każdym wierszu ze statusem innym niż „dokładne” kliknij
     **„Edytuj”**.
 

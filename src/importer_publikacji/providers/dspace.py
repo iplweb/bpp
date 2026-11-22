@@ -12,6 +12,7 @@ from . import (
     DataProvider,
     FetchedPublication,
     InputMode,
+    dolacz_redaktorow,
     register_provider,
 )
 from .dspace_common import (
@@ -159,6 +160,19 @@ def _parse_dspace_url(
     return None
 
 
+def _autorzy_i_redaktorzy(metadata, publication_type):
+    """Autorzy + redaktorzy (``dc.contributor.editor``) książki — FD#619.
+
+    Dla rozdziałów redaktorzy dotyczą książki nadrzędnej i są pomijani
+    (``dolacz_redaktorow`` decyduje po typie).
+    """
+    return dolacz_redaktorow(
+        _parse_dspace_authors(metadata),
+        _parse_dspace_authors(metadata, "dc.contributor.editor"),
+        publication_type,
+    )
+
+
 def _fetch_dspace7(base_url: str, uuid: str) -> FetchedPublication | None:
     """Fetch publication from DSpace 7+ REST API."""
     # SSRF-guard: base_url pochodzi wprost z URL-a użytkownika. safe_get
@@ -179,12 +193,12 @@ def _fetch_dspace7(base_url: str, uuid: str) -> FetchedPublication | None:
     if not title:
         return None
 
-    authors = _parse_dspace_authors(metadata)
     year = _parse_year(_get_dc_value(metadata, "dc.date.issued"))
     volume, issue, pages = _extract_volume_issue_pages(metadata)
 
     dc_type = _get_dc_value(metadata, "dc.type")
     publication_type = DSPACE_TYPE_MAP.get(dc_type.lower()) if dc_type else None
+    authors = _autorzy_i_redaktorzy(metadata, publication_type)
 
     doi = _extract_doi(metadata)
     extra = _build_extra_data(metadata)
@@ -230,7 +244,6 @@ def _fetch_dspace6(base_url: str, handle: str) -> FetchedPublication | None:
     if not title:
         return None
 
-    authors = _parse_dspace_authors(metadata)
     year = _parse_year(_get_dc_value(metadata, "dc.date.issued"))
 
     # DSpace 6: try explicit fields first,
@@ -243,6 +256,7 @@ def _fetch_dspace6(base_url: str, handle: str) -> FetchedPublication | None:
 
     dc_type = _get_dc_value(metadata, "dc.type")
     publication_type = DSPACE_TYPE_MAP.get(dc_type.lower()) if dc_type else None
+    authors = _autorzy_i_redaktorzy(metadata, publication_type)
 
     doi = _extract_doi(metadata)
 
