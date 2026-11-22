@@ -60,4 +60,5 @@ from .motyw_wlasny import (  # noqa
     MotywPrzymiarka,
     MotywWersja,
     MotywWlasny,
+    MotywZapisany,
 )

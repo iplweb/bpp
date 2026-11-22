@@ -32,7 +32,13 @@ from django.utils.timezone import localtime, now
 from django.views.decorators.http import require_POST
 
 from bpp import przymiarka_motywu as przymiarka
-from bpp.models import MOTYW_WLASNY, MotywWersja, MotywWlasny, Rekord
+from bpp.models import (
+    MOTYW_WLASNY,
+    MotywWersja,
+    MotywWlasny,
+    MotywZapisany,
+    Rekord,
+)
 from bpp.motyw_kompilator import (
     BRAK_KOMPILATORA,
     KOLEJKA,
@@ -191,6 +197,20 @@ def _odpowiedz_bledem_kompilacji(wynik):
     return JsonResponse(dane, status=400)
 
 
+def _motywy_zapisane(uczelnia):
+    return [
+        {
+            "id": m.pk,
+            "nazwa": m.nazwa,
+            "kto": str(m.zapisal or ""),
+            "kiedy": localtime(m.zapisano).strftime("%d.%m.%Y %H:%M"),
+        }
+        for m in MotywZapisany.objects.filter(uczelnia=uczelnia).select_related(
+            "zapisal"
+        )
+    ]
+
+
 def _uczelnia(request):
     uczelnia = getattr(request, "_uczelnia", None)
     if uczelnia is None:
@@ -238,6 +258,14 @@ def konfigurator_wygladu(request):
                 "zapisany_aktywny": uczelnia.theme_name == MOTYW_WLASNY,
                 "zapisany_w_wersji": zapisany.wersja_bpp if zapisany else None,
                 "wersja_bpp": VERSION,
+                "motywy_zapisane": _motywy_zapisane(uczelnia),
+                "adres_motyw_zapisz": reverse("bpp:konfigurator_wygladu_motyw_zapisz"),
+                "adres_motyw": reverse(
+                    "bpp:konfigurator_wygladu_motyw", args=(0,)
+                ).replace("/0/", "/{id}/"),
+                "adres_motyw_usun": reverse(
+                    "bpp:konfigurator_wygladu_motyw_usun", args=(0,)
+                ).replace("/0/", "/{id}/"),
                 "favicon_url": uczelnia.favicon_ico.url
                 if uczelnia.favicon_ico
                 else None,
@@ -377,6 +405,53 @@ def konfigurator_wygladu_zapisz(request):
         },
     )
     return JsonResponse({"ok": True})
+
+
+MAKS_DLUGOSC_NAZWY_MOTYWU = 100
+
+
+@require_POST
+@staff_member_required
+def konfigurator_wygladu_motyw_zapisz(request):
+    """„Zapisz jako…” — motyw pod nazwą, do wczytania później. Ta sama nazwa
+    nadpisuje wcześniejszy zapis. Strona się nie zmienia."""
+    try:
+        dane = json.loads(request.body)
+    except json.JSONDecodeError:
+        return JsonResponse({"blad": "Niepoprawne dane (JSON)."}, status=400)
+    if not isinstance(dane, dict):
+        return JsonResponse({"blad": "Niepoprawne dane (JSON)."}, status=400)
+    nazwa = dane.get("nazwa")
+    nazwa = nazwa.strip() if isinstance(nazwa, str) else ""
+    if not nazwa or len(nazwa) > MAKS_DLUGOSC_NAZWY_MOTYWU:
+        return JsonResponse({"blad": "Podaj nazwę motywu (do 100 znaków)."}, status=400)
+    konfig = dane.get("konfig")
+    blad = wstepna_walidacja(konfig)
+    if blad:
+        return JsonResponse({"blad": blad}, status=400)
+    uczelnia = _uczelnia(request)
+    motyw, _ = MotywZapisany.objects.update_or_create(
+        uczelnia=uczelnia,
+        nazwa=nazwa,
+        defaults={"konfig": konfig, "zapisal": request.user},
+    )
+    return JsonResponse(
+        {"ok": True, "id": motyw.pk, "motywy": _motywy_zapisane(uczelnia)}
+    )
+
+
+@staff_member_required
+def konfigurator_wygladu_motyw(request, pk):
+    motyw = get_object_or_404(MotywZapisany, pk=pk, uczelnia=_uczelnia(request))
+    return JsonResponse({"nazwa": motyw.nazwa, "konfig": motyw.konfig})
+
+
+@require_POST
+@staff_member_required
+def konfigurator_wygladu_motyw_usun(request, pk):
+    uczelnia = _uczelnia(request)
+    get_object_or_404(MotywZapisany, pk=pk, uczelnia=uczelnia).delete()
+    return JsonResponse({"ok": True, "motywy": _motywy_zapisane(uczelnia)})
 
 
 @staff_member_required

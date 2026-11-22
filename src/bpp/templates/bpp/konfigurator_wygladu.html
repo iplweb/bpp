@@ -200,7 +200,8 @@
         <div class="akcje">
             <div class="przyciski">
                 <button type="button" class="glowny" id="zastosuj" hidden>Zastosuj dla wszystkich</button>
-                <button type="button" id="zapisz" hidden>Zapisz w bazie</button>
+                <button type="button" id="zapisz-jako">Zapisz jako…</button>
+                <button type="button" id="zapisz" hidden>Zapisz do zastosowania później</button>
                 <button type="button" id="przymierz" hidden>Przymierz (tylko ja)</button>
                 <button type="button" id="wroc-do-zapisanego" hidden>Wróć do zastosowanych</button>
             </div>
@@ -213,10 +214,11 @@
         <div class="uwaga" id="uwaga-kompilator" hidden></div>
         <div class="uwaga uwaga-info" id="uwaga-roboczy" hidden></div>
         <div class="gotowe">
-            <label for="gotowy-motyw">Zacznij od gotowego motywu</label>
+            <label for="gotowy-motyw">Wczytaj motyw</label>
             <div class="gotowe-wiersz">
                 <select id="gotowy-motyw" class="lista"></select>
                 <button type="button" id="wczytaj-gotowy">Wczytaj</button>
+                <button type="button" id="usun-zapisany" hidden>Usuń</button>
             </div>
         </div>
         <div class="sekcje-sterowanie">
@@ -264,11 +266,12 @@
             </div>
         </details>
         <details class="sekcja plik" data-sekcja="plik">
-            <summary>Zapisz do pliku / wczytaj z pliku</summary>
+            <summary>Eksport i import (plik)</summary>
             <div class="sekcja-tresc">
                 <p class="opis-maly">
-                    Plik z ustawieniami (.json) — kopia na dysku, przeniesienie
-                    motywu do innej bazy BPP albo wysłanie do IPLweb.
+                    Do zapisania motywu w tej bazie służy „Zapisz jako…” na górze.
+                    Plik (.json) przydaje się do przeniesienia motywu do innej bazy
+                    BPP albo wysłania go do IPLweb.
                 </p>
                 <div class="przyciski">
                     <button type="button" id="pobierz">Zapisz do pliku</button>

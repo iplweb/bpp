@@ -761,3 +761,92 @@ def test_kompilator_bez_zasobow_to_niedostepny(settings, monkeypatch):
     )
     wynik = motyw_kompilator.skompiluj(KONFIG)
     assert wynik.rodzaj == motyw_kompilator.BRAK_KOMPILATORA
+
+
+def _zapisz_jako(client, **dane):
+    return client.post(
+        reverse("bpp:konfigurator_wygladu_motyw_zapisz"),
+        data=json.dumps(dane),
+        content_type="application/json",
+    )
+
+
+@pytest.mark.django_db
+def test_zapisz_jako_tworzy_i_nadpisuje_po_nazwie(staff_client, uczelnia):
+    from bpp.models import MotywZapisany
+
+    res = _zapisz_jako(staff_client, nazwa=" Granatowy ", konfig=KONFIG)
+    assert res.status_code == 200, res.content
+    assert [m["nazwa"] for m in res.json()["motywy"]] == ["Granatowy"]
+    inny = {**KONFIG, "kolor_glowny": "#123456"}
+    res = _zapisz_jako(staff_client, nazwa="Granatowy", konfig=inny)
+    assert res.status_code == 200
+    motyw = MotywZapisany.objects.get(uczelnia=uczelnia)
+    assert motyw.konfig == inny
+    # Strona się nie zmienia.
+    uczelnia.refresh_from_db()
+    assert uczelnia.theme_name != MOTYW_WLASNY
+
+    res = staff_client.get(reverse("bpp:konfigurator_wygladu_motyw", args=(motyw.pk,)))
+    assert res.json() == {"nazwa": "Granatowy", "konfig": inny}
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize("nazwa", ["", "   ", "x" * 101, None])
+def test_zapisz_jako_wymaga_nazwy(staff_client, uczelnia, nazwa):
+    from bpp.models import MotywZapisany
+
+    res = _zapisz_jako(staff_client, nazwa=nazwa, konfig=KONFIG)
+    assert res.status_code == 400
+    assert not MotywZapisany.objects.exists()
+
+
+@pytest.mark.django_db
+def test_zapisz_jako_odrzuca_zly_obrazek(staff_client, uczelnia):
+    res = _zapisz_jako(
+        staff_client, nazwa="X", konfig={**KONFIG, "tlo_obraz": "javascript:x"}
+    )
+    assert res.status_code == 400
+
+
+@pytest.mark.django_db
+def test_usun_zapisany_motyw(staff_client, uczelnia):
+    from bpp.models import MotywZapisany
+
+    _zapisz_jako(staff_client, nazwa="A", konfig=KONFIG)
+    motyw = MotywZapisany.objects.get()
+    res = staff_client.post(
+        reverse("bpp:konfigurator_wygladu_motyw_usun", args=(motyw.pk,))
+    )
+    assert res.status_code == 200
+    assert res.json()["motywy"] == []
+    assert not MotywZapisany.objects.exists()
+
+
+@pytest.mark.django_db
+def test_zapisany_motyw_innej_uczelni_to_404(staff_client, uczelnia):
+    from bpp.models import MotywZapisany, Uczelnia
+
+    obca = baker.make(Uczelnia)
+    motyw = MotywZapisany.objects.create(uczelnia=obca, nazwa="Obcy", konfig=KONFIG)
+    assert (
+        staff_client.get(
+            reverse("bpp:konfigurator_wygladu_motyw", args=(motyw.pk,))
+        ).status_code
+        == 404
+    )
+    assert (
+        staff_client.post(
+            reverse("bpp:konfigurator_wygladu_motyw_usun", args=(motyw.pk,))
+        ).status_code
+        == 404
+    )
+    assert MotywZapisany.objects.filter(pk=motyw.pk).exists()
+
+
+@pytest.mark.django_db
+def test_konfigurator_pokazuje_zapisane_motywy(staff_client, uczelnia):
+    _zapisz_jako(staff_client, nazwa="Mój motyw", konfig=KONFIG)
+    res = staff_client.get(reverse("bpp:konfigurator_wygladu"))
+    motywy = res.context["stan_serwera"]["motywy_zapisane"]
+    assert [m["nazwa"] for m in motywy] == ["Mój motyw"]

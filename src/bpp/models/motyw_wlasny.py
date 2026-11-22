@@ -128,6 +128,34 @@ class MotywWersja(models.Model):
         cls.objects.filter(pk__in=list(stare)).delete()
 
 
+class MotywZapisany(models.Model):
+    """Motyw z konfiguratora zapisany pod nazwą („Zapisz jako…”) — do
+    wczytania później. Nie zmienia strony."""
+
+    uczelnia = models.ForeignKey(
+        "bpp.Uczelnia", on_delete=models.CASCADE, related_name="motywy_zapisane"
+    )
+    nazwa = models.CharField("Nazwa", max_length=100)
+    konfig = models.JSONField("Ustawienia")
+    zapisano = models.DateTimeField(auto_now=True)
+    zapisal = models.ForeignKey(
+        "bpp.BppUser", null=True, blank=True, on_delete=models.SET_NULL
+    )
+
+    class Meta:
+        ordering = ("nazwa",)
+        constraints = [
+            models.UniqueConstraint(
+                fields=("uczelnia", "nazwa"), name="motyw_zapisany_unikalna_nazwa"
+            )
+        ]
+        verbose_name = "zapisany motyw z konfiguratora"
+        verbose_name_plural = "zapisane motywy z konfiguratora"
+
+    def __str__(self):
+        return self.nazwa
+
+
 class MotywPrzymiarka(models.Model):
     """CSS przymierzanego motywu (bpp/przymiarka_motywu.py). W sesji osoby
     przymierzającej jest tylko skrót; wpisy starsze niż doba są usuwane."""

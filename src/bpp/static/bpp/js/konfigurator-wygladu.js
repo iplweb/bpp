@@ -1161,30 +1161,144 @@
         e.target.value = "";
     });
 
+    // „Wczytaj motyw”: zapisane w tej bazie („Zapisz jako…”) i gotowe.
     var elGotowy = document.getElementById("gotowy-motyw");
-    M.GOTOWE.forEach(function (g) {
-        elGotowy.appendChild(el("option", { value: g.klucz, tekst: g.etykieta }));
-    });
+    var elUsunZapisany = document.getElementById("usun-zapisany");
+    var PREFIKS_ZAPISANEGO = "zapisany:";
 
-    document.getElementById("wczytaj-gotowy").addEventListener("click", function () {
-        var gotowy = M.GOTOWE.filter(function (g) {
-            return g.klucz === elGotowy.value;
-        })[0];
-        var konfig = JSON.parse(JSON.stringify(gotowy.konfig));
+    function zbudujListeMotywow(wybrany) {
+        elGotowy.textContent = "";
+        if (serwer.motywy_zapisane.length) {
+            var moje = el("optgroup", { label: "Moje motywy" });
+            serwer.motywy_zapisane.forEach(function (m) {
+                moje.appendChild(
+                    el("option", {
+                        value: PREFIKS_ZAPISANEGO + m.id,
+                        tekst: m.nazwa + " (" + m.kiedy + (m.kto ? ", " + m.kto : "") + ")",
+                    }),
+                );
+            });
+            elGotowy.appendChild(moje);
+        }
+        var gotowe = el("optgroup", { label: "Gotowe motywy" });
+        M.GOTOWE.forEach(function (g) {
+            gotowe.appendChild(el("option", { value: g.klucz, tekst: g.etykieta }));
+        });
+        elGotowy.appendChild(gotowe);
+        if (wybrany) elGotowy.value = wybrany;
+        pokazUsun();
+    }
+
+    function pokazUsun() {
+        elUsunZapisany.hidden = elGotowy.value.indexOf(PREFIKS_ZAPISANEGO) !== 0;
+    }
+
+    elGotowy.addEventListener("change", pokazUsun);
+
+    function wczytajKonfig(konfig, opis) {
+        konfig = JSON.parse(JSON.stringify(konfig));
         konfig.nazwa = stan.nazwa;
         konfig.opis = stan.opis;
         stan = M.normalizuj(konfig);
         zapiszWPamieci();
         zbudujFormularz();
+        pokazWersje();
         zaplanujKompilacje();
         var bledy = M.waliduj(stan, { bezNazwy: true });
         rozwinSekcjeZBledami(bledy);
         ustawStatus(
-            "Wczytano: " + gotowy.etykieta + "." +
+            "Wczytano: " + opis + "." +
                 (bledy.length ? " Sprawdź zaznaczone pola — ten motyw nie spełnia wymogów czytelności." : ""),
             bledy.length > 0,
         );
+    }
+
+    function zapytanie(adres, dane) {
+        var opcje = { credentials: "same-origin" };
+        if (dane !== undefined) {
+            opcje.method = "POST";
+            opcje.headers = { "Content-Type": "application/json", "X-CSRFToken": csrf() };
+            opcje.body = JSON.stringify(dane);
+        }
+        return fetch(adres, opcje).then(function (r) {
+            return r.json().then(function (odp) {
+                if (!r.ok) throw new Error(odp.blad || "HTTP " + r.status);
+                return odp;
+            });
+        });
+    }
+
+    document.getElementById("wczytaj-gotowy").addEventListener("click", function () {
+        var wartosc = elGotowy.value;
+        if (wartosc.indexOf(PREFIKS_ZAPISANEGO) === 0) {
+            var id = wartosc.slice(PREFIKS_ZAPISANEGO.length);
+            zapytanie(serwer.adres_motyw.replace("{id}", id)).then(
+                function (odp) {
+                    wczytajKonfig(odp.konfig, odp.nazwa);
+                },
+                function (blad) {
+                    ustawStatus("Nie udało się wczytać motywu: " + blad.message, true);
+                },
+            );
+            return;
+        }
+        var gotowy = M.GOTOWE.filter(function (g) {
+            return g.klucz === wartosc;
+        })[0];
+        wczytajKonfig(gotowy.konfig, gotowy.etykieta);
     });
+
+    elUsunZapisany.addEventListener("click", function () {
+        var id = elGotowy.value.slice(PREFIKS_ZAPISANEGO.length);
+        var m = serwer.motywy_zapisane.filter(function (x) {
+            return String(x.id) === id;
+        })[0];
+        if (!m || !window.confirm("Usunąć zapisany motyw „" + m.nazwa + "”?")) return;
+        zapytanie(serwer.adres_motyw_usun.replace("{id}", id), {}).then(
+            function (odp) {
+                serwer.motywy_zapisane = odp.motywy;
+                zbudujListeMotywow();
+                ustawStatus("Usunięto motyw „" + m.nazwa + "”.");
+            },
+            function (blad) {
+                ustawStatus("Nie udało się usunąć motywu: " + blad.message, true);
+            },
+        );
+    });
+
+    document.getElementById("zapisz-jako").addEventListener("click", function () {
+        var bledy = M.waliduj(stan, { bezNazwy: true }).filter(function (b) {
+            return !b.poprawka;
+        });
+        if (bledy.length) {
+            pokazBledy(false);
+            rozwinSekcjeZBledami(bledy);
+            ustawStatus("Popraw zaznaczone pola przed zapisaniem.", true);
+            return;
+        }
+        var obecny = serwer.motywy_zapisane.filter(function (x) {
+            return PREFIKS_ZAPISANEGO + x.id === elGotowy.value;
+        })[0];
+        var nazwa = window.prompt(
+            "Nazwa motywu (zapisze się w tej bazie; ta sama nazwa nadpisze wcześniejszy zapis):",
+            obecny ? obecny.nazwa : "",
+        );
+        if (nazwa === null) return;
+        nazwa = nazwa.trim();
+        if (!nazwa) return;
+        zapytanie(serwer.adres_motyw_zapisz, { nazwa: nazwa, konfig: stan }).then(
+            function (odp) {
+                serwer.motywy_zapisane = odp.motywy;
+                zbudujListeMotywow(PREFIKS_ZAPISANEGO + odp.id);
+                ustawStatus("Zapisano motyw „" + nazwa + "”. Strona się nie zmieniła — wczytasz go z listy „Wczytaj motyw”.");
+            },
+            function (blad) {
+                ustawStatus("Nie udało się zapisać motywu: " + blad.message, true);
+            },
+        );
+    });
+
+    zbudujListeMotywow();
 
     // --- Historia i cofanie -------------------------------------------------------------
 
@@ -1336,9 +1450,9 @@
     function ustawPrzyciski() {
         var moznaZastosowac = serwer.mozna_zastosowac && serwer.kompilator_dostepny;
         elZastosuj.hidden = !moznaZastosowac;
-        // „Zapisz w bazie” zawsze dostępne; główny przycisk, gdy nie da się
-        // zastosować (kompilator niedostępny albo brak uprawnień).
-        elZapisz.hidden = false;
+        // „Zapisz do zastosowania później” — gdy nie da się zastosować
+        // (kompilator niedostępny albo brak uprawnień); wtedy główny przycisk.
+        elZapisz.hidden = moznaZastosowac;
         elZapisz.classList.toggle("glowny", !moznaZastosowac);
         document.getElementById("przymierz").hidden = !serwer.kompilator_dostepny;
         document.getElementById("tylko-superuzytkownik").hidden = serwer.mozna_zastosowac;

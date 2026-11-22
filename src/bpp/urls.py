@@ -103,6 +103,9 @@ from bpp.views.eksport_autora import (
 from bpp.views.konfigurator_wygladu import (
     konfigurator_wygladu,
     konfigurator_wygladu_demo,
+    konfigurator_wygladu_motyw,
+    konfigurator_wygladu_motyw_usun,
+    konfigurator_wygladu_motyw_zapisz,
     konfigurator_wygladu_przymiarka_koniec,
     konfigurator_wygladu_przymierz,
     konfigurator_wygladu_przywroc,
@@ -346,6 +349,21 @@ urlpatterns = [
         "konfigurator-wygladu/przywroc/",
         konfigurator_wygladu_przywroc,
         name="konfigurator_wygladu_przywroc",
+    ),
+    path(
+        "konfigurator-wygladu/motywy/zapisz/",
+        konfigurator_wygladu_motyw_zapisz,
+        name="konfigurator_wygladu_motyw_zapisz",
+    ),
+    path(
+        "konfigurator-wygladu/motywy/<int:pk>/",
+        konfigurator_wygladu_motyw,
+        name="konfigurator_wygladu_motyw",
+    ),
+    path(
+        "konfigurator-wygladu/motywy/<int:pk>/usun/",
+        konfigurator_wygladu_motyw_usun,
+        name="konfigurator_wygladu_motyw_usun",
     ),
     path(
         "konfigurator-wygladu/zapisz/",
