@@ -46,18 +46,22 @@ def test_kosz_i_przywrocenie_autora_to_rewizje_reversion(admin_user):
 
 
 @pytest.mark.django_db
-def test_kosz_publikacji_to_logentry(admin_user, bez_celery):
+def test_kosz_publikacji_to_rewizja(admin_user, bez_celery):
+    """FD#587: publikacje są w reversion — kosz i przywrócenie to rewizje
+    (receiver kosza przełączył się sam), a nie wpisy ``LogEntry``."""
     wc = baker.make(Wydawnictwo_Ciagle)
 
     wc.delete(user=admin_user, reason="pomyłka")
     wc.restore(user=admin_user)
 
-    wpisy = LogEntry.objects.filter(
+    assert not LogEntry.objects.filter(
         content_type=ContentType.objects.get_for_model(Wydawnictwo_Ciagle),
         object_id=str(wc.pk),
         action_flag=CHANGE,
-    ).order_by("pk")
-    assert [w.change_message for w in wpisy] == [
+    ).exists()
+    wersje = Version.objects.get_for_object(wc).order_by("pk")
+    assert {v.revision.user_id for v in wersje} == {admin_user.pk}
+    assert [v.revision.comment for v in wersje] == [
         "Przeniesiono do kosza (powód: pomyłka)",
         "Przywrócono z kosza",
     ]

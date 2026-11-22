@@ -59,6 +59,57 @@ mają w tym polu wpisany miesiąc i rok (bez zmyślonego dnia). Jeśli PBN
 podaje sam rok, BPP nie wpisuje daty — uzupełnij ją ręcznie przed wysyłką
 do PBN (raport kompletności danych POL-on pokaże taki brak).
 
+## Historia zmian i przywracanie poprzedniej wersji {#historia-zmian}
+
+Każda zmiana rekordu publikacji (wydawnictwa ciągłego, zwartego, patentu,
+pracy doktorskiej i habilitacyjnej) jest zapisywana jako **wersja**. Tak
+samo każdy inny rekord edytowany w module redagowania: zgłoszenia
+publikacji, źródła, wydawcy, konferencje, serie wydawnicze, jednostki,
+wszystkie słowniki (charaktery formalne, języki, typy, dyscypliny…),
+użytkownicy, grupy i ustawienia. Wersja publikacji obejmuje także **listę
+autorów** (z jednostką, dyscypliną, afiliacją i kolejnością), streszczenia,
+dodatkowe tytuły, zewnętrzne bazy danych, granty, nagrody, pliki
+w repozytorium i słowa kluczowe.
+
+Historię otwiera przycisk **„Historia”** w prawym górnym rogu formularza.
+Przy każdej wersji widać **kto i kiedy** wprowadził zmianę, **skąd**
+przyszła (moduł redagowania, strona — np. edycja profilu, import lub
+narzędzie, API / MCP z nazwą aplikacji, system) i co zmieniono (np.
+„Zmodyfikowano Tytuł oryginalny”, „Przeniesiono do kosza (powód: …)”,
+„Ustawiono status korekty: po korekcie (akcja masowa)”).
+
+- **Porównanie wersji** — zaznacz wersję starszą w kolumnie **A** i nowszą
+  w kolumnie **B**, a potem kliknij **„Porównaj zaznaczone wersje”**.
+  Tabela pokazuje tylko pola, które się zmieniły: usunięte słowa są
+  przekreślone na czerwono, dodane — podświetlone na zielono. Dla list
+  (autorzy, granty, pliki…) widać pozycje dodane, usunięte i zmienione,
+  np. „Afiliuje: tak → nie”. Przyciski „Wcześniejsza zmiana” / „Następna
+  zmiana” przechodzą po kolejnych parach wersji.
+- **Przywrócenie wersji** — kliknięcie daty otwiera formularz w stanie
+  z tej wersji; **zapisanie go przywraca tę wersję** (samo przywrócenie też
+  trafia do historii, więc da się je cofnąć). Przywrócenie wersji
+  publikacji przywraca też listy powiązane — nad formularzem wypisane są
+  pozycje, które **zostaną usunięte** (np. autorzy dopisani po tej wersji)
+  i które **zostaną przywrócone**.
+
+Uwagi:
+
+- Wersje są zapisywane od chwili aktualizacji systemu. Rekord, który nie
+  był od tego czasu edytowany, dostaje pierwszą wersję automatycznie tuż
+  przed pierwszą zmianą (komentarz „Stan sprzed pierwszej zarejestrowanej
+  zmiany”) — dzięki temu i tę zmianę można cofnąć. Starsze zmiany widać
+  w tabeli **„Wcześniejsza historia”** (kto i kiedy, bez przywracania).
+- Przywrócenie wersji z plikiem w repozytorium przywraca wpis o pliku,
+  ale nie treść pliku usuniętego z serwera.
+- Historia jest przechowywana bez limitu czasu.
+- Rekordu z kosza nie da się przywrócić do wcześniejszej wersji — najpierw
+  użyj **„♻️ Przywróć”** (z kosza), potem przywracaj wersje.
+- Po przywróceniu wersji opis bibliograficzny i punktacja są przeliczane
+  tak jak po zwykłym zapisie formularza.
+- Przywrócenie wersji jednego rekordu nigdy nie zmienia innych rekordów —
+  także po akcji masowej (np. zmianie statusu korekty wielu prac) każdy
+  rekord ma własną wersję.
+
 ## Dlaczego nie można usunąć pracy z wpisanym „Odpowiednikiem w PBN"
 
 Przy próbie skasowania wydawnictwa ciągłego lub zwartego może się okazać, że

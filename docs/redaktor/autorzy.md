@@ -121,7 +121,9 @@ autora. Przy każdej wersji widać **kto i kiedy** wprowadził zmianę oraz
 **co zmieniono** (np. „Samodzielna edycja profilu przez stronę: Biogram,
 Zdjęcie” albo „…: wyróżniono pracę »Tytuł«”). Kliknięcie daty otwiera
 formularz autora w stanie z tej wersji — **zapisanie go przywraca tę wersję**
-(samo przywrócenie także trafia do historii, więc da się je cofnąć).
+(samo przywrócenie także trafia do historii, więc da się je cofnąć). Dwie
+wersje można też **porównać**: zaznacz je w kolumnie po lewej i kliknij
+„Porównaj wersje” — zobaczysz tylko pola, które się zmieniły.
 
 Uwagi:
 

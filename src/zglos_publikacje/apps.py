@@ -8,4 +8,8 @@ class ZglosPublikacjeConfig(AppConfig):
 
     def ready(self):
         # Rejestruje system-check ALTCHA (captcha ON + klucz-placeholder).
-        from . import checks  # noqa: F401
+        # Rejestracja zgłoszeń w reversion (historia zmian w adminie).
+        from . import (
+            checks,  # noqa: F401
+            wersjonowanie,  # noqa: F401
+        )

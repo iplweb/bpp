@@ -15,12 +15,14 @@ from django.urls import reverse
 from django.utils.html import format_html, format_html_join
 from django.utils.http import urlencode
 from django_sendfile import sendfile
+from reversion_compare.admin import CompareVersionAdmin
 from templated_email import send_templated_mail
 
 from bpp.admin.core import DynamicAdminFilterMixin
 from bpp.admin.helpers.djangoql import BppDjangoQLSearchMixin
 from bpp.admin.helpers.fieldsets import MODEL_Z_OPLATA_ZA_PUBLIKACJE
 from bpp.admin.helpers.mixins import BppSoftDeleteAdminMixin
+from bpp.admin.helpers.wersje import HistoriaWersjiMixin
 from bpp.util import zaloguj_polkniety_wyjatek
 from bpp.zglaszanie_bledow import capture_exception
 from import_common.normalization import extract_doi_from_url
@@ -84,7 +86,9 @@ class Zgloszenie_PublikacjiAdmin(
     # Kosz jak w reszcie admina (filtr „♻️ Kosz", „Usuń do kosza", „♻️
     # Przywróć"). OSTATNI przed ``ModelAdmin`` — patrz docstring mixinu.
     BppSoftDeleteAdminMixin,
-    admin.ModelAdmin,
+    # Historia zmian (FD#587): tuż przed terminalną klasą admina.
+    HistoriaWersjiMixin,
+    CompareVersionAdmin,
 ):
     djangoql_completion_enabled_by_default = False
     djangoql_completion = True

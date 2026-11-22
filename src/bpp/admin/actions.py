@@ -1,5 +1,3 @@
-from contextlib import nullcontext
-
 import reversion
 from django.contrib import messages
 from django.contrib.admin.models import CHANGE, LogEntry
@@ -13,7 +11,11 @@ from bpp.admin.helpers.pbn_api.gui import (
 )
 from bpp.models import Status_Korekty, Uczelnia
 from bpp.views.cache_publiczny import uniewaznij_cache_publiczny
-from bpp.wersjonowanie import sledzone_relacje, zapewnij_wersje_poczatkowe
+from bpp.wersjonowanie import (
+    sledzone_relacje,
+    zapewnij_wersje_poczatkowe,
+    zapisz_wersje_osobno,
+)
 from pbn_export_queue.tasks import queue_pbn_export_batch
 
 #: Górna granica liczby rekordów WERSJONOWANYCH (reversion, np. autorów)
@@ -22,7 +24,12 @@ from pbn_export_queue.tasks import queue_pbn_export_batch
 #: serializowanie wersji przekroczyłoby limit czasu żądania.
 MAKS_REKORDOW_AKCJI_MASOWEJ = 2000
 
-#: Górna granica dla modeli bez wersji (np. publikacje) — dla nich
+#: Górna granica dla publikacji (wersjonowane od FD#587). Wyższa niż dla
+#: autorów, żeby dało się zmienić status korekty dużej części rocznika;
+#: zmierzone ~4 ms na rekord z autorem (wersja „przed” + „po”).
+MAKS_REKORDOW_AKCJI_MASOWEJ_PUBLIKACJI = 5000
+
+#: Górna granica dla modeli bez wersji — dla nich
 #: powstają tylko wpisy ``LogEntry`` (``bulk_create`` w partiach), więc
 #: limit jest dużo wyższy; chroni tylko przed przekroczeniem czasu żądania.
 MAKS_REKORDOW_AKCJI_MASOWEJ_BEZ_WERSJI = 20000
@@ -46,9 +53,11 @@ def zapisuje_historie(akcja):
 
 def limit_akcji_masowej(model):
     """Limit rekordów jednej akcji masowej dla ``model``."""
-    if reversion.is_registered(model):
-        return MAKS_REKORDOW_AKCJI_MASOWEJ
-    return MAKS_REKORDOW_AKCJI_MASOWEJ_BEZ_WERSJI
+    if not reversion.is_registered(model):
+        return MAKS_REKORDOW_AKCJI_MASOWEJ_BEZ_WERSJI
+    if any(f.name == "status_korekty" for f in model._meta.concrete_fields):
+        return MAKS_REKORDOW_AKCJI_MASOWEJ_PUBLIKACJI
+    return MAKS_REKORDOW_AKCJI_MASOWEJ
 
 
 def _zapisz_logentry(user_id, model, obiekty, komentarz):
@@ -90,9 +99,9 @@ def zmien_hurtowo_z_historia(
       komentarzem ``komentarz`` — widoczny na stronie „Historia”,
     * dla modeli zarejestrowanych w django-reversion (np. ``Autor``) także
       wersje: „przed” (jeśli rekord nie miał żadnej — ``zapewnij_wersje_
-      poczatkowe``, osobna rewizja) i „po” w jednej rewizji — zmianę da się
-      cofnąć. Wołać POZA aktywną rewizją reversion: akcję admina trzeba
-      oznaczyć ``@zapisuje_historie``,
+      poczatkowe``) i „po” — każdy rekord we własnej rewizji, więc cofnięcie
+      jednego nie cofa pozostałych. Wołać POZA aktywną rewizją reversion:
+      akcję admina trzeba oznaczyć ``@zapisuje_historie``,
     * publiczny cache jest unieważniany raz, po COMMIT.
 
     * pola ``auto_now`` (``ostatnio_zmieniony``), które ``update()`` pomija,
@@ -133,32 +142,26 @@ def zmien_hurtowo_z_historia(
             # do niego wrócić z „Historii”.
             zapewnij_wersje_poczatkowe(model, pks, select_related=select_related)
             follow = sledzone_relacje(model)
-        rewizja = reversion.create_revision() if wersjonowany else nullcontext()
-        with rewizja:
-            # ``update()`` nie ustawia pól ``auto_now``. Tylko w wartościach,
-            # nie w ``exclude`` powyżej — inaczej każdy rekord byłby „zmieniony”.
-            teraz = timezone.now()
-            auto_now = {
-                pole.name: teraz
-                for pole in model._meta.concrete_fields
-                if getattr(pole, "auto_now", False) and pole.name not in zmiany
-            }
-            updated = model._default_manager.filter(pk__in=pks).update(
-                **zmiany, **auto_now
-            )
-            obiekty = model._default_manager.filter(pk__in=pks)
-            if pola_repr is not None and not wersjonowany:
-                # Wersje potrzebują pełnych rekordów; sam ``object_repr`` nie.
-                obiekty = obiekty.only("pk", *pola_repr)
-            obiekty = list(
-                obiekty.select_related(*select_related).prefetch_related(*follow)
-            )
-            if wersjonowany:
-                for obiekt in obiekty:
-                    reversion.add_to_revision(obiekt)
-                reversion.set_user(request.user)
-                reversion.set_comment(komentarz)
-            _zapisz_logentry(request.user.pk, model, obiekty, komentarz)
+        # ``update()`` nie ustawia pól ``auto_now``. Tylko w wartościach,
+        # nie w ``exclude`` powyżej — inaczej każdy rekord byłby „zmieniony”.
+        teraz = timezone.now()
+        auto_now = {
+            pole.name: teraz
+            for pole in model._meta.concrete_fields
+            if getattr(pole, "auto_now", False) and pole.name not in zmiany
+        }
+        updated = model._default_manager.filter(pk__in=pks).update(**zmiany, **auto_now)
+        obiekty = model._default_manager.filter(pk__in=pks)
+        if pola_repr is not None and not wersjonowany:
+            # Wersje potrzebują pełnych rekordów; sam ``object_repr`` nie.
+            obiekty = obiekty.only("pk", *pola_repr)
+        obiekty = list(
+            obiekty.select_related(*select_related).prefetch_related(*follow)
+        )
+        if wersjonowany:
+            # Każdy rekord we WŁASNEJ rewizji (patrz ``zapisz_wersje_osobno``).
+            zapisz_wersje_osobno(obiekty, user=request.user, komentarz=komentarz)
+        _zapisz_logentry(request.user.pk, model, obiekty, komentarz)
         # ``update()`` nie wysyła ``post_save`` — bez jawnej inwalidacji
         # publiczne strony pokazywałyby stary stan do TTL. W bloku
         # ``atomic`` unieważnienie wykona się raz, po COMMIT.

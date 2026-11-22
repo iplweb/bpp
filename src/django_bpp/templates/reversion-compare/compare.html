@@ -1,0 +1,70 @@
+{% extends "admin/base_site.html" %}
+{% load i18n admin_urls %}
+{# FD#587: porównanie dwóch wersji rekordu pod Grappelli — tabela „pole / wersja A / wersja B” z podświetlonymi zmianami. #}
+
+{% block title %}Porównanie wersji: {{ original }} | {{ site_title|default:_('Django site admin') }}{% endblock %}
+
+{% block extrastyle %}
+    {{ block.super }}
+    {% include "reversion/_style_historii.html" %}
+{% endblock %}
+
+{% block breadcrumbs %}
+    <ul class="grp-horizontal-list">
+        <li><a href="{% url 'admin:index' %}">{% trans 'Home' %}</a></li>
+        <li><a href="{% url 'admin:app_list' app_label=opts.app_label %}">{{ opts.app_config.verbose_name }}</a></li>
+        <li><a href="{{ changelist_url }}">{{ opts.verbose_name_plural|capfirst }}</a></li>
+        <li><a href="{% url opts|admin_urlname:'change' original.pk|admin_urlquote %}">{{ original|truncatewords:"18" }}</a></li>
+        <li><a href="{{ history_url }}">Historia</a></li>
+        <li>Porównanie wersji</li>
+    </ul>
+{% endblock %}
+
+{% block content_title %}<h1>Porównanie wersji: {{ original|truncatewords:"24" }}</h1>{% endblock %}
+
+{% block content %}
+    <div class="g-d-c bpp-historia">
+        <div class="bpp-wersje">
+            {% for wersja, litera, opis, klasa in wersje_porownania %}
+                <div class="bpp-wersja {{ klasa }}">
+                    <h3>Wersja {{ litera }} — {{ opis }}</h3>
+                    <div><strong>{{ wersja.revision.date_created|date:"j E Y, H:i" }}</strong>,
+                        {% if wersja.revision.user %}{{ wersja.revision.user.get_full_name|default:wersja.revision.user.get_username }}{% else %}<span class="bpp-przygaszony">bez użytkownika</span>{% endif %}
+                        {% with zrodlo=wersja.revision.zrodlo_zmiany %}{% if zrodlo %}&nbsp;<span class="bpp-zrodlo bpp-zrodlo-{{ zrodlo.zrodlo }}">{{ zrodlo.get_zrodlo_display }}{% if zrodlo.aplikacja_nazwa %}: {{ zrodlo.aplikacja_nazwa }}{% endif %}</span>{% endif %}{% endwith %}
+                    </div>
+                    <div class="bpp-przygaszony">{{ wersja.revision.comment|default:"(bez opisu zmiany)" }}</div>
+                </div>
+            {% endfor %}
+        </div>
+
+        {% if compare_data %}
+            <table class="grp-table bpp-porownanie">
+                <thead>
+                    <tr>
+                        <th scope="col" class="bpp-kol-pole">Pole</th>
+                        <th scope="col">Wersja A ({{ version1.revision.date_created|date:"j E Y, H:i" }})</th>
+                        <th scope="col">Wersja B ({{ version2.revision.date_created|date:"j E Y, H:i" }})</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for wiersz in compare_data %}
+                        <tr>
+                            <th scope="row">{{ wiersz.etykieta }}</th>
+                            <td>{{ wiersz.stare }}</td>
+                            <td>{{ wiersz.nowe }}</td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        {% else %}
+            <div class="bpp-historia-pasek"><span class="bpp-historia-pomoc">Między tymi wersjami nie ma różnic w danych rekordu (zmieniły się tylko pola techniczne, np. data ostatniej zmiany).</span></div>
+        {% endif %}
+
+        <div class="bpp-porownanie-nawigacja">
+            {% if prev_url %}<a class="grp-button" href="{{ prev_url }}">&lsaquo; Wcześniejsza zmiana</a>{% endif %}
+            {% if next_url %}<a class="grp-button" href="{{ next_url }}">Następna zmiana &rsaquo;</a>{% endif %}
+            <a class="grp-button" href="{{ history_url }}">Wróć do historii</a>
+            <a class="grp-button grp-default" href="{{ save_url }}" title="Otwiera formularz w stanie z wersji A — zapisanie go przywraca tę wersję">Przywróć wersję A ({{ version1.revision.date_created|date:"j E Y, H:i" }})…</a>
+        </div>
+    </div>
+{% endblock %}

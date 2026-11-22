@@ -6,7 +6,7 @@ from django.contrib import admin, messages
 from django.core.exceptions import ImproperlyConfigured, PermissionDenied
 from django.urls import reverse
 from django.utils.html import format_html
-from reversion.admin import VersionAdmin
+from reversion_compare.admin import CompareVersionAdmin
 
 from ewaluacja_liczba_n.models import LiczbaNDlaUczelni
 from pbn_api.exceptions import PraceSerwisoweException
@@ -190,7 +190,7 @@ class UczelniaAdmin(
     BaseBppAdminMixin,
     BppSoftDeleteAdminMixin,
     HistoriaWersjiMixin,
-    VersionAdmin,
+    CompareVersionAdmin,
 ):
     form = UczelniaAdminForm
     list_display = ["nazwa", "nazwa_dopelniacz_field", "skrot", "pbn_uid"]

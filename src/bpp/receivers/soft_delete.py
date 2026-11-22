@@ -110,17 +110,15 @@ KOMENTARZ_WERSJI_PRZYWROCENIE = "Przywrócono z kosza"
 def _zapisz_wersje(instance, komentarz):
     """Kosz i przywrócenie zostawiają ślad w historii rekordu.
 
-    - model zarejestrowany w django-reversion (dziś ``Autor`` i ``Uczelnia``
-      — jawnie w ``bpp/wersjonowanie.py`` albo przez ``VersionAdmin``):
+    - model zarejestrowany w django-reversion (``Autor``, ``Uczelnia``,
+      publikacje, zgłoszenia, słowniki — ``bpp/wersjonowanie.py``, FD#587):
       zwykła REWIZJA z ``set_user`` + ``set_comment`` („Przeniesiono do
       kosza" / „Przywrócono z kosza" + powód). Strona „Historia" pokazuje
       ją jak każdą inną zmianę;
-    - pozostałe modele (publikacje, słowniki, jednostki) NIE są w reversion
-      i ta zmiana ich tam nie dopisuje (osobna, większa decyzja) — dostają
-      wpis ``LogEntry`` (CHANGE) z tym samym komunikatem, widoczny
-      w standardowej historii obiektu w adminie. Bez usera (operacja
-      systemowa) ``LogEntry`` nie powstaje (``user_id`` jest NOT NULL);
-      śladem zostaje wtedy ``SoftDeleteLog``.
+    - pozostałe modele dostają wpis ``LogEntry`` (CHANGE) z tym samym
+      komunikatem, widoczny w standardowej historii obiektu w adminie. Bez
+      usera (operacja systemowa) ``LogEntry`` nie powstaje (``user_id`` jest
+      NOT NULL); śladem zostaje wtedy ``SoftDeleteLog``.
 
     Pola kosza (``deleted_at`` …) są wykluczone z treści wersji —
     przywrócenie starej wersji nie może po cichu wyjąć rekordu z kosza ani

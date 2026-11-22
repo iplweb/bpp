@@ -9,13 +9,13 @@ z rodzicem, strona publiczna nie pokazuje zgłoszeń z kosza.
 import uuid
 
 import pytest
-from django.contrib.admin.models import LogEntry
 from django.contrib.auth.models import Permission
 from django.contrib.contenttypes.models import ContentType
 from django.db import DatabaseError, connection, transaction
 from django.urls import reverse
 from django.utils import timezone
 from model_bakery import baker
+from reversion.models import Version
 
 from bpp.models.soft_delete import jest_bledem_kosza, operacja_kosza
 from bpp.models.soft_delete_log import SoftDeleteLog
@@ -30,7 +30,9 @@ CHANGELIST = "admin:zglos_publikacje_zgloszenie_publikacji_changelist"
 
 
 def _url(nazwa, zgl):
-    return reverse(f"admin:zglos_publikacje_zgloszenie_publikacji_{nazwa}", args=[zgl.pk])
+    return reverse(
+        f"admin:zglos_publikacje_zgloszenie_publikacji_{nazwa}", args=[zgl.pk]
+    )
 
 
 @pytest.fixture
@@ -86,11 +88,11 @@ def test_usun_w_adminie_przenosi_do_kosza_z_powodem(
     assert wpis.user_id == superuser.pk
     assert wpis.powod == "spam"
 
-    # Ślad w historii obiektu (model spoza reversion → LogEntry CHANGE).
-    assert LogEntry.objects.filter(
-        object_id=str(zgloszenie.pk),
-        change_message__startswith="Przeniesiono do kosza (powód: spam)",
-    ).exists()
+    # Ślad w historii obiektu — od FD#587 zgłoszenia są w reversion, więc
+    # kosz to rewizja z powodem (a nie wpis ``LogEntry``).
+    assert [v.revision.comment for v in Version.objects.get_for_object(zgloszenie)] == [
+        "Przeniesiono do kosza (powód: spam)"
+    ]
 
 
 @pytest.mark.django_db
@@ -358,9 +360,7 @@ def test_hard_delete_kaskaduje_dzieci(zgloszenie):
 
 @pytest.mark.django_db
 def test_edycja_przez_kod_zgloszenia_z_kosza_daje_404(client, uczelnia, zgloszenie):
-    url = reverse(
-        "zglos_publikacje:edycja_zgloszenia", args=[zgloszenie.kod_do_edycji]
-    )
+    url = reverse("zglos_publikacje:edycja_zgloszenia", args=[zgloszenie.kod_do_edycji])
     assert client.get(url).status_code == 200
 
     zgloszenie.delete(reason="test")
