@@ -30,13 +30,12 @@ Otworzy się formularz wyszukiwania precyzyjnego z gotowymi warunkami
 2025). Warunki możesz dalej zmieniać, dodawać (**„Dodaj pole”**) albo
 zbudować całe zapytanie od zera w **szukaj → precyzyjnie**.
 
-### 2. Wybierz rodzaj raportu „tabela krzyżowa”
+### 2. Wybierz raport „tabela krzyżowa”
 
-1. Pod warunkami, na liście **„Rodzaj raportu”**, wybierz **tabela
-   krzyżowa**.
-2. Kliknij **„Wyświetl wyniki wyszukiwania”**.
+1. Pod warunkami, na liście **„Raport”**, wybierz **tabela krzyżowa**.
+2. Kliknij **„Wyświetl wyniki”**.
 
-![Formularz wyszukiwania precyzyjnego: warunki (autor i zakres lat), „Rodzaj raportu: tabela krzyżowa” i przycisk „Wyświetl wyniki wyszukiwania”](../images/uzytkownik/tabela-krzyzowa/02-formularz-rodzaj-raportu.png)
+![Formularz wyszukiwania precyzyjnego: warunki (autor i zakres lat), „Raport: tabela krzyżowa” i przycisk „Wyświetl wyniki”](../images/uzytkownik/tabela-krzyzowa/02-formularz-rodzaj-raportu.png)
 
 !!! note "Podgląd pod formularzem"
     Tabela krzyżowa pokazuje się też w podglądzie pod formularzem. Każda
@@ -107,8 +106,7 @@ mówi, ile było wszystkich artykułów, książek, rozdziałów itd.
 
 1. Na stronie jednostki (**przeglądaj → jednostki**) zaznacz lata, np.
    2020–2025, i kliknij **„Szukaj publikacji”**.
-2. Wybierz **Rodzaj raportu: tabela krzyżowa** i kliknij **„Wyświetl wyniki
-   wyszukiwania”**.
+2. Wybierz **Raport: tabela krzyżowa** i kliknij **„Wyświetl wyniki”**.
 3. Ustaw **Wiersze: Autor**, **Kolumny: Rok**, **W komórce: Liczba prac**.
 4. Kliknij nagłówek **RAZEM** — autorzy ułożą się od tego z największą
    liczbą prac.

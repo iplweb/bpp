@@ -8,12 +8,12 @@ początku wiersza. Jak dodać warunek, spójnik i ramkę — opisuje
 
 We wszystkich przykładach:
 
-1. Otwórz **szukaj → precyzyjnie** i kliknij **„Resetuj formularz”**, żeby
+1. Otwórz **szukaj → precyzyjnie** i kliknij **„Wyczyść formularz”**, żeby
    zacząć od czystego formularza.
 2. Ustaw pierwszy warunek w istniejącym wierszu, każdy następny dodaj
    przyciskiem **„Dodaj pole”**.
 3. Kliknij **„Odśwież podgląd”** (wyniki pod formularzem) albo
-   **„Wyświetl wyniki wyszukiwania”** (osobna strona).
+   **„Wyświetl wyniki”** (osobna strona).
 
 Nazwy autorów i jednostek w przykładach pochodzą z danych demonstracyjnych —
 wpisz w ich miejsce swoje.
@@ -38,7 +38,7 @@ wszystkie prace autora z tych lat.
 | i | Punkty MNiSW/MEiN | większy lub równy | 100 |
 
 Dla całego wydziału z katedrami wybierz wydział i operator
-**„równa+podrzędne”**. Do sprawdzenia sum punktów przełącz **Rodzaj raportu**
+**„równa+podrzędne”**. Do sprawdzenia sum punktów przełącz **Raport**
 na „punktacja sumaryczna”.
 
 ## 3. Prace w danej dyscyplinie
@@ -71,7 +71,7 @@ wyniki do artykułów, dodając „Charakter formalny ogólny — równy — art
 | | Impact factor | większy, niż | 0 |
 | i | Rok | równy | 2024 |
 
-Ustaw **Rodzaj raportu: tabela** — zobaczysz IF każdej pracy w osobnej
+Ustaw **Raport: tabela** — zobaczysz IF każdej pracy w osobnej
 kolumnie, a na ostatniej stronie wyników wiersz **„Suma:”**.
 
 ## 6. Wspólne prace dwóch współautorów {#dwoch-wspolautorow}

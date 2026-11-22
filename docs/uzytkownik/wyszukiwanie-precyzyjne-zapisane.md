@@ -18,7 +18,7 @@ bez logowania mogą zapisane formularze **wczytywać**, ale nie zapisywać.
 
 1. Zbuduj zapytanie w formularzu **szukaj → precyzyjnie** (patrz
    [Wyszukiwanie precyzyjne — podstawy](wyszukiwanie-precyzyjne.md)).
-   Zapisywane są warunki, a także rodzaj raportu i sortowanie.
+   Zapisywane są warunki, a także wybrany raport i sortowanie.
 2. Kliknij **„Formularz”** (pod warunkami, po prawej) i wybierz
    **„Zapisz formularz…”**.
 
@@ -78,7 +78,7 @@ jest co najmniej jeden formularz.
 Osobnego udostępniania wybranym osobom nie ma — formularz jest albo
 prywatny, albo publiczny dla wszystkich. Aby udostępnić zapytanie
 koledze, zapisz je jako **publiczne** i podaj mu nazwę: znajdzie je na
-liście „Wczytaj formularz”.
+liście „Wczytaj zapisany formularz” w menu „Formularz”.
 
 ## Usuwanie i porządkowanie
 

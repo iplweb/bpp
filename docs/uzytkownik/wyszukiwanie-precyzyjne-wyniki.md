@@ -2,7 +2,7 @@
 
 Gdy zapytanie jest gotowe (patrz
 [Wyszukiwanie precyzyjne — podstawy](wyszukiwanie-precyzyjne.md)), kliknij
-**„Wyświetl wyniki wyszukiwania”**. Otworzy się strona wyników — ten
+**„Wyświetl wyniki”**. Otworzy się strona wyników — ten
 artykuł opisuje, co można na niej zrobić: nadać tytuł, przejrzeć,
 wydrukować, ręcznie wyrzucić pojedyncze rekordy i pobrać plik.
 
@@ -28,14 +28,15 @@ zdaniem.
 
 ## Sortowanie
 
-Kolejność wyników ustawiasz **w formularzu**, polami **„Sortuj według”**
-i dwoma **„a następnie”** (do trzech poziomów, każdy z opcją
+Kolejność wyników ustawiasz **w formularzu**, polem **„Sortuj”**
+i — po kliknięciu **„+ dodaj sortowanie”** — drugim kryterium **„potem”**
+(najwyżej dwa poziomy, każdy z przełącznikiem **„rosnąco”** /
 **„malejąco”**). Do wyboru są m.in. rok, tytuł oryginalny, impact factor,
 liczba cytowań, liczba autorów, punkty MNiSW/MEiN, charakter formalny,
 typ MNiSW/MEiN i źródło. Domyślnie: rok, malejąco.
 
 Aby zmienić kolejność już wyświetlonych wyników, kliknij **„Powrót”**,
-zmień sortowanie i ponownie **„Wyświetl wyniki wyszukiwania”**. W podglądzie
+zmień sortowanie i ponownie **„Wyświetl wyniki”**. W podglądzie
 pod formularzem zmiana sortowania działa od razu.
 
 ## Tytuł zestawienia
@@ -51,7 +52,7 @@ więc warto go ustawić przed drukowaniem.
 
 ![Pole edycji tytułu z wpisanym nowym tytułem](../images/uzytkownik/wyszukiwanie-precyzyjne-wyniki/02-edycja-tytulu.png)
 
-Tytuł jest pamiętany do końca sesji przeglądarki. „Resetuj formularz”
+Tytuł jest pamiętany do końca sesji przeglądarki. „Wyczyść formularz”
 przywraca tytuł domyślny.
 
 ## Ręczne usuwanie rekordów z wyników {#reczne-usuwanie}
@@ -86,7 +87,7 @@ N rekord(ów).”** z przyciskami:
 
 Ręczne usunięcia obowiązują **tylko w Twojej sesji przeglądarki** — nie
 zmieniają niczego w bazie i inni użytkownicy ich nie widzą. Lista usuniętych
-jest czyszczona przy „Resetuj formularz” i gdy zaczynasz nowe wyszukiwanie
+jest czyszczona przy „Wyczyść formularz” i gdy zaczynasz nowe wyszukiwanie
 ze strony autora, jednostki czy źródła. Zmiana samych warunków w formularzu
 jej nie czyści. Wydruk i eksport uwzględniają usunięcia.
 

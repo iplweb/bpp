@@ -123,31 +123,32 @@ rozdział):
 Bez ramki „autor i książka lub rozdział” znalazłoby książki tej autorki
 **oraz wszystkie rozdziały w bazie**, także cudze.
 
-## Podgląd, pełne wyniki, rodzaj raportu i sortowanie
+## Podgląd, pełne wyniki, raport i sortowanie
 
 Pod warunkami znajdziesz:
 
-- **Rodzaj raportu** — jak pokazać wyniki: **lista** (opisy
+- **Raport** — jak pokazać wyniki: **lista** (opisy
   bibliograficzne), **tabela** (z kolumnami IF, PK, charakter, typ),
   **punktacja sumaryczna** (tabela z sumami punktów), **BibTeX** (do
   skopiowania przyciskiem „Skopiuj wszystko do schowka”) oraz **tabela
   krzyżowa** — zestawienie liczb w wierszach i kolumnach (osobny artykuł:
   [Tabela krzyżowa](tabela-krzyzowa.md)). Zalogowani mają dodatkowo
   m.in. „numerowaną listę z uwagami” i warianty z liczbą cytowań.
-- **Sortuj według** oraz dwa razy **„a następnie”** — do trzech poziomów
-  sortowania (rok, tytuł, punkty, impact factor, liczba cytowań, charakter
-  formalny…). Pole **„malejąco”** odwraca kolejność. Domyślnie: rok,
-  malejąco.
-- **„Wyświetl wyniki wyszukiwania”** — otwiera osobną stronę z pełnymi
+- **Sortuj** — kryterium sortowania (rok, tytuł, punkty, impact factor,
+  liczba cytowań, charakter formalny…). Przycisk **„+ dodaj sortowanie”**
+  dokłada drugie kryterium (**„potem”**), **×** je usuwa — najwyżej dwa
+  poziomy. Przełącznik obok pola (**„↑ rosnąco”** / **„↓ malejąco”**)
+  zmienia kierunek. Domyślnie: rok, malejąco.
+- **„Wyświetl wyniki”** — otwiera osobną stronę z pełnymi
   wynikami (patrz [Praca z wynikami](wyszukiwanie-precyzyjne-wyniki.md)).
 - **„Odśwież podgląd”** — pokazuje wyniki **pod formularzem**, bez
   opuszczania strony. Podgląd nie odświeża się sam po zmianie warunku —
-  kliknij ten przycisk. Zmiana rodzaju raportu albo sortowania odświeża
+  kliknij ten przycisk. Zmiana raportu albo sortowania odświeża
   podgląd od razu.
-- **„Resetuj formularz”** — po potwierdzeniu czyści wszystkie warunki,
+- **„Wyczyść formularz”** — po potwierdzeniu czyści wszystkie warunki,
   przywraca domyślny tytuł i listę ręcznie usuniętych rekordów.
 
-![Rodzaj raportu, sortowanie, przyciski formularza i podgląd wyników z licznikiem „Razem”](../images/uzytkownik/wyszukiwanie-precyzyjne/03-raport-przyciski.png)
+![Raport, sortowanie, przyciski formularza i podgląd wyników z licznikiem „Razem”](../images/uzytkownik/wyszukiwanie-precyzyjne/03-raport-przyciski.png)
 
 Nad podglądem i wynikami widać **„Parametry zapytania”** — Twoje warunki
 zapisane zdaniem. To dobre miejsce, by sprawdzić, czy system zrozumiał
@@ -168,7 +169,7 @@ i kliknij **„Szukaj publikacji”**.
 
 Otworzy się formularz wyszukiwania precyzyjnego z **już wpisanymi
 warunkami** — możesz je zmieniać, dodawać kolejne albo od razu kliknąć
-„Wyświetl wyniki wyszukiwania”. Tytuł wyników przejmie wartość z pola
+„Wyświetl wyniki”. Tytuł wyników przejmie wartość z pola
 „Tytuł wyników” na stronie autora.
 
 ![Formularz otwarty ze strony autora: warunki „Nazwisko i imię” i „Zakres lat” są już wpisane](../images/uzytkownik/wyszukiwanie-precyzyjne/04-formularz-ze-strony-autora.png)
@@ -177,8 +178,9 @@ Każde takie przejście zaczyna nowe wyszukiwanie: poprzednie warunki
 i lista ręcznie usuniętych rekordów są zastępowane.
 
 !!! note "Dla redaktorów"
-    Redaktorzy widzą dodatkowo przycisk **„Pokaż jako zapytanie DjangoQL”**,
-    który przekłada formularz na zapytanie tekstowe — patrz
+    Redaktorzy mają dodatkowo w menu **„Formularz”** (po prawej, pod
+    warunkami) pozycję **„Pokaż jako zapytanie DjangoQL”**, która przekłada
+    formularz na zapytanie tekstowe — patrz
     [Wyszukiwanie i redagowanie](../redaktor/wyszukiwanie-redagowanie.md).
 
 ## Zobacz też
