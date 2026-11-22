@@ -1,0 +1,1 @@
+Wyszarzony przycisk „Usuń” na stronie rekordu z PBN UID ma znowu zwykły, mały rozmiar (🔒 Usuń), a wyjaśnienie, dlaczego rekordu nie można usunąć, pokazuje się w dymku po najechaniu kursorem, zamiast rozpychać stopkę długim tekstem.

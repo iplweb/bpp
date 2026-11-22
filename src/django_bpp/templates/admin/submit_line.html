@@ -8,13 +8,11 @@
                 <li class="grp-float-left"><a href="{% add_preserved_filters delete_url %}"
                                               class="grp-button grp-delete-link">{% trans "Delete" %}</a></li>
             {% elif usun_zablokowany_powod %}
-                {# FD#539: zamiast znikać, przycisk jest wyszarzony z wyjaśnieniem. #}
-                <li class="grp-float-left">
-                    <span class="grp-button grp-delete-link" aria-disabled="true"
-                          title="{{ usun_zablokowany_powod }}"
-                          style="opacity: .45; cursor: not-allowed;">{% trans "Delete" %}</span>
-                    <small style="display: block; max-width: 28em;">{{ usun_zablokowany_powod }}</small>
-                </li>
+                {# FD#539: zamiast znikać, przycisk jest wyszarzony; wyjaśnienie w dymku (title). #}
+                {# Ten sam element <a> co aktywny „Usuń" (bez href) — ten sam rozmiar w stopce. #}
+                <li class="grp-float-left"><a class="grp-button grp-delete-link" role="link" aria-disabled="true"
+                                              title="{{ usun_zablokowany_powod }}"
+                                              style="opacity: .45; cursor: not-allowed;">🔒 {% trans "Delete" %}</a></li>
             {% endif %}
             {% if kosz_przywroc_url %}
                 {# Rekord z kosza (tylko do odczytu): przywrócenie tego jednego rekordu. #}
