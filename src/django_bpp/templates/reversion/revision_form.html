@@ -72,6 +72,10 @@
             <ul class="bpp-usuniete">{% for poz in konflikty_przywrocenia %}<li>{{ poz }}</li>{% endfor %}</ul>
             <p>Popraw rekord ręcznie albo najpierw przenieś te pozycje z powrotem.</p>
         {% endif %}
+        {% if przeszkody_przywrocenia %}
+            <h3 class="bpp-usuniete" style="margin-top: 10px;">Tej wersji nie można przywrócić</h3>
+            <ul class="bpp-usuniete">{% for powod in przeszkody_przywrocenia %}<li>{{ powod }}</li>{% endfor %}</ul>
+        {% endif %}
         {% if zmiany_powiazanych %}
             <h3 style="margin-top: 10px;">Uwaga: przywrócenie zmieni też listy powiązane z rekordem</h3>
             {% for zmiana in zmiany_powiazanych %}
@@ -83,6 +87,10 @@
                 {% if zmiana.przywrocone %}
                     <div class="bpp-przywrocone">Zostaną przywrócone (usunięte po tej wersji):</div>
                     <ul class="bpp-przywrocone">{% for poz in zmiana.przywrocone %}<li>{{ poz }}</li>{% endfor %}</ul>
+                {% endif %}
+                {% if zmiana.w_koszu %}
+                    <div>🗑️ Nie zostaną przywrócone — są w koszu (przywrócenie wersji nie wyjmuje niczego z kosza; plik, który ma wrócić, przywróć w formularzu rekordu — sekcja „pliki repozytorium w koszu”):</div>
+                    <ul>{% for poz in zmiana.w_koszu %}<li>{{ poz }}</li>{% endfor %}</ul>
                 {% endif %}
             {% endfor %}
         {% endif %}

@@ -19,7 +19,10 @@ from bpp.models import (  # Publikacja_Habilitacyjna
 from bpp.models.praca_habilitacyjna import Publikacja_Habilitacyjna
 from dspace_api.admin_mixins import DSpaceLinkAdminMixin
 
-from .element_repozytorium import Element_RepozytoriumInline
+from .element_repozytorium import (
+    Element_RepozytoriumInline,
+    Element_RepozytoriumKoszInline,
+)
 from .grant import Grant_RekorduInline
 from .helpers.constance_field_mixin import ConstanceScoringFieldsMixin
 from .helpers.fieldsets import (
@@ -236,7 +239,11 @@ class Praca_HabilitacyjnaAdmin(
         MODEL_Z_OPLATA_ZA_PUBLIKACJE_FIELDSET,
     )
 
-    inlines = (Grant_RekorduInline, Element_RepozytoriumInline)
+    inlines = (
+        Grant_RekorduInline,
+        Element_RepozytoriumInline,
+        Element_RepozytoriumKoszInline,
+    )
 
 
 admin.site.register(Praca_Habilitacyjna, Praca_HabilitacyjnaAdmin)

@@ -7,7 +7,10 @@ from bpp.models.patent import Patent, Patent_Autor
 from dspace_api.admin_mixins import DSpaceLinkAdminMixin
 
 from .core import generuj_inline_dla_autorow
-from .element_repozytorium import Element_RepozytoriumInline
+from .element_repozytorium import (
+    Element_RepozytoriumInline,
+    Element_RepozytoriumKoszInline,
+)
 from .filters import OstatnioZmienionePrzezFilter, UtworzonePrzezFilter
 from .grant import Grant_RekorduInline
 from .helpers.constance_field_mixin import ConstanceScoringFieldsMixin
@@ -107,6 +110,7 @@ class Patent_Admin(
         generuj_inline_dla_autorow(Patent_Autor),
         Grant_RekorduInline,
         Element_RepozytoriumInline,
+        Element_RepozytoriumKoszInline,
     )
 
     list_display = ["tytul_oryginalny", "ostatnio_zmieniony"]

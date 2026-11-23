@@ -8,3 +8,6 @@ class HistoriaZmianConfig(AppConfig):
 
     def ready(self):
         from . import receivers  # noqa: F401
+        from .archiwum_plikow import podlacz
+
+        podlacz()
