@@ -1987,6 +1987,10 @@ ROLLBAR_SCRUB_FIELDS = [
     "orcid_client_secret",
     "dspace_api_password",
     "clarivate_password",
+    # hasło do zaszyfrowanego pliku Excel w imporcie POLON/absencji (pole
+    # formularza ``haslo_do_pliku`` + zmienna lokalna ``haslo`` w ramkach):
+    "haslo_do_pliku",
+    "haslo",
 ]
 
 ROLLBAR = {

@@ -71,6 +71,8 @@ zatrudniającą pracowników, a nie np. „Obcą jednostką”).
       pokazuje, co by zmienił, ale niczego nie zapisuje. To najczęstsza
       pomyłka — import „przeszedł”, a w bazie nic się nie zmieniło.
     - **Plik** — zestawienie z POL-on.
+    - **Hasło do pliku** — zostaw puste, chyba że plik Excel jest
+      zabezpieczony hasłem (patrz [Plik zabezpieczony hasłem](#plik-z-haslem)).
 
     Kliknij **„Utwórz import”**.
 
@@ -247,6 +249,23 @@ zmian.
 
 **„Niewłaściwy format pliku. Proszę przesłać plik Excel (.xlsx, .xls) lub CSV
 (.csv).”** — wgrano plik o innym rozszerzeniu (np. PDF albo `.ods`).
+
+**„Plik jest zabezpieczony hasłem. …”**{#plik-z-haslem} — plik zapisano
+w Excelu z hasłem (**Plik → Informacje → Chroń skoroszyt → Zaszyfruj przy
+użyciu hasła**). Masz dwie możliwości:
+
+- wpisz hasło w polu **„Hasło do pliku”** i wgraj plik ponownie — BPP
+  odszyfruje go przy wgrywaniu i zapisze u siebie kopię **już bez hasła**;
+  samo hasło nie jest nigdzie zapisywane,
+- albo otwórz plik w Excelu, wejdź w **Plik → Informacje → Chroń skoroszyt →
+  Zaszyfruj przy użyciu hasła**, wyczyść pole hasła, zapisz plik i wgraj go
+  ponownie.
+
+Złe hasło kończy się komunikatem **„Nieprawidłowe hasło do pliku.”**. Jeśli
+plik nie ma hasła, wpisane hasło jest po prostu pomijane. Tak samo działa
+formularz importu absencji. Inne importy (np. import pracowników) nie mają
+pola na hasło — pokażą komunikat, że plik jest zabezpieczony hasłem, i trzeba
+zdjąć hasło w Excelu.
 
 **„REKORD ZIGNOROWANY: Pole 'ZATRUDNIENIE' (…) nie zaczyna się od nazwy
 uczelni importu (…).”** — osoba jest zatrudniona w innej uczelni (w pliku

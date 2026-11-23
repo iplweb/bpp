@@ -40,6 +40,25 @@ class PlikZaDuzyException(NiebezpiecznyPlikException):
     pass
 
 
+class PlikZabezpieczonyHaslemException(NiebezpiecznyPlikException):
+    """Plik Office (XLSX/XLS) jest zaszyfrowany hasłem — pandas/openpyxl/xlrd
+    go nie otworzą (xlrd: „Can't find workbook in OLE2 compound document").
+
+    To błąd UŻYTKOWNIKA, nie aplikacji: komunikat ma mu powiedzieć, co zrobić,
+    a wyjątek NIE może trafiać do monitoringu błędów. Dziedziczy po
+    ``NiebezpiecznyPlikException``, żeby wszystkie miejsca, które już łapią
+    odrzucenia z ``sprawdz_plik_importu`` (import pracowników, dyscyplin,
+    ewaluacja…), pokazały ten komunikat bez dodatkowych zmian."""
+
+    pass
+
+
+class NieprawidloweHasloDoPlikuException(Exception):
+    """Podane hasło nie otwiera zaszyfrowanego pliku Office."""
+
+    pass
+
+
 class XLSParseError(Exception):
     def __init__(self, elem, form, reason):
         self.elem = elem
