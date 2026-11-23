@@ -19,7 +19,7 @@ from ..models import (
     StatusOptymalizacjiBulk,
 )
 from ..tasks import solve_all_reported_disciplines
-from .helpers import kontekst_przerwanego_przebiegu
+from .helpers import kontekst_przerwanego_przebiegu, render_postepu
 
 logger = logging.getLogger(__name__)
 
@@ -418,14 +418,11 @@ def bulk_optimization_status(request, uczelnia_id, task_id):
 
         return redirect("ewaluacja_optymalizacja:index")
 
-    # If HTMX request, return only the progress partial
-    if request.headers.get("HX-Request"):
-        return render(
-            request, "ewaluacja_optymalizacja/_bulk_optimization_progress.html", context
-        )
-
-    return render(
-        request, "ewaluacja_optymalizacja/bulk_optimization_status.html", context
+    return render_postepu(
+        request,
+        "ewaluacja_optymalizacja/_bulk_optimization_progress.html",
+        "ewaluacja_optymalizacja/bulk_optimization_status.html",
+        context,
     )
 
 

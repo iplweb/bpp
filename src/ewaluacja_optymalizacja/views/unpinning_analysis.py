@@ -237,7 +237,7 @@ def unpinning_combined_status(request, task_id):
     )
 
     from ..models import StatusUnpinningAnalyzy
-    from .helpers import kontekst_przerwanego_przebiegu
+    from .helpers import kontekst_przerwanego_przebiegu, render_postepu
 
     przerwany = kontekst_przerwanego_przebiegu(StatusUnpinningAnalyzy, task_id)
 
@@ -263,16 +263,11 @@ def unpinning_combined_status(request, task_id):
         if response:
             return response
 
-    # If HTMX request, return only the progress partial
-    if request.headers.get("HX-Request"):
-        return render(
-            request,
-            "ewaluacja_optymalizacja/_unpinning_combined_progress.html",
-            context,
-        )
-
-    return render(
-        request, "ewaluacja_optymalizacja/unpinning_combined_status.html", context
+    return render_postepu(
+        request,
+        "ewaluacja_optymalizacja/_unpinning_combined_progress.html",
+        "ewaluacja_optymalizacja/unpinning_combined_status.html",
+        context,
     )
 
 

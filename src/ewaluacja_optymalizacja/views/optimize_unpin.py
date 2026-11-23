@@ -18,7 +18,11 @@ from ..models import (
     OptimizationRun,
     StatusOptymalizacjiZOdpinaniem,
 )
-from .helpers import _format_time_remaining, kontekst_przerwanego_przebiegu
+from .helpers import (
+    _format_time_remaining,
+    kontekst_przerwanego_przebiegu,
+    render_postepu,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -362,12 +366,12 @@ def optimize_unpin_status(request, task_id):
     przerwany = kontekst_przerwanego_przebiegu(StatusOptymalizacjiZOdpinaniem, task_id)
     if przerwany:
         context.update(przerwany)
-        template = (
-            "ewaluacja_optymalizacja/_optimize_unpin_progress.html"
-            if request.headers.get("HX-Request")
-            else "ewaluacja_optymalizacja/optimize_unpin_status.html"
+        return render_postepu(
+            request,
+            "ewaluacja_optymalizacja/_optimize_unpin_progress.html",
+            "ewaluacja_optymalizacja/optimize_unpin_status.html",
+            context,
         )
-        return render(request, template, context)
 
     # KROK 1: Sprawdź fazę zadania z task.info (dla faz przed optymalizacją)
     task_info = task.info if task.info and isinstance(task.info, dict) else {}

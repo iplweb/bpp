@@ -22,74 +22,97 @@ from ewaluacja_common.przebiegi import (
 )
 
 NAZWY = ("moje.zadanie", "moje.podzadanie")
-INSPECT = "django_bpp.celery_tasks.app.control.inspect"
+BROADCAST = "django_bpp.celery_tasks.app.control.broadcast"
 KOLEJKA = "ewaluacja_common.przebiegi._czeka_w_kolejce"
 STAN = "ewaluacja_common.przebiegi.stan_zadan_w_celery"
 
 
-def _inspect(active, reserved=None, scheduled=None):
-    """Atrapa ``app.control.inspect(...)``: jeden worker, podane zadania."""
-    inspekcja = MagicMock()
-    inspekcja.active.return_value = active
-    inspekcja.reserved.return_value = {"w1": []} if reserved is None else reserved
-    inspekcja.scheduled.return_value = {"w1": []} if scheduled is None else scheduled
-    return MagicMock(return_value=inspekcja)
+def _workery(*zadania_workerow):
+    """Atrapa odpowiedzi na komendę ``bpp_zadania_workera``: po jednym
+    workerze na argument, każdy z listą par ``[id, nazwa]``."""
+    return patch(
+        BROADCAST,
+        return_value=[
+            {f"w{nr}": [list(para) for para in zadania]}
+            for nr, zadania in enumerate(zadania_workerow)
+        ],
+    )
 
 
 def test_zaden_worker_nie_odpowiada():
-    with patch(INSPECT, _inspect(active=None)):
+    with _workery():
         assert stan_zadan_w_celery(NAZWY, "t1") == BRAK_WORKERA
 
 
-def test_worker_wykonuje_zadanie_przebiegu():
-    aktywne = {"w1": [{"id": "inne-id", "name": "moje.podzadanie"}]}
-    with patch(INSPECT, _inspect(aktywne)), patch(KOLEJKA, return_value=False):
+def test_worker_ma_zadanie_przebiegu():
+    with _workery([("inne-id", "moje.podzadanie")]), patch(KOLEJKA) as kolejka:
         assert stan_zadan_w_celery(NAZWY, "t1") == ZYJE
+    # żywy przebieg widać u workera — kolejki (duże wiadomości) nie czytamy
+    kolejka.assert_not_called()
 
 
 def test_worker_ma_zadanie_o_tym_task_id_pod_inna_nazwa():
-    aktywne = {"w1": [{"id": "t1", "name": "obce.zadanie"}]}
-    with patch(INSPECT, _inspect(aktywne)), patch(KOLEJKA, return_value=False):
+    with _workery([("t1", "obce.zadanie")]), patch(KOLEJKA, return_value=False):
         assert stan_zadan_w_celery(NAZWY, "t1") == ZYJE
 
 
-def test_zadanie_zaplanowane_na_pozniej_liczy_sie_jako_zywe():
-    zaplanowane = {"w1": [{"eta": "x", "request": {"id": "z", "name": "moje.zadanie"}}]}
-    with (
-        patch(INSPECT, _inspect({"w1": []}, scheduled=zaplanowane)),
-        patch(KOLEJKA, return_value=False),
-    ):
+def test_zadanie_ma_drugi_z_workerow():
+    with _workery([], [("x", "moje.zadanie")]), patch(KOLEJKA, return_value=False):
         assert stan_zadan_w_celery(NAZWY, "t1") == ZYJE
 
 
 def test_zadanie_czeka_w_kolejce():
-    with patch(INSPECT, _inspect({"w1": []})), patch(KOLEJKA, return_value=True):
+    with _workery([]), patch(KOLEJKA, return_value=True):
         assert stan_zadan_w_celery(NAZWY, "t1") == ZYJE
 
 
 def test_nikt_nie_pracuje_nad_przebiegiem():
-    aktywne = {"w1": [{"id": "obce", "name": "obce.zadanie"}]}
-    with patch(INSPECT, _inspect(aktywne)), patch(KOLEJKA, return_value=False):
+    with _workery([("obce", "obce.zadanie")]), patch(KOLEJKA, return_value=False):
         assert stan_zadan_w_celery(NAZWY, "t1") == MARTWY
 
 
 def test_kolejki_nie_da_sie_przejrzec():
-    with patch(INSPECT, _inspect({"w1": []})), patch(KOLEJKA, return_value=None):
+    with _workery([]), patch(KOLEJKA, return_value=None):
         assert stan_zadan_w_celery(NAZWY, "t1") == NIE_WIADOMO
 
 
-def test_worker_nie_zdazyl_odpowiedziec_na_kolejne_pytanie():
-    """Brak odpowiedzi na ``reserved`` to nie dowód, że zadania nie ma."""
-    with (
-        patch(INSPECT, _inspect({"w1": [], "w2": []}, reserved={"w1": []})),
-        patch(KOLEJKA, return_value=False),
-    ):
+def test_worker_bez_komendy_straznika_nie_jest_dowodem():
+    """Worker starszej wersji odpowiada błędem „nieznana komenda” — to nie
+    znaczy, że nie ma zadania."""
+    odpowiedz = [{"w0": {"error": "KeyError('bpp_zadania_workera')"}}]
+    with patch(BROADCAST, return_value=odpowiedz), patch(KOLEJKA) as kolejka:
         assert stan_zadan_w_celery(NAZWY, "t1") == NIE_WIADOMO
+    kolejka.assert_not_called()
 
 
 def test_broker_niedostepny():
-    with patch(INSPECT, side_effect=OperationalError("brak brokera")):
+    with patch(BROADCAST, side_effect=OperationalError("brak brokera")):
         assert stan_zadan_w_celery(NAZWY, "t1") == NIE_WIADOMO
+
+
+def test_komenda_workera_zwraca_same_identyfikatory_i_nazwy():
+    """Bez argumentów zadań: zadania-porcje analiz niosą megabajty danych,
+    przez które odpowiedź ``inspect().active()`` nie mieściła się w limicie."""
+    from celery.worker import state as stan_workera
+    from celery.worker.request import Request
+
+    from django_bpp.celery_tasks import bpp_zadania_workera
+
+    aktywne = MagicMock(id="a1", args=["x" * 1000])
+    aktywne.name = "moje.zadanie"
+    zaplanowane = MagicMock(spec=Request, id="z1")
+    zaplanowane.name = "moje.podzadanie"
+    state = MagicMock()
+    state.tset.side_effect = lambda zbior: zbior
+    state.consumer.timer.schedule.queue = [
+        MagicMock(entry=MagicMock(args=[zaplanowane])),
+        MagicMock(entry=MagicMock(args=[])),  # wpis timera inny niż zadanie
+    ]
+
+    with patch.object(stan_workera, "reserved_requests", {aktywne}):
+        wynik = bpp_zadania_workera(state)
+
+    assert sorted(wynik) == [["a1", "moje.zadanie"], ["z1", "moje.podzadanie"]]
 
 
 def test_zadanie_wyslane_do_brokera_widac_w_kolejce():
@@ -152,6 +175,18 @@ def test_kolejne_odpytania_nie_pytaja_celery_za_kazdym_razem(db):
     assert stan.call_count == 1
 
 
+def test_odczyty_odlegle_w_czasie_nie_potwierdzaja_stanu(db):
+    """Dwa pojedyncze odczyty „martwy” w odstępie godziny (nikt nie patrzył
+    na stronę) to nie dowód, że przez godzinę nikt nie pracował."""
+    with patch(STAN, return_value=MARTWY):
+        powod_przerwania("k", NAZWY, "t1", _dawno())
+        _postarz_odczyt("k", 3600)
+        assert powod_przerwania("k", NAZWY, "t1", _dawno()) is None
+        # dopiero kolejny, bliski odczyt potwierdza
+        _postarz_odczyt("k", przebiegi.POTWIERDZENIE_MARTWEGO_SEKUNDY + 1)
+        assert powod_przerwania("k", NAZWY, "t1", _dawno()) == MARTWY
+
+
 def test_ozywienie_zeruje_licznik(db):
     with patch(STAN, return_value=MARTWY):
         powod_przerwania("k", NAZWY, "t1", _dawno())
@@ -182,12 +217,16 @@ def test_brak_workera_anuluje_dopiero_po_limicie(db, settings):
 
 def test_stan_nieznany_anuluje_tylko_po_twardym_limicie(db):
     with patch(STAN, return_value=NIE_WIADOMO):
-        assert powod_przerwania("k", NAZWY, "t1", _dawno(600)) is None
-        _postarz_odczyt("k", 3600)
+        # przed limitem przebiegu — nigdy
         assert powod_przerwania("k", NAZWY, "t1", _dawno(600), 7200) is None
-        _postarz_odczyt("k", 3600)
+        _postarz_odczyt("k", 100)
+        assert powod_przerwania("k", NAZWY, "t1", _dawno(600), 7200) is None
+        # po limicie — ale nie po pojedynczym odczycie
+        assert powod_przerwania("inny", NAZWY, "t1", _dawno(8000), 7200) is None
+        _postarz_odczyt("inny", przebiegi.POTWIERDZENIE_MARTWEGO_SEKUNDY + 1)
         assert (
-            powod_przerwania("k", NAZWY, "t1", _dawno(8000), 7200) == PRZEKROCZONY_LIMIT
+            powod_przerwania("inny", NAZWY, "t1", _dawno(8000), 7200)
+            == PRZEKROCZONY_LIMIT
         )
 
 

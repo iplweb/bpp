@@ -521,4 +521,26 @@ def kontekst_przerwanego_przebiegu(status_cls, task_id):
     komunikat = status_cls.aktualny().komunikat_przerwania_dla(task_id)
     if komunikat is None:
         return None
-    return {"error": komunikat, "success": False, "task_ready": True}
+    return {
+        "error": komunikat,
+        "success": False,
+        "task_ready": True,
+        "koniec_odpytywania": True,
+    }
+
+
+#: Kod, po którym htmx przestaje odpytywać (``hx-trigger="every …"``).
+#: Zwykła podmiana treści tego nie robi: wyzwalacz siedzi na kontenerze,
+#: a podmieniane jest tylko jego wnętrze.
+HTMX_KONIEC_ODPYTYWANIA = 286
+
+
+def render_postepu(request, szablon_htmx, szablon_strony, context):
+    """Wyrenderuj stronę postępu albo — dla HTMX — sam jej fragment. Gdy
+    przebieg został przerwany, fragment kończy też odpytywanie."""
+    from django.shortcuts import render
+
+    if request.headers.get("HX-Request"):
+        status = HTMX_KONIEC_ODPYTYWANIA if context.get("koniec_odpytywania") else 200
+        return render(request, szablon_htmx, context, status=status)
+    return render(request, szablon_strony, context)

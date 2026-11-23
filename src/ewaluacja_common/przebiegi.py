@@ -21,8 +21,8 @@ identyfikatorach. Skutek uboczny jest po bezpiecznej stronie — przebieg
 innej uczelni o tych samych zadaniach podtrzymuje status przy życiu, nigdy
 odwrotnie.
 
-Anulujemy dopiero stan POTWIERDZONY w czasie (dwa odczyty w odstępie),
-nigdy pojedynczy odczyt: między zakończeniem jednego zadania a podjęciem
+Anulujemy dopiero stan POTWIERDZONY w czasie (kolejne, bliskie sobie
+odczyty), nigdy pojedynczy odczyt: między zakończeniem jednego zadania a podjęciem
 następnego z łańcucha bywa chwila, w której nic nie jest „aktywne”.
 """
 
@@ -56,8 +56,13 @@ POTWIERDZENIE_MARTWEGO_SEKUNDY = 45
 #: restart usługi przy wdrożeniu; zmienia ustawienie
 #: ``PRZEBIEGI_LIMIT_BEZ_WORKERA_SEKUNDY``.
 DOMYSLNY_LIMIT_BEZ_WORKERA_SEKUNDY = 300
-#: Dłuższej kolejki nie przeglądamy (żądanie HTTP) — stan „nie wiadomo”.
-MAKS_ZADAN_W_KOLEJCE = 20000
+#: Odczyty rzadsze niż co tyle sekund nie składają się na „stan trwa od”
+#: (nikt nie patrzył na stronę — nie wiemy, co działo się pomiędzy).
+MAKS_PRZERWA_ODCZYTOW_SEKUNDY = 120
+#: Kolejkę brokera czytamy po tyle wiadomości naraz i najwyżej tyle bajtów
+#: łącznie (żądanie HTTP); po przekroczeniu — stan „nie wiadomo”.
+PORCJA_KOLEJKI = 20
+BUDZET_KOLEJKI_BAJTY = 32 * 1024 * 1024
 
 
 def limit_bez_workera_sekundy():
@@ -70,25 +75,61 @@ def limit_bez_workera_sekundy():
 
 def _czeka_w_kolejce(app, nazwy_zadan, task_id):
     """Czy zadanie przebiegu czeka w kolejce brokera (jeszcze niepodjęte
-    przez workera). ``None`` — nie da się ustalić."""
+    przez workera). ``None`` — nie da się ustalić.
+
+    Wiadomości bywają duże (zadania-porcje analiz niosą dane publikacji),
+    więc czytamy je po kawałku i z budżetem bajtów — nigdy całą kolejkę.
+    """
     with app.connection_for_read() as conn:
         if conn.transport.driver_type != "redis":
             return None
         klient = conn.default_channel.client
-        kolejki = {app.conf.task_default_queue, *app.amqp.queues.keys()}
-        for kolejka in kolejki:
-            if klient.llen(kolejka) > MAKS_ZADAN_W_KOLEJCE:
-                return None
-            for surowe in klient.lrange(kolejka, 0, -1):
-                try:
-                    naglowki = json.loads(surowe).get("headers") or {}
-                except ValueError:
-                    continue  # wiadomość w innym formacie — nie nasze zadanie
-                if naglowki.get("task") in nazwy_zadan or (
-                    naglowki.get("id") == task_id
-                ):
-                    return True
+        przeczytane = 0
+        for kolejka in {app.conf.task_default_queue, *app.amqp.queues.keys()}:
+            pozycja = 0
+            while True:
+                porcja = klient.lrange(kolejka, pozycja, pozycja + PORCJA_KOLEJKI - 1)
+                if not porcja:
+                    break
+                for surowe in porcja:
+                    przeczytane += len(surowe)
+                    try:
+                        naglowki = json.loads(surowe).get("headers") or {}
+                    except ValueError:
+                        continue  # inny format wiadomości — nie nasze zadanie
+                    if naglowki.get("task") in nazwy_zadan or (
+                        naglowki.get("id") == task_id
+                    ):
+                        return True
+                pozycja += len(porcja)
+                if przeczytane > BUDZET_KOLEJKI_BAJTY:
+                    return None
     return False
+
+
+def _zadania_u_workerow(app):
+    """Zadania, które workery wykonują, trzymają w rezerwie albo mają
+    zaplanowane: lista par ``(id, nazwa)``. ``None`` — żaden worker nie
+    odpowiedział. ``NIE_WIADOMO`` — któryś odpowiedział nie na temat (np.
+    starsza wersja bez komendy ``bpp_zadania_workera``).
+
+    Własna komenda zamiast ``inspect().active()/reserved()``: tamte
+    odsyłają pełne argumenty zadań, czyli megabajty przy analizach —
+    odpowiedź nie mieściła się w limicie czasu i żywy przebieg wyglądał
+    jak brak workera.
+    """
+    odpowiedzi = app.control.broadcast(
+        "bpp_zadania_workera", reply=True, timeout=LIMIT_ODPOWIEDZI_WORKERA_SEKUNDY
+    )
+    if not odpowiedzi:
+        return None
+    zadania = []
+    for odpowiedz in odpowiedzi:
+        for lista in odpowiedz.values():
+            if not isinstance(lista, list):
+                return NIE_WIADOMO
+            zadania.extend(tuple(para) for para in lista)
+    return zadania
 
 
 def stan_zadan_w_celery(nazwy_zadan, task_id):
@@ -98,15 +139,18 @@ def stan_zadan_w_celery(nazwy_zadan, task_id):
 
     nazwy_zadan = frozenset(nazwy_zadan)
     try:
-        aktywne = app.control.inspect(timeout=LIMIT_ODPOWIEDZI_WORKERA_SEKUNDY).active()
-        if not aktywne:
+        zadania = _zadania_u_workerow(app)
+        if zadania is None:
             return BRAK_WORKERA
-        # Wiemy już, ilu jest workerów — kolejne pytania kończą się po tylu
-        # odpowiedziach, bez czekania pełnego limitu.
-        inspekcja = app.control.inspect(
-            timeout=LIMIT_ODPOWIEDZI_WORKERA_SEKUNDY, limit=len(aktywne)
-        )
-        odpowiedzi = [aktywne, inspekcja.reserved(), inspekcja.scheduled()]
+        if zadania == NIE_WIADOMO:
+            return NIE_WIADOMO
+        if any(
+            nazwa in nazwy_zadan or id_zadania == task_id
+            for id_zadania, nazwa in zadania
+        ):
+            return ZYJE
+        # Kolejkę oglądamy dopiero teraz: żywy przebieg zwykle widać już
+        # u workera, a wiadomości w kolejce bywają duże.
         czeka = _czeka_w_kolejce(app, nazwy_zadan, task_id)
     except (OperationalError, RedisError, OSError):
         # Broker niedostępny / zerwane połączenie: strona statusu ma działać
@@ -114,20 +158,9 @@ def stan_zadan_w_celery(nazwy_zadan, task_id):
         logger.exception("Nie udało się sprawdzić w Celery, czy przebieg żyje")
         return NIE_WIADOMO
 
-    for odpowiedz in odpowiedzi:
-        for zadania in (odpowiedz or {}).values():
-            for zadanie in zadania:
-                # ``scheduled`` opakowuje zadanie w {"eta": ..., "request": {}}
-                zadanie = zadanie.get("request", zadanie)
-                if zadanie.get("name") in nazwy_zadan or zadanie.get("id") == task_id:
-                    return ZYJE
     if czeka:
         return ZYJE
-    # Któryś worker nie zdążył odpowiedzieć na jedno z pytań — nie wolno
-    # z tego wnioskować, że zadania nie ma.
-    if czeka is None or any(
-        odpowiedz is None or len(odpowiedz) < len(aktywne) for odpowiedz in odpowiedzi
-    ):
+    if czeka is None:
         return NIE_WIADOMO
     return MARTWY
 
@@ -149,13 +182,20 @@ def powod_przerwania(
     from .models import OdczytPrzebiegu
 
     odczyt = OdczytPrzebiegu.objects.filter(klucz=klucz, task_id=task_id).first()
-    if odczyt is not None and (
-        (teraz - odczyt.sprawdzono).total_seconds() < ODSTEP_SPRAWDZEN_SEKUNDY
-    ):
+    od_odczytu = None if odczyt is None else (teraz - odczyt.sprawdzono).total_seconds()
+    if od_odczytu is not None and od_odczytu < ODSTEP_SPRAWDZEN_SEKUNDY:
         return None
 
     stan = stan_zadan_w_celery(nazwy_zadan, task_id)
-    od = odczyt.od if odczyt is not None and odczyt.stan == stan else teraz
+    # Stan „trwa od”, tylko jeśli poprzedni odczyt był taki sam i NIEDAWNO:
+    # dwa pojedyncze odczyty w odstępie godziny nie znaczą, że przez tę
+    # godzinę nikt nie pracował.
+    ciaglosc = (
+        od_odczytu is not None
+        and od_odczytu <= MAKS_PRZERWA_ODCZYTOW_SEKUNDY
+        and odczyt.stan == stan
+    )
+    od = odczyt.od if ciaglosc else teraz
     OdczytPrzebiegu.objects.update_or_create(
         klucz=klucz,
         defaults={"task_id": task_id, "stan": stan, "od": od, "sprawdzono": teraz},
@@ -166,7 +206,12 @@ def powod_przerwania(
         return MARTWY
     if stan == BRAK_WORKERA and trwa >= limit_bez_workera_sekundy():
         return BRAK_WORKERA
-    if stan == NIE_WIADOMO and limit_przebiegu and wiek > limit_przebiegu:
+    if (
+        stan == NIE_WIADOMO
+        and trwa >= POTWIERDZENIE_MARTWEGO_SEKUNDY
+        and limit_przebiegu
+        and wiek > limit_przebiegu
+    ):
         return PRZEKROCZONY_LIMIT
     return None
 
@@ -235,6 +280,16 @@ class PilnowanyPrzebiegMixin:
             return self.ostatni_komunikat
         return None
 
+    @classmethod
+    def przebieg_anulowany(cls, task_id, *args, **kwargs):
+        """Dla zadania w tle, na samym początku pracy: czy przebieg, do
+        którego należę, został już anulowany przez strażnika (zadanie
+        przeleżało w kolejce, aż wróciła usługa zadań). Takie zadanie ma
+        wyjść, niczego nie zmieniając — użytkownik przeczytał już, że
+        zostało anulowane."""
+        status = cls.get_or_create(*args, **kwargs)
+        return status.komunikat_przerwania_dla(task_id) is not None
+
     def _przebieg_juz_zakonczony(self):
         """Zadanie skończyło pracę (wynik jest gotowy), tylko nikt jeszcze
         nie zdjął flagi — to robota widoków, nie strażnika. Statusy, których
@@ -243,9 +298,6 @@ class PilnowanyPrzebiegMixin:
         from celery.result import AsyncResult
 
         return AsyncResult(self.task_id).ready()
-
-    def _po_przerwaniu(self):
-        """Sprzątanie po anulowaniu (np. oznaczenie rekordów „w toku”)."""
 
     def anuluj_jesli_martwy(self):
         """Anuluj przebieg, nad którym nikt już nie pracuje. Zwraca
@@ -290,5 +342,4 @@ class PilnowanyPrzebiegMixin:
                 self.task_id,
                 powod,
             )
-            self._po_przerwaniu()
         return bool(zmienione)

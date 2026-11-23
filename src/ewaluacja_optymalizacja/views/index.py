@@ -110,6 +110,13 @@ def index(request):
         "status_odpinania": status_odpinania,
         "status_bulk": status_bulk,
         "status_unpinning": status_unpinning,
+        # Przebiegi anulowane przez strażnika (zadanie padło w trakcie) —
+        # bez tego link do statusu po prostu by zniknął, bez wyjaśnienia.
+        "przerwane_przebiegi": [
+            status.ostatni_komunikat
+            for status in (status_bulk, status_odpinania, status_unpinning)
+            if status.przerwany
+        ],
         "unpinning_analysis_running": unpinning_analysis_running,
         "unpinning_task_id": unpinning_task_id,
     }

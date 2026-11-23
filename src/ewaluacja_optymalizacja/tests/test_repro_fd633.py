@@ -169,24 +169,6 @@ def test_bulk_ze_wszystkimi_wynikami_nie_jest_przerwany(uczelnia, okres_2022, ma
     martwy.assert_not_called()
 
 
-def test_bulk_przerwany_oznacza_niedokonczone_dyscypliny(uczelnia, okres_2022, martwy):
-    dyscyplina = _raportowana_dyscyplina(uczelnia, okres_2022)
-    w_toku = baker.make(
-        OptimizationRun,
-        uczelnia=uczelnia,
-        okres=okres_2022,
-        dyscyplina_naukowa=dyscyplina,
-        status="running",
-    )
-    _trwa(StatusOptymalizacjiBulk, uczelnia=uczelnia, okres=okres_2022)
-
-    assert StatusOptymalizacjiBulk.aktualny().przerwany
-
-    w_toku.refresh_from_db()
-    assert w_toku.status == "failed"
-    assert "Przerwane" in w_toku.notes
-
-
 # --- strony statusu
 
 
@@ -212,7 +194,9 @@ def test_strona_statusu_pokazuje_przerwanie(
     )
 
     html = odpowiedz.content.decode()
-    assert odpowiedz.status_code == 200
+    # 286 = htmx przestaje odpytywać (wyzwalacz siedzi na kontenerze, którego
+    # podmiana wnętrza nie usuwa)
+    assert odpowiedz.status_code == (286 if htmx else 200)
     assert PRZERWANE in html
     assert not status_cls.objects.get(pk=1).w_trakcie
 
@@ -235,11 +219,11 @@ def test_strona_statusu_bulk_pokazuje_przerwanie(
     _raportowana_dyscyplina(uczelnia, okres_2022)
     _trwa(StatusOptymalizacjiBulk, uczelnia=uczelnia, okres=okres_2022)
 
-    html = admin_client.get(
-        reverse("ewaluacja_optymalizacja:bulk-status", args=[uczelnia.pk, TASK_ID])
-    ).content.decode()
+    url = reverse("ewaluacja_optymalizacja:bulk-status", args=[uczelnia.pk, TASK_ID])
+    html = admin_client.get(url).content.decode()
 
     assert PRZERWANE in html
+    assert admin_client.get(url, HTTP_HX_REQUEST="true").status_code == 286
     assert "Oczekiwanie na rozpoczęcie przetwarzania" not in html
     assert not StatusOptymalizacjiBulk.objects.get(pk=1).w_trakcie
 
@@ -288,3 +272,66 @@ def test_po_przerwaniu_mozna_uruchomic_analize_ponownie(admin_client, uczelnia, 
     status = StatusDisciplineSwapAnalysis.objects.get(pk=1)
     assert status.w_trakcie
     assert status.task_id == "zadanie-nowe"
+
+
+def test_strona_glowna_modulu_pokazuje_komunikat_przerwania(
+    admin_client, uczelnia, martwy
+):
+    """Bez komunikatu link „Zobacz status…” po prostu by zniknął."""
+    _trwa(StatusOptymalizacjiZOdpinaniem)
+
+    html = admin_client.get(reverse("ewaluacja_optymalizacja:index")).content.decode()
+
+    assert PRZERWANE in html
+    assert "Zobacz status optymalizacji" not in html
+
+
+# --- zadanie, które rusza już po anulowaniu
+
+
+def _anulowany(status_cls, **pola):
+    _trwa(status_cls, **pola)
+    with patch(POWOD, return_value=BRAK_WORKERA):
+        assert status_cls.aktualny().przerwany
+
+
+def test_anulowana_optymalizacja_z_odpinaniem_nie_odpina(uczelnia):
+    """Usługa zadań nie działała, przebieg anulowano, zadanie zostało
+    w kolejce. Gdy usługa wraca, zadanie NIE może wykonać masowego odpinania,
+    o którym użytkownik przeczytał, że zostało anulowane."""
+    from ewaluacja_optymalizacja.tasks import optimize_and_unpin_task
+
+    _anulowany(StatusOptymalizacjiZOdpinaniem)
+
+    wynik = optimize_and_unpin_task.apply(args=[uczelnia.pk], task_id=TASK_ID).get()
+
+    assert wynik["status"] == "cancelled"
+    status = StatusOptymalizacjiZOdpinaniem.objects.get(pk=1)
+    assert status.przerwany  # zadanie nie zajęło slotu
+    assert not status.w_trakcie
+
+
+def test_anulowane_przeliczanie_ewaluacji_nie_liczy(uczelnia, okres_2022):
+    from ewaluacja_optymalizacja.tasks import solve_all_reported_disciplines
+
+    _raportowana_dyscyplina(uczelnia, okres_2022)
+    _anulowany(StatusOptymalizacjiBulk, uczelnia=uczelnia, okres=okres_2022)
+
+    with patch(
+        "ewaluacja_optymalizacja.tasks.optimization.solve_single_discipline_task"
+    ) as podzadanie:
+        wynik = solve_all_reported_disciplines.apply(
+            args=[uczelnia.pk], kwargs={"okres_pk": okres_2022.pk}, task_id=TASK_ID
+        ).get()
+
+    assert wynik["status"] == "cancelled"
+    podzadanie.s.assert_not_called()
+
+
+def test_nowy_przebieg_po_anulowanym_dziala_normalnie(uczelnia):
+    """Anulowanie dotyczy konkretnego zadania — następne (inny identyfikator)
+    przechodzi przez zabezpieczenie."""
+    _anulowany(StatusOptymalizacjiZOdpinaniem)
+
+    assert not StatusOptymalizacjiZOdpinaniem.przebieg_anulowany("zadanie-nowe")
+    assert StatusOptymalizacjiZOdpinaniem.przebieg_anulowany(TASK_ID)

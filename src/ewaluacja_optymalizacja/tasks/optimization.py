@@ -285,6 +285,21 @@ def solve_all_reported_disciplines(
         Dictionary z podstawowymi informacjami o uruchomionych zadaniach
     """
     from bpp.models import Uczelnia
+    from ewaluacja_optymalizacja.models import (
+        StatusOptymalizacjiBulk,
+        StatusPrzegladarkaRecalc,
+    )
+
+    # Zadanie przeleżało w kolejce, a strażnik przebiegów zdążył je anulować
+    # (użytkownik przeczytał już, że nie zostanie wykonane) — nie licz.
+    if StatusOptymalizacjiBulk.przebieg_anulowany(
+        self.request.id
+    ) or StatusPrzegladarkaRecalc.przebieg_anulowany(self.request.id):
+        logger.warning(
+            "solve_all_reported_disciplines: przebieg %s został anulowany — pomijam.",
+            self.request.id,
+        )
+        return {"uczelnia_id": uczelnia_id, "status": "cancelled"}
 
     uczelnia = Uczelnia.objects.get(pk=uczelnia_id)
     okres = pobierz_okres(okres_pk)
@@ -545,6 +560,20 @@ def optimize_and_unpin_task(
         OptimizationRun,
         StatusOptymalizacjiZOdpinaniem,
     )
+
+    # Zadanie przeleżało w kolejce, a strażnik przebiegów zdążył je anulować
+    # (użytkownik przeczytał już, że nie zostanie wykonane) — NIE wchodź
+    # w masowe odpinanie. Sprawdzane przed barierą, bo ta zajęłaby slot.
+    if StatusOptymalizacjiZOdpinaniem.przebieg_anulowany(self.request.id):
+        logger.warning(
+            "optimize_and_unpin_task: przebieg %s został anulowany — pomijam.",
+            self.request.id,
+        )
+        return {
+            "uczelnia_id": uczelnia_id,
+            "status": "cancelled",
+            "message": "Optymalizacja z odpinaniem została anulowana.",
+        }
 
     # Bariera bazodanowa (niezależna od Redisa) — jeśli świeży przebieg już
     # trwa, wycofaj się ZANIM wejdziesz w masowe odpinanie przypięć uczelni.

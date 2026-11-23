@@ -122,6 +122,11 @@
             </a>
             {% endif %}
         </div>
+        {% for komunikat in przerwane_przebiegi %}
+        <div class="callout alert">
+            <span class="fi-alert"></span> {{ komunikat }}
+        </div>
+        {% endfor %}
 
         <div class="button-group ewaluacja-optymalizacja__button-group--spaced">
             {% if optimization_runs and status_bulk.plik_zip_wszystkie_xls %}

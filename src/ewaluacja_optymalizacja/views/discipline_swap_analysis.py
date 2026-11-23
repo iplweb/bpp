@@ -7,13 +7,13 @@ from celery_singleton import DuplicateTaskError
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.http import HttpResponse
-from django.shortcuts import redirect, render
+from django.shortcuts import redirect
 from django.urls import reverse
 
 from bpp.models import Uczelnia
 from ewaluacja_common.okres import okres_dla_request
 
-from .helpers import kontekst_przerwanego_przebiegu
+from .helpers import kontekst_przerwanego_przebiegu, render_postepu
 
 logger = logging.getLogger(__name__)
 
@@ -163,16 +163,9 @@ def discipline_swap_status(request, task_id):
 
         return redirect("ewaluacja_optymalizacja:discipline-swap-list")
 
-    # Dla HTMX request zwróć tylko partial
-    if request.headers.get("HX-Request"):
-        return render(
-            request,
-            "ewaluacja_optymalizacja/_discipline_swap_progress.html",
-            context,
-        )
-
-    return render(
+    return render_postepu(
         request,
+        "ewaluacja_optymalizacja/_discipline_swap_progress.html",
         "ewaluacja_optymalizacja/discipline_swap_status.html",
         context,
     )

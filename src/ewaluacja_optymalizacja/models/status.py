@@ -15,19 +15,6 @@ from ewaluacja_common.przebiegi import PilnowanyPrzebiegMixin
 from .bariera import zajmij_slot_pod_bariera, zwolnij_slot
 
 
-def _oznacz_przerwane_optymalizacje(uczelnia_id, okres_id):
-    """Po anulowaniu przebiegu: optymalizacje dyscyplin, które zostały
-    w stanie „w toku”, nie skończą się już nigdy — oznacz je jako błędne,
-    żeby strony statusu nie czekały na nie w nieskończoność."""
-    from .runs import OptimizationRun
-
-    if uczelnia_id is None:
-        return
-    OptimizationRun.objects.filter(
-        uczelnia_id=uczelnia_id, okres_id=okres_id, status="running"
-    ).update(status="failed", notes="Przerwane — zadanie w tle nie dokończyło pracy")
-
-
 class StatusOptymalizacjiZOdpinaniem(PilnowanyPrzebiegMixin, models.Model):
     """
     Singleton model śledzący status zadania optymalizacji z odpinaniem.
@@ -301,9 +288,6 @@ class StatusOptymalizacjiBulk(PilnowanyPrzebiegMixin, models.Model):
             ).values_list("dyscyplina_naukowa_id", flat=True)
         )
         return bool(raportowane) and raportowane <= skonczone
-
-    def _po_przerwaniu(self):
-        _oznacz_przerwane_optymalizacje(self.uczelnia_id, self.okres_id)
 
 
 class StatusUnpinningAnalyzy(PilnowanyPrzebiegMixin, models.Model):
@@ -650,9 +634,6 @@ class StatusPrzegladarkaRecalc(PilnowanyPrzebiegMixin, models.Model):
         # ``task_id`` to zadanie-rodzic kończące się zaraz po rozesłaniu
         # optymalizacji dyscyplin; flagę zdejmuje ``finalize_browser_recalc``.
         return False
-
-    def _po_przerwaniu(self):
-        _oznacz_przerwane_optymalizacje(self.uczelnia_id, self.okres_id)
 
 
 class StatusOdpinaniaWszystkich(PilnowanyPrzebiegMixin, models.Model):

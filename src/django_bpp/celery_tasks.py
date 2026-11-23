@@ -5,6 +5,9 @@ import platform
 import rollbar
 from celery import Celery
 from celery.signals import task_failure, worker_ready
+from celery.worker import state as stan_workera
+from celery.worker.control import inspect_command
+from celery.worker.request import Request
 from celery_singleton import Singleton, clear_locks
 from celery_singleton import util as singleton_util
 from django.apps import apps
@@ -147,3 +150,25 @@ def celery_base_data_hook(request, data):
     registered in bpp.rollbar_config.
     """
     data["framework"] = "celery"
+
+
+@inspect_command()
+def bpp_zadania_workera(state):
+    """Zadania, które ten worker wykonuje, trzyma w rezerwie albo ma
+    zaplanowane (ETA/ponowienie): lista par ``[id, nazwa]``.
+
+    Odpowiednik ``inspect().active()/reserved()/scheduled()`` bez argumentów
+    zadań — tamte odsyłają pełne ``args``/``kwargs``, czyli megabajty przy
+    zadaniach-porcjach analiz. Używa strażnik przebiegów w tle
+    (``ewaluacja_common.przebiegi``).
+    """
+    # ``reserved_requests`` obejmuje także zadania aktywne.
+    zadania = {(r.id, r.name) for r in state.tset(stan_workera.reserved_requests)}
+    for wpis in state.consumer.timer.schedule.queue:
+        try:
+            zaplanowane = wpis.entry.args[0]
+        except (IndexError, TypeError):
+            continue  # wpis timera inny niż zadanie
+        if isinstance(zaplanowane, Request):
+            zadania.add((zaplanowane.id, zaplanowane.name))
+    return [list(para) for para in zadania]
