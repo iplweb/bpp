@@ -1,5 +1,5 @@
 {
-  "git_sha": "4c13a33b6734d17d28beb09c24f509a030473b93",
+  "git_sha": "86fd4c5867065e7222abc406a191b87b6bd66c9b",
   "last_migration": {
     "admin": "0003_logentry_add_action_flag_choices",
     "admin_dashboard": "0001_initial",
@@ -23,7 +23,7 @@
     "dynamic_admin_columns": "0001_initial",
     "easyaudit": "0019_alter_crudevent_changed_fields_and_more",
     "ewaluacja2021": "0020_delete_ewaluacja2021_models",
-    "ewaluacja_common": "0007_wybrany_okres_ewaluacji",
+    "ewaluacja_common": "0008_odczyt_przebiegu",
     "ewaluacja_liczba_n": "0012_okres_ewaluacji_wymagany",
     "ewaluacja_metryki": "0015_statusgenerowania_reset_sekwencji",
     "ewaluacja_optymalizacja": "0019_okres_ewaluacji_wymagany",
