@@ -107,6 +107,19 @@ class FalszywyKlientPBN:
         )
 
 
+@pytest.fixture(autouse=True)
+def swiezy_cache_importera():
+    """Importer trzyma słowniki (charakter formalny, status korekty…) w
+    ``lru_cache`` na cały proces. Między testami wiersze słowników bywają
+    odtwarzane z innymi kluczami — bez czyszczenia importer wstawiałby
+    klucz obcy do wiersza, którego już nie ma."""
+    from pbn_integrator.importer import cache
+
+    cache.clear_cache()
+    yield
+    cache.clear_cache()
+
+
 @pytest.fixture
 def slowniki(
     jezyki, charaktery_formalne, typy_kbn, typy_odpowiedzialnosci, statusy_korekt

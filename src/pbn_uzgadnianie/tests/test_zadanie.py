@@ -177,6 +177,9 @@ def test_wybieracz_wersji_dziala_tylko_w_bloku(slowniki):
 def test_straznik_import_masowy_nadal_importuje_cala_kopie(slowniki):
     """„Import z PBN” (masowy) dalej bierze całą lokalną kopię — bez filtra
     profilu instytucji. Uzgadnianie tego nie zmienia."""
+    from bpp.models import Rodzaj_Zrodla
+
+    Rodzaj_Zrodla.objects.get_or_create(nazwa="periodyk")
     _ksiazka_dwie_wersje(slowniki)
 
     importer.importuj_publikacje_instytucji(client=None, default_jednostka=None)
