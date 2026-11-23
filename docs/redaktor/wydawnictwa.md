@@ -59,6 +59,64 @@ mają w tym polu wpisany miesiąc i rok (bez zmyślonego dnia). Jeśli PBN
 podaje sam rok, BPP nie wpisuje daty — uzupełnij ją ręcznie przed wysyłką
 do PBN (raport kompletności danych POL-on pokaże taki brak).
 
+## Patenty — pola i opis bibliograficzny {#patenty}
+
+Formularz patentu (**Redagowanie → Patenty**) ma, obok pól wspólnych
+z innymi rekordami, pola właściwe tylko patentom:
+
+| Pole | Do czego służy |
+|---|---|
+| „Numer zgłoszenia”, „Data zgłoszenia” | dane zgłoszenia patentowego |
+| „Numer prawa wyłącznego” | numer patentu (np. `PL123456`) |
+| „Data decyzji” | data decyzji o udzieleniu prawa |
+| „Data opublikowania” | data ogłoszenia o udzieleniu prawa, np. w „Wiadomościach Urzędu Patentowego”; niezależna od daty decyzji |
+| „Rodzaj prawa” | słownik: patent, wzór użytkowy, wzór przemysłowy… |
+| „Typ patentu” | `polski` albo `zagraniczny` — klasyfikacja niezależna od rodzaju prawa |
+| „Kraj” | kraj udzielenia prawa; pojawia się w formularzu po wybraniu typu `zagraniczny` |
+| „Wydzial” | jednostka uczelni, z którą patent jest powiązany (m.in. do raportów) |
+| „Uprawnieni” | podmioty uprawnione z patentu, także spoza uczelni — wpisane tak, jak mają się pojawić w opisie |
+| „Strony” | zakres stron w publikatorze |
+
+Wszystkie pola patentowe są opcjonalne. „Kraj” można wypełnić wyłącznie
+przy typie `zagraniczny` — w innym wypadku formularz zgłosi błąd przy tym polu.
+
+### Opis bibliograficzny patentu
+
+Opis bibliograficzny patentu składa się z pól w takiej kolejności:
+
+1. „Numer prawa wyłącznego”,
+2. tytuł,
+3. „Uprawnieni”,
+4. twórcy,
+5. „Informacje”, „Szczegóły”, „Uwagi” — jak w pozostałych rekordach,
+6. „Strony” (z przedrostkiem `s.`), „Numer zgłoszenia”, „Data zgłoszenia”,
+   „Data decyzji”, „Data opublikowania”,
+7. adres WWW, poprzedzony słowami `Opublikowano w:` (jeśli wypełniono
+   zarówno „Adres WWW (płatny dostęp)”, jak i „Adres WWW (wolny dostęp)”,
+   w opisie jest ten drugi).
+
+Przykład:
+
+> PL123456. **Sposób otrzymywania związku chemicznego.** Uniwersytet X,
+> Warszawa, PL. [AUT.] ANNA KOWALSKA,
+> JAN NOWAK. W: WUP 06/25. Nr zgłoszenia: P.654321, Data zgłoszenia:
+> 14.06.2022, Data decyzji: 13.11.2024, Data opublikowania: 10.02.2025.
+> Opublikowano w: https://example.com/wup06_2025.pdf
+
+Pole niewypełnione nie zostawia w opisie żadnego śladu — ani etykiety, ani
+przecinka. Patent, w którym nie wypełniono żadnego z pól patentowych ani
+adresu WWW, ma opis taki jak dotąd (tytuł, twórcy, „Informacje”,
+„Szczegóły”, „Uwagi”). Jeśli zakres stron jest już wpisany w „Szczegółach”,
+nie jest powtarzany z pola „Strony”.
+
+„Typ patentu”, „Kraj” i „Rodzaj prawa” nie wchodzą do opisu
+bibliograficznego — są widoczne na stronie rekordu, w ramce „Patent” karty
+„Informacje dodatkowe”, razem z pozostałymi danymi patentowymi.
+
+Uczelnia, która ma własny szablon opisu bibliograficznego przypisany do
+patentów (albo do wszystkich rekordów), zachowuje swój szablon — opisana
+wyżej zmiana dotyczy szablonu domyślnego.
+
 ## Historia zmian i przywracanie poprzedniej wersji {#historia-zmian}
 
 Każda zmiana rekordu publikacji (wydawnictwa ciągłego, zwartego, patentu,

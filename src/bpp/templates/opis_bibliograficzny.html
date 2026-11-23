@@ -4,6 +4,10 @@
 {# TYTUŁ PRACY #}
 {# *********** #}
 
+{# PATENT (FD#449): numer prawa wylacznego otwiera opis. Pola istnieja #}
+{# tylko w modelu Patent, wiec dla pozostalych rekordow nic sie nie zmienia. #}
+{% if praca.numer_prawa_wylacznego %}{{ praca.numer_prawa_wylacznego|znak_na_koncu:"." }}{% endif %}
+
 {# WCAG 3.1.2: znacznik jezyka TYLKO na tytule oryginalnym. Musi byc #}
 {# w srodku cache'owanego HTML-u, bo listy i wyniki wyszukiwania #}
 {# wstawiaja gotowy blob, nie renderuja pol modelu. #}
@@ -15,6 +19,9 @@
 {% if praca.charakter_formalny.charakter_ogolny != 'roz' %}
     {{ praca.oznaczenie_wydania|default:""|znak_na_koncu:"." }}
 {% endif %}
+
+{# PATENT (FD#449): uprawnieni -- miedzy tytulem a tworcami. #}
+{% if praca.uprawnieni %}{{ praca.uprawnieni|znak_na_koncu:"." }}{% endif %}
 
 {# ******* #}
 {# AUTORZY #}
@@ -56,7 +63,6 @@
     {% if praca.charakter_formalny.charakter_ogolny == 'roz' %}{{ praca.oznaczenie_wydania|default:""|znak_na_koncu:"." }}{% endif %}
     {{ praca.uwagi|default:""|znak_na_poczatku:","|safe }}
     {{ praca.isbn|default:""|znak_na_poczatku:"," }}
-    {{ praca.doi|default:""|znak_na_poczatku:". DOI: "|default:". " }}
 {% else %}
     {# szczegóły i uwagi na poczatku #}
     {{ praca.szczegoly|default:""|znak_na_poczatku:" "|safe }}
@@ -64,7 +70,28 @@
     {{ praca.miejsce_i_rok|default:""|znak_na_poczatku:"." }}
     {{ praca.wydawnictwo|default:""|znak_na_poczatku:"," }}
     {{ praca.isbn|default:""|znak_na_poczatku:"," }}
+{% endif %}
+
+{# DOI albo kropka zamykajaca -- wspolne dla obu galezi powyzej. Gdy dalej #}
+{# ida dane patentowe, kropke stawiamy tylko po niepustych informacjach, #}
+{# szczegolach albo uwagach (lista tworcow konczy sie juz wlasna kropka). #}
+{% if praca.ma_dane_patentowe_w_opisie %}
+    {% if praca.informacje or praca.szczegoly or praca.uwagi %}. {% endif %}
+{% else %}
     {{ praca.doi|default:""|znak_na_poczatku:". DOI: "|default:". " }}
+{% endif %}
+
+{# ************************* #}
+{# DANE PATENTOWE (FD#449)   #}
+{# ************************* #}
+
+{# dane_patentowe_dla_opisu zwraca TYLKO pola wypelnione, wiec puste pole #}
+{# nie zostawia ani etykiety, ani przecinka. #}
+{% if praca.dane_patentowe_dla_opisu %}
+    {% for etykieta, wartosc in praca.dane_patentowe_dla_opisu %}{{ etykieta }} {{ wartosc }}{% if not forloop.last %}, {% else %}. {% endif %}{% endfor %}
+{% endif %}
+{% if praca.adres_publikacji_dla_opisu %}
+    Opublikowano w: {{ praca.adres_publikacji_dla_opisu }}
 {% endif %}
 
 {# XXX: DO ZROBIENIA: seria wydawnicza -- czy jest w ogóle wyświetlana? #}

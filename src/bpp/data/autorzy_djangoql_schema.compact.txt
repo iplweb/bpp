@@ -288,6 +288,7 @@ bpp.patent:
   autorzy_set                                  -> bpp.patent_autor?
   cached_punkty_dyscyplin                      unknown?
   data_decyzji                                 date?
+  data_opublikowania                           date?
   data_zgloszenia                              date?  "Data zgłoszenia"
   deleted_at                                   datetime?
   dostep_dnia                                  date?  "Dostęp dnia (płatny dostęp)" — Data dostępu do strony WWW.
@@ -296,6 +297,7 @@ bpp.patent:
   index_copernicus                             float
   informacja_z                                 -> bpp.zrodlo_informacji?  match nazwa
   informacje                                   str
+  kraj                                         str
   nie_eksportuj_przez_api                      bool
   numer_prawa_wylacznego                       str?  "Numer prawa wyłącznego"
   numer_zgloszenia                             str?  "Numer zgłoszenia"
@@ -323,8 +325,10 @@ bpp.patent:
   tekst_przed_pierwszym_autorem                str?
   tom                                          str
   transaction_id                               str?
+  typ_patentu                                  str  choices: polski | zagraniczny
   tytul_oryginalny                             str  "Tytuł oryginalny"
   tytul_oryginalny_sort                        str
+  uprawnieni                                   str
   utworzono                                    datetime?
   uwagi                                        str
   wdrozenie                                    bool?  "Wdrożenie"
