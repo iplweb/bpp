@@ -8,7 +8,9 @@ zdjętych z profilu — FD#552).
 
 import logging
 import sys
+from datetime import datetime, timedelta
 
+from django.conf import settings
 from django.db import IntegrityError
 from django.utils import timezone
 
@@ -20,6 +22,7 @@ from pbn_integrator.utils.mongodb_ops import zapisz_publikacje_instytucji
 from pbn_integrator.utils.publications import zapisz_publikacje_instytucji_v2
 
 from .dyscypliny import pobierz_oswiadczenia
+from .odpowiedniki import identyfikatory, rekordy_bpp_uczelni
 
 logger = logging.getLogger(__name__)
 
@@ -43,6 +46,29 @@ def _blad(bledy, etap, opis, pbn_uid=None):
     bledy.append({"etap": etap, "pbn_uid": pbn_uid, "opis": opis})
 
 
+def _z_licznikiem(zasob):
+    """``(numer, łączna liczba albo None, element)`` dla stronicowanej
+    odpowiedzi PBN. Łączną liczbę PBN podaje w pierwszej stronie."""
+    ile = getattr(zasob, "total_elements", None)
+    if ile is None and hasattr(zasob, "__len__"):
+        ile = len(zasob)
+    for nr, elem in enumerate(zasob, 1):
+        yield nr, ile, elem
+
+
+def _postep_profilu(nadzorca, co, nr, ile, procent_od, procent_do):
+    """Licznik pobierania profilu — co 25 wpisów (profil bywa duży i bez
+    licznika wyglądało to na zawieszenie)."""
+    if nr != 1 and nr % 25:
+        return
+    if ile:
+        opis = f"{nr} z {ile}"
+        procent = procent_od + (procent_do - procent_od) * nr // ile
+    else:
+        opis, procent = f"{nr}", procent_od
+    nadzorca.etap(f"Pobieranie profilu instytucji z PBN — {co}: {opis}", procent)
+
+
 def pobierz_profil_instytucji(client, uczelnia, nadzorca, bledy):
     """Czyta profil instytucji z PBN (API v1 i v2) i zapisuje go w kopii.
 
@@ -51,9 +77,11 @@ def pobierz_profil_instytucji(client, uczelnia, nadzorca, bledy):
     """
     profil = {}
 
-    nadzorca.etap("Pobieranie profilu instytucji z PBN (1/3)", 2)
-    for elem in client.get_institution_publications(page_size=100):
+    for nr, ile, elem in _z_licznikiem(
+        client.get_institution_publications(page_size=100)
+    ):
         nadzorca.sprawdz_anulowanie()
+        _postep_profilu(nadzorca, "lista prac i osób", nr, ile, 2, 5)
         if elem.get("institutionId") != uczelnia.pbn_uid_id:
             continue
         pbn_uid = elem.get("publicationId")
@@ -70,9 +98,9 @@ def pobierz_profil_instytucji(client, uczelnia, nadzorca, bledy):
         except HttpException as e:
             _blad(bledy, "profil instytucji", f"PBN zwrócił błąd: {e}", pbn_uid)
 
-    nadzorca.etap("Pobieranie profilu instytucji z PBN (2/3)", 8)
-    for elem in client.get_institution_publications_v2():
+    for nr, ile, elem in _z_licznikiem(client.get_institution_publications_v2()):
         nadzorca.sprawdz_anulowanie()
+        _postep_profilu(nadzorca, "lista prac (API v2)", nr, ile, 6, 9)
         pbn_uid = elem.get("objectId")
         if not pbn_uid:
             continue
@@ -118,7 +146,7 @@ def odswiez_oswiadczenia(client, uczelnia, pbn_uids, nadzorca, bledy):
     ile = len(pbn_uids)
     for nr, pbn_uid in enumerate(pbn_uids, 1):
         nadzorca.sprawdz_anulowanie()
-        nadzorca.etap(f"Pobieranie oświadczeń z PBN ({nr}/{ile})", 30 + 10 * nr // ile)
+        nadzorca.etap(f"Pobieranie oświadczeń z PBN: {nr} z {ile}", 30 + 30 * nr // ile)
         try:
             oswiadczenia = pobierz_oswiadczenia(
                 client,
@@ -148,9 +176,7 @@ def odswiez_publikacje(client, pbn_uids, nadzorca, bledy):
     ile = len(pbn_uids)
     for nr, pbn_uid in enumerate(pbn_uids, 1):
         nadzorca.sprawdz_anulowanie()
-        nadzorca.etap(
-            f"Odświeżanie publikacji z PBN ({nr}/{ile}) (3/3)", 10 + 20 * nr // ile
-        )
+        nadzorca.etap(f"Pobieranie publikacji z PBN: {nr} z {ile}", 10 + 20 * nr // ile)
         try:
             dane = client.get_publication_by_id(pbn_uid)
         except PublicationNotFound:
@@ -165,16 +191,74 @@ def odswiez_publikacje(client, pbn_uids, nadzorca, bledy):
     return nie_istnieja
 
 
-def zbuduj_zakres(client, uczelnia, rok_od, rok_do, nadzorca):
+def _swieze(wpis, teraz):
+    """Czy wynik wyszukiwania jest jeszcze świeży (próg jak dla ostrzeżeń)."""
+    granica = teraz - timedelta(hours=settings.PBN_UZGADNIANIE_DANE_AKTUALNE_GODZIN)
+    return datetime.fromisoformat(wpis["kiedy"]) >= granica
+
+
+def wyszukaj_w_pbn(client, uczelnia, rok_od, rok_do, nadzorca, bledy, poprzednie):
+    """Pyta PBN o rekordy BPP bez powiązania: po DOI, a książki także po ISBN.
+
+    Profil instytucji nie mówi nic o pracach spoza profilu — bez tego kroku
+    nie da się odróżnić „pracy nie ma w PBN” od „jest, ale gdzie indziej”.
+
+    Zwraca ``{klucz: {"uids": [...], "kiedy": ISO}}``; pusta lista = PBN nie
+    ma pracy o tym identyfikatorze. Jedno zapytanie na unikalny identyfikator;
+    wyniki z ``poprzednie`` (wcześniejsze pobranie), póki świeże, są brane
+    bez pytania. Klucza, dla którego PBN zwrócił błąd, w słowniku nie ma.
+    """
+    teraz = timezone.now()
+    klucze = []
+    for rekord in rekordy_bpp_uczelni(uczelnia, rok_od, rok_do).filter(pbn_uid_id=None):
+        for klucz in identyfikatory(rekord):
+            if klucz not in klucze:
+                klucze.append(klucz)
+
+    wynik = {}
+    ile = len(klucze)
+    for nr, klucz in enumerate(klucze, 1):
+        nadzorca.sprawdz_anulowanie()
+        stary = (poprzednie or {}).get(klucz)
+        if stary and _swieze(stary, teraz):
+            wynik[klucz] = stary
+            continue
+        nadzorca.etap(
+            f"Szukanie w PBN prac po DOI/ISBN: {nr} z {ile}", 60 + 35 * nr // ile
+        )
+        pole, _, wartosc = klucz.partition(":")
+        try:
+            uids = [e["mongoId"] for e in client.search_publications(**{pole: wartosc})]
+            for pbn_uid in uids:
+                zapisz_mongodb(client.get_publication_by_id(pbn_uid), Publication)
+        except HttpException as e:
+            _blad(bledy, "szukanie po DOI/ISBN", f"PBN zwrócił błąd: {e}", klucz)
+            continue
+        wynik[klucz] = {"uids": uids, "kiedy": timezone.now().isoformat()}
+    return wynik
+
+
+def zbuduj_zakres(client, uczelnia, rok_od, rok_do, nadzorca, poprzedni=None):
     """Pobranie danych z PBN. Zwraca słownik dla ``UzgodnienieZPBN.zakres``.
+
+    ``poprzedni`` — zakres wcześniejszego pobrania tej uczelni:
+
+    * ``{"profil": …}`` z kluczem ``uzyj_profilu`` — lista prac z profilu
+      jest brana stamtąd (z JEJ datą), bez pobierania;
+    * świeże wyniki wyszukiwania po DOI/ISBN są brane stamtąd zawsze.
 
     ``pobrano`` to chwile zakończenia pobierania każdego ze źródeł (ISO) —
     jedyne wiarygodne „z kiedy są dane”: daty modyfikacji wierszy kopii
     mówią, kiedy wiersz się ZMIENIŁ, a nie kiedy sprawdzono go w PBN.
     """
+    poprzedni = poprzedni or {}
     bledy, pobrano = [], {}
-    profil = pobierz_profil_instytucji(client, uczelnia, nadzorca, bledy)
-    pobrano["profil"] = timezone.now().isoformat()
+    if poprzedni.get("uzyj_profilu"):
+        profil = poprzedni["profil"]
+        pobrano["profil"] = poprzedni["pobrano"]["profil"]
+    else:
+        profil = pobierz_profil_instytucji(client, uczelnia, nadzorca, bledy)
+        pobrano["profil"] = timezone.now().isoformat()
     w_zakresie, bez_roku = wyznacz_zakres(profil, rok_od, rok_do)
     nie_istnieja = odswiez_publikacje(client, w_zakresie, nadzorca, bledy)
     pobrano["publikacje"] = timezone.now().isoformat()
@@ -183,10 +267,19 @@ def zbuduj_zakres(client, uczelnia, rok_od, rok_do, nadzorca):
     w_zakresie, bez_roku = wyznacz_zakres(profil, rok_od, rok_do)
     oswiadczenia = odswiez_oswiadczenia(client, uczelnia, w_zakresie, nadzorca, bledy)
     pobrano["oswiadczenia"] = timezone.now().isoformat()
+    szukane = wyszukaj_w_pbn(
+        client, uczelnia, rok_od, rok_do, nadzorca, bledy, poprzedni.get("szukane")
+    )
+    # Data źródła = najstarszy z użytych wyników (część mogła być wzięta
+    # z poprzedniego pobrania).
+    pobrano["wyszukiwanie"] = min(
+        (w["kiedy"] for w in szukane.values()), default=timezone.now().isoformat()
+    )
     return {
         "pobrano": pobrano,
         "pobrano_lata": [rok_od, rok_do],
         "oswiadczenia": oswiadczenia,
+        "szukane": szukane,
         "profil": profil,
         "w_zakresie": w_zakresie,
         "bez_roku": bez_roku,

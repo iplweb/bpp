@@ -71,6 +71,17 @@
                             <label>{{ form.rok_do.label }} {{ form.rok_do }}</label>
                         </div>
                     </div>
+                    {% if swiezy_profil %}
+                        <p>
+                            <label>
+                                <input type="checkbox" name="caly_profil">
+                                Przy pobieraniu pobierz ponownie także listę prac z profilu instytucji
+                                (trwa najdłużej). Zaznacz, jeśli od ostatniego pobrania <strong>dodawano lub
+                                usuwano prace na profilu instytucji w PBN</strong> — bez tego system odświeży
+                                tylko dane prac i oświadczenia dla wybranych lat.
+                            </label>
+                        </p>
+                    {% endif %}
                     <button type="submit" name="tryb" value="pobranie" class="button secondary">
                         <span class="fi-download"></span> Pobierz dane z PBN
                     </button>

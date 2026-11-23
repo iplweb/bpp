@@ -22,6 +22,8 @@ class FalszywyKlientPBN:
         self.profil_v2 = []
         self.publikacje = {}
         self.oswiadczenia = {}
+        #: Co PBN „znajduje” po DOI/ISBN: ``{"doi:10.x/y": [pbn_uid, …]}``.
+        self.wyszukiwalne = {}
         self.wywolania = []
 
     def get_institution_publications(self, page_size=10):
@@ -41,6 +43,11 @@ class FalszywyKlientPBN:
     def get_institution_statements_of_single_publication(self, pbn_uid, page_size=50):
         self.wywolania.append(f"get_institution_statements:{pbn_uid}")
         return [dict(o) for o in self.oswiadczenia.get(pbn_uid, [])]
+
+    def search_publications(self, **kryteria):
+        ((pole, wartosc),) = kryteria.items()
+        self.wywolania.append(f"search_publications:{pole}:{wartosc}")
+        return [{"mongoId": u} for u in self.wyszukiwalne.get(f"{pole}:{wartosc}", [])]
 
     def oswiadcz(self, pbn_uid, osoba, dyscyplina, rola="AUTHOR"):
         """Oświadczenie osoby na profilu instytucji (z dyscypliną)."""

@@ -11,6 +11,9 @@ class StartForm(forms.Form):
     rok_od = forms.IntegerField(label="Rok od", min_value=ROK_MIN)
     rok_do = forms.IntegerField(label="Rok do", min_value=ROK_MIN)
     tryb = forms.ChoiceField(choices=UzgodnienieZPBN.Tryb.choices)
+    #: Tylko dla pobrania: pobrać ponownie także listę prac z profilu
+    #: instytucji, choć jest świeża (domyślnie bierzemy ostatnio pobraną).
+    caly_profil = forms.BooleanField(required=False)
 
     def clean(self):
         dane = super().clean()

@@ -208,6 +208,15 @@ def roznice_dyscyplin(rekord, oswiadczenia):
         w_bpp = wiersz.dyscyplina_naukowa.nazwa if wiersz.dyscyplina_naukowa else ""
         if w_pbn != w_bpp:
             roznice.append(
-                {"pole": f"Dyscyplina ({wiersz.autor})", "bpp": w_bpp, "pbn": w_pbn}
+                {
+                    "pole": f"Dyscyplina ({wiersz.autor})",
+                    "bpp": w_bpp,
+                    "pbn": w_pbn,
+                    # Pusta wartość mówi coś konkretnego — piszemy to słowami.
+                    "brak_bpp": "brak dyscypliny w rekordzie BPP",
+                    "brak_pbn": "brak oświadczenia w PBN"
+                    if oswiadczenie is None
+                    else "oświadczenie w PBN bez dyscypliny",
+                }
             )
     return roznice

@@ -37,8 +37,10 @@ z kiedy są dane, na których pracuje.
 2. Wpisz zakres lat: **Rok od** i **Rok do** (dla jednego roku wpisz ten
    sam rok w obu polach, np. `2026` i `2026`).
 3. Kliknij **Pobierz dane z PBN**. System czyta z PBN profil instytucji,
-   aktualne dane prac z wybranych lat i oświadczenia (dyscypliny). Trwa to
-   w tle; w rekordach BPP nic się nie zmienia.
+   aktualne dane prac z wybranych lat i oświadczenia (dyscypliny), a dla
+   rekordów BPP z tych lat, które nie są powiązane z PBN, pyta PBN, czy ma
+   pracę o tym DOI (dla książek także o tym ISBN). Trwa to w tle, z licznikiem
+   postępu; w rekordach BPP nic się nie zmienia.
 4. Wróć na stronę **uzgodnij z PBN** i kliknij:
    - **Pokaż, co się zmieni** — podgląd: pełny raport, ale **żaden rekord
      w BPP się nie zmienia**;
@@ -58,7 +60,18 @@ osobno dla każdego źródła — np. „profil instytucji — pobrane wczoraj,
 
 - **profil instytucji** — lista prac uczelni w PBN i wersje przypięte,
 - **publikacje** — dane prac z wybranych lat,
-- **oświadczenia** — dyscypliny autorów.
+- **oświadczenia** — dyscypliny autorów,
+- **wyszukiwanie w PBN po DOI/ISBN** — dla rekordów BPP bez powiązania.
+
+**Lista prac z profilu nie musi być pobierana za każdym razem.** Jej
+pobranie trwa najdłużej (system przechodzi cały profil, nie tylko wybrane
+lata). Jeśli lista była pobrana w ciągu ostatnich 24 godzin, „Pobierz dane
+z PBN” odświeża tylko dane prac, oświadczenia i wyszukiwanie dla wybranych
+lat — a pod polami lat pojawia się pole wyboru „pobierz ponownie także listę
+prac z profilu instytucji”. **Zaznacz je, jeśli od ostatniego pobrania
+dodawano albo usuwano prace na profilu instytucji w PBN** — inaczej system
+nie zobaczy nowo dodanych prac. Data listy profilu jest w ramce pokazana
+osobno.
 
 Te same daty są w raporcie każdego przebiegu (na stronie i w pliku XLSX).
 
@@ -138,25 +151,59 @@ z osobą, która uruchomiła uzgadnianie.
 ## Jak czytać raport {#raport}
 
 Raport jest na stronie przebiegu i do pobrania przyciskiem **Pobierz raport
-(XLSX)**. Każda praca trafia do jednej sekcji:
+(XLSX)**. Każda praca trafia do jednej sekcji.
+
+### Prace z profilu instytucji w PBN {#raport-pbn}
 
 | Sekcja | Co oznacza | Co zrobić |
 |---|---|---|
 | **Utworzono rekord w BPP** | Nowy rekord z danych PBN, z dyscyplinami z oświadczeń. W podglądzie: „Do wykonania”. | Przejrzyj rekord: charakter formalny, punktację; uzupełnij dyscypliny tam, gdzie raport pisze „BEZ DYSCYPLINY”. |
 | **Powiązano istniejący rekord BPP z pracą w PBN** | Rekord dostał identyfikator PBN (zgodny DOI/ISBN). | Nic; ewentualne różnice pól są podane obok. |
-| **Praca jest po obu stronach, dane się różnią** | Lista różnic w układzie „BPP → PBN”: tytuł, rok, DOI, ISBN, adres WWW, liczba autorów i redaktorów, dyscypliny autorów względem oświadczeń. | Zdecyduj, co jest poprawne, i popraw w BPP albo w PBN. |
+| **Praca jest po obu stronach, dane się różnią** | Ten sam identyfikator PBN po obu stronach, ale dane się rozjechały — patrz niżej. | Zdecyduj, co jest poprawne, i popraw w BPP albo w PBN. |
 | **Do decyzji: w BPP jest podobny rekord** | Dopasowanie niepewne (np. tylko podobny tytuł). Nic nie zmieniono. | Jeśli to ta sama praca — wpisz w rekordzie BPP identyfikator PBN. Jeśli inna — zaimportuj ją pojedynczo [importerem publikacji](importer-publikacji.md). |
 | **Konflikt powiązań** | Pasujący rekord BPP jest już powiązany z inną pracą w PBN albo kilka rekordów BPP ma ten sam identyfikator PBN. | Zwykle to duplikat — w PBN albo w BPP. Patrz [Duplikaty publikacji](duplikaty-publikacji.md). |
 | **Pominięto** | Z podanym powodem: rekord w koszu, praca bez autorów w PBN, niezgodna liczba autorów/redaktorów po imporcie, niekompletne dane w PBN. | Według powodu; najczęściej import pojedynczy z ręcznym sprawdzeniem osób. |
 | **Błąd przy przetwarzaniu pracy** | Tej jednej pracy nie udało się przetworzyć; pozostałe poszły dalej. | Uruchom ponownie; jeśli błąd się powtarza — zgłoś go z numerem pracy w PBN. |
 | **Praca skasowana w PBN** | Praca ma w PBN status „skasowana”. Rekord BPP (jeśli jest) pozostał bez zmian. | Sprawdź, czy rekord w BPP jest nadal potrzebny. |
-| **Rekord BPP bez powiązania z PBN** | Praca z wybranych lat, z afiliowanym autorem uczelni, której nie ma w PBN albo nie jest powiązana. | Wyślij ją do PBN albo uzupełnij identyfikator PBN. |
-| **Rekord BPP powiązany z pracą spoza profilu instytucji w PBN** | Praca jest w PBN, ale nie na profilu Twojej instytucji. | Dodaj ją w PBN do instytucji albo wyślij ponownie z BPP. |
 | **Praca jest po obu stronach, bez różnic** | Wszystko się zgadza. | Nic. Pełna lista jest w pliku XLSX. |
 
-Dwie ostatnie listy „po stronie BPP” obejmują tylko rekordy, które na
-profilu instytucji powinny się znaleźć: z afiliowanym autorem z jednostki
-uczelni i o charakterze formalnym wysyłanym do PBN.
+**Różnice są pokazane linijka po linijce.** Przy każdej pracy z sekcji „dane
+się różnią” jest tabelka: **pole | w BPP | w PBN**, po jednym wierszu na
+różnicę (tytuł, rok, DOI, ISBN, adres WWW, liczba autorów, liczba
+redaktorów, dyscyplina każdego autora względem oświadczenia). W długich
+tekstach — np. w tytule — **podświetlone są tylko słowa, które się różnią**.
+Pusta wartość jest nazwana słowami, np. „brak oświadczenia w PBN” albo
+„brak dyscypliny w rekordzie BPP”. Nad tabelką jest identyfikator PBN
+(ten sam po obu stronach), a w kolumnach obok — odnośniki do rekordu w BPP
+i do pracy w PBN. W pliku XLSX te same wiersze są w arkuszu **„Różnice”**.
+
+### Rekordy BPP bez powiązania z PBN {#raport-bez-powiazania}
+
+Rekord z wybranych lat, który nie ma identyfikatora PBN, to nie zawsze
+„praca, której w PBN nie ma”. Raport dzieli je na cztery grupy:
+
+| Sekcja | Co oznacza | Co zrobić |
+|---|---|---|
+| **…prawdopodobny duplikat rekordu powiązanego z PBN** | W BPP jest drugi rekord tej samej pracy, już powiązany z PBN (np. pracę wpisano ręcznie, a potem pobrano ją z PBN). Raport pokazuje oba rekordy i to, po czym je dopasowano. | Sprawdź oba i scal je [deduplikatorem publikacji](duplikaty-publikacji.md). System niczego nie scala sam. |
+| **…praca jest w PBN, ale nie jest powiązana z rekordem** | PBN ma pracę o tym DOI/ISBN (albo jest ona w pobranych danych). Raport podaje identyfikator PBN i mówi, czy praca **jest**, czy **nie jest** na profilu instytucji. | To propozycja powiązania: wpisz identyfikator PBN w rekordzie; jeśli pracy nie ma na profilu — dodaj ją w PBN do instytucji. Dopisek „dopasowanie niepewne” (zgodny tylko tytuł i rok) oznacza, że najpierw trzeba sprawdzić, czy to ta sama praca. |
+| **…nie ma go w PBN (kandydat do wysłania)** | PBN nie ma pracy o tym DOI/ISBN. Raport dopisuje historię wysyłki z BPP: „nigdy nie wysyłany” albo „wysyłka nieudana” z datą i powodem. | Wyślij rekord do PBN; przy nieudanej wysyłce najpierw usuń podaną przyczynę. |
+| **…nie da się sprawdzić automatycznie (brak DOI/ISBN)** | Rekord nie ma DOI ani ISBN, więc nie ma o co zapytać PBN. | Sprawdź ręcznie; uzupełnij DOI, jeśli praca go ma. |
+
+Dopasowanie po tytule nie zwraca uwagi na wielkość liter, interpunkcję ani
+znaczniki formatowania w tytule (kursywa, indeksy).
+
+### Rekordy BPP powiązane z pracą spoza profilu {#raport-poza-profilem}
+
+| Sekcja | Co oznacza | Co zrobić |
+|---|---|---|
+| **…która jest na profilu innej uczelni tej instalacji** | Tylko w instalacjach z kilkoma uczelniami: praca jest na profilu wskazanej uczelni, a nie Twojej — choć rekord ma afiliowanego autora Twojej uczelni. | Dodaj pracę w PBN także do profilu swojej instytucji. |
+| **…której nie ma na żadnym znanym profilu instytucji w PBN** | Praca jest w PBN, ale poza profilem. | Dodaj ją w PBN do instytucji albo wyślij ponownie z BPP. |
+
+Listy „po stronie BPP” obejmują tylko rekordy, które na profilu instytucji
+powinny się znaleźć: z afiliowanym autorem z jednostki Twojej uczelni
+i o charakterze formalnym wysyłanym do PBN. W instalacji z kilkoma
+uczelniami praca współautorska pojawia się w raporcie każdej z nich —
+każda powinna mieć ją na własnym profilu.
 
 ## Co może pójść nie tak {#co-moze-pojsc-nie-tak}
 
@@ -170,7 +217,9 @@ uczelni i o charakterze formalnym wysyłanym do PBN.
   w PBN są niejednoznaczne i automat nie zgaduje. Takie prace importuj
   pojedynczo.
 - **Pierwsze pobranie danych trwa długo** — system czyta cały profil
-  instytucji z PBN. Kolejne są szybsze.
+  instytucji z PBN (strona pokazuje licznik, np. „lista prac i osób:
+  1250 z 4100”). Kolejne są szybsze, zwłaszcza gdy lista profilu jest
+  świeża i nie jest pobierana ponownie.
 - **Praca dodana w PBN przed chwilą nie pojawia się w raporcie** — sprawdź
   datę w ramce „Dane z PBN…” i pobierz dane ponownie.
 

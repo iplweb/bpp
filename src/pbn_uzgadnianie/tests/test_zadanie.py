@@ -142,6 +142,7 @@ def test_pobranie_zapisuje_date_kazdego_zrodla_i_nic_nie_zmienia_w_bpp(
         "profil",
         "publikacje",
         "oswiadczenia",
+        "wyszukiwanie",
     ]
     assert stan["stare"] is False and stan["lata"] == (2026, 2026)
 

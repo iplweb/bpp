@@ -291,7 +291,24 @@ def test_raport_na_stronie_i_w_xlsx(client, redaktor, przebieg):
             "kategoria": silnik.ROZNI_SIE,
             "pbn_uid": "pbn-rozna",
             "pbn_tytul": "=HYPERLINK(1)",
-            "roznice": [{"pole": "Rok", "bpp": "2025", "pbn": "2026"}],
+            "bpp_model": "wydawnictwo_ciagle",
+            "bpp_pk": 9,
+            "bpp_tytul": "Artykuł różniący się",
+            "bpp_rok": 2025,
+            "roznice": [
+                {"pole": "Rok", "bpp": "2025", "pbn": "2026"},
+                {
+                    "pole": "Tytuł",
+                    "bpp": "Badanie wpływu światła na <b>wzrost</b> roślin",
+                    "pbn": "Badanie wpływu ciepła na <b>wzrost</b> roślin",
+                },
+                {
+                    "pole": "Dyscyplina (Kowalski Jan)",
+                    "bpp": "nauki medyczne",
+                    "pbn": "",
+                    "brak_pbn": "brak oświadczenia w PBN",
+                },
+            ],
         },
     ]
     p = przebieg(
@@ -306,7 +323,14 @@ def test_raport_na_stronie_i_w_xlsx(client, redaktor, przebieg):
     ).content.decode()
     assert "Do wykonania: Utworzono rekord w BPP" in strona
     assert "Wykonaj ten podgląd" in strona
-    assert "Rok: „2025” → „2026”" in strona
+    # Każda różnica w osobnym wierszu: pole | BPP | PBN, z wyróżnieniem.
+    assert "Ten sam PBN UID po obu stronach:</strong> pbn-rozna" in strona
+    assert "<td>Rok</td>" in strona and "<mark>2025</mark>" in strona
+    assert "<mark>światła</mark>" in strona and "<mark>ciepła</mark>" in strona
+    assert "<mark>Badanie" not in strona, "podświetlono część wspólną"
+    assert "&lt;b&gt;wzrost&lt;/b&gt;" in strona, "HTML z danych nie jest escapowany"
+    assert "<em>brak oświadczenia w PBN</em>" in strona
+    assert reverse("admin:bpp_wydawnictwo_ciagle_change", args=[9]) in strona
     assert reverse("admin:bpp_wydawnictwo_zwarte_change", args=[7]) in strona
 
     odp = client.get(reverse("pbn_uzgadnianie:raport_xlsx", args=[p.pk]))
@@ -317,7 +341,24 @@ def test_raport_na_stronie_i_w_xlsx(client, redaktor, przebieg):
         "pbn-nowa",
         "Monografia utworzona",
     )
-    assert wiersze[2][12] == "Rok: „2025” → „2026”"
+    assert wiersze[2][12].startswith("Rok: „2025” → „2026”; Tytuł:")
+    roznice = list(
+        load_workbook(io.BytesIO(odp.content))["Różnice"].iter_rows(values_only=True)
+    )
+    assert roznice[1] == (
+        "pbn-rozna",
+        "wydawnictwo_ciagle",
+        9,
+        "Artykuł różniący się",
+        "Rok",
+        "2025",
+        "2026",
+    )
+    assert roznice[3][4:] == (
+        "Dyscyplina (Kowalski Jan)",
+        "nauki medyczne",
+        "brak oświadczenia w PBN",
+    )
     # Tytuł z PBN to dane obce — nie może wejść do arkusza jako formuła.
     assert not str(wiersze[2][2]).startswith("=")
 
@@ -444,3 +485,77 @@ def test_raport_podaje_z_kiedy_byly_dane(client, redaktor, przebieg):
     tekst = " ".join(str(w[0]) for w in arkusz.iter_rows(values_only=True) if w[0])
     assert "profil instytucji" in tekst and "2 dni temu" in tekst
     assert "UWAGA: dane z PBN są starsze" in tekst
+
+
+def test_duplikat_pokazuje_oba_rekordy_i_link_do_deduplikatora(
+    client, redaktor, przebieg
+):
+    wpisy = [
+        {
+            "kategoria": silnik.DUPLIKAT_W_BPP,
+            "pbn_uid": "pbn-oryginal",
+            "bpp_model": "wydawnictwo_ciagle",
+            "bpp_pk": 11,
+            "bpp_tytul": "Rekord wpisany ręcznie",
+            "bpp_rok": 2026,
+            "dopasowanie": "ten sam DOI",
+            "blizniak": {
+                "bpp_model": "wydawnictwo_ciagle",
+                "bpp_pk": 12,
+                "bpp_tytul": "Rekord pobrany z PBN",
+                "bpp_rok": 2026,
+            },
+        },
+        {
+            "kategoria": silnik.TYLKO_W_BPP,
+            "bpp_model": "wydawnictwo_ciagle",
+            "bpp_pk": 13,
+            "bpp_tytul": "Kandydat do wysłania",
+            "bpp_rok": 2026,
+            "wysylka": "nigdy nie wysyłany z BPP do PBN",
+        },
+    ]
+    p = przebieg(status="zakonczone", wynik=wpisy, podsumowanie=silnik.podsumuj(wpisy))
+
+    strona = client.get(
+        reverse("pbn_uzgadnianie:szczegoly", args=[p.pk])
+    ).content.decode()
+
+    for pk in (11, 12):
+        assert reverse("admin:bpp_wydawnictwo_ciagle_change", args=[pk]) in strona
+    assert "Dopasowano po: ten sam DOI" in strona
+    assert reverse("deduplikator_publikacji:duplicate_publications") in strona
+    assert "Wysyłka z BPP: nigdy nie wysyłany z BPP do PBN" in strona
+
+
+def test_pobranie_domyslnie_bierze_swiezy_profil_a_na_zyczenie_pobiera_caly(
+    client, redaktor, przebieg, zlecenia, django_capture_on_commit_callbacks
+):
+    swieze = _pobranie(przebieg, godzin_temu=1)
+    assert 'name="caly_profil"' in _strona(client)
+
+    with django_capture_on_commit_callbacks(execute=True):
+        client.post(reverse("pbn_uzgadnianie:start"), {**START, "tryb": "pobranie"})
+    szybkie = UzgodnienieZPBN.objects.exclude(pk=swieze.pk).get()
+    assert szybkie.na_podstawie == swieze
+    UzgodnienieZPBN.objects.filter(pk=szybkie.pk).update(status="blad")
+
+    with django_capture_on_commit_callbacks(execute=True):
+        client.post(
+            reverse("pbn_uzgadnianie:start"),
+            {**START, "tryb": "pobranie", "caly_profil": "on"},
+        )
+    pelne = UzgodnienieZPBN.objects.exclude(pk__in=[swieze.pk, szybkie.pk]).get()
+    assert pelne.na_podstawie is None
+
+
+def test_stary_profil_jest_zawsze_pobierany_ponownie(
+    client, redaktor, przebieg, zlecenia, django_capture_on_commit_callbacks
+):
+    stare = _pobranie(przebieg, godzin_temu=30)
+    assert 'name="caly_profil"' not in _strona(client)
+
+    with django_capture_on_commit_callbacks(execute=True):
+        client.post(reverse("pbn_uzgadnianie:start"), {**START, "tryb": "pobranie"})
+
+    assert UzgodnienieZPBN.objects.exclude(pk=stare.pk).get().na_podstawie is None

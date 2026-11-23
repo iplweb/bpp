@@ -21,7 +21,7 @@ from pbn_uzgadnianie.silnik import uzgodnij
 from pbn_uzgadnianie.wersje import BIEZACA_BRAK_PRZYPIETEJ, PRZYPIETA
 from pbn_uzgadnianie.zakres import Anulowano
 
-from .conftest import kategorie
+from .conftest import FalszywyKlientPBN, kategorie
 
 pytestmark = pytest.mark.django_db
 
@@ -118,8 +118,11 @@ def test_niepewne_dopasowanie_po_tytule_ani_nie_tworzy_ani_nie_wiaze(
     assert Wydawnictwo_Zwarte.objects.count() == 1
     podobny.refresh_from_db()
     assert podobny.pbn_uid_id is None
-    # …i nadal jest wykazany jako rekord BPP bez powiązania z PBN.
-    assert wynik.podsumowanie[silnik.TYLKO_W_BPP] == 1
+    # …i nadal jest wykazany wśród rekordów BPP bez powiązania — ze
+    # wskazaniem pasującej pracy (jest na profilu) i dopiskiem „niepewne”.
+    (bez,) = [w for w in wynik.wynik if w["kategoria"] == silnik.W_PBN_NIEPOWIAZANA]
+    assert bez["pbn_uid"] == "pbn-podobna" and bez["na_profilu"] is True
+    assert "niepewne" in bez["dopasowanie"]
 
 
 def test_pasujacy_rekord_z_innym_pbn_uid_to_konflikt(
@@ -239,7 +242,7 @@ def test_rekordy_bpp_bez_odpowiednika_w_pbn_sa_w_raporcie(
     wynik = uzgodnij(przebieg(), klient)
 
     assert {w["bpp_tytul"]: w["kategoria"] for w in wynik.wynik} == {
-        "Artykuł znany tylko w BPP": silnik.TYLKO_W_BPP,
+        "Artykuł znany tylko w BPP": silnik.NIE_SPRAWDZONO,
         "Artykuł w PBN, ale nie na profilu instytucji": silnik.POZA_PROFILEM,
         "Artykuł skasowany po stronie PBN": silnik.SKASOWANA_W_PBN,
     }
@@ -518,6 +521,7 @@ def test_uzgadnianie_niczego_nie_wysyla_do_pbn(
         "get_institution_publications_v2",
         "get_publication_by_id",
         "get_institution_statements",
+        "search_publications",
     }
 
 
@@ -645,3 +649,316 @@ def test_rozdzial_tworzy_tez_ksiazke_nadrzedna_i_mowi_o_tym(
     rekord = Wydawnictwo_Zwarte.objects.get(pbn_uid_id="pbn-rozdzial")
     assert rekord.wydawnictwo_nadrzedne.pbn_uid_id == "pbn-ksiazka"
     assert kategorie(uzgodnij(przebieg(), klient)) == {"pbn-rozdzial": silnik.ZGODNE}
+
+
+# -- rekordy BPP bez powiązania z PBN: cztery podgrupy --------------------------
+
+
+def test_duplikat_rekordu_powiazanego_z_pbn_jest_wskazany_nie_scalany(
+    klient, przebieg, jednostka_uczelni, autor_pbn
+):
+    """Ktoś wpisał pracę ręcznie, a potem z PBN powstał drugi rekord."""
+    z_pbn = _rekord_bpp(
+        Wydawnictwo_Ciagle,
+        jednostka_uczelni,
+        autor_pbn,
+        tytul_oryginalny="Wpływ <i>Apis mellifera</i> na plony: przegląd.",
+        rok=2026,
+        pbn_uid=baker.make(Publication, mongoId="pbn-oryginal", status="ACTIVE"),
+    )
+    reczny = _rekord_bpp(
+        Wydawnictwo_Ciagle,
+        jednostka_uczelni,
+        autor_pbn,
+        tytul_oryginalny="WPŁYW APIS MELLIFERA NA PLONY — PRZEGLĄD",
+        rok=2026,
+        pbn_uid=None,
+    )
+
+    wynik = uzgodnij(przebieg(), klient)
+
+    (wpis,) = [w for w in wynik.wynik if w["kategoria"] == silnik.DUPLIKAT_W_BPP]
+    assert wpis["bpp_pk"] == reczny.pk
+    assert wpis["blizniak"]["bpp_pk"] == z_pbn.pk
+    assert wpis["dopasowanie"] == "ten sam tytuł i rok"
+    assert Wydawnictwo_Ciagle.objects.count() == 2, "coś scalono"
+
+
+def test_praca_znaleziona_w_pbn_po_doi_poza_profilem_to_propozycja_bez_automatu(
+    klient, ksiazka_pbn, przebieg, jednostka_uczelni, autor_pbn
+):
+    rekord = _rekord_bpp(
+        Wydawnictwo_Ciagle,
+        jednostka_uczelni,
+        autor_pbn,
+        tytul_oryginalny="Artykuł, który w PBN jest poza profilem instytucji",
+        rok=2026,
+        doi="10.5555/Poza.Profilem",
+        pbn_uid=None,
+    )
+    klient.dodaj(
+        "pbn-poza",
+        ksiazka_pbn(
+            "Artykuł, który w PBN jest poza profilem", doi="10.5555/poza.profilem"
+        ),
+        na_profilu=False,
+    )
+    klient.wyszukiwalne["doi:10.5555/poza.profilem"] = ["pbn-poza"]
+
+    wynik = uzgodnij(przebieg(), klient)
+
+    (wpis,) = [w for w in wynik.wynik if w.get("bpp_pk") == rekord.pk]
+    assert wpis["kategoria"] == silnik.W_PBN_NIEPOWIAZANA
+    assert (wpis["pbn_uid"], wpis["na_profilu"]) == ("pbn-poza", False)
+    assert wpis["dopasowanie"] == "ten sam DOI (w PBN)"
+    assert "dodaj pracę w PBN do profilu instytucji" in wpis["powod"]
+    rekord.refresh_from_db()
+    assert rekord.pbn_uid_id is None, "powiązano automatycznie"
+    # Znaleziona praca trafiła do lokalnej kopii danych PBN.
+    assert Publication.objects.filter(pk="pbn-poza").exists()
+
+
+def test_pracy_o_tym_doi_nie_ma_w_pbn_kandydat_do_wyslania_z_historia(
+    klient, przebieg, jednostka_uczelni, autor_pbn, uczelnia_pbn
+):
+    from django.contrib.contenttypes.models import ContentType
+    from django.utils import timezone
+
+    from pbn_api.models import SentData
+
+    nigdy = _rekord_bpp(
+        Wydawnictwo_Ciagle,
+        jednostka_uczelni,
+        autor_pbn,
+        tytul_oryginalny="Artykuł nigdy niewysłany do PBN",
+        rok=2026,
+        doi="10.5555/nigdy",
+        pbn_uid=None,
+    )
+    nieudana = _rekord_bpp(
+        Wydawnictwo_Ciagle,
+        jednostka_uczelni,
+        autor_pbn,
+        tytul_oryginalny="Artykuł z nieudaną wysyłką do PBN",
+        rok=2026,
+        doi="10.5555/nieudana",
+        pbn_uid=None,
+    )
+    SentData.objects.create(
+        content_type=ContentType.objects.get_for_model(Wydawnictwo_Ciagle),
+        object_id=nieudana.pk,
+        uczelnia=uczelnia_pbn,
+        data_sent={},
+        submitted_successfully=False,
+        submitted_at=timezone.now(),
+        exception="HttpException 400: brak afiliacji autora",
+    )
+
+    wynik = uzgodnij(przebieg(), klient)
+
+    po_pk = {w["bpp_pk"]: w for w in wynik.wynik}
+    assert po_pk[nigdy.pk]["kategoria"] == silnik.TYLKO_W_BPP
+    assert po_pk[nigdy.pk]["wysylka"] == "nigdy nie wysyłany z BPP do PBN"
+    assert po_pk[nieudana.pk]["kategoria"] == silnik.TYLKO_W_BPP
+    assert po_pk[nieudana.pk]["wysylka"].startswith("wysyłka nieudana ")
+    assert "brak afiliacji autora" in po_pk[nieudana.pk]["wysylka"]
+    # Po jednym zapytaniu na DOI; niczego nie wysłano.
+    assert sorted(w for w in klient.wywolania if w.startswith("search")) == [
+        "search_publications:doi:10.5555/nieudana",
+        "search_publications:doi:10.5555/nigdy",
+    ]
+
+
+def test_ksiazka_jest_szukana_takze_po_isbn_a_rozdzial_nie(
+    klient, przebieg, jednostka_uczelni, autor_pbn
+):
+    ksiazka = _rekord_bpp(
+        Wydawnictwo_Zwarte,
+        jednostka_uczelni,
+        autor_pbn,
+        tytul_oryginalny="Monografia szukana po numerze ISBN",
+        rok=2026,
+        isbn="978-83-00-00009-7",
+        pbn_uid=None,
+    )
+    _rekord_bpp(
+        Wydawnictwo_Zwarte,
+        jednostka_uczelni,
+        autor_pbn,
+        tytul_oryginalny="Rozdział w tej monografii, z jej numerem ISBN",
+        rok=2026,
+        isbn="978-83-00-00009-7",
+        wydawnictwo_nadrzedne=ksiazka,
+        pbn_uid=None,
+    )
+
+    wynik = uzgodnij(przebieg(), klient)
+
+    assert [w for w in klient.wywolania if w.startswith("search")] == [
+        "search_publications:isbn:9788300000097"
+    ]
+    po_tytule = {w["bpp_tytul"]: w["kategoria"] for w in wynik.wynik}
+    assert po_tytule["Monografia szukana po numerze ISBN"] == silnik.TYLKO_W_BPP
+    assert (
+        po_tytule["Rozdział w tej monografii, z jej numerem ISBN"]
+        == silnik.NIE_SPRAWDZONO
+    )
+
+
+def test_swieze_wyniki_wyszukiwania_nie_sa_pobierane_ponownie(
+    klient, przebieg, jednostka_uczelni, autor_pbn, settings
+):
+    _rekord_bpp(
+        Wydawnictwo_Ciagle,
+        jednostka_uczelni,
+        autor_pbn,
+        tytul_oryginalny="Artykuł pytany w PBN tylko raz",
+        rok=2026,
+        doi="10.5555/raz",
+        pbn_uid=None,
+    )
+    pierwsze = uzgodnij(przebieg(tryb="pobranie"), klient)
+    klient.wywolania.clear()
+
+    drugie = uzgodnij(przebieg(tryb="pobranie"), klient)
+
+    assert not [w for w in klient.wywolania if w.startswith("search")]
+    assert drugie.zakres["szukane"] == pierwsze.zakres["szukane"]
+    assert (
+        drugie.zakres["pobrano"]["wyszukiwanie"]
+        == pierwsze.zakres["pobrano"]["wyszukiwanie"]
+    ), "data źródła ma być datą faktycznego zapytania"
+
+    # Po upływie progu świeżości pytamy ponownie.
+    settings.PBN_UZGADNIANIE_DANE_AKTUALNE_GODZIN = 0
+    uzgodnij(przebieg(tryb="pobranie"), klient)
+
+    assert [w for w in klient.wywolania if w.startswith("search")]
+
+
+# -- prace spoza profilu a inne uczelnie instalacji ---------------------------------
+
+
+def test_praca_z_profilu_innej_uczelni_instalacji_jest_odrozniona(
+    klient, przebieg, jednostka_uczelni, autor_pbn
+):
+    from bpp.models import Uczelnia
+    from pbn_api.models import Institution, Scientist
+
+    druga = baker.make(Uczelnia, skrot="DRUGA", pbn_uid=baker.make(Institution))
+    u_drugiej = baker.make(Publication, mongoId="pbn-u-drugiej", status="ACTIVE")
+    baker.make(
+        PublikacjaInstytucji,
+        institutionId=druga.pbn_uid,
+        publicationId=u_drugiej,
+        insPersonId=baker.make(Scientist),
+    )
+    _rekord_bpp(
+        Wydawnictwo_Ciagle,
+        jednostka_uczelni,
+        autor_pbn,
+        tytul_oryginalny="Artykuł współautorski, na profilu drugiej uczelni",
+        rok=2026,
+        pbn_uid=u_drugiej,
+    )
+    _rekord_bpp(
+        Wydawnictwo_Ciagle,
+        jednostka_uczelni,
+        autor_pbn,
+        tytul_oryginalny="Artykuł, którego nie ma na żadnym profilu",
+        rok=2026,
+        pbn_uid=baker.make(Publication, mongoId="pbn-nigdzie", status="ACTIVE"),
+    )
+
+    wynik = uzgodnij(przebieg(), klient)
+
+    po_tytule = {w["bpp_tytul"]: w for w in wynik.wynik}
+    inna = po_tytule["Artykuł współautorski, na profilu drugiej uczelni"]
+    assert inna["kategoria"] == silnik.NA_PROFILU_INNEJ_UCZELNI
+    assert inna["inna_uczelnia"] == "DRUGA"
+    assert (
+        po_tytule["Artykuł, którego nie ma na żadnym profilu"]["kategoria"]
+        == silnik.POZA_PROFILEM
+    )
+
+
+def test_rekord_wspolautorski_dwoch_uczelni_jest_w_zakresie_kazdej(
+    klient, przebieg, jednostka_uczelni, autor_pbn
+):
+    """Zamierzone: każda uczelnia powinna mieć taką pracę na SWOIM profilu."""
+    from bpp.models import Autor, Jednostka, Uczelnia
+    from pbn_api.models import Institution
+
+    druga = baker.make(Uczelnia, skrot="DRUGA", pbn_uid=baker.make(Institution))
+    rekord = _rekord_bpp(
+        Wydawnictwo_Ciagle,
+        jednostka_uczelni,
+        autor_pbn,
+        tytul_oryginalny="Artykuł współautorski dwóch uczelni instalacji",
+        rok=2026,
+        pbn_uid=None,
+    )
+    rekord.dodaj_autora(
+        Autor.objects.get(pbn_uid_id=autor_pbn("Drugi")),
+        baker.make(Jednostka, uczelnia=druga),
+    )
+
+    u_nas = uzgodnij(przebieg(), klient)
+    u_drugiej = uzgodnij(przebieg(uczelnia=druga), FalszywyKlientPBN(druga))
+
+    assert [w["bpp_pk"] for w in u_nas.wynik] == [rekord.pk]
+    assert [w["bpp_pk"] for w in u_drugiej.wynik] == [rekord.pk]
+
+
+# -- pobieranie: licznik i pominięcie profilu ---------------------------------------
+
+
+class _Zapisuj:
+    def __init__(self):
+        self.etapy = []
+
+    def etap(self, opis, procent):
+        self.etapy.append(opis)
+
+    def sprawdz_anulowanie(self):
+        pass
+
+    def zamknij(self):
+        pass
+
+
+def test_pobieranie_profilu_pokazuje_licznik(klient, ksiazka_pbn, przebieg):
+    for nr in range(30):
+        klient.dodaj(f"pbn-{nr:02}", ksiazka_pbn(f"Monografia numer {nr} z profilu"))
+    nadzorca = _Zapisuj()
+
+    uzgodnij(przebieg(tryb="pobranie"), klient, nadzorca)
+
+    assert "Pobieranie profilu instytucji z PBN — lista prac i osób: 1 z 30" in (
+        nadzorca.etapy
+    )
+    assert "Pobieranie profilu instytucji z PBN — lista prac i osób: 25 z 30" in (
+        nadzorca.etapy
+    )
+    assert "Pobieranie publikacji z PBN: 30 z 30" in nadzorca.etapy
+
+
+def test_pobranie_ze_swiezym_profilem_pomija_liste_profilu_i_zachowuje_jej_date(
+    klient, ksiazka_pbn, przebieg
+):
+    obiekt = ksiazka_pbn("Monografia z profilu pobranego wcześniej")
+    klient.dodaj("pbn-nowa", obiekt)
+    pelne = uzgodnij(przebieg(tryb="pobranie"), klient)
+    klient.wywolania.clear()
+    klient.publikacje["pbn-nowa"]["versions"][0]["object"]["title"] = "Po poprawce"
+
+    szybkie = uzgodnij(przebieg(tryb="pobranie", na_podstawie=pelne), klient)
+
+    assert not [w for w in klient.wywolania if "institution_publications" in w]
+    assert "get_publication_by_id:pbn-nowa" in klient.wywolania
+    assert Publication.objects.get(pk="pbn-nowa").title == "Po poprawce"
+    assert szybkie.zakres["pobrano"]["profil"] == pelne.zakres["pobrano"]["profil"]
+    assert (
+        szybkie.zakres["pobrano"]["publikacje"] > pelne.zakres["pobrano"]["publikacje"]
+    )
+    assert szybkie.zakres["w_zakresie"] == ["pbn-nowa"]

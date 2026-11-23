@@ -134,6 +134,11 @@
                         {% if przebieg.to_podglad and grupa.zmienia %}Do wykonania: {% endif %}{{ grupa.etykieta }}
                         <span class="label {% if grupa.zmienia %}success{% else %}secondary{% endif %}">{{ grupa.wpisy|length }}</span>
                     </h3>
+                    {% if grupa.duplikaty %}
+                        <p>Nic nie zostało scalone. Do scalania służy
+                            <a href="{% url "deduplikator_publikacji:duplicate_publications" %}">deduplikator publikacji</a>
+                            (menu „redagowanie”).</p>
+                    {% endif %}
                     {% if grupa.zwinieta %}
                         <p>Te prace są zgodne po obu stronach — pełna lista jest w raporcie XLSX.</p>
                     {% else %}
@@ -166,8 +171,32 @@
                                         {% else %}—{% endif %}
                                     </td>
                                     <td>
-                                        {% if wpis.dopasowanie %}Dopasowanie: {{ wpis.dopasowanie }}.<br/>{% endif %}
-                                        {% if wpis.roznice_opis %}Różnice (BPP → PBN): {{ wpis.roznice_opis }}.<br/>{% endif %}
+                                        {% if wpis.roznice_wiersze %}
+                                            <p><strong>Ten sam PBN UID po obu stronach:</strong> {{ wpis.pbn_uid }}</p>
+                                            <table class="uzgodnienie-roznice">
+                                                <thead>
+                                                <tr><th>Pole</th><th>W BPP</th><th>W PBN</th></tr>
+                                                </thead>
+                                                <tbody>
+                                                {% for r in wpis.roznice_wiersze %}
+                                                    <tr>
+                                                        <td>{{ r.pole }}</td>
+                                                        <td>{{ r.bpp_html }}</td>
+                                                        <td>{{ r.pbn_html }}</td>
+                                                    </tr>
+                                                {% endfor %}
+                                                </tbody>
+                                            </table>
+                                        {% endif %}
+                                        {% if wpis.blizniak %}
+                                            Drugi rekord w BPP (powiązany z PBN):
+                                            {{ wpis.blizniak.bpp_tytul|striptags }} ({{ wpis.blizniak.bpp_rok }})
+                                            {% if wpis.blizniak.bpp_url %}
+                                                — <a href="{{ wpis.blizniak.bpp_url }}" target="_blank" rel="noopener">otwórz rekord</a>
+                                            {% endif %}<br/>
+                                        {% endif %}
+                                        {% if wpis.dopasowanie %}Dopasowano po: {{ wpis.dopasowanie }}.<br/>{% endif %}
+                                        {% if wpis.wysylka %}Wysyłka z BPP: {{ wpis.wysylka }}.<br/>{% endif %}
                                         {% if wpis.dyscypliny_opis %}Dyscypliny: {{ wpis.dyscypliny_opis }}.<br/>{% endif %}
                                         {% if wpis.powod %}{{ wpis.powod }}<br/>{% endif %}
                                         {% if wpis.uwaga %}{{ wpis.uwaga }}<br/>{% endif %}

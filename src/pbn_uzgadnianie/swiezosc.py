@@ -13,6 +13,7 @@ ZRODLA = (
     ("profil", "profil instytucji (lista prac i przypięte wersje)"),
     ("publikacje", "publikacje (dane prac z wybranych lat)"),
     ("oswiadczenia", "oświadczenia (dyscypliny autorów)"),
+    ("wyszukiwanie", "wyszukiwanie w PBN po DOI/ISBN (rekordy BPP bez powiązania)"),
 )
 
 JAK_ODSWIEZYC = (

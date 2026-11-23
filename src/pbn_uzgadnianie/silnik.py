@@ -42,7 +42,7 @@ from bpp.wersjonowanie import jako_uzytkownik, zmiana_rekordu
 from bpp.zglaszanie_bledow import capture_exception
 from import_common.core import matchuj_publikacje
 from pbn_api.exceptions import HttpException
-from pbn_api.models import Publication
+from pbn_api.models import Publication, SentData
 from pbn_import.utils.institution_import import znajdz_lub_utworz_jednostke_domyslna
 from pbn_integrator.importer import importuj_publikacje_po_pbn_uid_id
 from pbn_integrator.importer.helpers import importuj_z_wersji
@@ -51,6 +51,14 @@ from pbn_integrator.kosz import pomin_jesli_w_koszu
 from . import zakres as zakres_mod
 from .dyscypliny import roznice_dyscyplin, zastosuj_do_nowego_rekordu
 from .models import UzgodnienieZPBN
+from .odpowiedniki import (
+    PO_DOI,
+    PO_ISBN,
+    identyfikatory,
+    indeks_niepowiazanych_publikacji_pbn,
+    indeks_rekordow_bpp_z_pbn,
+    rekordy_bpp_uczelni,
+)
 from .porownanie import isbn_z_pbn, liczba_osob, liczba_osob_w_bpp, porownaj
 from .wersje import wybierz_wersje
 from .zakres import Anulowano
@@ -68,7 +76,11 @@ POMINIETO = "pominieto"
 BLAD = "blad"
 SKASOWANA_W_PBN = "skasowana_w_pbn"
 TYLKO_W_BPP = "tylko_w_bpp"
+DUPLIKAT_W_BPP = "duplikat_w_bpp"
+W_PBN_NIEPOWIAZANA = "w_pbn_niepowiazana"
+NIE_SPRAWDZONO = "nie_sprawdzono"
 POZA_PROFILEM = "poza_profilem"
+NA_PROFILU_INNEJ_UCZELNI = "na_profilu_innej_uczelni"
 
 KATEGORIE = {
     UTWORZONO: "Utworzono rekord w BPP",
@@ -79,8 +91,18 @@ KATEGORIE = {
     POMINIETO: "Pominięto (z podanym powodem)",
     BLAD: "Błąd przy przetwarzaniu pracy",
     SKASOWANA_W_PBN: "Praca skasowana w PBN",
-    TYLKO_W_BPP: "Rekord BPP bez powiązania z PBN",
-    POZA_PROFILEM: "Rekord BPP powiązany z pracą spoza profilu instytucji w PBN",
+    DUPLIKAT_W_BPP: "Rekord BPP bez powiązania z PBN — prawdopodobny duplikat "
+    "rekordu powiązanego z PBN",
+    W_PBN_NIEPOWIAZANA: "Rekord BPP bez powiązania z PBN — praca jest w PBN, "
+    "ale nie jest powiązana z rekordem",
+    TYLKO_W_BPP: "Rekord BPP bez powiązania z PBN — nie ma go w PBN "
+    "(kandydat do wysłania)",
+    NIE_SPRAWDZONO: "Rekord BPP bez powiązania z PBN — nie da się sprawdzić "
+    "automatycznie (brak DOI/ISBN)",
+    NA_PROFILU_INNEJ_UCZELNI: "Rekord BPP powiązany z pracą, która jest na "
+    "profilu innej uczelni tej instalacji",
+    POZA_PROFILEM: "Rekord BPP powiązany z pracą, której nie ma na żadnym "
+    "znanym profilu instytucji w PBN",
     ZGODNE: "Praca jest po obu stronach, bez różnic",
 }
 
@@ -316,6 +338,8 @@ class _Przebieg:
         self.nadzorca = nadzorca
         self.profil = uzgodnienie.zakres["profil"]
         self.oswiadczenia = uzgodnienie.zakres.get("oswiadczenia") or {}
+        #: Wyniki wyszukiwania po DOI/ISBN; ``None`` = pobranie ich nie robiło.
+        self.szukane = uzgodnienie.zakres.get("szukane")
         self.wpisy = []
 
     def _default_jednostka(self):
@@ -571,25 +595,25 @@ class _Przebieg:
         z jednostki tej uczelni i o charakterze formalnym wysyłanym do PBN.
         """
         u = self.uzgodnienie
-        rekordy = (
-            Rekord.objects.filter(
-                rok__gte=u.rok_od,
-                rok__lte=u.rok_do,
-                charakter_formalny__rodzaj_pbn__isnull=False,
-                autorzy__jednostka__uczelnia=self.uczelnia,
-                autorzy__afiliuje=True,
-            )
-            .distinct()
-            .order_by("rok", "tytul_oryginalny", "id")
-        )
+        rekordy = list(rekordy_bpp_uczelni(self.uczelnia, u.rok_od, u.rok_do))
         skasowane = set(
             Publication.objects.filter(
                 pk__in=[r.pbn_uid_id for r in rekordy if r.pbn_uid_id], status=DELETED
             ).values_list("pk", flat=True)
         )
+        bez_pbn = [r for r in rekordy if not r.pbn_uid_id]
+        kontekst = self._kontekst_bez_powiazania(bez_pbn) if bez_pbn else None
+        inne_uczelnie = self._profile_innych_uczelni(
+            [
+                r.pbn_uid_id
+                for r in rekordy
+                if r.pbn_uid_id and r.pbn_uid_id not in self.profil
+            ]
+        )
+
         for rekord in rekordy:
             if not rekord.pbn_uid_id:
-                yield _wpis(TYLKO_W_BPP, rekord=rekord)
+                yield self._bez_powiazania(rekord, kontekst)
             elif rekord.pbn_uid_id in self.profil:
                 continue
             elif rekord.pbn_uid_id in skasowane:
@@ -599,8 +623,202 @@ class _Przebieg:
                     pbn_uid=rekord.pbn_uid_id,
                     powod="Rekord BPP jest powiązany z pracą skasowaną w PBN.",
                 )
+            elif rekord.pbn_uid_id in inne_uczelnie:
+                skroty = ", ".join(sorted(inne_uczelnie[rekord.pbn_uid_id]))
+                yield _wpis(
+                    NA_PROFILU_INNEJ_UCZELNI,
+                    rekord=rekord,
+                    pbn_uid=rekord.pbn_uid_id,
+                    inna_uczelnia=skroty,
+                    powod=f"Praca jest na profilu innej uczelni tej instalacji: "
+                    f"{skroty}. Rekord ma też afiliowanego autora tej uczelni, "
+                    f"więc praca powinna być także na jej profilu w PBN.",
+                )
             else:
-                yield _wpis(POZA_PROFILEM, rekord=rekord, pbn_uid=rekord.pbn_uid_id)
+                yield _wpis(
+                    POZA_PROFILEM,
+                    rekord=rekord,
+                    pbn_uid=rekord.pbn_uid_id,
+                    powod="Pracy nie ma na profilu tej uczelni ani — według "
+                    "lokalnej kopii danych PBN — na profilu żadnej innej uczelni "
+                    "tej instalacji.",
+                )
+
+    def _kontekst_bez_powiazania(self, bez_pbn):
+        """Wszystko, czego trzeba do sklasyfikowania rekordów bez PBN UID —
+        zebrane stałą liczbą zapytań, niezależnie od liczby rekordów."""
+        u = self.uzgodnienie
+        znalezione = set()
+        for rekord in bez_pbn:
+            for klucz in identyfikatory(rekord):
+                znalezione.update(
+                    ((self.szukane or {}).get(klucz) or {}).get("uids", [])
+                )
+        wysylki = {}
+        for wysylka in SentData.objects.filter(
+            object_id__in=[r.pk[1] for r in bez_pbn]
+        ).order_by("submitted_at"):
+            if wysylka.uczelnia_id in (None, self.uczelnia.pk):
+                wysylki[(wysylka.content_type_id, wysylka.object_id)] = wysylka
+        return {
+            "blizniaki": indeks_rekordow_bpp_z_pbn(u.rok_od, u.rok_do),
+            "w_kopii": indeks_niepowiazanych_publikacji_pbn(u.rok_od, u.rok_do),
+            "publikacje": Publication.objects.in_bulk(znalezione),
+            "powiazane": {
+                r.pbn_uid_id: r
+                for r in Rekord.objects.filter(pbn_uid_id__in=znalezione)
+            },
+            "wysylki": wysylki,
+        }
+
+    def _bez_powiazania(self, rekord, kontekst):
+        """Rekord BPP bez PBN UID → jedna z czterech podgrup raportu."""
+        doi, tytul, rok = rekord.doi, rekord.tytul_oryginalny, rekord.rok
+
+        # a) drugi rekord BPP tej samej pracy, już powiązany z PBN
+        blizniak, jak = kontekst["blizniaki"].znajdz(doi, tytul, rok)
+        if blizniak is not None:
+            return self._wpis_duplikatu(rekord, blizniak, jak)
+
+        # b) praca znaleziona w PBN po DOI/ISBN
+        klucze = identyfikatory(rekord)
+        for klucz in klucze:
+            for pbn_uid in ((self.szukane or {}).get(klucz) or {}).get("uids", []):
+                jak = f"{PO_DOI if klucz.startswith('doi:') else PO_ISBN} (w PBN)"
+                if pbn_uid in kontekst["powiazane"]:
+                    return self._wpis_duplikatu(
+                        rekord, kontekst["powiazane"][pbn_uid], jak
+                    )
+                pub = kontekst["publikacje"].get(pbn_uid)
+                return self._wpis_w_pbn(
+                    rekord,
+                    {
+                        "pbn_uid": pbn_uid,
+                        "tytul": pub.title if pub else "",
+                        "rok": pub.year if pub else None,
+                        "doi": pub.doi if pub else "",
+                    },
+                    jak,
+                    pewne=True,
+                )
+
+        # b) praca jest w lokalnej kopii danych PBN
+        praca, jak = kontekst["w_kopii"].znajdz(doi, tytul, rok)
+        if praca is not None:
+            return self._wpis_w_pbn(rekord, praca, jak, pewne=jak == PO_DOI)
+
+        # d) nie ma po czym zapytać PBN
+        if not klucze:
+            return _wpis(
+                NIE_SPRAWDZONO,
+                rekord=rekord,
+                powod="Rekord nie ma DOI ani ISBN, więc nie da się zapytać PBN "
+                "o tę pracę; w pobranych danych PBN nie ma też pracy o tym "
+                "tytule i roku. Sprawdź ręcznie.",
+            )
+        niesprawdzone = [k for k in klucze if k not in (self.szukane or {})]
+        if niesprawdzone:
+            return _wpis(
+                NIE_SPRAWDZONO,
+                rekord=rekord,
+                powod="Nie udało się zapytać PBN o tę pracę ("
+                + ", ".join(niesprawdzone)
+                + ") — pobierz dane z PBN ponownie.",
+            )
+
+        # c) PBN nie ma pracy o tym DOI/ISBN
+        return _wpis(
+            TYLKO_W_BPP,
+            rekord=rekord,
+            dopasowanie="PBN nie ma pracy o: " + ", ".join(klucze),
+            wysylka=self._historia_wysylki(rekord, kontekst["wysylki"]),
+        )
+
+    @staticmethod
+    def _wpis_duplikatu(rekord, blizniak, jak):
+        return _wpis(
+            DUPLIKAT_W_BPP,
+            rekord=rekord,
+            pbn_uid=blizniak.pbn_uid_id,
+            dopasowanie=jak,
+            blizniak=_opis_bpp(blizniak),
+            powod="W BPP jest drugi rekord tej pracy, powiązany z PBN. "
+            "Niczego nie scalono — sprawdź oba rekordy i scal je ręcznie.",
+        )
+
+    def _wpis_w_pbn(self, rekord, praca, jak, pewne):
+        na_profilu = praca["pbn_uid"] in self.profil
+        gdzie = (
+            "Praca JEST na profilu instytucji w PBN."
+            if na_profilu
+            else "Pracy NIE MA na profilu instytucji w PBN."
+        )
+        if pewne:
+            propozycja = "Propozycja: wpisz w rekordzie ten PBN UID"
+        else:
+            jak += " — dopasowanie niepewne"
+            propozycja = (
+                "Propozycja: sprawdź, czy to ta sama praca; jeśli tak — wpisz "
+                "w rekordzie ten PBN UID"
+            )
+        if not na_profilu:
+            propozycja += " i dodaj pracę w PBN do profilu instytucji"
+        return _wpis(
+            W_PBN_NIEPOWIAZANA,
+            rekord=rekord,
+            pbn_uid=praca["pbn_uid"],
+            pbn_tytul=praca["tytul"] or "",
+            pbn_rok=praca["rok"],
+            pbn_doi=praca["doi"] or "",
+            dopasowanie=jak,
+            na_profilu=na_profilu,
+            powod=f"{gdzie} {propozycja}. Niczego nie powiązano automatycznie.",
+        )
+
+    @staticmethod
+    def _historia_wysylki(rekord, wysylki):
+        """Co wiadomo o wysyłce tego rekordu z BPP do PBN (tekst do raportu)."""
+        wysylka = wysylki.get(tuple(rekord.pk))
+        if wysylka is None:
+            return "nigdy nie wysyłany z BPP do PBN"
+        kiedy = (
+            f"{timezone.localtime(wysylka.submitted_at):%d.%m.%Y}"
+            if wysylka.submitted_at
+            else "data nieznana"
+        )
+        if wysylka.submitted_successfully:
+            return (
+                f"wysłany {kiedy} (wysyłka udana), a mimo to rekord nie ma PBN UID "
+                "— sprawdź w kolejce eksportu"
+            )
+        powod = " ".join((wysylka.exception or wysylka.api_response_status).split())
+        return f"wysyłka nieudana {kiedy}" + (f": {powod[:200]}" if powod else "")
+
+    def _profile_innych_uczelni(self, pbn_uids):
+        """``{pbn_uid: {skróty uczelni}}`` — prace z profili INNYCH uczelni
+        tej instalacji, według lokalnej kopii danych PBN (dwa zapytania)."""
+        if not pbn_uids:
+            return {}
+        from bpp.models import Uczelnia
+        from pbn_api.models import PublikacjaInstytucji
+
+        skroty = dict(
+            Uczelnia.objects.exclude(pk=self.uczelnia.pk)
+            .exclude(pbn_uid_id=None)
+            .values_list("pbn_uid_id", "skrot")
+        )
+        if not skroty:
+            return {}
+        wynik = {}
+        for pbn_uid, instytucja in (
+            PublikacjaInstytucji.objects.filter(
+                publicationId_id__in=pbn_uids, institutionId_id__in=list(skroty)
+            )
+            .values_list("publicationId_id", "institutionId_id")
+            .distinct()
+        ):
+            wynik.setdefault(pbn_uid, set()).add(skroty[instytucja])
+        return wynik
 
     # -- pętla --------------------------------------------------------------
 
@@ -673,6 +891,22 @@ def _zastosuj(przebieg):
     return przebieg.wpisy
 
 
+def _poprzednie_pobranie(uzgodnienie):
+    """Co nowe pobranie bierze z wcześniejszego, zamiast pytać PBN ponownie.
+
+    * wskazane wprost (``na_podstawie``) — także lista prac z profilu
+      (użytkownik zdecydował, że świeża lista wystarczy);
+    * w każdym razie — świeże wyniki wyszukiwania po DOI/ISBN.
+    """
+    zrodlo = uzgodnienie.na_podstawie
+    if zrodlo is not None:
+        return {**zrodlo.zakres, "uzyj_profilu": True}
+    ostatnie = UzgodnienieZPBN.ostatnie_pobranie(uzgodnienie.uczelnia)
+    if ostatnie is None:
+        return None
+    return {"szukane": ostatnie.zakres.get("szukane")}
+
+
 def uzgodnij(uzgodnienie, client, nadzorca=None):
     """Wykonuje cały przebieg i zapisuje wynik w ``uzgodnienie``.
 
@@ -688,16 +922,14 @@ def uzgodnij(uzgodnienie, client, nadzorca=None):
 
     try:
         zrodlo = uzgodnienie.na_podstawie
-        if zrodlo is None:
-            # Pobranie danych — albo przebieg, który pobiera sam (komenda
-            # z ``--pobierz``). Strony nigdy nie uruchamiają podglądu ani
-            # wykonania bez wskazania pobranych wcześniej danych.
+        if uzgodnienie.to_pobranie or zrodlo is None:
             uzgodnienie.zakres = zakres_mod.zbuduj_zakres(
                 client,
                 uzgodnienie.uczelnia,
                 uzgodnienie.rok_od,
                 uzgodnienie.rok_do,
                 nadzorca,
+                poprzedni=_poprzednie_pobranie(uzgodnienie),
             )
         elif zrodlo.to_pobranie:
             # Praca na danych pobranych wcześniej — bez pobierania.

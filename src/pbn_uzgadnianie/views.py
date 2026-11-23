@@ -19,8 +19,8 @@ from pbn_downloader_app.views import group_required
 
 from .forms import StartForm
 from .models import UzgodnienieZPBN
-from .raport import opis_dyscyplin, opis_roznic, pogrupuj, zbuduj_xlsx
-from .silnik import ZGODNE, ZMIENIAJACE
+from .raport import opis_dyscyplin, pogrupuj, wiersze_roznic, zbuduj_xlsx
+from .silnik import DUPLIKAT_W_BPP, ZGODNE, ZMIENIAJACE
 from .swiezosc import stan_danych
 from .tasks import uzgodnij_z_pbn
 
@@ -61,6 +61,21 @@ def _powod_blokady(uczelnia, user):
     if not pbn_user.pbn_token_possibly_valid():
         return "Twoja autoryzacja w PBN wygasła — wybierz „autoryzuj PBN API”."
     return None
+
+
+def _swiezy_profil(uczelnia):
+    """Ostatnie pobranie, którego lista prac z profilu jest jeszcze świeża
+    (ten sam próg co ostrzeżenie o starych danych) — albo ``None``."""
+    pobranie = UzgodnienieZPBN.ostatnie_pobranie(uczelnia)
+    if pobranie is None:
+        return None
+    stan = stan_danych(pobranie.zakres)
+    profil = next(
+        (z for z in (stan or {}).get("zrodla", []) if z["klucz"] == "profil"), None
+    )
+    if profil is None or profil["stare"]:
+        return None
+    return pobranie
 
 
 def _uruchom(request, uczelnia, **pola):
@@ -106,6 +121,7 @@ class StronaGlownaView(_UczelniaMixin, TemplateView):
         kontekst.update(
             form=StartForm(initial={"rok_od": rok, "rok_do": rok}),
             pobranie=pobranie,
+            swiezy_profil=_swiezy_profil(uczelnia) is not None,
             dane=stan_danych(pobranie.zakres) if pobranie else None,
             przebiegi=self.przebiegi().select_related("user")[:20],
             aktywny=self.przebiegi().filter(status__in=UzgodnienieZPBN.AKTYWNE).first(),
@@ -133,7 +149,11 @@ class StartView(_UczelniaMixin, View):
             return redirect("pbn_uzgadnianie:main")
 
         pola = dict(form.cleaned_data)
-        if pola["tryb"] != UzgodnienieZPBN.Tryb.POBRANIE:
+        caly_profil = pola.pop("caly_profil")
+        if pola["tryb"] == UzgodnienieZPBN.Tryb.POBRANIE:
+            if not caly_profil:
+                pola["na_podstawie"] = _swiezy_profil(uczelnia)
+        else:
             # Podgląd i wykonanie niczego same nie pobierają — pracują na
             # danych pobranych wcześniej przyciskiem „Pobierz dane z PBN”.
             pola["na_podstawie"] = UzgodnienieZPBN.ostatnie_pobranie(
@@ -176,7 +196,9 @@ class SzczegolyView(_UczelniaMixin, TemplateView):
         for kod, etykieta, wpisy in pogrupuj(przebieg.wynik or []):
             for wpis in wpisy:
                 wpis["bpp_url"] = _link_do_rekordu(wpis)
-                wpis["roznice_opis"] = opis_roznic(wpis)
+                wpis["roznice_wiersze"] = wiersze_roznic(wpis)
+                if wpis.get("blizniak"):
+                    wpis["blizniak"]["bpp_url"] = _link_do_rekordu(wpis["blizniak"])
                 wpis["dyscypliny_opis"] = opis_dyscyplin(wpis)
                 if wpis.get("pbn_uid"):
                     wpis["pbn_url"] = const.LINK_PBN_DO_PUBLIKACJI.format(
@@ -190,6 +212,7 @@ class SzczegolyView(_UczelniaMixin, TemplateView):
                     "wpisy": wpisy,
                     "zwinieta": kod == ZGODNE,
                     "zmienia": kod in ZMIENIAJACE,
+                    "duplikaty": kod == DUPLIKAT_W_BPP,
                 }
             )
         zakres = przebieg.zakres or {}

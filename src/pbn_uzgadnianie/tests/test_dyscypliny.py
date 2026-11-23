@@ -181,6 +181,35 @@ def test_dyscypliny_w_istniejacym_rekordzie_nie_sa_zmieniane_tylko_raport(
     assert _wiersz().dyscyplina_naukowa is None, "zmieniono istniejący rekord"
     wpis = wynik.wynik[0]
     assert wpis["kategoria"] == silnik.ROZNI_SIE
-    assert wpis["roznice"] == [
-        {"pole": f"Dyscyplina ({_autor(osoba)})", "bpp": "", "pbn": MEDYCYNA}
-    ]
+    (roznica,) = wpis["roznice"]
+    assert (roznica["pole"], roznica["bpp"], roznica["pbn"]) == (
+        f"Dyscyplina ({_autor(osoba)})",
+        "",
+        MEDYCYNA,
+    )
+    # Pusta strona jest w raporcie opisana słowami, nie pustą komórką.
+    from pbn_uzgadnianie.raport import wiersze_roznic
+
+    assert wiersze_roznic(wpis)[0]["bpp"] == "brak dyscypliny w rekordzie BPP"
+
+
+def test_brak_oswiadczenia_w_pbn_jest_nazwany_slowami(
+    klient, praca, przebieg, medycyna
+):
+    from pbn_uzgadnianie.raport import wiersze_roznic
+
+    _pbn_uid, osoba = praca
+    uzgodnij(przebieg(), klient)
+    baker.make(
+        Autor_Dyscyplina, autor=_autor(osoba), rok=2026, dyscyplina_naukowa=medycyna
+    )
+    wiersz = _wiersz()
+    wiersz.dyscyplina_naukowa = medycyna
+    wiersz.save()
+
+    wynik = uzgodnij(przebieg(), klient)
+
+    (wiersz_raportu,) = wiersze_roznic(wynik.wynik[0])
+    assert wiersz_raportu["bpp"] == MEDYCYNA
+    assert wiersz_raportu["pbn"] == "brak oświadczenia w PBN"
+    assert "brak oświadczenia w PBN" in str(wiersz_raportu["pbn_html"])
