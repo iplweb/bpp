@@ -16,7 +16,10 @@ zakończone przeliczenie nie dało metryk (np. brak liczby N), nie odpalamy go
 w kółko przy każdym odświeżeniu strony.
 """
 
+import logging
 from dataclasses import dataclass
+
+from celery import uuid as celery_uuid
 
 from bpp.permissions import moze_wprowadzac_dane
 from ewaluacja_common.models import Rodzaj_Autora
@@ -24,6 +27,8 @@ from ewaluacja_common.models import Rodzaj_Autora
 from .models import MetrykaAutora, StatusGenerowania
 from .tasks import generuj_metryki_task_parallel
 from .uczelnia_scope import scope_metryki
+
+logger = logging.getLogger(__name__)
 
 
 def moze_przeliczac_metryki(user) -> bool:
@@ -36,8 +41,8 @@ def moze_przeliczac_metryki(user) -> bool:
 def uruchom_generowanie_metryk(
     uczelnia, okres, *, minimalny_pk=0.01, nadpisz=True, rodzaje_autora=None
 ):
-    """Zleca przeliczenie metryk (zadanie Celery) i od razu oznacza status
-    jako „w trakcie”. Zwraca ``(status, wynik_zadania)``."""
+    """Oznacza status jako „w trakcie” i zleca przeliczenie metryk (zadanie
+    Celery). Zwraca ``(status, wynik_zadania)``."""
     from ewaluacja_liczba_n.models import IloscUdzialowDlaAutoraZaCalosc
 
     if not rodzaje_autora:
@@ -52,25 +57,45 @@ def uruchom_generowanie_metryk(
     if uczelnia:
         udzialy = udzialy.filter(uczelnia=uczelnia)
 
-    wynik = generuj_metryki_task_parallel.delay(
-        rok_min=okres.rok_od,
-        rok_max=okres.rok_do,
-        okres_pk=okres.pk,
-        minimalny_pk=minimalny_pk,
-        nadpisz=nadpisz,
-        przelicz_liczbe_n=True,  # zawsze przeliczaj liczbę N przy generowaniu
-        rodzaje_autora=rodzaje_autora,
-        uczelnia_id=uczelnia.pk if uczelnia else None,
-    )
-
-    # Status „w trakcie” ustawiamy od razu w żądaniu — zadanie tylko
-    # aktualizuje postęp.
+    # Status „w trakcie” — razem z identyfikatorem zadania — zapisujemy
+    # PRZED wysłaniem zadania do kolejki: zadanie na starcie porównuje swój
+    # identyfikator z tym w statusie (i wychodzi, jeśli przebieg anulowano
+    # albo zastąpiono), więc nie może wyprzedzić tego zapisu.
+    task_id = celery_uuid()
     status = StatusGenerowania.get_or_create(uczelnia=uczelnia, okres=okres)
     status.rozpocznij_generowanie(
-        task_id=str(wynik.id),
+        task_id=task_id,
         liczba_do_przetworzenia=udzialy.count(),
         okres=okres,
     )
+
+    try:
+        wynik = generuj_metryki_task_parallel.apply_async(
+            kwargs=dict(
+                rok_min=okres.rok_od,
+                rok_max=okres.rok_do,
+                okres_pk=okres.pk,
+                minimalny_pk=minimalny_pk,
+                nadpisz=nadpisz,
+                przelicz_liczbe_n=True,  # zawsze przeliczaj liczbę N
+                rodzaje_autora=rodzaje_autora,
+                uczelnia_id=uczelnia.pk if uczelnia else None,
+                tylko_zlecony_przebieg=True,
+            ),
+            task_id=task_id,
+        )
+    except Exception:
+        # Zadania nie udało się nawet wysłać (np. broker niedostępny):
+        # nie zostawiamy statusu „w trakcie” do upływu limitu startu.
+        logger.exception("Nie udało się zlecić generowania metryk")
+        status.oznacz_anulowane(
+            "Nie udało się zlecić generowania metryk: usługa przetwarzania "
+            "zadań w tle jest niedostępna. Zgłoś to administratorowi systemu."
+        )
+        raise
+    # W trybie „eager” (testy, dev bez workera) zadanie wykonało się już
+    # w tym wywołaniu i zmieniło status.
+    status.refresh_from_db()
     return status, wynik
 
 
@@ -85,6 +110,11 @@ class StanMetrykOkresu:
     @property
     def w_trakcie(self) -> bool:
         return bool(self.status and self.status.w_trakcie)
+
+    @property
+    def anulowane(self) -> bool:
+        """Ostatnie przeliczenie anulowano, bo nie wystartowało w czasie."""
+        return bool(self.status and self.status.anulowane)
 
     @property
     def przeliczone_bez_wynikow(self) -> bool:
@@ -108,9 +138,18 @@ def stan_metryk_okresu(request, uczelnia, okres, *, uruchamiaj=True):
         return StanMetrykOkresu(okres=okres, ma_metryki=True)
 
     moze = moze_przeliczac_metryki(request.user)
-    status = StatusGenerowania.get_or_create(uczelnia=uczelnia, okres=okres)
+    status = StatusGenerowania.aktualny(uczelnia=uczelnia, okres=okres)
     uruchomiono = False
-    if uruchamiaj and moze and not status.w_trakcie and status.data_zakonczenia is None:
+    # Anulowanego przebiegu (zadanie nie wystartowało, np. nie działa worker)
+    # nie wznawiamy automatycznie — inaczej każde wejście na stronę zlecałoby
+    # kolejne zadanie donikąd, a użytkownik nie zobaczyłby powodu.
+    if (
+        uruchamiaj
+        and moze
+        and not status.w_trakcie
+        and status.data_zakonczenia is None
+        and not status.anulowane
+    ):
         status, _ = uruchom_generowanie_metryk(uczelnia, okres)
         uruchomiono = True
 

@@ -44,6 +44,9 @@ w BPP, więc najpierw:
 **Konieczny działający system zadań w tle.** Obliczenia wykonuje serwer
 w tle (tzw. kolejka zadań). Jeśli po kliknięciu nic się nie dzieje, a status
 stoi na „Oczekiwanie na rozpoczęcie przetwarzania”, zgłoś to administratorowi.
+Samo przeliczenie metryk, które nie rozpocznie się w ciągu 5 minut, jest
+anulowane automatycznie — patrz
+[Metryki ewaluacyjne](metryki-ewaluacyjne.md).
 
 ## Uruchomienie optymalizacji {#uruchomienie}
 

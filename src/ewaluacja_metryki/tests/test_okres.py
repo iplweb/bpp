@@ -260,17 +260,19 @@ def test_generowanie_dla_wybranego_okresu(admin_user, client, okres_2022, okres_
     with patch(
         "ewaluacja_metryki.brak_metryk.generuj_metryki_task_parallel"
     ) as mock_task:
-        mock_task.delay.return_value = MagicMock(id="test-task-id")
+        mock_task.apply_async.return_value = MagicMock(id="test-task-id")
         response = client.post(
             reverse("ewaluacja_metryki:uruchom_generowanie"),
             {"minimalny_pk": 0.01, "nadpisz": "on"},
         )
 
     assert response.status_code == 302
-    kwargs = mock_task.delay.call_args.kwargs
+    kwargs = mock_task.apply_async.call_args.kwargs["kwargs"]
     assert kwargs["okres_pk"] == okres_2022.pk
     assert (kwargs["rok_min"], kwargs["rok_max"]) == (2022, 2025)
-    status = StatusGenerowania.objects.get(task_id="test-task-id")
+    status = StatusGenerowania.objects.get(
+        task_id=mock_task.apply_async.call_args.kwargs["task_id"]
+    )
     assert status.okres == okres_2022
 
 

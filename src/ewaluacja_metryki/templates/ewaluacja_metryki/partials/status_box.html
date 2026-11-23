@@ -1,6 +1,6 @@
 <!-- Status generowania - partial template for HTMX updates -->
 {% if status_generowania %}
-<div class="callout {% if status_generowania.w_trakcie %}warning{% elif status_generowania.data_zakonczenia %}success{% else %}secondary{% endif %}"
+<div class="callout {% if status_generowania.w_trakcie %}warning{% elif status_generowania.data_zakonczenia %}success{% elif status_generowania.anulowane %}alert{% else %}secondary{% endif %}"
      id="status-box"
      {% if status_generowania.w_trakcie %}
      hx-get="{% url 'ewaluacja_metryki:status_partial' %}"
@@ -12,9 +12,12 @@
             {% if status_generowania.w_trakcie %}
                 <p>
                     <span class="fi-clock"></span>
-                    {% if status_generowania.liczba_przetworzonych == 0 %}
+                    {% if status_generowania.czeka_na_start %}
+                        {# Zadanie w tle nie dało jeszcze znaku życia; po limicie startu przebieg jest anulowany. #}
                         <strong>Oczekiwanie na rozpoczęcie przetwarzania...</strong>
-                        <br><small>Przeliczanie liczby N i przygotowanie danych...</small>
+                    {% elif status_generowania.liczba_przetworzonych == 0 %}
+                        <strong>Przeliczanie liczby N i przygotowanie danych...</strong>
+                        <br><small>Na dużej uczelni ten etap może potrwać kilka minut.</small>
                     {% else %}
                         <strong>Generowanie metryk w trakcie...</strong>
                         {% if status_generowania.okres %}(okres {{ status_generowania.okres }}){% endif %}
@@ -38,6 +41,12 @@
                     {% if status_generowania.czas_trwania %}
                         | Czas trwania: {{ status_generowania.czas_trwania }}
                     {% endif %}
+                </p>
+            {% elif status_generowania.anulowane %}
+                <p id="generowanie-anulowane">
+                    <span class="fi-alert"></span>
+                    <strong>Generowanie metryk zostało anulowane.</strong><br>
+                    {{ status_generowania.ostatni_komunikat }}
                 </p>
             {% else %}
                 <p>

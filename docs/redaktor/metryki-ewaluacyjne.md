@@ -93,10 +93,12 @@ optymalizacji, snapshotów odpięć i wydruku oświadczeń.
     doktorantów.
 
 3. Okno się zamknie, a ramka statusu zrobi się żółta. Najpierw jest
-   **„Oczekiwanie na rozpoczęcie przetwarzania...”** — BPP **przelicza
-   liczbę N** (zawsze, przy każdym generowaniu), potem pasek postępu
-   z napisem **„Przetworzono: … autorów”**. Ramka odświeża się sama co
-   2 sekundy, a po zakończeniu przeładowuje całą stronę.
+   **„Oczekiwanie na rozpoczęcie przetwarzania...”** (zadanie czeka
+   w kolejce), potem **„Przeliczanie liczby N i przygotowanie danych...”**
+   — BPP **przelicza liczbę N** (zawsze, przy każdym generowaniu), a na
+   końcu pasek postępu z napisem **„Przetworzono: … autorów”**. Ramka
+   odświeża się sama co 2 sekundy, a po zakończeniu przeładowuje całą
+   stronę.
 
     ![Ramka statusu w trakcie przeliczania: oczekiwanie, przeliczanie liczby N, licznik autorów](../images/redaktor/metryki-ewaluacyjne/05-postep.png)
 
@@ -347,11 +349,26 @@ metryki.
 **„Generowanie jest już w trakcie (rozpoczęte: …)”** — ktoś inny właśnie
 przelicza. Poczekaj, aż ramka statusu zrobi się zielona.
 
-**Ramka statusu wisi na „Oczekiwanie na rozpoczęcie przetwarzania...”.**
-Przeliczanie wykonuje usługa zadań w tle. Jeśli po kilkunastu minutach nic
-się nie zmienia, usługa nie działa — zgłoś to administratorowi serwera.
-Do czasu naprawy nie da się uruchomić kolejnego przeliczenia (przycisk
-pokazuje **„Generowanie w trakcie”**).
+**Czerwona ramka „Generowanie metryk zostało anulowane.”** Przeliczanie
+wykonuje usługa zadań w tle. Jeśli w ciągu 5 minut od uruchomienia zadanie
+w ogóle się nie rozpocznie (ramka cały czas pokazuje **„Oczekiwanie na
+rozpoczęcie przetwarzania...”**), BPP samo anuluje to uruchomienie
+i odblokowuje przycisk **„Uruchom generowanie”**. Komunikat w ramce mówi,
+co dalej:
+
+- **„Usługa przetwarzania zadań w tle nie działa — zgłoś to
+  administratorowi systemu”** — ponowne klikanie nic nie da, dopóki
+  administrator nie uruchomi usługi;
+- **„Usługa przetwarzania zadań w tle działa — spróbuj uruchomić
+  generowanie ponownie”** — zadanie nie doczekało się swojej kolejki
+  (np. serwer był zajęty innymi zadaniami); uruchom generowanie jeszcze
+  raz.
+
+Ten sam komunikat pojawia się na stronach **Metryki jednostek** i **Metryki
+wydziałów**, jeśli to one uruchomiły przeliczenie w okresie bez metryk.
+Przeliczanie, które już ruszyło (ramka pokazuje **„Przeliczanie liczby N
+i przygotowanie danych...”** albo licznik autorów), nie jest anulowane,
+nawet jeśli trwa długo.
 
 **W ramce statusu „Błędy: …”** — części par autor + dyscyplina nie udało
 się policzyć; pozostałe metryki są poprawne. Jeśli błędy się powtarzają,
