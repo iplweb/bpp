@@ -348,6 +348,20 @@ narzędziem planowania. Różnice biorą się zwykle z innej liczby N (zobacz
 z punktów lub dyscyplin prac, które różnią się między BPP a PBN, albo
 z oświadczeń złożonych inaczej niż przypięcia w BPP.
 
+**Strona postępu pokazuje czerwoną ramkę „… zadanie zostało przerwane przed
+zakończeniem …”.** Przeliczenia i analizy tego modułu („Policz całą
+ewaluację”, optymalizacja z odpinaniem, analiza możliwości odpinania,
+analiza zamiany dyscyplin, przeliczanie w przeglądarce ewaluacji, odpinanie
+sensownych możliwości) wykonuje usługa zadań w tle. Jeśli zadanie zostanie
+przerwane — najczęściej przez restart tej usługi podczas aktualizacji
+systemu — BPP zauważa po około dwóch minutach, że nikt już nad nim nie
+pracuje, kończy odświeżanie strony postępu i pokazuje ten komunikat.
+Wystarczy uruchomić zadanie ponownie; nie trzeba czekać ani prosić
+administratora o „odblokowanie”. Inaczej jest przy komunikacie **„… usługa
+przetwarzania zadań w tle nie działa od co najmniej 5 min”** — wtedy
+ponowne uruchomienie nic nie da, dopóki administrator systemu nie uruchomi
+usługi.
+
 ## Zobacz też
 
 - [Gdzie sprawdzić punkty i sloty](../uzytkownik/punkty-i-sloty.md) —

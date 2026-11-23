@@ -5,7 +5,7 @@ import logging
 from celery.result import AsyncResult
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
-from django.shortcuts import redirect, render
+from django.shortcuts import redirect
 
 from bpp.models import Uczelnia
 from ewaluacja_common.okres import okres_dla_request
@@ -75,8 +75,17 @@ def unpin_all_sensible_status(request, task_id):
         f"task.info={task_info}"
     )
 
+    from ..models import StatusOdpinaniaWszystkich
+    from .helpers import kontekst_przerwanego_przebiegu, render_postepu
+
+    przerwany = kontekst_przerwanego_przebiegu(StatusOdpinaniaWszystkich, task_id)
+
+    # Zadanie padło w trakcie albo nie działa usługa zadań w tle
+    if przerwany:
+        context.update(przerwany)
+
     # Jeśli zadanie się nie zakończyło
-    if not task.ready():
+    elif not task.ready():
         context["task_state"] = "PROGRESS"
         context["task_ready"] = False
         context["info"] = task_info
@@ -115,14 +124,9 @@ def unpin_all_sensible_status(request, task_id):
         # Dla zwykłych requestów normalny redirect
         return redirect("ewaluacja_optymalizacja:unpinning-list")
 
-    # If HTMX request, return only the progress partial
-    if request.headers.get("HX-Request"):
-        return render(
-            request,
-            "ewaluacja_optymalizacja/_unpin_all_sensible_progress.html",
-            context,
-        )
-
-    return render(
-        request, "ewaluacja_optymalizacja/unpin_all_sensible_status.html", context
+    return render_postepu(
+        request,
+        "ewaluacja_optymalizacja/_unpin_all_sensible_progress.html",
+        "ewaluacja_optymalizacja/unpin_all_sensible_status.html",
+        context,
     )

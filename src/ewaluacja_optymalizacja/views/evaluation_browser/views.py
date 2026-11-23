@@ -51,7 +51,7 @@ def evaluation_browser(request):
         return redirect("ewaluacja_optymalizacja:index")
 
     okres = okres_dla_request(request)
-    status = StatusPrzegladarkaRecalc.get_or_create()
+    status = StatusPrzegladarkaRecalc.aktualny()
     # Pokazuj diff tylko gdy przeliczanie zakończone (w_trakcie=False)
     show_diff = not status.w_trakcie
     discipline_summary = _get_discipline_summary(
@@ -82,7 +82,7 @@ def browser_summary(request):
         return HttpResponseBadRequest("Nie znaleziono uczelni")
 
     okres = okres_dla_request(request)
-    status = StatusPrzegladarkaRecalc.get_or_create()
+    status = StatusPrzegladarkaRecalc.aktualny()
     # Pokazuj diff tylko gdy przeliczanie zakończone (w_trakcie=False)
     show_diff = not status.w_trakcie
     discipline_summary = _get_discipline_summary(
@@ -169,7 +169,7 @@ def browser_toggle_pin(request, model_type, pk):
 
     # Uruchom przeliczanie
     with transaction.atomic():
-        status = StatusPrzegladarkaRecalc.get_or_create()
+        status = StatusPrzegladarkaRecalc.aktualny()
         if status.w_trakcie:
             return HttpResponseBadRequest(
                 "Przeliczanie już trwa. Poczekaj na zakończenie."
@@ -248,7 +248,7 @@ def browser_swap_discipline(request, model_type, pk):
     punkty_przed = _snapshot_discipline_points(uczelnia, okres)
 
     with transaction.atomic():
-        status = StatusPrzegladarkaRecalc.get_or_create()
+        status = StatusPrzegladarkaRecalc.aktualny()
         if status.w_trakcie:
             return HttpResponseBadRequest(
                 "Przeliczanie już trwa. Poczekaj na zakończenie."
@@ -278,7 +278,7 @@ def browser_recalc_status(request):
     if not uczelnia:
         return HttpResponseBadRequest("Nie znaleziono uczelni")
 
-    status = StatusPrzegladarkaRecalc.get_or_create()
+    status = StatusPrzegladarkaRecalc.aktualny()
     okres = status.okres if status.okres_id else okres_dla_request(request)
 
     # Policz postęp
@@ -302,6 +302,7 @@ def browser_recalc_status(request):
 
     context = {
         "status": status,
+        "przerwane": status.ostatni_komunikat if status.przerwany else "",
         "progress": progress,
         "completed": completed,
         "total": raportowane,

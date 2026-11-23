@@ -10,16 +10,27 @@ from django.utils import timezone
 
 from bpp.models import Uczelnia
 from django_bpp.db_locks import advisory_lock_id
+from ewaluacja_common.przebiegi import PilnowanyPrzebiegMixin
 
 from .bariera import zajmij_slot_pod_bariera, zwolnij_slot
 
 
-class StatusOptymalizacjiZOdpinaniem(models.Model):
+class StatusOptymalizacjiZOdpinaniem(PilnowanyPrzebiegMixin, models.Model):
     """
     Singleton model śledzący status zadania optymalizacji z odpinaniem.
     Używany do zapewnienia, że tylko jedno zadanie może być uruchomione naraz
     oraz do przekierowania użytkownika do strony statusu działającego zadania.
     """
+
+    # Strażnik przebiegów — patrz ``ewaluacja_common.przebiegi``.
+    ZADANIA_PRZEBIEGU = (
+        "ewaluacja_optymalizacja.tasks.optimization.optimize_and_unpin_task",
+        "ewaluacja_optymalizacja.tasks.optimization.solve_all_reported_disciplines",
+        "ewaluacja_optymalizacja.tasks.optimization.solve_single_discipline_task",
+        "ewaluacja_optymalizacja.tasks.optimization.finalize_browser_recalc",
+    )
+    NAZWA_PRZEBIEGU = "Optymalizacja z odpinaniem"
+    LIMIT_PRZEBIEGU_SEKUNDY = 3600 + 15 * 60
 
     w_trakcie = models.BooleanField(
         default=False,
@@ -125,12 +136,21 @@ class StatusOptymalizacjiZOdpinaniem(models.Model):
         )
 
 
-class StatusOptymalizacjiBulk(models.Model):
+class StatusOptymalizacjiBulk(PilnowanyPrzebiegMixin, models.Model):
     """
     Singleton model śledzący status zadania "Policz całą ewaluację".
     Używany do zapewnienia, że tylko jedno zadanie może być uruchomione naraz
     oraz do przekierowania użytkownika do strony statusu działającego zadania.
     """
+
+    # Strażnik przebiegów — patrz ``ewaluacja_common.przebiegi``.
+    ZADANIA_PRZEBIEGU = (
+        "ewaluacja_optymalizacja.tasks.optimization.solve_all_reported_disciplines",
+        "ewaluacja_optymalizacja.tasks.optimization.solve_single_discipline_task",
+        "ewaluacja_optymalizacja.tasks.optimization.finalize_browser_recalc",
+    )
+    NAZWA_PRZEBIEGU = "Przeliczanie całej ewaluacji"
+    LIMIT_PRZEBIEGU_SEKUNDY = 3600 + 15 * 60
 
     w_trakcie = models.BooleanField(
         default=False,
@@ -244,8 +264,33 @@ class StatusOptymalizacjiBulk(models.Model):
             ostatni_komunikat=self.ostatni_komunikat,
         )
 
+    def _przebieg_juz_zakonczony(self):
+        # ``task_id`` to zadanie-rodzic, które kończy się zaraz po rozesłaniu
+        # optymalizacji dyscyplin, a flagę zdejmuje dopiero strona statusu.
+        # Przebieg jest skończony, gdy każda raportowana dyscyplina ma wynik
+        # (start przebiegu kasuje stare wyniki, więc każdy jest z niego).
+        from ewaluacja_liczba_n.models import LiczbaNDlaUczelni
 
-class StatusUnpinningAnalyzy(models.Model):
+        from .runs import OptimizationRun
+
+        if self.uczelnia_id is None:
+            return False
+        raportowane = set(
+            LiczbaNDlaUczelni.objects.filter(
+                uczelnia_id=self.uczelnia_id, okres_id=self.okres_id, liczba_n__gte=12
+            ).values_list("dyscyplina_naukowa_id", flat=True)
+        )
+        skonczone = set(
+            OptimizationRun.objects.filter(
+                uczelnia_id=self.uczelnia_id,
+                okres_id=self.okres_id,
+                status__in=("completed", "failed"),
+            ).values_list("dyscyplina_naukowa_id", flat=True)
+        )
+        return bool(raportowane) and raportowane <= skonczone
+
+
+class StatusUnpinningAnalyzy(PilnowanyPrzebiegMixin, models.Model):
     """
     Singleton model śledzący status zadania analizy możliwości odpinania.
     Używany do zapewnienia, że tylko jedno zadanie może być uruchomione naraz
@@ -254,6 +299,19 @@ class StatusUnpinningAnalyzy(models.Model):
     Zastępuje wcześniejsze przechowywanie task_id w sesji przeglądarki,
     co pozwala na śledzenie statusu zadania globalnie dla wszystkich użytkowników.
     """
+
+    # Strażnik przebiegów — patrz ``ewaluacja_common.przebiegi``.
+    ZADANIA_PRZEBIEGU = (
+        "ewaluacja_metryki.tasks.generuj_metryki_task_parallel",
+        "ewaluacja_metryki.tasks.oblicz_metryki_dla_autora_task",
+        "ewaluacja_metryki.tasks.finalizuj_generowanie_metryk",
+        "ewaluacja_optymalizacja.tasks.unpinning.main_tasks.run_unpinning_after_metrics_wrapper",
+        "ewaluacja_optymalizacja.tasks.unpinning.main_tasks.analyze_multi_author_works_task",
+        "ewaluacja_optymalizacja.tasks.unpinning.workers.analyze_unpinning_worker_task",
+        "ewaluacja_optymalizacja.tasks.unpinning.workers.collect_unpinning_results",
+    )
+    NAZWA_PRZEBIEGU = "Analiza możliwości odpinania"
+    LIMIT_PRZEBIEGU_SEKUNDY = 2 * 3600
 
     w_trakcie = models.BooleanField(
         default=False,
@@ -345,12 +403,21 @@ class StatusUnpinningAnalyzy(models.Model):
         )
 
 
-class StatusDisciplineSwapAnalysis(models.Model):
+class StatusDisciplineSwapAnalysis(PilnowanyPrzebiegMixin, models.Model):
     """
     Singleton model śledzący status zadania analizy zamiany dyscyplin.
     Używany do zapewnienia, że tylko jedno zadanie może być uruchomione naraz
     oraz do przekierowania użytkownika do strony statusu działającego zadania.
     """
+
+    # Strażnik przebiegów — patrz ``ewaluacja_common.przebiegi``.
+    ZADANIA_PRZEBIEGU = (
+        "ewaluacja_optymalizacja.tasks.discipline_swap.main_tasks.analyze_discipline_swap_task",
+        "ewaluacja_optymalizacja.tasks.discipline_swap.workers.analyze_discipline_swap_worker_task",
+        "ewaluacja_optymalizacja.tasks.discipline_swap.workers.collect_discipline_swap_results",
+    )
+    NAZWA_PRZEBIEGU = "Analiza zamiany dyscyplin"
+    LIMIT_PRZEBIEGU_SEKUNDY = 1800 + 15 * 60
 
     w_trakcie = models.BooleanField(
         default=False,
@@ -442,11 +509,20 @@ class StatusDisciplineSwapAnalysis(models.Model):
         )
 
 
-class StatusPrzegladarkaRecalc(models.Model):
+class StatusPrzegladarkaRecalc(PilnowanyPrzebiegMixin, models.Model):
     """
     Singleton model śledzący status przeliczania z poziomu przeglądarki ewaluacji.
     Przechowuje również punkty przed zmianą do obliczenia diff.
     """
+
+    # Strażnik przebiegów — patrz ``ewaluacja_common.przebiegi``.
+    ZADANIA_PRZEBIEGU = (
+        "ewaluacja_optymalizacja.tasks.optimization.solve_all_reported_disciplines",
+        "ewaluacja_optymalizacja.tasks.optimization.solve_single_discipline_task",
+        "ewaluacja_optymalizacja.tasks.optimization.finalize_browser_recalc",
+    )
+    NAZWA_PRZEBIEGU = "Przeliczanie ewaluacji"
+    LIMIT_PRZEBIEGU_SEKUNDY = 3600 + 15 * 60
 
     w_trakcie = models.BooleanField(
         default=False,
@@ -554,8 +630,13 @@ class StatusPrzegladarkaRecalc(models.Model):
             ostatni_komunikat=self.ostatni_komunikat,
         )
 
+    def _przebieg_juz_zakonczony(self):
+        # ``task_id`` to zadanie-rodzic kończące się zaraz po rozesłaniu
+        # optymalizacji dyscyplin; flagę zdejmuje ``finalize_browser_recalc``.
+        return False
 
-class StatusOdpinaniaWszystkich(models.Model):
+
+class StatusOdpinaniaWszystkich(PilnowanyPrzebiegMixin, models.Model):
     """Singleton statusu zadania ``unpin_all_sensible_task``.
 
     Ten model powstał głównie po to, by ``unpin_all_sensible_task`` — obok
@@ -570,6 +651,20 @@ class StatusOdpinaniaWszystkich(models.Model):
     zdejmowany przez samo zadanie (``zwolnij_slot`` w ``finally``), bo widok
     ``unpin_all_sensible`` nie prowadzi własnego stanu statusu.
     """
+
+    # Strażnik przebiegów — patrz ``ewaluacja_common.przebiegi``.
+    ZADANIA_PRZEBIEGU = (
+        "ewaluacja_optymalizacja.tasks.unpin_all_sensible.unpin_all_sensible_task",
+        "ewaluacja_metryki.tasks.generuj_metryki_task_parallel",
+        "ewaluacja_metryki.tasks.oblicz_metryki_dla_autora_task",
+        "ewaluacja_metryki.tasks.finalizuj_generowanie_metryk",
+        "ewaluacja_optymalizacja.tasks.unpinning.main_tasks.run_unpinning_after_metrics_wrapper",
+        "ewaluacja_optymalizacja.tasks.unpinning.main_tasks.analyze_multi_author_works_task",
+        "ewaluacja_optymalizacja.tasks.unpinning.workers.analyze_unpinning_worker_task",
+        "ewaluacja_optymalizacja.tasks.unpinning.workers.collect_unpinning_results",
+    )
+    NAZWA_PRZEBIEGU = "Odpinanie sensownych możliwości"
+    LIMIT_PRZEBIEGU_SEKUNDY = 7200 + 15 * 60
 
     w_trakcie = models.BooleanField(
         default=False,

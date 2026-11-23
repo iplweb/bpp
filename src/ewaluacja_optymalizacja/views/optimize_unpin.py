@@ -18,7 +18,11 @@ from ..models import (
     OptimizationRun,
     StatusOptymalizacjiZOdpinaniem,
 )
-from .helpers import _format_time_remaining
+from .helpers import (
+    _format_time_remaining,
+    kontekst_przerwanego_przebiegu,
+    render_postepu,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -141,7 +145,7 @@ def optimize_with_unpinning(request):
     from ..tasks import optimize_and_unpin_task
 
     # Sprawdź czy zadanie już działa (przez model singleton)
-    status = StatusOptymalizacjiZOdpinaniem.get_or_create()
+    status = StatusOptymalizacjiZOdpinaniem.aktualny()
     if status.w_trakcie and status.task_id:
         messages.info(
             request,
@@ -357,6 +361,17 @@ def optimize_unpin_status(request, task_id):
         "dirty_count": DirtyInstance.objects.count(),
         "okres": okres,
     }
+
+    # KROK 0: zadanie padło w trakcie albo nie działa usługa zadań w tle
+    przerwany = kontekst_przerwanego_przebiegu(StatusOptymalizacjiZOdpinaniem, task_id)
+    if przerwany:
+        context.update(przerwany)
+        return render_postepu(
+            request,
+            "ewaluacja_optymalizacja/_optimize_unpin_progress.html",
+            "ewaluacja_optymalizacja/optimize_unpin_status.html",
+            context,
+        )
 
     # KROK 1: Sprawdź fazę zadania z task.info (dla faz przed optymalizacją)
     task_info = task.info if task.info and isinstance(task.info, dict) else {}

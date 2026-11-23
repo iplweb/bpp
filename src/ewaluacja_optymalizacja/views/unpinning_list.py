@@ -116,7 +116,7 @@ def unpinning_opportunities_list(request):
         return redirect("ewaluacja_optymalizacja:index")
 
     # Check if unpinning analysis is already running - używa modelu singleton zamiast sesji
-    status_unpinning = StatusUnpinningAnalyzy.get_or_create()
+    status_unpinning = StatusUnpinningAnalyzy.aktualny()
     task_id = status_unpinning.task_id if status_unpinning.w_trakcie else None
 
     if task_id:

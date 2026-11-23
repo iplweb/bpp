@@ -1,5 +1,15 @@
 {% load humanize %}
 
+{% if przerwane %}
+{# Strażnik przebiegów anulował przeliczanie (zadanie padło albo nie działa #}
+{# usługa zadań w tle) — koniec odpytywania, komunikat zostaje na ekranie. #}
+<div class="callout alert">
+    <h4 id="recalcModalTitle">
+        <span class="fi-alert"></span> Przeliczanie przerwane
+    </h4>
+    <p>{{ przerwane }}</p>
+</div>
+{% else %}
 <div class="callout {% if all_done %}success{% else %}warning{% endif %}"
      {% if all_done %}data-recalc-complete="true"{% endif %}
      {% if not all_done %}
@@ -45,3 +55,4 @@
     <p><em>Okno zamknie się automatycznie za chwilę...</em></p>
     {% endif %}
 </div>
+{% endif %}
