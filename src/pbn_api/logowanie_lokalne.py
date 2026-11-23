@@ -1,13 +1,20 @@
-"""Logowanie do PBN na LOKALNEJ instancji BPP z przechwyceniem powrotu.
+"""Logowanie do PBN dla LOKALNEJ instancji BPP z przechwyceniem powrotu.
 
 PBN po zalogowaniu odsyła przeglądarkę na adres zwrotny zapisany przy
 aplikacji w PBN, czyli na serwer produkcyjny klienta
 (``https://<serwer klienta>/pbn_api/callback?ott=<kod>``), a nie na
-``localhost``. Tutaj prowadzimy przeglądarkę (Playwright, Chromium) przez
-zwykłą ścieżkę „autoryzuj PBN API" lokalnego BPP i podmieniamy ten jeden
-powrót: żądanie do obcego hosta jest zatrzymywane, ZANIM wyjdzie z
-przeglądarki, i zastępowane przekierowaniem na ten sam ``path`` lokalnej
-instancji. Autoryzację kończy lokalny BPP swoim normalnym widokiem.
+``localhost``. Tutaj otwieramy w przeglądarce (Playwright, Chromium) stronę
+logowania aplikacji PBN WSKAZANEJ uczelni i zatrzymujemy ten jeden powrót,
+ZANIM wyjdzie z przeglądarki. Przechwycony kod OTT wymienia na token komenda
+``pbn_zaloguj_lokalnie`` — tą samą ścieżką co ``/pbn_api/callback``
+(``pbn_api.autoryzacja.zapisz_token_z_ott``), jawnie dla tej uczelni.
+
+Dlaczego nie przez lokalne ``/pbn_api/authorize`` → ``/pbn_api/callback``:
+te widoki wybierają uczelnię po domenie żądania (``Site``). Pod
+``localhost`` w instalacji z kilkoma uczelniami trafiają w pierwszą
+z brzegu — logowanie szłoby przez aplikację PBN innej uczelni niż ta, dla
+której token potem sprawdzamy. Adres logowania budujemy więc sami z pól
+wskazanej uczelni; mechanizm wyboru uczelni na produkcji zostaje nietknięty.
 
 ⚠️ Przechwytywanie idzie przez CDP (domena ``Fetch``), a NIE przez
 ``context.route()`` Playwrighta. ``route()`` nie widzi kolejnych skoków
@@ -17,24 +24,23 @@ formularza logowania. Nie „upraszczaj" tego do ``route()`` — test e2e
 (``test_logowanie_lokalne_e2e.py``) liczy żądania, które dotarły do
 „obcego" serwera.
 
-Kod korzystający z bazy (sesja, sprawdzenie tokenu) celowo biegnie POZA
-blokiem ``sync_playwright()`` — synchroniczne API Playwrighta trzyma
-uruchomioną pętlę asyncio i ORM Django odmówiłby pracy
-(``SynchronousOnlyOperation``).
+Funkcje z tego modułu nie dotykają bazy: synchroniczne API Playwrighta
+trzyma uruchomioną pętlę asyncio i ORM Django odmówiłby pracy
+(``SynchronousOnlyOperation``). Baza jest używana przed i po bloku
+przeglądarki, w komendzie.
 """
 
+import base64
 import json
 import logging
 import re
 import time
 from dataclasses import dataclass, field
-from importlib import import_module
-from urllib.parse import parse_qs, quote, urlsplit
+from urllib.parse import parse_qs, urlsplit
 
-from django.conf import settings
-from django.contrib.auth import BACKEND_SESSION_KEY, HASH_SESSION_KEY, SESSION_KEY
 from django.core.exceptions import ImproperlyConfigured
 
+from pbn_api.client import OAuthMixin
 from pbn_api.urls import CALLBACK_ALIASES
 
 logger = logging.getLogger(__name__)
@@ -48,12 +54,10 @@ SCIEZKA_CALLBACKU = re.compile(
 #: ``ott=`` (gdyby PBN wracał na inną ścieżkę).
 WZORCE_FETCH = ("*/pbn_api/*", "*ott=*")
 
-LOKALNE_HOSTY = frozenset({"localhost", "127.0.0.1", "::1"})
-
 STRONA_INFORMACYJNA = """<!doctype html><meta charset="utf-8">
 <title>BPP: logowanie do PBN</title>
 <body style="font-family: sans-serif; margin: 3em">
-<h1>%s</h1><p>To okno można zamknąć — dalsze informacje są w terminalu.</p>
+<h1>%s</h1><p>To okno zaraz się zamknie — dalsze informacje są w terminalu.</p>
 """
 
 
@@ -61,33 +65,21 @@ STRONA_INFORMACYJNA = """<!doctype html><meta charset="utf-8">
 class WynikPrzegladarki:
     """Co zobaczyła przeglądarka. Bez dostępu do bazy."""
 
-    #: ``callback`` — lokalny BPP obsłużył callback; ``ott`` — mamy kod, ale
-    #: nie przeszedł przez lokalny callback; ``callback_bez_ott``;
-    #: ``niezalogowany``; ``zamknieto``; ``timeout``.
+    #: ``ott`` — mamy kod; ``callback_bez_ott`` — PBN wrócił bez kodu;
+    #: ``zamknieto`` — okno zamknięte; ``timeout``.
     status: str = "timeout"
     ott: str | None = None
     #: (metoda, url bez query) żądań zatrzymanych przed wyjściem do obcego
     #: hosta — do diagnostyki i testów.
     zatrzymane: list = field(default_factory=list)
-    szczegoly: str = ""
 
 
-def adres_jest_lokalny(base_url: str) -> bool:
-    return (urlsplit(base_url).hostname or "") in LOKALNE_HOSTY
-
-
-def utworz_sesje(user) -> tuple[str, str]:
-    """Tworzy po stronie serwera sesję zalogowanego użytkownika.
-
-    Zwraca ``(nazwa ciasteczka, wartość)``. Działa, bo ten proces i lokalny
-    BPP współdzielą bazę i ``SECRET_KEY`` (oba z ``settings/local.py``).
-    """
-    sesja = import_module(settings.SESSION_ENGINE).SessionStore()
-    sesja[SESSION_KEY] = str(user.pk)
-    sesja[BACKEND_SESSION_KEY] = "django.contrib.auth.backends.ModelBackend"
-    sesja[HASH_SESSION_KEY] = user.get_session_auth_hash()
-    sesja.save()
-    return settings.SESSION_COOKIE_NAME, sesja.session_key
+def adres_logowania(uczelnia) -> str:
+    """Strona logowania aplikacji PBN TEJ uczelni (ten sam adres, na który
+    przekierowuje ``/pbn_api/authorize``)."""
+    return OAuthMixin.get_auth_url(
+        uczelnia.pbn_api_root.rstrip("/"), uczelnia.pbn_app_name
+    )
 
 
 def ott_z_zadania(zadanie: dict) -> str | None:
@@ -113,15 +105,11 @@ def ott_z_zadania(zadanie: dict) -> str | None:
 
 
 class _Przechwytywacz:
-    """Zatrzymuje powrót z PBN na obcy host i kieruje go na lokalny BPP."""
+    """Zatrzymuje powrót z PBN (na dowolny host poza samym PBN)."""
 
-    def __init__(self, base_url, pbn_api_root, wynik):
-        self.base_url = base_url.rstrip("/")
-        self.lokalny_netloc = urlsplit(self.base_url).netloc
+    def __init__(self, pbn_api_root, wynik):
         self.pbn_netloc = urlsplit(pbn_api_root or "").netloc
         self.wynik = wynik
-        self.callback_lokalny_obsluzony = False
-        self._sesje = []
 
     def podepnij(self, context, page):
         cdp = context.new_cdp_session(page)
@@ -135,15 +123,6 @@ class _Przechwytywacz:
                 ]
             },
         )
-        page.on("response", self._odpowiedz)
-        self._sesje.append(cdp)
-
-    def _odpowiedz(self, response):
-        czesci = urlsplit(response.url)
-        if czesci.netloc == self.lokalny_netloc and SCIEZKA_CALLBACKU.match(
-            czesci.path
-        ):
-            self.callback_lokalny_obsluzony = True
 
     def _wstrzymane(self, cdp, ev):
         from playwright.sync_api import Error as BladPlaywrighta
@@ -161,10 +140,6 @@ class _Przechwytywacz:
         czesci = urlsplit(zadanie["url"])
         ident = {"requestId": ev["requestId"]}
 
-        if czesci.netloc == self.lokalny_netloc:
-            cdp.send("Fetch.continueRequest", ident)
-            return
-
         na_callback = bool(SCIEZKA_CALLBACKU.match(czesci.path))
         if czesci.netloc == self.pbn_netloc and not na_callback:
             # Wewnętrzne adresy PBN (mogą nieść ``ott=`` między jego stronami).
@@ -176,27 +151,12 @@ class _Przechwytywacz:
             cdp.send("Fetch.continueRequest", ident)  # wzorzec trafił przypadkiem
             return
 
-        # Od tego miejsca żądanie NIE wychodzi do obcego hosta.
+        # Od tego miejsca żądanie NIE wychodzi z przeglądarki.
         self.wynik.zatrzymane.append(
             (zadanie["method"], f"{czesci.scheme}://{czesci.netloc}{czesci.path}")
         )
         if ott:
             self.wynik.ott = ott
-
-        if na_callback and ott:
-            lokalnie = f"{self.base_url}{czesci.path}?ott={quote(ott, safe='')}"
-            cdp.send(
-                "Fetch.fulfillRequest",
-                {
-                    **ident,
-                    # 303: także powrót POST-em kończy jako GET na lokalnym BPP.
-                    "responseCode": 303,
-                    "responseHeaders": [{"name": "Location", "value": lokalnie}],
-                },
-            )
-            return
-
-        if ott:
             self.wynik.status = "ott"
             naglowek = "Kod z PBN przechwycony"
         else:
@@ -210,71 +170,45 @@ class _Przechwytywacz:
                 "responseHeaders": [
                     {"name": "Content-Type", "value": "text/html; charset=utf-8"}
                 ],
-                "body": _b64(STRONA_INFORMACYJNA % naglowek),
+                "body": base64.b64encode(
+                    (STRONA_INFORMACYJNA % naglowek).encode()
+                ).decode(),
             },
         )
 
 
-def _b64(tekst: str) -> str:
-    import base64
-
-    return base64.b64encode(tekst.encode()).decode()
-
-
-def autoryzuj_w_przegladarce(
-    context,
-    base_url,
-    ciasteczko,
-    *,
-    pbn_api_root="",
-    limit_czasu=570,
-    komunikat=print,
+def przechwyc_ott(
+    context, adres, *, pbn_api_root="", limit_czasu=900, komunikat=print
 ) -> WynikPrzegladarki:
-    """Prowadzi przeglądarkę przez „autoryzuj PBN API" lokalnego BPP.
+    """Otwiera stronę logowania PBN i czeka na powrót z kodem OTT.
 
-    ``context`` to ``BrowserContext`` Chromium. Funkcja nie dotyka bazy.
-    Do PBN loguje się CZŁOWIEK — niczego tam nie wpisujemy.
+    ``context`` to ``BrowserContext`` Chromium. Do PBN loguje się CZŁOWIEK —
+    niczego tam nie wpisujemy.
     """
     from playwright.sync_api import Error as BladPlaywrighta
 
-    base_url = base_url.rstrip("/")
     wynik = WynikPrzegladarki()
-    przechwytywacz = _Przechwytywacz(base_url, pbn_api_root, wynik)
+    przechwytywacz = _Przechwytywacz(pbn_api_root, wynik)
 
-    nazwa, wartosc = ciasteczko
-    context.add_cookies([{"name": nazwa, "value": wartosc, "url": base_url}])
     page = context.pages[0] if context.pages else context.new_page()
     przechwytywacz.podepnij(context, page)
     context.on("page", lambda nowa: przechwytywacz.podepnij(context, nowa))
 
     try:
-        page.goto(f"{base_url}/pbn_api/authorize?next=/")
-        if urlsplit(page.url).netloc == urlsplit(base_url).netloc:
-            # Adres wpisany „z palca" (Sec-Fetch-Site: none) → strona pośrednia
-            # z formularzem POST. Brak formularza = nie jesteśmy zalogowani.
-            przycisk = page.locator(
-                "form[action$='/pbn_api/authorize'] button[type=submit]"
-            )
-            if not przycisk.count():
-                wynik.status = "niezalogowany"
-                wynik.szczegoly = page.url
-                return wynik
-            przycisk.first.click()
-
+        page.goto(adres)
         komunikat(
             "Zaloguj się w PBN w otwartym oknie przeglądarki "
             f"(czekam do {limit_czasu} s)…"
         )
         koniec = time.monotonic() + limit_czasu
         while time.monotonic() < koniec:
-            if przechwytywacz.callback_lokalny_obsluzony:
-                page.wait_for_load_state("load")
-                wynik.status = "callback"
-                return wynik
             if wynik.status in ("ott", "callback_bez_ott"):
                 return wynik
             page.wait_for_timeout(200)
     except BladPlaywrighta as e:
+        if wynik.status in ("ott", "callback_bez_ott"):
+            # Nawigacja przerwana naszą stroną informacyjną — kod już mamy.
+            return wynik
         if page.is_closed() or "closed" in str(e).lower():
             wynik.status = "zamknieto"
             return wynik

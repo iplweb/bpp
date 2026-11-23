@@ -8,6 +8,7 @@ from django.db.models.functions import Coalesce
 from django.views.generic import ListView
 
 from bpp.util import zaloguj_polkniety_wyjatek
+from pbn_export_queue import bezpiecznik
 from pbn_export_queue.models import PBN_Export_Queue, RodzajBledu
 
 from .mixins import PBNExportQueuePermissionMixin, kolejka_dla_requestu
@@ -239,6 +240,10 @@ class BasePBNExportQueueListView(
         ).count()
         # Add current sort parameter
         context["current_sort"] = self.request.GET.get("sort", "-ostatnia_aktualizacja")
+        # Lokalna instancja: stan bezpiecznika automatów. Na produkcji
+        # wstrzymywanie jest wyłączone → None → szablon nic nie pokazuje.
+        stan = bezpiecznik.stan_automatow()
+        context["automaty_pbn"] = stan if stan.wstrzymywanie_wlaczone else None
         return context
 
 

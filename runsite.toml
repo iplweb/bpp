@@ -14,6 +14,7 @@
 #     uv run run-site run --skip-assets          # pomin make assets
 #     uv run run-site run --from-dump my.sql.gz  # restore wlasnego dumpa
 #     uv run run-site run --get-pbn-token-from login@host
+#     uv run run-site run --pbn-automaty wlacz   # odblokuj automaty wysylki do PBN
 
 project_slug = "bpp"
 manage_py = "src/manage.py"
@@ -134,6 +135,13 @@ callable = "django_bpp.runsite_hooks:clear_password_policy"
 type = "django"
 callable = "django_bpp.runsite_hooks:zabezpiecz_lokalna_kopie"
 timeout = 60
+
+[[hooks.post_migrate.cli_args]]
+flag = "--pbn-automaty"
+dest = "pbn_automaty"
+metavar = "wlacz|wstrzymaj"
+default = "wstrzymaj"
+help = "Automaty wysylki do PBN (kolejka, watchdog, kosz). Domyslnie `wstrzymaj`: lokalna instancja niczego nie wysyla sama. `wlacz` = swiadomie testujesz wysylke z kolejki na PRAWDZIWYM PBN. Stan mozna tez przelaczyc w trakcie na stronie kolejki eksportu PBN."
 
 # Opcjonalne pobranie konfiguracji aplikacji PBN + tokenu uzytkownika
 # z serwera przez SSH. Triggered tylko gdy uzytkownik poda

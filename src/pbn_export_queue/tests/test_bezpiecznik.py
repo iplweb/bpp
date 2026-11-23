@@ -290,11 +290,224 @@ def test_przelacznik_nie_blokuje_recznej_wysylki(
 
 def test_komenda_raportuje_stan_przelacznika(db, lokalna):
     lokalna.PBN_WSTRZYMAJ_AUTOMATY = True
-    assert "Automaty wysyłki do PBN: wstrzymane" in _uruchom(
+    assert "Automaty wysyłki do PBN: WSTRZYMANE" in _uruchom(
         "--tak-to-jest-lokalna-kopia"
     )
     lokalna.PBN_WSTRZYMAJ_AUTOMATY = False
-    assert "NIE są wstrzymane" in _uruchom("--tak-to-jest-lokalna-kopia")
+    wyjscie = _uruchom("--tak-to-jest-lokalna-kopia")
+    assert "są WŁĄCZONE (DJANGO_BPP_PBN_WSTRZYMAJ_AUTOMATY=0)" in wyjscie
+
+
+# --- odblokowanie automatów na lokalnej instancji ---------------------------
+
+
+@pytest.fixture
+def lokalna_wstrzymana(lokalna, db):
+    """Lokalna instancja w stanie domyślnym: automaty wstrzymane, przełącznik
+    dostępny. Po teście przełącznik wraca do „wstrzymane" — constance trzyma
+    wartość także w cache (Redis), którego rollback transakcji nie cofa."""
+    from constance import config
+
+    lokalna.PBN_WSTRZYMAJ_AUTOMATY = True
+    yield lokalna
+    setattr(config, bezpiecznik.KLUCZ_ODBLOKOWANIA, False)
+
+
+def test_domyslnie_wstrzymane_i_przelaczalne(lokalna_wstrzymana):
+    stan = bezpiecznik.stan_automatow()
+    assert (stan.wstrzymywanie_wlaczone, stan.wstrzymane, stan.przelaczalne) == (
+        True,
+        True,
+        True,
+    )
+
+
+def test_odblokowanie_puszcza_automaty_i_da_sie_cofnac(
+    lokalna_wstrzymana, redaktor, wydawnictwo_ciagle
+):
+    _wpis(redaktor, wydawnictwo_ciagle)
+
+    bezpiecznik.ustaw_odblokowanie(True)
+    assert bezpiecznik.automaty_wstrzymane() is False
+    with patch(WYSLIJ) as wyslij:
+        assert tasks.queue_watchdog() == 1
+    wyslij.assert_called_once()
+
+    bezpiecznik.ustaw_odblokowanie(False)
+    assert bezpiecznik.automaty_wstrzymane() is True
+    with patch(WYSLIJ) as wyslij:
+        assert tasks.queue_watchdog() == 0
+    wyslij.assert_not_called()
+
+
+def test_odblokowanie_widzi_inny_proces(lokalna_wstrzymana):
+    """Web i worker to osobne procesy: stan nie może siedzieć w pamięci.
+    Sprawdzamy, że decyzja trafiła do bazy."""
+    from constance.models import Constance
+
+    bezpiecznik.ustaw_odblokowanie(True)
+
+    zapisane = Constance.objects.get(key=bezpiecznik.KLUCZ_ODBLOKOWANIA).value
+    assert '"__value__": true' in zapisane
+
+
+def test_na_produkcji_przelacznik_nie_istnieje(settings, db):
+    """Ustawienia produkcyjne: wstrzymywanie wyłączone, klucza constance nie
+    ma — przełącznika nie da się ustawić i nic by nie zmienił."""
+    settings.DEBUG = False
+    settings.PBN_WSTRZYMAJ_AUTOMATY = False
+    settings.CONSTANCE_CONFIG = {}
+
+    assert bezpiecznik.automaty_wstrzymane() is False
+    assert bezpiecznik.przelacznik_dostepny() is False
+    with pytest.raises(bezpiecznik.PrzelacznikNiedostepny):
+        bezpiecznik.ustaw_odblokowanie(False)
+    with pytest.raises(bezpiecznik.PrzelacznikNiedostepny):
+        bezpiecznik.ustaw_odblokowanie(True)
+
+
+def test_ustawienia_produkcyjne_nie_maja_klucza_przelacznika():
+    """Klucz constance dochodzi wyłącznie w settings/local.py."""
+    from django_bpp.settings import base
+
+    assert bezpiecznik.KLUCZ_ODBLOKOWANIA not in base.CONSTANCE_CONFIG
+
+
+def test_odblokowanie_nie_dziala_na_instancji_nielokalnej(lokalna_wstrzymana):
+    """Wartość „odblokowane" w bazie (np. z kopii bazy dewelopera) nie
+    odblokowuje niczego, gdy instancja nie spełnia kryteriów lokalności."""
+    bezpiecznik.ustaw_odblokowanie(True)
+    assert bezpiecznik.automaty_wstrzymane() is False
+
+    with patch("pbn_export_queue.bezpiecznik.host_bazy", return_value="dbserver"):
+        assert bezpiecznik.automaty_wstrzymane() is True
+        assert bezpiecznik.przelacznik_dostepny() is False
+        with pytest.raises(bezpiecznik.PrzelacznikNiedostepny):
+            bezpiecznik.ustaw_odblokowanie(True)
+
+    lokalna_wstrzymana.DEBUG = False
+    assert bezpiecznik.automaty_wstrzymane() is True
+
+
+def test_komenda_ustawia_przelacznik(lokalna_wstrzymana):
+    wyjscie = _uruchom("--tak-to-jest-lokalna-kopia", "--automaty", "wlacz")
+    assert bezpiecznik.automaty_wstrzymane() is False
+    assert "są WŁĄCZONE (odblokowane przełącznikiem)" in wyjscie
+
+    # Bez --automaty przełącznik zostaje, jak był (logowanie do PBN nie cofa
+    # świadomej decyzji dewelopera)…
+    _uruchom("--tak-to-jest-lokalna-kopia")
+    assert bezpiecznik.automaty_wstrzymane() is False
+
+    # …a `wstrzymaj` go cofa.
+    wyjscie = _uruchom("--tak-to-jest-lokalna-kopia", "--automaty", "wstrzymaj")
+    assert bezpiecznik.automaty_wstrzymane() is True
+    assert "WSTRZYMANE" in wyjscie
+
+
+def test_komenda_odblokowujac_i_tak_zamyka_kolejke_z_kopii(
+    lokalna_wstrzymana, redaktor, wydawnictwo_ciagle
+):
+    wpis = _wpis(redaktor, wydawnictwo_ciagle)
+
+    _uruchom("--tak-to-jest-lokalna-kopia", "--automaty", "wlacz")
+
+    wpis.refresh_from_db()
+    assert wpis.wysylke_zakonczono is not None
+
+
+@pytest.mark.parametrize(
+    "opts,wstrzymane",
+    [
+        ({}, True),
+        ({"pbn_automaty": "wstrzymaj"}, True),
+        ({"pbn_automaty": "cokolwiek"}, True),
+        ({"pbn_automaty": "wlacz"}, False),
+        ({"pbn_automaty": "TAK"}, False),
+    ],
+)
+def test_hook_run_site_ustawia_przelacznik_przy_kazdym_starcie(
+    lokalna_wstrzymana, opts, wstrzymane
+):
+    from django_bpp import runsite_hooks
+
+    # Odblokowanie z poprzedniej sesji nie przeżywa restartu bez flagi.
+    bezpiecznik.ustaw_odblokowanie(True)
+
+    runsite_hooks.zabezpiecz_lokalna_kopie({"opts": opts})
+
+    assert bezpiecznik.automaty_wstrzymane() is wstrzymane
+
+
+# --- przełącznik na stronie kolejki eksportu --------------------------------
+
+ADRES_PRZELACZNIKA = "/pbn_export_queue/automaty/"
+ADRES_KOLEJKI = "/pbn_export_queue/"
+
+
+def test_strona_kolejki_pokazuje_stan_i_przelacza(lokalna_wstrzymana, admin_client):
+    strona = admin_client.get(ADRES_KOLEJKI).content.decode()
+    assert "automatyczna wysyłka do PBN: wstrzymana" in strona
+    assert "Włącz automatyczną wysyłkę" in strona
+
+    odpowiedz = admin_client.post(ADRES_PRZELACZNIKA, {"stan": "wlacz"})
+    assert odpowiedz.status_code == 302
+    assert bezpiecznik.automaty_wstrzymane() is False
+    strona = admin_client.get(ADRES_KOLEJKI).content.decode()
+    assert "automatyczna wysyłka do PBN: WŁĄCZONA" in strona
+    assert "Wstrzymaj automatyczną wysyłkę" in strona
+
+    admin_client.post(ADRES_PRZELACZNIKA, {"stan": "wstrzymaj"})
+    assert bezpiecznik.automaty_wstrzymane() is True
+
+
+def test_przelacznik_w_ui_wymaga_post_i_uprawnien(lokalna_wstrzymana, client):
+    from model_bakery import baker
+
+    assert client.post(ADRES_PRZELACZNIKA, {"stan": "wlacz"}).status_code == 302
+    assert bezpiecznik.automaty_wstrzymane() is True  # niezalogowany
+
+    client.force_login(baker.make(BppUser, is_active=True))
+    client.post(ADRES_PRZELACZNIKA, {"stan": "wlacz"})
+    assert bezpiecznik.automaty_wstrzymane() is True  # bez uprawnień
+
+    assert client.get(ADRES_PRZELACZNIKA).status_code == 405
+
+
+def test_na_produkcji_w_ui_nie_ma_przelacznika(settings, admin_client):
+    settings.DEBUG = False
+    settings.PBN_WSTRZYMAJ_AUTOMATY = False
+
+    assert admin_client.post(ADRES_PRZELACZNIKA, {"stan": "wlacz"}).status_code == 404
+    strona = admin_client.get(ADRES_KOLEJKI).content.decode()
+    assert "pbn-automaty-stan" not in strona
+    assert "automatyczna wysyłka do PBN" not in strona
+
+
+def test_wstrzymywanie_wylaczone_zmienna_przelacznika_nie_ma(lokalna, admin_client):
+    """Lokalna instancja z DJANGO_BPP_PBN_WSTRZYMAJ_AUTOMATY=0: automaty
+    działają, a przełącznik (który nic by nie zmieniał) nie istnieje."""
+    lokalna.PBN_WSTRZYMAJ_AUTOMATY = False
+
+    assert bezpiecznik.przelacznik_dostepny() is False
+    assert (
+        admin_client.post(ADRES_PRZELACZNIKA, {"stan": "wstrzymaj"}).status_code == 404
+    )
+    assert "pbn-automaty-stan" not in admin_client.get(ADRES_KOLEJKI).content.decode()
+
+
+def test_instancja_nielokalna_ze_wstrzymaniem_stan_bez_przycisku(
+    lokalna_wstrzymana, admin_client
+):
+    """Np. dev-owy docker compose (baza pod nazwą serwisu): widać stan, ale
+    przełączyć się nie da — ani z UI, ani żądaniem."""
+    with patch("pbn_export_queue.bezpiecznik.host_bazy", return_value="db"):
+        strona = admin_client.get(ADRES_KOLEJKI).content.decode()
+        assert "automatyczna wysyłka do PBN: wstrzymana" in strona
+        assert "Włącz automatyczną wysyłkę" not in strona
+        odpowiedz = admin_client.post(ADRES_PRZELACZNIKA, {"stan": "wlacz"})
+        assert odpowiedz.status_code == 404
+    assert bezpiecznik.automaty_wstrzymane() is True
 
 
 def test_ustawienia_testowe_nie_wstrzymuja_automatow():
