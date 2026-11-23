@@ -12,6 +12,10 @@ from unittest.mock import patch
 import pytest
 
 SKRYPT = Path(__file__).resolve().parents[3] / "bin" / "run-site-z-backupu.py"
+if not SKRYPT.exists():
+    # Obraz test-runnera w CI zawiera samo src/, bez bin/ — skrypt jest
+    # narzędziem deweloperskim, więc te testy biegną lokalnie (checkout repo).
+    pytest.skip("bin/ niedostępne w tym środowisku", allow_module_level=True)
 
 
 @pytest.fixture
