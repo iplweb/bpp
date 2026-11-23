@@ -1,4 +1,5 @@
 from braces.views import GroupRequiredMixin
+from django.contrib import messages
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.db import transaction
 from django.db.models import Q
@@ -39,6 +40,11 @@ class ZapiszDoBazyMixin(LoginRequiredMixin, DetailView):
         # równoległe POST-y nie przejdą obu przez guard i nie odpalą podwójnego
         # zapisu — drugi czeka, po commicie widzi już zapisz_zmiany_do_bazy=True.
         self.object = self.get_object(self.get_queryset().select_for_update())
+        if self.object.plik_usuniety_po_przetworzeniu:
+            # Plik był zabezpieczony hasłem i został usunięty — ponowny przebieg
+            # z zapisem nie ma czego czytać. Komunikat zamiast błędu.
+            messages.error(self.request, self.object.komunikat_braku_pliku)
+            return HttpResponseRedirect(self.object.get_absolute_url())
         # Guard: domknąć zapisem można tylko dry-run zakończony POMYŚLNIE —
         # użytkownik musiał zobaczyć podgląd. Odsiewa import w trakcie, zakończony
         # błędem oraz już zapisany do bazy (ochrona przed podwójnym zapisem).
@@ -140,6 +146,15 @@ class _PkOwnerRestartMixin(GroupRequiredMixin, RestartView):
         return get_object_or_404(
             self.model, pk=self.kwargs["pk"], owner=self.request.user
         )
+
+    def post(self, request, *args, **kwargs):
+        operation = self.get_object()
+        if operation.plik_usuniety_po_przetworzeniu:
+            # Bez pliku restart nie ma czego czytać — komunikat, nie wyjątek
+            # (i nie kasujemy wyników poprzedniego przebiegu).
+            messages.error(request, operation.komunikat_braku_pliku)
+            return HttpResponseRedirect(operation.get_absolute_url())
+        return super().post(request, *args, **kwargs)
 
 
 class RestartImportView(_PkOwnerRestartMixin):

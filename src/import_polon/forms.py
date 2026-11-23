@@ -168,12 +168,15 @@ def przygotuj_plik_importu(plik, haslo, waliduj_naglowki):
     zadania w tle, które czyta plik z dysku) trafia plik już bez hasła.
     Na koniec sprawdza nagłówki funkcją ``waliduj_naglowki(sciezka)``.
 
-    Zwraca plik do zapisania w modelu (oryginalny albo odszyfrowany).
+    Zwraca krotkę ``(plik, byl_zaszyfrowany)`` — plik do zapisania w modelu
+    (oryginalny albo odszyfrowany) i informację, czy był zabezpieczony hasłem
+    (wtedy jego kopię kasujemy z serwera po przetworzeniu).
 
     Hasło nie trafia do żadnego komunikatu, logu ani zgłoszenia błędu: ta
     funkcja go nie loguje, a ``odszyfruj_plik`` nie wkleja go do wyjątków.
     """
     file_extension = _sprawdz_rozszerzenie(plik)
+    byl_zaszyfrowany = False
 
     with tempfile.NamedTemporaryFile(delete=False, suffix=file_extension) as tmp:
         for chunk in plik.chunks():
@@ -204,6 +207,7 @@ def przygotuj_plik_importu(plik, haslo, waliduj_naglowki):
                 odszyfrowany,
                 content_type=getattr(plik, "content_type", None),
             )
+            byl_zaszyfrowany = True
         # Hasło do niezaszyfrowanego pliku po prostu ignorujemy.
 
         # Limity (rozmiar, bomba dekompresji, hasło) sprawdzamy tu jawnie —
@@ -223,7 +227,7 @@ def przygotuj_plik_importu(plik, haslo, waliduj_naglowki):
         except FileNotFoundError:
             pass  # już posprzątane
 
-    return plik
+    return plik, byl_zaszyfrowany
 
 
 def pole_hasla_do_pliku():
@@ -260,11 +264,13 @@ class NowyImportAbsencjiForm(forms.ModelForm):
         plik = self.cleaned_data.get("plik")
         if plik:
             # ``haslo_do_pliku`` jest czyszczone PRZED ``plik`` (``field_order``).
-            plik = przygotuj_plik_importu(
+            plik, byl_zaszyfrowany = przygotuj_plik_importu(
                 plik,
                 self.cleaned_data.get("haslo_do_pliku") or "",
                 validate_absencje_headers,
             )
+            # Po przetworzeniu odszyfrowana kopia zostanie usunięta z serwera.
+            self.instance.plik_byl_zaszyfrowany = byl_zaszyfrowany
         return plik
 
     def __init__(self, *args, **kwargs):
@@ -394,11 +400,13 @@ class NowyImportForm(forms.ModelForm):
         plik = self.cleaned_data.get("plik")
         if plik:
             # ``haslo_do_pliku`` jest czyszczone PRZED ``plik`` (``field_order``).
-            plik = przygotuj_plik_importu(
+            plik, byl_zaszyfrowany = przygotuj_plik_importu(
                 plik,
                 self.cleaned_data.get("haslo_do_pliku") or "",
                 validate_polon_headers,
             )
+            # Po przetworzeniu odszyfrowana kopia zostanie usunięta z serwera.
+            self.instance.plik_byl_zaszyfrowany = byl_zaszyfrowany
         return plik
 
     def __init__(self, *args, **kwargs):

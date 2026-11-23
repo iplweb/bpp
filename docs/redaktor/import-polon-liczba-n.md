@@ -255,11 +255,30 @@ w Excelu z hasłem (**Plik → Informacje → Chroń skoroszyt → Zaszyfruj prz
 użyciu hasła**). Masz dwie możliwości:
 
 - wpisz hasło w polu **„Hasło do pliku”** i wgraj plik ponownie — BPP
-  odszyfruje go przy wgrywaniu i zapisze u siebie kopię **już bez hasła**;
-  samo hasło nie jest nigdzie zapisywane,
+  odszyfruje go przy wgrywaniu; samo hasło nie jest nigdzie zapisywane,
 - albo otwórz plik w Excelu, wejdź w **Plik → Informacje → Chroń skoroszyt →
   Zaszyfruj przy użyciu hasła**, wyczyść pole hasła, zapisz plik i wgraj go
   ponownie.
+
+**Plik z hasłem nie zostaje na serwerze.** Ze względów bezpieczeństwa danych
+BPP usuwa plik zabezpieczony hasłem z serwera zaraz po przetworzeniu importu —
+także po podglądzie i także wtedy, gdy import zakończył się błędem — a hasła
+nigdzie nie zapisuje. Dlatego przy pliku z hasłem **podgląd i zapis do bazy to
+dwa osobne importy**:
+
+1. utwórz import **bez** „Zapisz zmiany do bazy”, wpisz hasło i obejrzyj
+   podgląd,
+2. jeśli wszystko się zgadza, utwórz **nowy** import, tym razem
+   z zaznaczonym **„Zapisz zmiany do bazy”**, i wpisz hasło ponownie.
+
+Przycisku **„Zapisz ten import do bazy danych”** przy takim podglądzie nie
+ma. W jego miejscu jest wyjaśnienie: ze względów bezpieczeństwa danych plik
+został usunięty z serwera, a hasło nie zostało nigdzie zapisane, więc tego
+importu nie można zapisać do bazy ani uruchomić ponownie — trzeba utworzyć
+nowy import z zaznaczonym „Zapisz zmiany do bazy” i ponownie wpisać hasło. Na liście importów zamiast nazwy pliku widać
+„(plik zabezpieczony hasłem — usunięty po przetworzeniu)”. Jeśli wolisz
+zwykły tryb (podgląd i zapis jednym kliknięciem), zdejmij hasło w Excelu
+przed wgraniem.
 
 Złe hasło kończy się komunikatem **„Nieprawidłowe hasło do pliku.”**. Jeśli
 plik nie ma hasła, wpisane hasło jest po prostu pomijane. Tak samo działa

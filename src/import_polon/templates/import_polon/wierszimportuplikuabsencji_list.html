@@ -1,18 +1,18 @@
 {% extends "base.html" %}{% load render_table from django_tables2 %}
 
 {% block extratitle %}
-    Import absencji - szczegóły {{ object.plik.name }}
+    Import absencji - szczegóły {{ object.nazwa_pliku }}
 {% endblock %}
 
 {% block breadcrumbs %}
     {{ block.super }}
     <li><a href="{% url "import_polon:index-absencji" %}">import absencji</a></li>
-    <li class="current">import {{ object.plik.name }}</li>
+    <li class="current">import {{ object.nazwa_pliku }}</li>
 {% endblock %}
 
 
 {% block content %}
-    <h1>Import absencji {{ object.plik.name }}</h1>
+    <h1>Import absencji {{ object.nazwa_pliku }}</h1>
     {% if object.zapisz_zmiany_do_bazy %}
         <div class="panel callout success">
             <h2>Zmiany wprowadzono do bazy dancyh</h2>
@@ -22,7 +22,10 @@
             <h2>Zmiany nie zostały wprowadzone do bazy danych.</h2> Import został uruchomiony bez opcji zapisywania
             danych do bazy, więc to co widzisz poniżej, to informacja, która byłaby wprowadzona do bazy, gdyby
             zaznaczono opcję zapisywania zmian do bazy.
-            {% if object.finished_successfully %}
+            {% if object.finished_successfully and object.plik_byl_zaszyfrowany %}
+                {% url 'import_polon:utworz-import-absencji' as nowy_import_url %}
+                {% include "import_polon/_plik_z_haslem_usuniety.html" %}
+            {% elif object.finished_successfully %}
                 <p style="margin-top: 1rem; margin-bottom: 0;">
                     <a href="{% url 'import_polon:importplikuabsencji-zapisz-do-bazy' object.pk %}"
                        class="button alert" style="margin-bottom: 0;">

@@ -1,0 +1,12 @@
+{# Zamiast przycisku „Zapisz ten import do bazy danych” dla importu, którego #}
+{# plik był zabezpieczony hasłem: odszyfrowana kopia jest kasowana z serwera #}
+{# zaraz po przetworzeniu, więc drugiego przebiegu (z zapisem) nie ma z czego #}
+{# zrobić. Sprawdzamy plik_byl_zaszyfrowany, nie obecność pliku — fragment #}
+{# wyniku renderuje się jeszcze PRZED skasowaniem pliku. #}
+<p class="plik-z-haslem-usuniety" style="margin-top: 1rem; margin-bottom: 0;">
+    Ze względów bezpieczeństwa danych plik zabezpieczony hasłem został usunięty
+    z serwera zaraz po przetworzeniu, a hasło nie zostało nigdzie zapisane.
+    Dlatego tego importu nie można zapisać do bazy ani uruchomić ponownie.
+    Aby zapisać zmiany, <a href="{{ nowy_import_url }}">utwórz nowy import</a>,
+    zaznacz <strong>„Zapisz zmiany do bazy”</strong> i ponownie wpisz hasło do pliku.
+</p>

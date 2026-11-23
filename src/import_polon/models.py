@@ -27,8 +27,64 @@ _POLA_LIVEOPS_RESET = (
 )
 
 
+KOMUNIKAT_PLIK_Z_HASLEM_USUNIETY = (
+    "Ze względów bezpieczeństwa danych plik zabezpieczony hasłem został "
+    "usunięty z serwera zaraz po przetworzeniu, a hasło nie zostało nigdzie "
+    "zapisane. Dlatego tego importu nie można zapisać do bazy ani uruchomić "
+    "ponownie. Aby zapisać zmiany, utwórz nowy import, zaznacz „Zapisz zmiany "
+    "do bazy” i ponownie wpisz hasło do pliku."
+)
+
+KOMUNIKAT_BRAK_PLIKU = (
+    "Plik tego importu nie jest już dostępny na serwerze. Utwórz nowy import "
+    "i wgraj plik ponownie."
+)
+
+NAZWA_USUNIETEGO_PLIKU_Z_HASLEM = (
+    "(plik zabezpieczony hasłem — usunięty po przetworzeniu)"
+)
+
+
 class _LiveopsResetMixin:
-    """Wspólny ``reset_liveops_state`` dla importów POLON/absencji."""
+    """Wspólny ``reset_liveops_state`` dla importów POLON/absencji
+    oraz obsługa pliku importu (usuwanie odszyfrowanej kopii, brak pliku)."""
+
+    @property
+    def nazwa_pliku(self):
+        """Nazwa pliku do wyświetlenia — także gdy plik już usunięto."""
+        if self.plik:
+            return self.plik.name
+        if self.plik_byl_zaszyfrowany:
+            return NAZWA_USUNIETEGO_PLIKU_Z_HASLEM
+        return ""
+
+    @property
+    def plik_dostepny(self):
+        """Czy plik importu da się jeszcze przeczytać (ponowny przebieg)."""
+        if not self.plik:
+            return False
+        return self.plik.storage.exists(self.plik.name)
+
+    @property
+    def plik_usuniety_po_przetworzeniu(self):
+        """Plik był zabezpieczony hasłem i jego kopię już skasowano — import
+        nie da się uruchomić ponownie ani zapisać do bazy."""
+        return self.plik_byl_zaszyfrowany and not self.plik_dostepny
+
+    @property
+    def komunikat_braku_pliku(self):
+        if self.plik_byl_zaszyfrowany:
+            return KOMUNIKAT_PLIK_Z_HASLEM_USUNIETY
+        return KOMUNIKAT_BRAK_PLIKU
+
+    def usun_plik_jesli_byl_zaszyfrowany(self):
+        """Kasuje z dysku odszyfrowaną kopię pliku, który był zabezpieczony
+        hasłem, i czyści pole ``plik``. Plik bez hasła — bez zmian."""
+        if not self.plik_byl_zaszyfrowany or not self.plik:
+            return
+        # ``FileSystemStorage.delete`` po cichu pomija brakujący plik.
+        self.plik.delete(save=False)
+        self.save(update_fields=["plik"])
 
     def reset_liveops_state(self):
         """Zeruje pola stanu operacji liveops (jak ``RestartView.post``), tak by
@@ -67,23 +123,42 @@ def _uruchom_import(parent, p, analyze):
     from bpp.wersjonowanie import jako_uzytkownik
 
     try:
-        # Autor wpisów historii zmienianych rekordów = właściciel importu.
-        with jako_uzytkownik(parent.owner):
-            wynik = analyze(parent.plik.path, parent, p)
-    except Exception:
-        import sys
-        import traceback as _traceback
+        if not parent.plik_dostepny:
+            # Ponowny przebieg (restart liveops, „Zapisz do bazy") importu,
+            # którego plik usunięto — błąd użytkownika, nie aplikacji.
+            p.error(parent.komunikat_braku_pliku)
+            return
 
-        from bpp.zglaszanie_bledow import capture_exception
+        try:
+            # Autor wpisów historii zmienianych rekordów = właściciel importu.
+            with jako_uzytkownik(parent.owner):
+                wynik = analyze(parent.plik.path, parent, p)
+        except Exception:
+            import sys
+            import traceback as _traceback
 
-        _traceback.print_exc()
-        capture_exception(sys.exc_info())
-        raise
-    p.result({"total": parent.get_details_set().count(), **(wynik or {})})
+            from bpp.zglaszanie_bledow import capture_exception
+
+            _traceback.print_exc()
+            capture_exception(sys.exc_info())
+            raise
+        p.result({"total": parent.get_details_set().count(), **(wynik or {})})
+    finally:
+        # Odszyfrowana kopia pliku z hasłem nie zostaje na serwerze — ani po
+        # sukcesie, ani po błędzie czy anulowaniu (także po podglądzie).
+        parent.usun_plik_jesli_byl_zaszyfrowany()
 
 
 class ImportPlikuAbsencji(_LiveopsResetMixin, LiveOperation):
     plik = models.FileField(max_length=255, upload_to="protected/import_polon")
+    plik_byl_zaszyfrowany = models.BooleanField(
+        default=False,
+        editable=False,
+        help_text=(
+            "Wgrany plik był zabezpieczony hasłem; jego odszyfrowana kopia "
+            "jest usuwana z serwera po przetworzeniu."
+        ),
+    )
     zapisz_zmiany_do_bazy = models.BooleanField(default=False)
 
     def on_restart(self):
@@ -117,6 +192,14 @@ class WierszImportuPlikuAbsencji(models.Model):
 class ImportPlikuPolon(_LiveopsResetMixin, LiveOperation):
     rok = YearField()
     plik = models.FileField(max_length=255, upload_to="protected/import_polon")
+    plik_byl_zaszyfrowany = models.BooleanField(
+        default=False,
+        editable=False,
+        help_text=(
+            "Wgrany plik był zabezpieczony hasłem; jego odszyfrowana kopia "
+            "jest usuwana z serwera po przetworzeniu."
+        ),
+    )
     ukryj_niezmatchowanych_autorow = models.BooleanField(default=True)
     zapisz_zmiany_do_bazy = models.BooleanField(default=False)
     ignoruj_miejsce_pracy = models.BooleanField(
@@ -150,7 +233,7 @@ class ImportPlikuPolon(_LiveopsResetMixin, LiveOperation):
         """Nazwa pliku bez katalogu i z wyciętym środkiem — do tabeli na liście."""
         from import_polon.utils import skroc_nazwe_pliku
 
-        return skroc_nazwe_pliku(self.plik.name)
+        return skroc_nazwe_pliku(self.nazwa_pliku)
 
     @property
     def statystyki(self):
@@ -283,3 +366,42 @@ class ImportPolonOverride(models.Model):
 
     def __str__(self):
         return f"{self.grupa_stanowisk} → {'TAK' if self.jest_badawczy else 'NIE'}"
+
+
+def _usun_plik_importu(sender, instance, **kwargs):
+    """``post_delete``: kasuje plik usuniętego importu z dysku.
+
+    Dawniej rekordy znikały (lista trzyma 10 ostatnich importów), a pliki
+    zostawały w ``protected/import_polon/`` na zawsze. Plik kasujemy dopiero
+    po commicie (wycofana transakcja nie zgubi pliku) i tylko wtedy, gdy żaden
+    inny import nie wskazuje tej samej ścieżki.
+    """
+    from django.db import transaction
+
+    nazwa = instance.plik.name if instance.plik else ""
+    if not nazwa:
+        return
+    storage = instance.plik.storage
+
+    def _usun():
+        if any(
+            model.objects.filter(plik=nazwa).exists()
+            for model in (ImportPlikuPolon, ImportPlikuAbsencji)
+        ):
+            return  # plik współdzielony z innym importem
+        # ``FileSystemStorage.delete`` po cichu pomija brakujący plik.
+        storage.delete(nazwa)
+
+    transaction.on_commit(_usun)
+
+
+models.signals.post_delete.connect(
+    _usun_plik_importu,
+    sender=ImportPlikuPolon,
+    dispatch_uid="import_polon_usun_plik_polon",
+)
+models.signals.post_delete.connect(
+    _usun_plik_importu,
+    sender=ImportPlikuAbsencji,
+    dispatch_uid="import_polon_usun_plik_absencji",
+)
