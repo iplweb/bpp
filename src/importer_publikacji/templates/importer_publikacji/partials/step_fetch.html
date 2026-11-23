@@ -24,6 +24,16 @@
         </a>
     </p>
 
+    {% if provider_name == "CrossRef" %}
+        <p id="wiele-doi-podpowiedz">
+            Masz listę numerów DOI?
+            <a href="{% url 'importer_publikacji:wiele-doi' %}"
+               hx-get="{% url 'importer_publikacji:wiele-doi' %}"
+               hx-target="#importer-wizard"
+               hx-push-url="true">Zaimportuj wiele DOI naraz</a>.
+        </p>
+    {% endif %}
+
     <div class="formdefaults-wrap">{% bpp_formdefaults_button form %}</div>
     <form hx-post="{% url 'importer_publikacji:fetch' %}"
           hx-target="#importer-wizard"

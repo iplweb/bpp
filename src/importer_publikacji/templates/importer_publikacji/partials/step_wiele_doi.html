@@ -1,0 +1,80 @@
+<div class="callout">
+    <h4>
+        <span class="fi-list"></span>
+        Import wielu DOI
+    </h4>
+
+    <p>
+        <a href="{% url 'importer_publikacji:index' %}"
+           hx-get="{% url 'importer_publikacji:index' %}"
+           hx-target="#importer-wizard"
+           hx-push-url="true">
+            <span class="fi-arrow-left"></span>
+            Wybierz inne źródło
+        </a>
+    </p>
+
+    <p>
+        Wklej numery DOI — po jednym w linii, najwyżej
+        <strong>{{ limit }}</strong> w jednym zleceniu. Dane każdej pracy
+        zostaną pobrane z bazy CrossRef w tle, a system sprawdzi, czy praca
+        jest już w BPP i w PBN. Żaden rekord nie powstanie automatycznie:
+        każdą pracę otwierasz potem w kreatorze importu, poprawiasz
+        i dopiero wtedy klikasz „Utwórz publikację”.
+    </p>
+
+    <form method="post"
+          action="{% url 'importer_publikacji:wiele-doi' %}"
+          id="wiele-doi-form">
+        {% csrf_token %}
+        <label for="{{ form.lista_doi.id_for_label }}">
+            {{ form.lista_doi.label }}
+        </label>
+        {{ form.lista_doi }}
+        <p class="help-text">
+            Można wkleić sam numer (10.1234/abcd.2025.17) albo adres
+            (https://doi.org/10.1234/abcd.2025.17). Puste linie
+            i powtórzenia są pomijane, wielkość liter nie ma znaczenia.
+        </p>
+        {% for error in form.lista_doi.errors %}
+            <p class="help-text" style="color: var(--bpp-tekst-blad, red);">{{ error }}</p>
+        {% endfor %}
+        <button type="submit" class="button">
+            <span class="fi-magnifying-glass"></span>
+            Pobierz dane
+        </button>
+    </form>
+</div>
+
+{% if ostatnie_paczki %}
+    <div class="callout secondary" id="wiele-doi-ostatnie">
+        <h5>Ostatnie listy DOI</h5>
+        <table class="hover">
+            <thead>
+                <tr>
+                    <th>Nr paczki</th>
+                    <th>Data</th>
+                    <th>Liczba pozycji</th>
+                    <th>Utworzył</th>
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for paczka in ostatnie_paczki %}
+                    <tr>
+                        <td>{{ paczka.pk }}</td>
+                        <td>{{ paczka.created|date:"Y-m-d H:i" }}</td>
+                        <td>{{ paczka.liczba_wpisow }}</td>
+                        <td>{{ paczka.created_by.get_username }}</td>
+                        <td>
+                            <a class="button tiny"
+                               href="{% url 'importer_publikacji:batch-detail' batch_id=paczka.pk %}">
+                                Otwórz
+                            </a>
+                        </td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+{% endif %}

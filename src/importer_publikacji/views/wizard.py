@@ -458,6 +458,11 @@ class MultipleWorksImportDetailView(ImporterPermissionMixin, View):
         for entry in entries:
             if entry.session is not None and entry.session.is_stalled():
                 entry.session.mark_stalled()
+        if batch.jest_lista_doi:
+            # Paczka z „Importu wielu DOI” (FD#483) ma własny ekran zbiorczy.
+            from .wiele_doi import render_paczka_doi
+
+            return render_paczka_doi(request, batch, entries)
         return _render_full_page(
             request,
             BATCH_DETAIL,

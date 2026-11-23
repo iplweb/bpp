@@ -126,6 +126,41 @@ class FetchForm(forms.Form):
         return cleaned
 
 
+class WieleDoiForm(forms.Form):
+    """Lista numerów DOI do zaimportowania jednym zleceniem (FD#483)."""
+
+    lista_doi = forms.CharField(
+        label="Lista numerów DOI",
+        widget=forms.Textarea(
+            attrs={
+                "rows": 12,
+                "cols": 80,
+                "placeholder": "10.1234/abcd.2025.17\nhttps://doi.org/10.5678/xyz",
+            }
+        ),
+    )
+
+    def clean_lista_doi(self):
+        from .wiele_doi import limit_doi, parsuj_liste_doi
+
+        lista = parsuj_liste_doi(self.cleaned_data["lista_doi"])
+        if not lista.doi:
+            raise forms.ValidationError(
+                "Nie rozpoznano żadnego numeru DOI. Wklej numery w postaci "
+                "10.1234/abcd albo adresy https://doi.org/10.1234/abcd — "
+                "po jednym w linii."
+            )
+        limit = limit_doi()
+        if len(lista.doi) > limit:
+            raise forms.ValidationError(
+                f"Lista zawiera {len(lista.doi)} różnych numerów DOI, a jedno "
+                f"zlecenie może ich mieć najwyżej {limit}. Podziel listę na "
+                f"mniejsze części i wyślij je osobno."
+            )
+        self.lista = lista
+        return self.cleaned_data["lista_doi"]
+
+
 class VerifyForm(forms.Form):
     """Formularz weryfikacji typu publikacji.
 
@@ -389,6 +424,16 @@ class SessionFilterForm(forms.Form):
         label="Rekord wynikowy",
         required=False,
         choices=REKORD_WYNIKOWY_CHOICES,
+    )
+    # Numer paczki z „Importu wielu prac” / „Importu wielu DOI” (FD#483).
+    # Zakres jak AutoField (int4) — liczba spoza zakresu nie może wywrócić
+    # zapytania. Pole tekstowe, żeby przycisk „Reset” je czyścił.
+    paczka = forms.IntegerField(
+        label="Nr paczki",
+        required=False,
+        min_value=1,
+        max_value=2147483647,
+        widget=forms.TextInput(attrs={"size": 6, "inputmode": "numeric"}),
     )
 
     date_from = forms.DateField(
