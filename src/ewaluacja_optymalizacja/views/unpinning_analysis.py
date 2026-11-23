@@ -138,7 +138,7 @@ def analyze_unpinning_opportunities(request):
         return redirect("ewaluacja_optymalizacja:index")
 
     # Sprawdź czy zadanie już działa (przez model singleton)
-    status_unpinning = StatusUnpinningAnalyzy.get_or_create()
+    status_unpinning = StatusUnpinningAnalyzy.aktualny()
     if status_unpinning.w_trakcie and status_unpinning.task_id:
         messages.info(
             request,
@@ -236,8 +236,17 @@ def unpinning_combined_status(request, task_id):
         f"task.info={task_info}"
     )
 
+    from ..models import StatusUnpinningAnalyzy
+    from .helpers import kontekst_przerwanego_przebiegu, render_postepu
+
+    przerwany = kontekst_przerwanego_przebiegu(StatusUnpinningAnalyzy, task_id)
+
+    # Zadanie padło w trakcie albo nie działa usługa zadań w tle
+    if przerwany:
+        context.update(przerwany)
+
     # Jeśli zadanie się nie zakończyło
-    if not task.ready():
+    elif not task.ready():
         _handle_unpinning_task_in_progress(
             request, context, task_info, current_stage, current_step
         )
@@ -254,16 +263,11 @@ def unpinning_combined_status(request, task_id):
         if response:
             return response
 
-    # If HTMX request, return only the progress partial
-    if request.headers.get("HX-Request"):
-        return render(
-            request,
-            "ewaluacja_optymalizacja/_unpinning_combined_progress.html",
-            context,
-        )
-
-    return render(
-        request, "ewaluacja_optymalizacja/unpinning_combined_status.html", context
+    return render_postepu(
+        request,
+        "ewaluacja_optymalizacja/_unpinning_combined_progress.html",
+        "ewaluacja_optymalizacja/unpinning_combined_status.html",
+        context,
     )
 
 

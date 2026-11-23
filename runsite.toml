@@ -96,8 +96,11 @@ overwrite = true
 [celery]
 app = "django_bpp.celery_tasks"
 enabled = true
-# pool=solo: 1 worker, bez forkow. Dev OK; produkcja uzywa prefork.
-worker_pool = "solo"
+# pool=threads: 1 proces, bez forkow. NIE solo — worker solo w trakcie zadania
+# nie odpowiada na komendy sterujace, wiec straznik przebiegow
+# (ewaluacja_common.przebiegi) bralby pracujace zadanie za brak workera.
+# Produkcja uzywa prefork.
+worker_pool = "threads"
 worker_log_level = "info"
 # Consume the denorm queue too: CELERY_ROUTES sends all denorm.tasks.* there.
 worker_extra_args = ["-Q", "celery,denorm"]

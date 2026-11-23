@@ -79,11 +79,11 @@ optymalizacji, snapshotów odpięć i wydruku oświadczeń.
 2. Otworzy się okno **„Uruchom generowanie metryk”**. W typowej sytuacji
    **niczego nie zmieniaj** i kliknij **„Uruchom generowanie”**.
 
-    ![Okno „Uruchom generowanie metryk”: lata, próg punktów, rodzaje autorów](../images/redaktor/metryki-ewaluacyjne/04-okno-generowania.png)
+    ![Okno „Uruchom generowanie metryk”: okres ewaluacji, próg punktów, rodzaje autorów](../images/redaktor/metryki-ewaluacyjne/04-okno-generowania.png)
 
     | Pole | Domyślnie | Co znaczy |
     |---|---|---|
-    | **Rok początkowy** / **Rok końcowy** | 2022 / 2025 | z prac z których lat zbierać punkty — zostaw okres ewaluacji (patrz [uwaga niżej](#zmiana-lat)) |
+    | **Okres ewaluacji** | okres wybrany na pasku | tylko informacja: metryki liczą się dla okresu wybranego na pasku **Okres ewaluacji** u góry strony. Żeby policzyć inny okres, zamknij okno i przełącz pasek |
     | **Minimalny próg punktów** | 0,01 | praca bierze udział w liczeniu, jeśli jej **punkty MNiSW** (za całą pracę) są co najmniej takie; 0,01 = pomiń prace bez punktów |
     | **Nadpisz istniejące metryki** | zaznaczone | przed liczeniem kasuje wszystkie dotychczasowe metryki (patrz [uwaga niżej](#nadpisz)) |
     | **Rodzaje autorów do przetworzenia** | wszystkie | dla kogo liczyć metryki: rodzaje autorów, dla których BPP liczy sloty (zwykle **N**, **B**, **D**), oraz **„Brak danych”** |
@@ -96,11 +96,12 @@ optymalizacji, snapshotów odpięć i wydruku oświadczeń.
    **„Oczekiwanie na rozpoczęcie przetwarzania...”** (zadanie czeka
    w kolejce), potem **„Przeliczanie liczby N i przygotowanie danych...”**
    — BPP **przelicza liczbę N** (zawsze, przy każdym generowaniu), a na
-   końcu pasek postępu z napisem **„Przetworzono: … autorów”**. Ramka
-   odświeża się sama co 2 sekundy, a po zakończeniu przeładowuje całą
-   stronę.
+   końcu **„Generowanie metryk w trakcie...”** z napisem
+   **„Przetworzono: … autorów”** i rosnącym paskiem postępu (na
+   zrzucie niżej). Ramka odświeża się sama co 2 sekundy, a po
+   zakończeniu przeładowuje całą stronę.
 
-    ![Ramka statusu w trakcie przeliczania: oczekiwanie, przeliczanie liczby N, licznik autorów](../images/redaktor/metryki-ewaluacyjne/05-postep.png)
+    ![Ramka statusu w trakcie przeliczania: „Generowanie metryk w trakcie...”, licznik przetworzonych autorów i pasek postępu](../images/redaktor/metryki-ewaluacyjne/05-postep.png)
 
     Przeliczanie biegnie w tle — możesz zamknąć stronę i wrócić później.
     Trwa od kilku sekund do kilku minut, zależnie od liczby autorów.
@@ -109,14 +110,6 @@ optymalizacji, snapshotów odpięć i wydruku oświadczeń.
     Ponieważ **„Nadpisz istniejące metryki”** najpierw kasuje stare
     wiersze, do końca przeliczania tabela, eksport i statystyki pokazują
     tylko autorów już policzonych. Nie pobieraj wtedy Excela.
-
-### Dlaczego nie zmieniać lat {#zmiana-lat}
-
-Pola lat zmieniają tylko zakres prac, z których zbierane są punkty.
-**Limit slotów** autora i liczba N są zawsze liczone za lata 2022–2025,
-a tabela „Wymiar etatu i procent dyscypliny” w szczegółach autora też
-pokazuje tylko te cztery lata. Inny zakres lat daje więc liczby, które do
-siebie nie pasują.
 
 ### „Nadpisz istniejące metryki” {#nadpisz}
 
@@ -367,8 +360,18 @@ co dalej:
 Ten sam komunikat pojawia się na stronach **Metryki jednostek** i **Metryki
 wydziałów**, jeśli to one uruchomiły przeliczenie w okresie bez metryk.
 Przeliczanie, które już ruszyło (ramka pokazuje **„Przeliczanie liczby N
-i przygotowanie danych...”** albo licznik autorów), nie jest anulowane,
-nawet jeśli trwa długo.
+i przygotowanie danych...”** albo licznik autorów) i nadal pracuje, nie
+jest anulowane, nawet jeśli trwa długo.
+
+Anulowane zostaje natomiast przeliczanie, które ruszyło i **zostało
+przerwane w trakcie** — najczęściej przez restart usługi zadań w tle
+podczas aktualizacji systemu. BPP sprawdza, czy ktokolwiek jeszcze nad nim
+pracuje; jeśli nie, po około dwóch minutach ramka robi się czerwona
+z komunikatem **„Generowanie metryk: zadanie zostało przerwane przed
+zakończeniem (…) i nie zostanie dokończone. Uruchom je ponownie.”** Część
+metryk mogła zostać już przeliczona — uruchom generowanie jeszcze raz, żeby
+przeliczyć wszystkie. Gdy usługa zadań w tle nie działa dłużej niż 5 minut,
+komunikat każe zgłosić to administratorowi systemu.
 
 **W ramce statusu „Błędy: …”** — części par autor + dyscyplina nie udało
 się policzyć; pozostałe metryki są poprawne. Jeśli błędy się powtarzają,
