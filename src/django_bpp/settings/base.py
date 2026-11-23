@@ -1091,6 +1091,16 @@ FIELD_ENCRYPTION_KEY = env("DJANGO_BPP_FIELD_ENCRYPTION_KEY", default="")
 # DJANGO_BPP_FIELD_ENCRYPTION_KEY).
 DSPACE_CREDENTIALS_KEY = env("DSPACE_CREDENTIALS_KEY", default="")
 
+# Bezpiecznik „lokalna kopia produkcji": wstrzymuje AUTOMATY wysyłające do PBN
+# (ponowienie kolejki po zalogowaniu, watchdog, łańcuch „następny z kolejki",
+# wycofanie/wysyłka zlecane przez kosz). Ręczna wysyłka rekordu działa dalej.
+# Produkcja: wyłączone. ``settings/local.py`` włącza to domyślnie — deweloper
+# z kopią bazy klienta i prawdziwym tokenem nie może niczego wysłać do PBN
+# przypadkiem. Patrz ``pbn_export_queue/bezpiecznik.py``.
+PBN_WSTRZYMAJ_AUTOMATY = env(
+    "DJANGO_BPP_PBN_WSTRZYMAJ_AUTOMATY", default=False, cast=bool
+)
+
 SENDFILE_URL = MEDIA_URL
 
 # Polityka haseł wg NIST SP 800-63B (rev. 4): długość zamiast reguł
