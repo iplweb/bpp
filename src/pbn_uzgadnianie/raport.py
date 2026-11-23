@@ -23,6 +23,7 @@ NAGLOWKI = [
     "Użyta wersja z PBN",
     "Sposób dopasowania",
     "Różnice (pole: BPP → PBN)",
+    "Dyscypliny w nowym rekordzie",
     "Powód / uwagi",
 ]
 
@@ -30,6 +31,16 @@ NAGLOWKI = [
 def opis_roznic(wpis):
     return "; ".join(
         f"{r['pole']}: „{r['bpp']}” → „{r['pbn']}”" for r in wpis.get("roznice", [])
+    )
+
+
+def opis_dyscyplin(wpis):
+    """Dyscypliny nowego rekordu: co przypisano, czego nie i dlaczego."""
+    return "; ".join(
+        f"{d['osoba']}: {d['dyscyplina']}"
+        if d["przypisano"]
+        else f"{d['osoba']}: BEZ DYSCYPLINY — {d['powod']}"
+        for d in wpis.get("dyscypliny", [])
     )
 
 
@@ -48,6 +59,7 @@ def wiersz(wpis):
         wpis.get("wersja", ""),
         wpis.get("dopasowanie", ""),
         opis_roznic(wpis),
+        opis_dyscyplin(wpis),
         " ".join(x for x in (wpis.get("powod"), wpis.get("uwaga")) if x),
     ]
 

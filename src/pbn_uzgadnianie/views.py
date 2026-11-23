@@ -19,7 +19,7 @@ from pbn_downloader_app.views import group_required
 
 from .forms import StartForm
 from .models import UzgodnienieZPBN
-from .raport import opis_roznic, pogrupuj, zbuduj_xlsx
+from .raport import opis_dyscyplin, opis_roznic, pogrupuj, zbuduj_xlsx
 from .silnik import ZGODNE, ZMIENIAJACE
 from .tasks import uzgodnij_z_pbn
 
@@ -157,6 +157,7 @@ class SzczegolyView(_UczelniaMixin, TemplateView):
             for wpis in wpisy:
                 wpis["bpp_url"] = _link_do_rekordu(wpis)
                 wpis["roznice_opis"] = opis_roznic(wpis)
+                wpis["dyscypliny_opis"] = opis_dyscyplin(wpis)
                 if wpis.get("pbn_uid"):
                     wpis["pbn_url"] = const.LINK_PBN_DO_PUBLIKACJI.format(
                         pbn_api_root=uczelnia.pbn_api_root,

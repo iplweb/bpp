@@ -517,6 +517,7 @@ def test_uzgadnianie_niczego_nie_wysyla_do_pbn(
         "get_institution_publications",
         "get_institution_publications_v2",
         "get_publication_by_id",
+        "get_institution_statements",
     }
 
 

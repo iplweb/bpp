@@ -59,6 +59,32 @@ w repozytorium PBN, którą mógł zmienić ktoś spoza uczelni. Jeśli profil n
 wskazuje wersji, system bierze wersję bieżącą i pisze o tym w raporcie
 (kolumna „Użyta wersja z PBN”).
 
+### Dyscypliny w nowych rekordach {#dyscypliny}
+
+Nowo utworzony rekord od razu dostaje **dyscypliny autorów z oświadczeń
+złożonych na profilu instytucji w PBN**. System pobiera oświadczenia prosto
+z PBN przy każdym uruchomieniu i przypisuje dyscyplinę tylko wtedy, gdy nie
+musi niczego zgadywać:
+
+- autor rekordu to ta sama osoba co w oświadczeniu (ten sam identyfikator
+  PBN, ta sama rola — autor albo redaktor),
+- dyscyplina z oświadczenia jest w słowniku dyscyplin BPP,
+- autor ma tę dyscyplinę **przypisaną w BPP na rok pracy**.
+
+W każdym innym wypadku autor zostaje **bez dyscypliny**, a raport (kolumna
+„Dyscypliny w nowym rekordzie”) podaje powód:
+
+| Powód w raporcie | Co zrobić |
+|---|---|
+| Brak oświadczenia tej osoby na profilu instytucji w PBN | Złóż oświadczenie w PBN albo przypisz dyscyplinę w rekordzie ręcznie. |
+| Autor nie ma w BPP przypisanej dyscypliny … na rok … | Uzupełnij dyscypliny autora na ten rok, potem przypisz dyscyplinę w rekordzie. |
+| Dyscypliny … nie ma w słowniku dyscyplin BPP | Zgłoś administratorowi — słownik dyscyplin wymaga aktualizacji. |
+| W PBN jest oświadczenie osoby, której nie ma wśród autorów/redaktorów rekordu | Sprawdź listę osób w rekordzie i w PBN. |
+
+System **nie dopisuje sam autorowi dyscypliny na dany rok** (robi to
+dotychczasowy import oświadczeń w „Import z PBN”) — tu wolimy pokazać brak
+niż zgadywać.
+
 Każde utworzenie i powiązanie widać w **historii zmian** rekordu, razem
 z osobą, która uruchomiła uzgadnianie.
 
@@ -68,6 +94,8 @@ z osobą, która uruchomiła uzgadnianie.
   się między BPP a PBN, zobaczysz to w raporcie — decyzja, która wersja jest
   poprawna, należy do Ciebie.
 - **Nie zmienia autorów, dyscyplin ani oświadczeń** w istniejących rekordach.
+  Jeśli dyscyplina autora w rekordzie różni się od oświadczenia w PBN,
+  raport pokazuje to jako różnicę „Dyscyplina (autor)”.
 - **Niczego nie kasuje** — także wtedy, gdy praca została skasowana w PBN.
 - **Niczego nie wysyła do PBN.**
 - **Nie przywraca rekordów z kosza** — rekord usunięty w BPP został usunięty
@@ -85,9 +113,9 @@ Raport jest na stronie przebiegu i do pobrania przyciskiem **Pobierz raport
 
 | Sekcja | Co oznacza | Co zrobić |
 |---|---|---|
-| **Utworzono rekord w BPP** | Nowy rekord z danych PBN. W podglądzie: „Do wykonania”. | Przejrzyj rekord: charakter formalny, punktację, dyscypliny. |
+| **Utworzono rekord w BPP** | Nowy rekord z danych PBN, z dyscyplinami z oświadczeń. W podglądzie: „Do wykonania”. | Przejrzyj rekord: charakter formalny, punktację; uzupełnij dyscypliny tam, gdzie raport pisze „BEZ DYSCYPLINY”. |
 | **Powiązano istniejący rekord BPP z pracą w PBN** | Rekord dostał identyfikator PBN (zgodny DOI/ISBN). | Nic; ewentualne różnice pól są podane obok. |
-| **Praca jest po obu stronach, dane się różnią** | Lista różnic w układzie „BPP → PBN”: tytuł, rok, DOI, ISBN, adres WWW, liczba autorów i redaktorów. | Zdecyduj, co jest poprawne, i popraw w BPP albo w PBN. |
+| **Praca jest po obu stronach, dane się różnią** | Lista różnic w układzie „BPP → PBN”: tytuł, rok, DOI, ISBN, adres WWW, liczba autorów i redaktorów, dyscypliny autorów względem oświadczeń. | Zdecyduj, co jest poprawne, i popraw w BPP albo w PBN. |
 | **Do decyzji: w BPP jest podobny rekord** | Dopasowanie niepewne (np. tylko podobny tytuł). Nic nie zmieniono. | Jeśli to ta sama praca — wpisz w rekordzie BPP identyfikator PBN. Jeśli inna — zaimportuj ją pojedynczo [importerem publikacji](importer-publikacji.md). |
 | **Konflikt powiązań** | Pasujący rekord BPP jest już powiązany z inną pracą w PBN albo kilka rekordów BPP ma ten sam identyfikator PBN. | Zwykle to duplikat — w PBN albo w BPP. Patrz [Duplikaty publikacji](duplikaty-publikacji.md). |
 | **Pominięto** | Z podanym powodem: rekord w koszu, praca bez autorów w PBN, niezgodna liczba autorów/redaktorów po imporcie, niekompletne dane w PBN. | Według powodu; najczęściej import pojedynczy z ręcznym sprawdzeniem osób. |

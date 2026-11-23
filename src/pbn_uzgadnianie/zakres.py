@@ -18,6 +18,8 @@ from pbn_integrator.utils import zapisz_mongodb
 from pbn_integrator.utils.mongodb_ops import zapisz_publikacje_instytucji
 from pbn_integrator.utils.publications import zapisz_publikacje_instytucji_v2
 
+from .dyscypliny import pobierz_oswiadczenia
+
 logger = logging.getLogger(__name__)
 
 
@@ -105,6 +107,35 @@ def wyznacz_zakres(profil, rok_od, rok_do):
     return w_zakresie, bez_roku
 
 
+def odswiez_oswiadczenia(client, uczelnia, pbn_uids, nadzorca, bledy):
+    """Oświadczenia instytucji (dyscypliny) dla prac z zakresu, prosto z PBN.
+
+    Zwraca ``{pbn_uid: [oświadczenia]}``; pracy, dla której PBN zwrócił
+    błąd, w słowniku NIE ma (znaczy: „nie wiadomo”, a nie „brak oświadczeń”).
+    """
+    wynik = {}
+    ile = len(pbn_uids)
+    for nr, pbn_uid in enumerate(pbn_uids, 1):
+        nadzorca.sprawdz_anulowanie()
+        nadzorca.etap(f"Pobieranie oświadczeń z PBN ({nr}/{ile})", 30 + 10 * nr // ile)
+        try:
+            oswiadczenia = pobierz_oswiadczenia(
+                client,
+                uczelnia,
+                pbn_uid,
+                lambda opis, pbn_uid=pbn_uid: _blad(
+                    bledy, "oświadczenia", opis, pbn_uid
+                ),
+            )
+        except IntegrityError as e:
+            # Kopia nie przyjęła oświadczenia (np. PBN nie oddał osoby).
+            _blad(bledy, "oświadczenia", f"Nie zapisano w kopii: {e}", pbn_uid)
+            continue
+        if oswiadczenia is not None:
+            wynik[pbn_uid] = oswiadczenia
+    return wynik
+
+
 def odswiez_publikacje(client, pbn_uids, nadzorca, bledy):
     """Pobiera z PBN aktualne dane (wszystkie wersje) wskazanych publikacji.
 
@@ -117,7 +148,7 @@ def odswiez_publikacje(client, pbn_uids, nadzorca, bledy):
     for nr, pbn_uid in enumerate(pbn_uids, 1):
         nadzorca.sprawdz_anulowanie()
         nadzorca.etap(
-            f"Odświeżanie publikacji z PBN ({nr}/{ile}) (3/3)", 10 + 30 * nr // ile
+            f"Odświeżanie publikacji z PBN ({nr}/{ile}) (3/3)", 10 + 20 * nr // ile
         )
         try:
             dane = client.get_publication_by_id(pbn_uid)
@@ -142,7 +173,9 @@ def zbuduj_zakres(client, uczelnia, rok_od, rok_do, nadzorca):
     # Rok mógł się zmienić w PBN — po odświeżeniu sprawdzamy jeszcze raz
     # prace, dla których profil roku nie podał.
     w_zakresie, bez_roku = wyznacz_zakres(profil, rok_od, rok_do)
+    oswiadczenia = odswiez_oswiadczenia(client, uczelnia, w_zakresie, nadzorca, bledy)
     return {
+        "oswiadczenia": oswiadczenia,
         "profil": profil,
         "w_zakresie": w_zakresie,
         "bez_roku": bez_roku,

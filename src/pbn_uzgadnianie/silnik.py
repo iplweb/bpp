@@ -11,7 +11,8 @@ Etapy:
 Reguły (jedyne zmiany, jakie operacja robi w rekordach BPP):
 
 * praca z profilu bez rekordu w BPP i bez podobnego rekordu → UTWORZENIE
-  rekordu importerem ``pbn_integrator`` z wersji przypiętej na profilu;
+  rekordu importerem ``pbn_integrator`` z wersji przypiętej na profilu,
+  z dyscyplinami autorów z oświadczeń instytucji (ściśle — ``dyscypliny``);
 * praca z profilu, której odpowiednik w BPP (bez PBN UID) da się wskazać
   PEWNIE — zgodny DOI albo ISBN książki — → POWIĄZANIE (ustawienie PBN UID).
 
@@ -45,6 +46,7 @@ from pbn_integrator.importer.helpers import importuj_z_wersji
 from pbn_integrator.kosz import pomin_jesli_w_koszu
 
 from . import zakres as zakres_mod
+from .dyscypliny import roznice_dyscyplin, zastosuj_do_nowego_rekordu
 from .models import UzgodnienieZPBN
 from .porownanie import isbn_z_pbn, liczba_osob, liczba_osob_w_bpp, porownaj
 from .wersje import wybierz_wersje
@@ -310,6 +312,7 @@ class _Przebieg:
         self.client = client
         self.nadzorca = nadzorca
         self.profil = uzgodnienie.zakres["profil"]
+        self.oswiadczenia = uzgodnienie.zakres.get("oswiadczenia") or {}
         self.wpisy = []
 
     def _default_jednostka(self):
@@ -380,7 +383,10 @@ class _Przebieg:
             )
 
         if rekordy:
-            roznice = porownaj(rekordy[0].original, obiekt)
+            oryginal = rekordy[0].original
+            roznice = porownaj(oryginal, obiekt) + roznice_dyscyplin(
+                oryginal, self.oswiadczenia.get(pub.pk)
+            )
             return _wpis(
                 ROZNI_SIE if roznice else ZGODNE,
                 pub,
@@ -456,7 +462,9 @@ class _Przebieg:
         with zmiana_rekordu(None, oryginal, komentarz):
             oryginal.pbn_uid_id = pub.pk
             oryginal.save(update_fields=["pbn_uid_id"])
-        roznice = porownaj(oryginal, obiekt)
+        roznice = porownaj(oryginal, obiekt) + roznice_dyscyplin(
+            oryginal, self.oswiadczenia.get(pub.pk)
+        )
         return _wpis(
             POWIAZANO,
             pub,
@@ -489,6 +497,9 @@ class _Przebieg:
                     # nic nie utworzył — to przypadek do decyzji redaktora.
                     raise _IstniejePodobny(rekord)
                 self._sprawdz_osoby(rekord, obiekt)
+                dyscypliny = zastosuj_do_nowego_rekordu(
+                    rekord, self.oswiadczenia.get(pub.pk)
+                )
         except _IstniejePodobny as e:
             return _wpis(
                 DO_DECYZJI,
@@ -526,7 +537,7 @@ class _Przebieg:
                 "rozdział musi być do niej przypięty."
             )
         wspolne = {**wspolne, "uwaga": " ".join(u for u in uwagi if u)}
-        return _wpis(UTWORZONO, pub, obiekt, rekord, **wspolne)
+        return _wpis(UTWORZONO, pub, obiekt, rekord, dyscypliny=dyscypliny, **wspolne)
 
     @staticmethod
     def _sprawdz_osoby(rekord, obiekt):

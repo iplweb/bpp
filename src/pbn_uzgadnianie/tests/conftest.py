@@ -21,6 +21,7 @@ class FalszywyKlientPBN:
         self.profil_v1 = []
         self.profil_v2 = []
         self.publikacje = {}
+        self.oswiadczenia = {}
         self.wywolania = []
 
     def get_institution_publications(self, page_size=10):
@@ -36,6 +37,27 @@ class FalszywyKlientPBN:
         if pbn_uid not in self.publikacje:
             raise PublicationNotFound(422, "/x", "Publication was not exists!")
         return self.publikacje[pbn_uid]
+
+    def get_institution_statements_of_single_publication(self, pbn_uid, page_size=50):
+        self.wywolania.append(f"get_institution_statements:{pbn_uid}")
+        return [dict(o) for o in self.oswiadczenia.get(pbn_uid, [])]
+
+    def oswiadcz(self, pbn_uid, osoba, dyscyplina, rola="AUTHOR"):
+        """Oświadczenie osoby na profilu instytucji (z dyscypliną)."""
+        self.oswiadczenia.setdefault(pbn_uid, []).append(
+            {
+                "id": str(uuid.uuid4()),
+                "institutionId": self.uczelnia.pbn_uid_id,
+                "personId": osoba,
+                "publicationId": pbn_uid,
+                "addedTimestamp": "2026.03.01",
+                "statedTimestamp": "2026.03.02",
+                "area": None,
+                "inOrcid": True,
+                "type": rola,
+                "disciplines": {"name": dyscyplina} if dyscyplina else None,
+            }
+        )
 
     def __getattr__(self, nazwa):
         # Samo sięgnięcie po metodę jest niewinne (kod przekazuje np.
