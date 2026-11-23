@@ -23,10 +23,25 @@ def unpin_all_sensible_task(self, uczelnia_id, min_slot_filled=0.8, okres_pk=Non
 
     Bariera (niezależna od Redisa) chroni przed duplikatem masowego odpinania
     wpuszczonym po ``clear_locks`` na restarcie dowolnego workera. Slot jest
-    zdejmowany w ``finally`` — w przeciwieństwie do optymalizacji z odpinaniem
-    widok tego zadania nie prowadzi własnego stanu statusu.
+    zdejmowany w ``finally``. Zajmuje go już widok przy zleceniu (z tym samym
+    ``task_id``), żeby zadanie, które nigdy nie wystartowało, zostawiało ślad
+    dla strażnika przebiegów (``ewaluacja_common.przebiegi``).
     """
     from ..models import StatusOdpinaniaWszystkich
+
+    # Zadanie przeleżało w kolejce, a strażnik przebiegów zdążył je anulować
+    # (użytkownik przeczytał już, że nie zostanie wykonane) — NIE odpinaj.
+    # Sprawdzane przed barierą, bo ta zajęłaby slot na nowo.
+    if StatusOdpinaniaWszystkich.przebieg_anulowany(self.request.id):
+        logger.warning(
+            "unpin_all_sensible_task: przebieg %s został anulowany — pomijam.",
+            self.request.id,
+        )
+        return {
+            "uczelnia_id": uczelnia_id,
+            "status": "cancelled",
+            "message": "Odpinanie sensownych możliwości zostało anulowane.",
+        }
 
     if not StatusOdpinaniaWszystkich.sprobuj_zajac_slot(self.request.id, logger):
         logger.warning(
