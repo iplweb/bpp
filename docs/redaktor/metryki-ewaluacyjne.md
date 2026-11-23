@@ -367,8 +367,18 @@ co dalej:
 Ten sam komunikat pojawia się na stronach **Metryki jednostek** i **Metryki
 wydziałów**, jeśli to one uruchomiły przeliczenie w okresie bez metryk.
 Przeliczanie, które już ruszyło (ramka pokazuje **„Przeliczanie liczby N
-i przygotowanie danych...”** albo licznik autorów), nie jest anulowane,
-nawet jeśli trwa długo.
+i przygotowanie danych...”** albo licznik autorów) i nadal pracuje, nie
+jest anulowane, nawet jeśli trwa długo.
+
+Anulowane zostaje natomiast przeliczanie, które ruszyło i **zostało
+przerwane w trakcie** — najczęściej przez restart usługi zadań w tle
+podczas aktualizacji systemu. BPP sprawdza, czy ktokolwiek jeszcze nad nim
+pracuje; jeśli nie, po około dwóch minutach ramka robi się czerwona
+z komunikatem **„Generowanie metryk: zadanie zostało przerwane przed
+zakończeniem (…) i nie zostanie dokończone. Uruchom je ponownie.”** Część
+metryk mogła zostać już przeliczona — uruchom generowanie jeszcze raz, żeby
+przeliczyć wszystkie. Gdy usługa zadań w tle nie działa dłużej niż 5 minut,
+komunikat każe zgłosić to administratorowi systemu.
 
 **W ramce statusu „Błędy: …”** — części par autor + dyscyplina nie udało
 się policzyć; pozostałe metryki są poprawne. Jeśli błędy się powtarzają,

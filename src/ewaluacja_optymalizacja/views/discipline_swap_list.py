@@ -109,7 +109,7 @@ def discipline_swap_opportunities_list(request):
         return redirect("ewaluacja_optymalizacja:index")
 
     # Sprawdź czy analiza działa
-    status = StatusDisciplineSwapAnalysis.get_or_create()
+    status = StatusDisciplineSwapAnalysis.aktualny()
     if _check_running_analysis(status):
         messages.info(
             request,

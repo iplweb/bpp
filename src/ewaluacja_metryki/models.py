@@ -9,6 +9,7 @@ from django.utils import timezone
 from bpp.models.autor import Autor
 from bpp.models.dyscyplina_naukowa import Dyscyplina_Naukowa
 from bpp.models.jednostka import Jednostka
+from ewaluacja_common.przebiegi import PilnowanyPrzebiegMixin
 
 
 def _domyslny_okres_pk():
@@ -261,8 +262,18 @@ def limit_startu_generowania():
     )
 
 
-class StatusGenerowania(models.Model):
+class StatusGenerowania(PilnowanyPrzebiegMixin, models.Model):
     """Model przechowujący informację o ostatnim generowaniu metryk (per uczelnia)."""
+
+    # Strażnik przebiegów (``ewaluacja_common.przebiegi``): generowanie,
+    # które wystartowało i padło w trakcie, zostaje anulowane.
+    ZADANIA_PRZEBIEGU = (
+        "ewaluacja_metryki.tasks.generuj_metryki_task_parallel",
+        "ewaluacja_metryki.tasks.generuj_metryki_task",
+        "ewaluacja_metryki.tasks.oblicz_metryki_dla_autora_task",
+        "ewaluacja_metryki.tasks.finalizuj_generowanie_metryk",
+    )
+    NAZWA_PRZEBIEGU = "Generowanie metryk"
 
     #: Komunikat zapisywany przy ZLECENIU generowania (w żądaniu HTTP).
     #: Dopóki status go zawiera, zadanie w tle nie dało znaku życia —
@@ -378,12 +389,19 @@ class StatusGenerowania(models.Model):
     @classmethod
     def aktualny(cls, uczelnia=None, okres=None):
         """Status do POKAZANIA albo do decyzji „czy generowanie trwa”:
-        jak ``get_or_create``, ale przebieg, który nie wystartował w czasie,
-        zostaje przy okazji anulowany. Zadania w tle używają
-        ``get_or_create`` — one niczego nie anulują."""
+        jak ``get_or_create``, ale przebieg, który nie wystartował w czasie
+        albo padł w trakcie, zostaje przy okazji anulowany. Zadania w tle
+        używają ``get_or_create`` — one niczego nie anulują."""
         status = cls.get_or_create(uczelnia=uczelnia, okres=okres)
         status.anuluj_jesli_nie_wystartowalo()
+        status.anuluj_jesli_martwy()
         return status
+
+    def _przebieg_juz_zakonczony(self):
+        # ``task_id`` to zadanie-rodzic, które kończy się zaraz po rozesłaniu
+        # zadań per autor — jego wynik nic nie mówi o przebiegu. Koniec
+        # przebiegu zdejmuje ``w_trakcie`` sam (``zakoncz_generowanie``).
+        return False
 
     def rozpocznij_generowanie(
         self, task_id="", liczba_do_przetworzenia=0, okres=None, komunikat=None

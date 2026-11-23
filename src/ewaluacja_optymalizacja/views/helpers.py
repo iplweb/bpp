@@ -508,3 +508,17 @@ def _check_unpinning_task_status(status_unpinning):
             status_unpinning.zakoncz("Zadanie zakończone")
             return False
     return False
+
+
+def kontekst_przerwanego_przebiegu(status_cls, task_id):
+    """Kontekst gałęzi błędu szablonów postępu, gdy strażnik przebiegów
+    (``ewaluacja_common.przebiegi``) anulował przebieg ``task_id`` — bo
+    zadanie w tle padło albo nie działa usługa zadań. Inaczej ``None``.
+
+    Wywołanie przy okazji SPRAWDZA przebieg (``aktualny()``), więc strona
+    statusu odpytywana przez HTMX sama doprowadza do anulowania.
+    """
+    komunikat = status_cls.aktualny().komunikat_przerwania_dla(task_id)
+    if komunikat is None:
+        return None
+    return {"error": komunikat, "success": False, "task_ready": True}

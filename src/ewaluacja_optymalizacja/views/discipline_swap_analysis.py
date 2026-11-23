@@ -13,6 +13,8 @@ from django.urls import reverse
 from bpp.models import Uczelnia
 from ewaluacja_common.okres import okres_dla_request
 
+from .helpers import kontekst_przerwanego_przebiegu
+
 logger = logging.getLogger(__name__)
 
 
@@ -48,7 +50,7 @@ def analyze_discipline_swap_opportunities(request):
         return redirect("ewaluacja_optymalizacja:index")
 
     # Sprawdź czy zadanie już działa
-    status = StatusDisciplineSwapAnalysis.get_or_create()
+    status = StatusDisciplineSwapAnalysis.aktualny()
     if status.w_trakcie and status.task_id:
         messages.info(
             request,
@@ -60,10 +62,9 @@ def analyze_discipline_swap_opportunities(request):
         )
 
     # Uruchom zadanie
+    okres = okres_dla_request(request)
     try:
-        task = analyze_discipline_swap_task.delay(
-            uczelnia.pk, okres_pk=okres_dla_request(request).pk
-        )
+        task = analyze_discipline_swap_task.delay(uczelnia.pk, okres_pk=okres.pk)
     except DuplicateTaskError:
         messages.error(
             request, "Zadanie analizy zamiany dyscyplin jest już uruchomione."
@@ -71,6 +72,11 @@ def analyze_discipline_swap_opportunities(request):
         return redirect("ewaluacja_optymalizacja:index")
 
     logger.info(f"Started discipline swap analysis task: {task.id}")
+
+    # Status zapisujemy już przy zleceniu (zadanie ustawi go ponownie, gdy
+    # ruszy): inaczej zadanie, które nigdy nie wystartowało, nie zostawia
+    # śladu i strażnik przebiegów nie ma czego anulować.
+    status.rozpocznij(task_id=str(task.id), okres=okres)
 
     messages.info(
         request,
@@ -104,8 +110,14 @@ def discipline_swap_status(request, task_id):
         f"task.info={task_info}"
     )
 
+    przerwany = kontekst_przerwanego_przebiegu(StatusDisciplineSwapAnalysis, task_id)
+
+    # Zadanie padło w trakcie albo nie działa usługa zadań w tle
+    if przerwany:
+        context.update(przerwany)
+
     # Jeśli zadanie się nie zakończyło
-    if not task.ready():
+    elif not task.ready():
         context["task_state"] = "PROGRESS"
         context["task_ready"] = False
         context["info"] = task_info

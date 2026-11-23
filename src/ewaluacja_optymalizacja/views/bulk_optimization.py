@@ -19,6 +19,7 @@ from ..models import (
     StatusOptymalizacjiBulk,
 )
 from ..tasks import solve_all_reported_disciplines
+from .helpers import kontekst_przerwanego_przebiegu
 
 logger = logging.getLogger(__name__)
 
@@ -177,6 +178,23 @@ def _build_bulk_progress_context(
     return context
 
 
+def _podmien_gdy_przerwany(context, task_id, uczelnia_id):
+    """Przebieg wciąż niedokończony: sprawdź, czy ktoś jeszcze nad nim
+    pracuje. Gdy strażnik przebiegów go anulował (zadanie padło w trakcie
+    albo nie działa usługa zadań w tle) — zwróć kontekst błędu."""
+    if context.get("redirect_to_index") or context.get("task_ready"):
+        return context
+    przerwany = kontekst_przerwanego_przebiegu(StatusOptymalizacjiBulk, task_id)
+    if not przerwany:
+        return context
+    return {
+        "task_id": task_id,
+        "uczelnia_id": uczelnia_id,
+        "task_state": "FAILURE",
+        **przerwany,
+    }
+
+
 @login_required
 def start_bulk_optimization(request):
     """
@@ -193,6 +211,8 @@ def start_bulk_optimization(request):
         status, _ = StatusOptymalizacjiBulk.objects.select_for_update().get_or_create(
             pk=1
         )
+        # Przebieg, który padł w trakcie, nie może blokować nowego.
+        status.anuluj_jesli_martwy()
         if status.w_trakcie and status.task_id and status.uczelnia:
             messages.info(
                 request,
@@ -370,6 +390,8 @@ def bulk_optimization_status(request, uczelnia_id, task_id):
         disciplines_info,
         status_counts,
     )
+
+    context = _podmien_gdy_przerwany(context, task_id, uczelnia_id)
 
     # Handle redirect for completed tasks
     if context.get("redirect_to_index"):

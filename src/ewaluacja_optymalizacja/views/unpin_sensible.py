@@ -75,8 +75,17 @@ def unpin_all_sensible_status(request, task_id):
         f"task.info={task_info}"
     )
 
+    from ..models import StatusOdpinaniaWszystkich
+    from .helpers import kontekst_przerwanego_przebiegu
+
+    przerwany = kontekst_przerwanego_przebiegu(StatusOdpinaniaWszystkich, task_id)
+
+    # Zadanie padło w trakcie albo nie działa usługa zadań w tle
+    if przerwany:
+        context.update(przerwany)
+
     # Jeśli zadanie się nie zakończyło
-    if not task.ready():
+    elif not task.ready():
         context["task_state"] = "PROGRESS"
         context["task_ready"] = False
         context["info"] = task_info
