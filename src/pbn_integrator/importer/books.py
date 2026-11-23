@@ -27,6 +27,7 @@ from .helpers import (
     importuj_openaccess,
     pobierz_jezyk,
     ustaw_jezyk_oryginalny,
+    wersja_do_importu,
 )
 from .publishers import sciagnij_i_zapisz_wydawce
 
@@ -60,7 +61,7 @@ def importuj_ksiazke(
     # rekordem-widmem (versions=[]). Bez tego guardu ``current_version["object"]``
     # niżej wywala się ``TypeError`` na ``None`` i (w ścieżce bez per-rekordowego
     # try/except) zabija cały wsad.
-    if pbn_publication.current_version is None:
+    if wersja_do_importu(pbn_publication) is None:
         logger.warning(
             "Pomijam książkę PBN %s: brak wersji bieżącej (rekord-widmo).", mongoId
         )
@@ -74,7 +75,7 @@ def importuj_ksiazke(
     if pomin_jesli_w_koszu(pbn_publication, "books", inconsistency_callback):
         return None
 
-    pbn_json = pbn_publication.current_version["object"]
+    pbn_json = wersja_do_importu(pbn_publication)["object"]
     orig_pbn_json = copy.deepcopy(pbn_json)  # noqa
     rok = pbn_json.pop("year", None)
 

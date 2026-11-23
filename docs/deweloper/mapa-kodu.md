@@ -220,6 +220,7 @@ sequenceDiagram
 | `pbn_api/models/` | PBN entity mirrors (Scientist, Publication, Journal) |
 | `pbn_api/adapters/` | BPP → PBN JSON conversion |
 | `pbn_import/` | Step-based import orchestration with WebSocket progress |
+| `pbn_uzgadnianie/` | „Uzgodnij z PBN”: odświeżenie kopii profilu instytucji → utworzenie/powiązanie brakujących rekordów (importerem `pbn_integrator`) → raport różnic; podgląd = to samo w wycofywanej transakcji |
 | `pbn_export_queue/` | Background export queue with retry strategies |
 
 **Import Steps** (in order):

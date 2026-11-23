@@ -609,6 +609,7 @@ INSTALLED_APPS = [
     "przemapuj_zrodla_pbn",
     "przemapuj_zrodlo",
     "pbn_downloader_app",
+    "pbn_uzgadnianie",
     "pbn_wysylka_oswiadczen",
     "pbn_integrator",
     "pbn_import",

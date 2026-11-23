@@ -36,6 +36,7 @@ from .helpers import (
     przetworz_tytuly,
     skonsumuj_nieobsluzone_klucze,
     ustaw_jezyk_oryginalny,
+    wersja_do_importu,
 )
 
 
@@ -78,7 +79,7 @@ def importuj_artykul(
     if pomin_jesli_w_koszu(pbn_publication, "articles", inconsistency_callback):
         return None
 
-    pbn_json = pbn_publication.current_version["object"]
+    pbn_json = wersja_do_importu(pbn_publication)["object"]
     orig_pbn_json = copy.deepcopy(pbn_json)  # noqa
 
     pbn_zrodlo_id = pbn_json.pop("journal", {}).get("id", None)

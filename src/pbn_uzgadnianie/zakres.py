@@ -1,0 +1,151 @@
+"""Etap 1: odświeżenie kopii danych PBN i ustalenie zakresu uzgadniania.
+
+Zakres to prace z PROFILU INSTYTUCJI w PBN — odczytanego w tym przebiegu,
+nie z całej lokalnej tabeli publikacji PBN (w niej są też prace obce:
+książki nadrzędne, prace pobrane przy innych okazjach, wpisy po pracach
+zdjętych z profilu — FD#552).
+"""
+
+import logging
+import sys
+
+from django.db import IntegrityError
+
+from bpp.zglaszanie_bledow import capture_exception
+from pbn_api.exceptions import HttpException, PublicationNotFound
+from pbn_api.models import Publication
+from pbn_integrator.utils import zapisz_mongodb
+from pbn_integrator.utils.mongodb_ops import zapisz_publikacje_instytucji
+from pbn_integrator.utils.publications import zapisz_publikacje_instytucji_v2
+
+logger = logging.getLogger(__name__)
+
+
+class Anulowano(Exception):
+    """Użytkownik anulował przebieg."""
+
+
+def _dopisz(profil, pbn_uid, wersja=None, rok=None):
+    wpis = profil.setdefault(pbn_uid, {"wersje": [], "rok": None})
+    if wersja and str(wersja) not in wpis["wersje"]:
+        wpis["wersje"].append(str(wersja))
+    if rok and not wpis["rok"]:
+        wpis["rok"] = int(rok)
+
+
+def _blad(bledy, etap, opis, pbn_uid=None):
+    """Loguje bieżący wyjątek z tracebackiem i dopisuje go do raportu."""
+    logger.exception("Uzgodnienie z PBN, %s: %s (%s)", etap, opis, pbn_uid)
+    capture_exception(sys.exc_info(), extra={"etap": etap, "pbn_uid": pbn_uid})
+    bledy.append({"etap": etap, "pbn_uid": pbn_uid, "opis": opis})
+
+
+def pobierz_profil_instytucji(client, uczelnia, nadzorca, bledy):
+    """Czyta profil instytucji z PBN (API v1 i v2) i zapisuje go w kopii.
+
+    Zwraca ``{pbn_uid: {"wersje": [...], "rok": int | None}}`` — WSZYSTKIE
+    prace profilu (bez filtra lat; filtr nakłada ``wyznacz_zakres``).
+    """
+    profil = {}
+
+    nadzorca.etap("Pobieranie profilu instytucji z PBN (1/3)", 2)
+    for elem in client.get_institution_publications(page_size=100):
+        nadzorca.sprawdz_anulowanie()
+        if elem.get("institutionId") != uczelnia.pbn_uid_id:
+            continue
+        pbn_uid = elem.get("publicationId")
+        if not pbn_uid:
+            continue
+        _dopisz(
+            profil,
+            pbn_uid,
+            wersja=elem.get("publicationVersion"),
+            rok=elem.get("publicationYear"),
+        )
+        try:
+            zapisz_publikacje_instytucji(dict(elem), None, client=client)
+        except HttpException as e:
+            _blad(bledy, "profil instytucji", f"PBN zwrócił błąd: {e}", pbn_uid)
+
+    nadzorca.etap("Pobieranie profilu instytucji z PBN (2/3)", 8)
+    for elem in client.get_institution_publications_v2():
+        nadzorca.sprawdz_anulowanie()
+        pbn_uid = elem.get("objectId")
+        if not pbn_uid:
+            continue
+        _dopisz(profil, pbn_uid)
+        try:
+            zapisz_publikacje_instytucji_v2(client, dict(elem))
+        except (HttpException, IntegrityError) as e:
+            # IntegrityError: PBN nie oddał samej publikacji (błąd 500 po ich
+            # stronie), więc wiersza profilu nie ma do czego podpiąć.
+            _blad(bledy, "profil instytucji (v2)", f"Nie zapisano: {e}", pbn_uid)
+
+    return profil
+
+
+def _rok_z_kopii(pbn_uid):
+    return Publication.objects.filter(pk=pbn_uid).values_list("year", flat=True).first()
+
+
+def wyznacz_zakres(profil, rok_od, rok_do):
+    """Prace profilu z lat ``rok_od``–``rok_do`` → posortowana lista ``pbn_uid``.
+
+    Rok bierzemy z profilu instytucji, a gdy go tam nie ma — z kopii
+    publikacji. Prace bez ustalonego roku trafiają na osobną listę
+    (raport: „rok nieznany”), nie do zakresu.
+    """
+    w_zakresie, bez_roku = [], []
+    for pbn_uid in sorted(profil):
+        rok = profil[pbn_uid]["rok"] or _rok_z_kopii(pbn_uid)
+        if rok is None:
+            bez_roku.append(pbn_uid)
+        elif rok_od <= rok <= rok_do:
+            w_zakresie.append(pbn_uid)
+    return w_zakresie, bez_roku
+
+
+def odswiez_publikacje(client, pbn_uids, nadzorca, bledy):
+    """Pobiera z PBN aktualne dane (wszystkie wersje) wskazanych publikacji.
+
+    Samo „Pobieranie danych z PBN” dociąga tylko publikacje, których w kopii
+    jeszcze nie ma — istniejących nie odświeża, więc po zmianie w PBN kopia
+    byłaby nieaktualna. Zwraca listę ``pbn_uid``, których w PBN już nie ma.
+    """
+    nie_istnieja = []
+    ile = len(pbn_uids)
+    for nr, pbn_uid in enumerate(pbn_uids, 1):
+        nadzorca.sprawdz_anulowanie()
+        nadzorca.etap(
+            f"Odświeżanie publikacji z PBN ({nr}/{ile}) (3/3)", 10 + 30 * nr // ile
+        )
+        try:
+            dane = client.get_publication_by_id(pbn_uid)
+        except PublicationNotFound:
+            # To nie awaria, tylko informacja: pracy nie ma już w PBN.
+            logger.info("Uzgodnienie z PBN: pracy %s nie ma już w PBN", pbn_uid)
+            nie_istnieja.append(pbn_uid)
+            continue
+        except HttpException as e:
+            _blad(bledy, "odświeżanie publikacji", f"PBN zwrócił błąd: {e}", pbn_uid)
+            continue
+        zapisz_mongodb(dane, Publication)
+    return nie_istnieja
+
+
+def zbuduj_zakres(client, uczelnia, rok_od, rok_do, nadzorca):
+    """Cały etap 1. Zwraca słownik zapisywany w ``UzgodnienieZPBN.zakres``."""
+    bledy = []
+    profil = pobierz_profil_instytucji(client, uczelnia, nadzorca, bledy)
+    w_zakresie, bez_roku = wyznacz_zakres(profil, rok_od, rok_do)
+    nie_istnieja = odswiez_publikacje(client, w_zakresie, nadzorca, bledy)
+    # Rok mógł się zmienić w PBN — po odświeżeniu sprawdzamy jeszcze raz
+    # prace, dla których profil roku nie podał.
+    w_zakresie, bez_roku = wyznacz_zakres(profil, rok_od, rok_do)
+    return {
+        "profil": profil,
+        "w_zakresie": w_zakresie,
+        "bez_roku": bez_roku,
+        "nie_istnieja_w_pbn": nie_istnieja,
+        "bledy_pobierania": bledy,
+    }
