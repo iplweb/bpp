@@ -79,11 +79,11 @@ optymalizacji, snapshotów odpięć i wydruku oświadczeń.
 2. Otworzy się okno **„Uruchom generowanie metryk”**. W typowej sytuacji
    **niczego nie zmieniaj** i kliknij **„Uruchom generowanie”**.
 
-    ![Okno „Uruchom generowanie metryk”: lata, próg punktów, rodzaje autorów](../images/redaktor/metryki-ewaluacyjne/04-okno-generowania.png)
+    ![Okno „Uruchom generowanie metryk”: okres ewaluacji, próg punktów, rodzaje autorów](../images/redaktor/metryki-ewaluacyjne/04-okno-generowania.png)
 
     | Pole | Domyślnie | Co znaczy |
     |---|---|---|
-    | **Rok początkowy** / **Rok końcowy** | 2022 / 2025 | z prac z których lat zbierać punkty — zostaw okres ewaluacji (patrz [uwaga niżej](#zmiana-lat)) |
+    | **Okres ewaluacji** | okres wybrany na pasku | tylko informacja: metryki liczą się dla okresu wybranego na pasku **Okres ewaluacji** u góry strony. Żeby policzyć inny okres, zamknij okno i przełącz pasek |
     | **Minimalny próg punktów** | 0,01 | praca bierze udział w liczeniu, jeśli jej **punkty MNiSW** (za całą pracę) są co najmniej takie; 0,01 = pomiń prace bez punktów |
     | **Nadpisz istniejące metryki** | zaznaczone | przed liczeniem kasuje wszystkie dotychczasowe metryki (patrz [uwaga niżej](#nadpisz)) |
     | **Rodzaje autorów do przetworzenia** | wszystkie | dla kogo liczyć metryki: rodzaje autorów, dla których BPP liczy sloty (zwykle **N**, **B**, **D**), oraz **„Brak danych”** |
@@ -96,11 +96,12 @@ optymalizacji, snapshotów odpięć i wydruku oświadczeń.
    **„Oczekiwanie na rozpoczęcie przetwarzania...”** (zadanie czeka
    w kolejce), potem **„Przeliczanie liczby N i przygotowanie danych...”**
    — BPP **przelicza liczbę N** (zawsze, przy każdym generowaniu), a na
-   końcu pasek postępu z napisem **„Przetworzono: … autorów”**. Ramka
-   odświeża się sama co 2 sekundy, a po zakończeniu przeładowuje całą
-   stronę.
+   końcu **„Generowanie metryk w trakcie...”** z napisem
+   **„Przetworzono: … autorów”** i rosnącym paskiem postępu (na
+   zrzucie niżej). Ramka odświeża się sama co 2 sekundy, a po
+   zakończeniu przeładowuje całą stronę.
 
-    ![Ramka statusu w trakcie przeliczania: oczekiwanie, przeliczanie liczby N, licznik autorów](../images/redaktor/metryki-ewaluacyjne/05-postep.png)
+    ![Ramka statusu w trakcie przeliczania: „Generowanie metryk w trakcie...”, licznik przetworzonych autorów i pasek postępu](../images/redaktor/metryki-ewaluacyjne/05-postep.png)
 
     Przeliczanie biegnie w tle — możesz zamknąć stronę i wrócić później.
     Trwa od kilku sekund do kilku minut, zależnie od liczby autorów.
@@ -109,14 +110,6 @@ optymalizacji, snapshotów odpięć i wydruku oświadczeń.
     Ponieważ **„Nadpisz istniejące metryki”** najpierw kasuje stare
     wiersze, do końca przeliczania tabela, eksport i statystyki pokazują
     tylko autorów już policzonych. Nie pobieraj wtedy Excela.
-
-### Dlaczego nie zmieniać lat {#zmiana-lat}
-
-Pola lat zmieniają tylko zakres prac, z których zbierane są punkty.
-**Limit slotów** autora i liczba N są zawsze liczone za lata 2022–2025,
-a tabela „Wymiar etatu i procent dyscypliny” w szczegółach autora też
-pokazuje tylko te cztery lata. Inny zakres lat daje więc liczby, które do
-siebie nie pasują.
 
 ### „Nadpisz istniejące metryki” {#nadpisz}
 
