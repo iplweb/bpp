@@ -10950,6 +10950,7 @@ CREATE TABLE public.import_polon_importplikuabsencji (
     result_context jsonb,
     stage_states jsonb NOT NULL,
     status_text character varying(255) NOT NULL,
+    plik_byl_zaszyfrowany boolean NOT NULL,
     CONSTRAINT import_polon_importplikuabsencji_log_seq_check CHECK ((log_seq >= 0)),
     CONSTRAINT import_polon_importplikuabsencji_percent_check CHECK ((percent >= 0))
 );
@@ -10983,6 +10984,7 @@ CREATE TABLE public.import_polon_importplikupolon (
     result_context jsonb,
     stage_states jsonb NOT NULL,
     status_text character varying(255) NOT NULL,
+    plik_byl_zaszyfrowany boolean NOT NULL,
     CONSTRAINT import_polon_importplikupolon_log_seq_check CHECK ((log_seq >= 0)),
     CONSTRAINT import_polon_importplikupolon_percent_check CHECK ((percent >= 0))
 );
@@ -17079,6 +17081,54 @@ COPY public.django_countdown_sitecountdown (id, countdown_time, message, long_de
 --
 
 COPY public.django_migrations (id, app, name, applied) FROM stdin;
+463	bpp	0356_drop_kc_komisja_centralna	2000-01-01 00:00:00+00
+114	bpp	0037_auto_20160124_1336	2000-01-01 00:00:00+00
+448	multiseek	0001_initial	2000-01-01 00:00:00+00
+63	pbn_api	0029_indeksy_gist_inne_tabele	2000-01-01 00:00:00+00
+64	pbn_api	0030_auto_20210818_2343	2000-01-01 00:00:00+00
+65	pbn_api	0031_auto_20210820_1544	2000-01-01 00:00:00+00
+66	pbn_api	0032_sent_data_pbn_uid	2000-01-01 00:00:00+00
+67	pbn_api	0033_sent_data_typ_rekordu	2000-01-01 00:00:00+00
+68	pbn_api	0034_auto_20211028_0341	2000-01-01 00:00:00+00
+70	pbn_api	0036_disciplinegroup_discipline	2000-01-01 00:00:00+00
+206	bpp	0125_auto_20180415_2223	2000-01-01 00:00:00+00
+71	pbn_api	0037_alter_discipline_options_and_more	2000-01-01 00:00:00+00
+423	bpp	0329_auto_20220921_2030	2000-01-01 00:00:00+00
+72	pbn_api	0038_oswiadczenieinstytucji_disciplines	2000-01-01 00:00:00+00
+73	pbn_api	0039_alter_oswiadczenieinstytucji_area	2000-01-01 00:00:00+00
+75	dbtemplates	0001_initial	2000-01-01 00:00:00+00
+471	bpp	0364_rzeczownik_uczelnie_pl	2000-01-01 00:00:00+00
+998	bpp	0455_faza_b_i2	2000-01-01 00:00:00+00
+80	bpp	0003_auto_20141023_1419	2000-01-01 00:00:00+00
+81	bpp	0004_auto_20141107_1101	2000-01-01 00:00:00+00
+82	bpp	0005_auto_20141107_1950	2000-01-01 00:00:00+00
+83	bpp	0006_auto_20141112_1531	2000-01-01 00:00:00+00
+84	bpp	0007_charakter_formalny_nazwa_w_primo	2000-01-01 00:00:00+00
+86	bpp	0009_auto_20141126_1804	2000-01-01 00:00:00+00
+88	bpp	0011_auto_20150212_2203	2000-01-01 00:00:00+00
+89	bpp	0012_auto_20150530_1733	2000-01-01 00:00:00+00
+90	bpp	0013_wydzial_zezwalaj_na_ranking_autorow	2000-01-01 00:00:00+00
+91	bpp	0014_auto_20150530_1942	2000-01-01 00:00:00+00
+92	bpp	0015_auto_20150617_2247	2000-01-01 00:00:00+00
+93	bpp	0016_auto_20150824_1051	2000-01-01 00:00:00+00
+95	bpp	0018_auto_20150824_1233	2000-01-01 00:00:00+00
+96	bpp	0019_charakter_formalny_charakter_pbn	2000-01-01 00:00:00+00
+97	bpp	0020_auto_20150824_1609	2000-01-01 00:00:00+00
+98	bpp	0021_auto_20150825_2301	2000-01-01 00:00:00+00
+99	bpp	0022_auto_20150825_2303	2000-01-01 00:00:00+00
+100	bpp	0023_auto_20150830_1704	2000-01-01 00:00:00+00
+101	bpp	0024_auto_20150830_1705	2000-01-01 00:00:00+00
+103	bpp	0026_auto_20150902_2102	2000-01-01 00:00:00+00
+106	bpp	0029_auto_20150923_1343	2000-01-01 00:00:00+00
+107	bpp	0030_auto_20150923_1351	2000-01-01 00:00:00+00
+108	bpp	0031_zrodlo_openaccess_licencja	2000-01-01 00:00:00+00
+109	bpp	0032_auto_20151001_1413	2000-01-01 00:00:00+00
+110	bpp	0033_auto_20151001_1425	2000-01-01 00:00:00+00
+111	bpp	0034_auto_20151011_1514	2000-01-01 00:00:00+00
+112	bpp	0035_nomorefixtures_data_migration	2000-01-01 00:00:00+00
+147	bpp	0066_wydawnictwo_zwarte_calkowita_liczba_autorow	2000-01-01 00:00:00+00
+148	bpp	0067_typ_kbn_artykul_pbn	2000-01-01 00:00:00+00
+149	bpp	0068_indeks_liczba_znakow	2000-01-01 00:00:00+00
 281	bpp	0194_auto_20200213_2148	2000-01-01 00:00:00+00
 419	bpp	0325_nullbooleanfield	2000-01-01 00:00:00+00
 418	bpp	0324_django32	2000-01-01 00:00:00+00
@@ -17407,7 +17457,6 @@ COPY public.django_migrations (id, app, name, applied) FROM stdin;
 1184	zglos_publikacje	0029_autor_slowniki_protect	2000-01-01 00:00:00+00
 262	bpp	0176_auto_20190903_0108	2000-01-01 00:00:00+00
 462	bpp	0355_uczelnia_drukuj_oswiadczenia_and_more	2000-01-01 00:00:00+00
-463	bpp	0356_drop_kc_komisja_centralna	2000-01-01 00:00:00+00
 464	bpp	0357_openaccess_data_opublikowania	2000-01-01 00:00:00+00
 465	bpp	0358_nowe_sumy_view_add_pk	2000-01-01 00:00:00+00
 466	bpp	0359_patent_slowa_kluczowe_eng_and_more	2000-01-01 00:00:00+00
@@ -17779,7 +17828,6 @@ COPY public.django_migrations (id, app, name, applied) FROM stdin;
 1129	oauth2_provider	0017_application_dcr_created	2000-01-01 00:00:00+00
 1131	oauth2_provider	0019_application_registration_source	2000-01-01 00:00:00+00
 1132	oauth2_provider	0020_cimd_application_fields	2000-01-01 00:00:00+00
-114	bpp	0037_auto_20160124_1336	2000-01-01 00:00:00+00
 836	oswiadczenia	0005_migrate_template_to_dbtemplate	2000-01-01 00:00:00+00
 837	password_policies	0001_initial	2000-01-01 00:00:00+00
 1208	deduplikator_autorow	0013_okres_skanu	2000-01-01 00:00:00+00
@@ -18181,7 +18229,6 @@ COPY public.django_migrations (id, app, name, applied) FROM stdin;
 1106	pbn_api	0079_constraint_publikacja_instytucji	2000-01-01 00:00:00+00
 1091	pbn_api	0076_unikalne_uuid_dyscyplin	2000-01-01 00:00:00+00
 1092	pbn_api	0077_constrainty_uuid_dyscyplin	2000-01-01 00:00:00+00
-448	multiseek	0001_initial	2000-01-01 00:00:00+00
 531	bpp	0418_merge_20260601_0954	2000-01-01 00:00:00+00
 535	bpp	0421_cache_trigger_pk_filter	2000-01-01 00:00:00+00
 533	bpp	0419_merge_20260601_1319	2000-01-01 00:00:00+00
@@ -18254,51 +18301,7 @@ COPY public.django_migrations (id, app, name, applied) FROM stdin;
 61	pbn_api	0027_przemapuj_rok_publikacji	2000-01-01 00:00:00+00
 193	bpp	0112_fix_refresh_cache	2000-01-01 00:00:00+00
 62	pbn_api	0028_gist_idx_publications	2000-01-01 00:00:00+00
-63	pbn_api	0029_indeksy_gist_inne_tabele	2000-01-01 00:00:00+00
-64	pbn_api	0030_auto_20210818_2343	2000-01-01 00:00:00+00
-65	pbn_api	0031_auto_20210820_1544	2000-01-01 00:00:00+00
-66	pbn_api	0032_sent_data_pbn_uid	2000-01-01 00:00:00+00
-67	pbn_api	0033_sent_data_typ_rekordu	2000-01-01 00:00:00+00
-68	pbn_api	0034_auto_20211028_0341	2000-01-01 00:00:00+00
-70	pbn_api	0036_disciplinegroup_discipline	2000-01-01 00:00:00+00
-206	bpp	0125_auto_20180415_2223	2000-01-01 00:00:00+00
-71	pbn_api	0037_alter_discipline_options_and_more	2000-01-01 00:00:00+00
-423	bpp	0329_auto_20220921_2030	2000-01-01 00:00:00+00
-72	pbn_api	0038_oswiadczenieinstytucji_disciplines	2000-01-01 00:00:00+00
-73	pbn_api	0039_alter_oswiadczenieinstytucji_area	2000-01-01 00:00:00+00
-75	dbtemplates	0001_initial	2000-01-01 00:00:00+00
-471	bpp	0364_rzeczownik_uczelnie_pl	2000-01-01 00:00:00+00
-998	bpp	0455_faza_b_i2	2000-01-01 00:00:00+00
-80	bpp	0003_auto_20141023_1419	2000-01-01 00:00:00+00
-81	bpp	0004_auto_20141107_1101	2000-01-01 00:00:00+00
-82	bpp	0005_auto_20141107_1950	2000-01-01 00:00:00+00
-83	bpp	0006_auto_20141112_1531	2000-01-01 00:00:00+00
-84	bpp	0007_charakter_formalny_nazwa_w_primo	2000-01-01 00:00:00+00
-86	bpp	0009_auto_20141126_1804	2000-01-01 00:00:00+00
-88	bpp	0011_auto_20150212_2203	2000-01-01 00:00:00+00
-89	bpp	0012_auto_20150530_1733	2000-01-01 00:00:00+00
-90	bpp	0013_wydzial_zezwalaj_na_ranking_autorow	2000-01-01 00:00:00+00
-91	bpp	0014_auto_20150530_1942	2000-01-01 00:00:00+00
-92	bpp	0015_auto_20150617_2247	2000-01-01 00:00:00+00
-93	bpp	0016_auto_20150824_1051	2000-01-01 00:00:00+00
-95	bpp	0018_auto_20150824_1233	2000-01-01 00:00:00+00
-96	bpp	0019_charakter_formalny_charakter_pbn	2000-01-01 00:00:00+00
-97	bpp	0020_auto_20150824_1609	2000-01-01 00:00:00+00
-98	bpp	0021_auto_20150825_2301	2000-01-01 00:00:00+00
-99	bpp	0022_auto_20150825_2303	2000-01-01 00:00:00+00
-100	bpp	0023_auto_20150830_1704	2000-01-01 00:00:00+00
-101	bpp	0024_auto_20150830_1705	2000-01-01 00:00:00+00
-103	bpp	0026_auto_20150902_2102	2000-01-01 00:00:00+00
-106	bpp	0029_auto_20150923_1343	2000-01-01 00:00:00+00
-107	bpp	0030_auto_20150923_1351	2000-01-01 00:00:00+00
-108	bpp	0031_zrodlo_openaccess_licencja	2000-01-01 00:00:00+00
-109	bpp	0032_auto_20151001_1413	2000-01-01 00:00:00+00
-110	bpp	0033_auto_20151001_1425	2000-01-01 00:00:00+00
-111	bpp	0034_auto_20151011_1514	2000-01-01 00:00:00+00
-112	bpp	0035_nomorefixtures_data_migration	2000-01-01 00:00:00+00
-147	bpp	0066_wydawnictwo_zwarte_calkowita_liczba_autorow	2000-01-01 00:00:00+00
-148	bpp	0067_typ_kbn_artykul_pbn	2000-01-01 00:00:00+00
-149	bpp	0068_indeks_liczba_znakow	2000-01-01 00:00:00+00
+1226	import_polon	0018_plik_byl_zaszyfrowany	2000-01-01 00:00:00+00
 \.
 
 
@@ -18836,7 +18839,7 @@ COPY public.import_list_ministerialnych_wierszimportulistyministerialnej (id, da
 -- Data for Name: import_polon_importplikuabsencji; Type: TABLE DATA; Schema: public; Owner: -
 --
 
-COPY public.import_polon_importplikuabsencji (id, created_on, started_on, finished_on, finished_successfully, traceback, plik, owner_id, zapisz_zmiany_do_bazy, cancel_requested, cancelled, current_stage, language, log, log_seq, percent, result_context, stage_states, status_text) FROM stdin;
+COPY public.import_polon_importplikuabsencji (id, created_on, started_on, finished_on, finished_successfully, traceback, plik, owner_id, zapisz_zmiany_do_bazy, cancel_requested, cancelled, current_stage, language, log, log_seq, percent, result_context, stage_states, status_text, plik_byl_zaszyfrowany) FROM stdin;
 \.
 
 
@@ -18844,7 +18847,7 @@ COPY public.import_polon_importplikuabsencji (id, created_on, started_on, finish
 -- Data for Name: import_polon_importplikupolon; Type: TABLE DATA; Schema: public; Owner: -
 --
 
-COPY public.import_polon_importplikupolon (id, created_on, started_on, finished_on, finished_successfully, traceback, plik, owner_id, rok, zapisz_zmiany_do_bazy, ukryj_niezmatchowanych_autorow, ignoruj_miejsce_pracy, uczelnia_id, cancel_requested, cancelled, current_stage, language, log, log_seq, percent, result_context, stage_states, status_text) FROM stdin;
+COPY public.import_polon_importplikupolon (id, created_on, started_on, finished_on, finished_successfully, traceback, plik, owner_id, rok, zapisz_zmiany_do_bazy, ukryj_niezmatchowanych_autorow, ignoruj_miejsce_pracy, uczelnia_id, cancel_requested, cancelled, current_stage, language, log, log_seq, percent, result_context, stage_states, status_text, plik_byl_zaszyfrowany) FROM stdin;
 \.
 
 
@@ -20437,7 +20440,7 @@ SELECT pg_catalog.setval('public.django_countdown_sitecountdown_id_seq', 1, fals
 -- Name: django_migrations_id_seq; Type: SEQUENCE SET; Schema: public; Owner: -
 --
 
-SELECT pg_catalog.setval('public.django_migrations_id_seq', 1225, true);
+SELECT pg_catalog.setval('public.django_migrations_id_seq', 1226, true);
 
 
 --

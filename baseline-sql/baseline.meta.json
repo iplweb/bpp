@@ -1,5 +1,5 @@
 {
-  "git_sha": "b106f686a0d4990699cf968609caed66ca2686a3",
+  "git_sha": "af415aeb9829d49396225c71c254badf38d24288",
   "last_migration": {
     "admin": "0003_logentry_add_action_flag_choices",
     "admin_dashboard": "0001_initial",
@@ -36,7 +36,7 @@
     "import_dyscyplin": "0024_faza_b_ii2_repoint_wydzial",
     "import_list_if": "0005_liveops",
     "import_list_ministerialnych": "0009_alter_importlistministerialnych_options_and_more",
-    "import_polon": "0017_liveops",
+    "import_polon": "0018_plik_byl_zaszyfrowany",
     "import_pracownikow": "0028_nadpisuj_daty_zatrudnienia",
     "import_punktacji_zrodel": "0002_alter_importpunktacjizrodel_options_and_more",
     "importer_autorow_pbn": "0002_add_cache_models",
