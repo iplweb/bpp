@@ -989,6 +989,14 @@ CELERYBEAT_SCHEDULE = {
     # lat) — podpowiedź w importerze i formularzu zgłoszeń, gdy autor nie ma
     # dyscypliny na rok pracy (FD#620). Wynik siedzi w cache na dobę; przy
     # pustym cache liczony na żądanie. Lekkie zapytanie GROUP BY.
+    # Siatka bezpieczeństwa dla importu POLON/absencji z pliku zabezpieczonego
+    # hasłem: odszyfrowaną kopię kasuje sam przebieg importu, ale nie gdy
+    # import anulowano przed startem albo worker zginął twardo. Co 15 minut
+    # kasujemy pliki zakończonych importów oraz starszych niż godzina.
+    "import-polon-usun-zalegle-pliki-z-haslem": {
+        "task": "import_polon.tasks.usun_zalegle_pliki_z_haslem_importu_polon",
+        "schedule": crontab(minute="*/15"),
+    },
     "odswiez-typowe-dyscypliny": {
         "task": "bpp.tasks.odswiez_typowe_dyscypliny",
         "schedule": crontab(hour=5, minute=15),  # Daily at 5:15 AM

@@ -7,6 +7,7 @@ from contextlib import contextmanager
 from typing import TYPE_CHECKING
 
 from django.utils.functional import cached_property
+from django.views.decorators.debug import sensitive_variables
 
 from .exceptions import (
     BadNoOfSheetsException,
@@ -123,9 +124,16 @@ KOMUNIKAT_PLIK_Z_HASLEM = (
 KOMUNIKAT_NIEPRAWIDLOWE_HASLO = "Nieprawidłowe hasło do pliku."
 
 KOMUNIKAT_NIE_DA_SIE_ODSZYFROWAC = (
-    "Nie udało się odszyfrować pliku — ten rodzaj zabezpieczenia nie jest "
-    "obsługiwany. Zamiast podawać hasło, " + INSTRUKCJA_USUNIECIA_HASLA
+    "Nie udało się odszyfrować pliku — plik jest uszkodzony albo ten rodzaj "
+    "zabezpieczenia nie jest obsługiwany. Zamiast podawać hasło, "
+    + INSTRUKCJA_USUNIECIA_HASLA
 )
+
+# Limit rozmiaru pliku zabezpieczonego hasłem, który odszyfrowujemy w procesie
+# HTTP. msoffcrypto trzyma całość w pamięci, a dla .xls (BIFF) buduje listę
+# Pythona z pozycją na KAŻDY bajt (~8 B wskaźnika na bajt pliku) — 100 MB
+# zwykłego limitu to ryzyko OOM. Eksporty z POL-on mają pojedyncze MB.
+MAX_ROZMIAR_PLIKU_Z_HASLEM = 10 * 1024 * 1024
 
 
 @contextmanager
@@ -174,15 +182,27 @@ def czy_plik_zaszyfrowany(plik):
         import struct
 
         import msoffcrypto
+        import olefile
         from msoffcrypto.exceptions import FileFormatError, ParseError
 
         try:
+            # Zaszyfrowany OOXML (.xlsx) rozpoznajemy po samych strumieniach,
+            # bez parsowania metadanych szyfrowania — uszkodzony EncryptionInfo
+            # rzuca w msoffcrypto ``IndexError``. Odszyfrowanie zgłosi wtedy
+            # „plik uszkodzony" (``odszyfruj_plik``).
+            f.seek(0)
+            ole = olefile.OleFileIO(f)
+            if ole.exists("EncryptionInfo") and ole.exists("EncryptedPackage"):
+                return True
+            # .xls (BIFF): szyfrowanie to rekord FILEPASS w strumieniu Workbook.
             return bool(msoffcrypto.OfficeFile(f).is_encrypted())
         except (
             FileFormatError,
             ParseError,
             OSError,
             ValueError,
+            IndexError,
+            KeyError,
             AssertionError,
             struct.error,
         ):
@@ -200,6 +220,7 @@ def sprawdz_szyfrowanie_pliku(plik):
         raise PlikZabezpieczonyHaslemException(KOMUNIKAT_PLIK_Z_HASLEM)
 
 
+@sensitive_variables("haslo")
 def odszyfruj_plik(plik, haslo):
     """Odszyfrowuje dokument Office zabezpieczony hasłem; zwraca bajty pliku
     już BEZ hasła (XLSX → zwykły ZIP, XLS → zwykły BIFF).
@@ -210,11 +231,14 @@ def odszyfruj_plik(plik, haslo):
     umiemy zdjąć. Hasło NIE trafia do żadnego komunikatu ani łańcucha
     wyjątków (``from None``) — nie wolno go też logować w miejscu wywołania.
 
-    Rozmiar wejścia trzeba sprawdzić WCZEŚNIEJ (``sprawdz_rozmiar_pliku``),
-    a wynik przepuścić przez ``sprawdz_plik_importu`` jak każdy inny plik —
-    odszyfrowany XLSX też może być bombą dekompresyjną."""
+    Plik większy niż ``MAX_ROZMIAR_PLIKU_Z_HASLEM`` jest odrzucany PRZED
+    odszyfrowaniem (``PlikZaDuzyException``). Wynik trzeba przepuścić przez
+    ``sprawdz_plik_importu`` jak każdy inny plik — odszyfrowany XLSX też może
+    być bombą dekompresyjną."""
     import io
+    import logging
     import struct
+    from xml.parsers.expat import ExpatError
 
     import msoffcrypto
     from msoffcrypto.exceptions import (
@@ -223,6 +247,15 @@ def odszyfruj_plik(plik, haslo):
         InvalidKeyError,
         ParseError,
     )
+
+    rozmiar = _rozmiar(plik)
+    if rozmiar is not None and rozmiar > MAX_ROZMIAR_PLIKU_Z_HASLEM:
+        raise PlikZaDuzyException(
+            f"Plik zabezpieczony hasłem jest za duży, żeby odszyfrować go na "
+            f"serwerze ({rozmiar / 1024 / 1024:.1f} MB, limit "
+            f"{MAX_ROZMIAR_PLIKU_Z_HASLEM // 1024 // 1024} MB). Zamiast podawać "
+            f"hasło, " + INSTRUKCJA_USUNIECIA_HASLA
+        )
 
     wynik = io.BytesIO()
     with _strumien_binarny(plik) as f:
@@ -242,11 +275,19 @@ def odszyfruj_plik(plik, haslo):
             ParseError,
             OSError,
             ValueError,
+            IndexError,
+            KeyError,
+            ExpatError,
             AssertionError,
             struct.error,
-        ):
-            # Nieobsługiwany wariant szyfrowania albo uszkodzony plik — błąd
-            # użytkownika (ma zdjąć hasło w Excelu), nie aplikacji.
+        ) as e:
+            # Nieobsługiwany wariant szyfrowania albo uszkodzony plik (msoffcrypto
+            # przy złych metadanych rzuca m.in. ``IndexError``/``KeyError``,
+            # ``ExpatError`` z XML-a EncryptionInfo) — błąd użytkownika (ma
+            # zdjąć hasło w Excelu), nie aplikacji. Logujemy tylko typ wyjątku.
+            logging.getLogger(__name__).info(
+                "Nie udało się odszyfrować pliku importu: %s", type(e).__name__
+            )
             raise PlikZabezpieczonyHaslemException(
                 KOMUNIKAT_NIE_DA_SIE_ODSZYFROWAC
             ) from None

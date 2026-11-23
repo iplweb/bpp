@@ -280,6 +280,16 @@ nowy import z zaznaczonym „Zapisz zmiany do bazy” i ponownie wpisać hasło.
 zwykły tryb (podgląd i zapis jednym kliknięciem), zdejmij hasło w Excelu
 przed wgraniem.
 
+Jeśli import z takim plikiem w ogóle nie wystartuje (np. anulujesz go, zanim
+ruszy), plik i tak zostanie usunięty — BPP co 15 minut sprząta pliki z hasłem
+zakończonych importów oraz wszystkie starsze niż godzina.
+
+Plik zabezpieczony hasłem może mieć najwyżej **10 MB** (zwykły plik — 100 MB):
+odszyfrowanie odbywa się w pamięci serwera. Większy plik trzeba wgrać po
+zdjęciu hasła w Excelu. Uszkodzony plik z hasłem kończy się komunikatem
+„Nie udało się odszyfrować pliku — plik jest uszkodzony albo ten rodzaj
+zabezpieczenia nie jest obsługiwany …”.
+
 Złe hasło kończy się komunikatem **„Nieprawidłowe hasło do pliku.”**. Jeśli
 plik nie ma hasła, wpisane hasło jest po prostu pomijane. Tak samo działa
 formularz importu absencji. Inne importy (np. import pracowników) nie mają

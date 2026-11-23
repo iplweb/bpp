@@ -66,10 +66,13 @@ class _LiveopsResetMixin:
         return self.plik.storage.exists(self.plik.name)
 
     @property
-    def plik_usuniety_po_przetworzeniu(self):
-        """Plik był zabezpieczony hasłem i jego kopię już skasowano — import
-        nie da się uruchomić ponownie ani zapisać do bazy."""
-        return self.plik_byl_zaszyfrowany and not self.plik_dostepny
+    def blokada_ponownego_przebiegu(self):
+        """Import z pliku zabezpieczonego hasłem NIGDY nie jest uruchamiany
+        ponownie ani zapisywany do bazy drugim przebiegiem — jego plik jest
+        kasowany po pierwszym przebiegu. Decyduje sama flaga, NIE istnienie
+        pliku: między ``p.result()`` a skasowaniem pliku jest okno, w którym
+        plik jeszcze leży na dysku, a import jest już „zakończony"."""
+        return self.plik_byl_zaszyfrowany
 
     @property
     def komunikat_braku_pliku(self):
@@ -82,9 +85,21 @@ class _LiveopsResetMixin:
         hasłem, i czyści pole ``plik``. Plik bez hasła — bez zmian."""
         if not self.plik_byl_zaszyfrowany or not self.plik:
             return
-        # ``FileSystemStorage.delete`` po cichu pomija brakujący plik.
-        self.plik.delete(save=False)
+        nazwa, storage = self.plik.name, self.plik.storage
+        self.plik = ""
         self.save(update_fields=["plik"])
+        usun_plik_importu(storage, nazwa)
+
+    def on_restart(self):
+        """Hook liveops wołany PRZED resetem stanu — także przez centralny
+        ``liveops:restart`` (przycisk „Ponów”), którego nie kontrolujemy.
+        Import z pliku z hasłem odrzucamy tu, zanim cokolwiek zostanie
+        skasowane: ``PermissionDenied`` daje 403, nie 500, i nie rusza wyników."""
+        if self.blokada_ponownego_przebiegu:
+            from django.core.exceptions import PermissionDenied
+
+            raise PermissionDenied(KOMUNIKAT_PLIK_Z_HASLEM_USUNIETY)
+        self.get_details_set().all().delete()
 
     def reset_liveops_state(self):
         """Zeruje pola stanu operacji liveops (jak ``RestartView.post``), tak by
@@ -142,6 +157,9 @@ def _uruchom_import(parent, p, analyze):
             _traceback.print_exc()
             capture_exception(sys.exc_info())
             raise
+        # Kasujemy PRZED oznaczeniem sukcesu — po ``p.result()`` import jest
+        # „zakończony" i w UI pojawiają się akcje kolejnego przebiegu.
+        parent.usun_plik_jesli_byl_zaszyfrowany()
         p.result({"total": parent.get_details_set().count(), **(wynik or {})})
     finally:
         # Odszyfrowana kopia pliku z hasłem nie zostaje na serwerze — ani po
@@ -160,9 +178,6 @@ class ImportPlikuAbsencji(_LiveopsResetMixin, LiveOperation):
         ),
     )
     zapisz_zmiany_do_bazy = models.BooleanField(default=False)
-
-    def on_restart(self):
-        self.wierszimportuplikuabsencji_set.all().delete()
 
     def run(self, p):
         from .core.import_absencji import analyze_file_import_absencji
@@ -219,9 +234,6 @@ class ImportPlikuPolon(_LiveopsResetMixin, LiveOperation):
         on_delete=models.SET_NULL,
         help_text="Uczelnia, dla której wykonywany jest import (multi-hosted).",
     )
-
-    def on_restart(self):
-        self.wierszimportuplikupolon_set.all().delete()
 
     def run(self, p):
         from import_polon.core import analyze_file_import_polon
@@ -368,6 +380,22 @@ class ImportPolonOverride(models.Model):
         return f"{self.grupa_stanowisk} → {'TAK' if self.jest_badawczy else 'NIE'}"
 
 
+def usun_plik_importu(storage, nazwa):
+    """Kasuje plik importu z dysku, o ile żaden import (POLON ani absencji)
+    go już nie wskazuje. Jedno miejsce dla ``post_delete`` i dla kasowania
+    odszyfrowanej kopii po przebiegu. Zwraca True, gdy plik skasowano."""
+    if not nazwa:
+        return False
+    if any(
+        model.objects.filter(plik=nazwa).exists()
+        for model in (ImportPlikuPolon, ImportPlikuAbsencji)
+    ):
+        return False  # plik współdzielony z innym importem
+    # ``FileSystemStorage.delete`` po cichu pomija brakujący plik.
+    storage.delete(nazwa)
+    return True
+
+
 def _usun_plik_importu(sender, instance, **kwargs):
     """``post_delete``: kasuje plik usuniętego importu z dysku.
 
@@ -383,16 +411,7 @@ def _usun_plik_importu(sender, instance, **kwargs):
         return
     storage = instance.plik.storage
 
-    def _usun():
-        if any(
-            model.objects.filter(plik=nazwa).exists()
-            for model in (ImportPlikuPolon, ImportPlikuAbsencji)
-        ):
-            return  # plik współdzielony z innym importem
-        # ``FileSystemStorage.delete`` po cichu pomija brakujący plik.
-        storage.delete(nazwa)
-
-    transaction.on_commit(_usun)
+    transaction.on_commit(lambda: usun_plik_importu(storage, nazwa))
 
 
 models.signals.post_delete.connect(

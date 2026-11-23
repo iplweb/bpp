@@ -16,7 +16,7 @@
 
     {# Region live-operacji + wrapper CSRF (CSRF_COOKIE_HTTPONLY=True) — patrz #}
     {# import_pliku_polon.html po komentarz szczegółowy. #}
-    {% if object.finished_on and not object.finished_successfully and object.plik_usuniety_po_przetworzeniu %}
+    {% if object.finished_on and not object.finished_successfully and object.blokada_ponownego_przebiegu %}
         {# Bez pliku „Ponów” liveops i tak skończy się tym komunikatem — #}
         {# pokazujemy go od razu, także po przeładowaniu strony. #}
         <div class="panel callout warning">{{ object.komunikat_braku_pliku }}</div>

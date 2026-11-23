@@ -7,7 +7,7 @@
 {% block content %}
     <h1>Zapisać import do bazy danych?</h1>
 
-    {% if object.plik_usuniety_po_przetworzeniu %}
+    {% if object.blokada_ponownego_przebiegu %}
     <div class="panel callout alert">
         <p>{{ object.komunikat_braku_pliku }}</p>
     </div>

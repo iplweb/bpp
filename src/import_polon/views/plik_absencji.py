@@ -7,6 +7,7 @@ from import_polon.forms import NowyImportAbsencjiForm
 from import_polon.models import ImportPlikuAbsencji
 from import_polon.views.plik_polon import (
     BaseImportPlikuPolonMixin,
+    UtworzImportZHaslemMixin,
     ZapiszDoBazyMixin,
     _PkOwnerRestartMixin,
 )
@@ -37,7 +38,9 @@ class PokazImportyAbsencji(BaseImportPlikuAbsencjiMixin, ListView):
         return qset
 
 
-class UtworzImportPlikuAbsencji(BaseImportPlikuAbsencjiMixin, CreateLiveOperationView):
+class UtworzImportPlikuAbsencji(
+    UtworzImportZHaslemMixin, BaseImportPlikuAbsencjiMixin, CreateLiveOperationView
+):
     form_class = NowyImportAbsencjiForm
 
 

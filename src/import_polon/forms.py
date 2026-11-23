@@ -8,6 +8,7 @@ from crispy_forms_foundation.layout import Column, Fieldset, Layout, Row
 from django import forms
 from django.core.exceptions import ValidationError
 from django.core.files.uploadedfile import SimpleUploadedFile
+from django.views.decorators.debug import sensitive_variables
 
 from bpp.util import (
     formdefaults_html_after,
@@ -23,7 +24,6 @@ from import_common.util import (
     czy_plik_zaszyfrowany,
     odszyfruj_plik,
     sprawdz_plik_importu,
-    sprawdz_rozmiar_pliku,
 )
 from import_polon.models import ImportPlikuAbsencji, ImportPlikuPolon
 from import_polon.utils import read_excel_or_csv_dataframe_guess_encoding
@@ -159,6 +159,7 @@ def _komunikat_brakujacych_naglowkow(missing_headers):
     return error_msg
 
 
+@sensitive_variables("haslo")
 def przygotuj_plik_importu(plik, haslo, waliduj_naglowki):
     """Wspólna walidacja pliku dla importu POLON i absencji.
 
@@ -178,21 +179,24 @@ def przygotuj_plik_importu(plik, haslo, waliduj_naglowki):
     file_extension = _sprawdz_rozszerzenie(plik)
     byl_zaszyfrowany = False
 
-    with tempfile.NamedTemporaryFile(delete=False, suffix=file_extension) as tmp:
-        for chunk in plik.chunks():
-            tmp.write(chunk)
-        tmp_file_path = tmp.name
+    # Nazwany plik na dysku jest potrzebny: ``sprawdz_plik_importu`` i odczyt
+    # nagłówków (pandas) działają na ścieżce i wybierają parser po
+    # rozszerzeniu. Katalog tymczasowy sprząta context manager — także przy
+    # wyjątku — razem z oryginałem i odszyfrowaną kopią.
+    with tempfile.TemporaryDirectory(prefix="bpp-import-") as katalog:
+        tmp_file_path = os.path.join(katalog, "plik" + file_extension)
+        with open(tmp_file_path, "wb") as tmp:
+            for chunk in plik.chunks():
+                tmp.write(chunk)
 
-    try:
         if czy_plik_zaszyfrowany(tmp_file_path):
             if not haslo:
                 raise ValidationError(KOMUNIKAT_PLIK_Z_HASLEM_FORMULARZ)
 
             try:
-                # Limit rozmiaru PRZED odszyfrowaniem (msoffcrypto trzyma
-                # całość w pamięci); odszyfrowana kopia przejdzie niżej przez
+                # ``odszyfruj_plik`` sam pilnuje (niższego) limitu rozmiaru
+                # pliku z hasłem; odszyfrowana kopia przejdzie niżej przez
                 # pełne ``sprawdz_plik_importu`` (rozmiar + bomba dekompresji).
-                sprawdz_rozmiar_pliku(tmp_file_path)
                 odszyfrowany = odszyfruj_plik(tmp_file_path, haslo)
             except NieprawidloweHasloDoPlikuException as e:
                 raise ValidationError(str(e)) from None
@@ -221,11 +225,6 @@ def przygotuj_plik_importu(plik, haslo, waliduj_naglowki):
         missing_headers = waliduj_naglowki(tmp_file_path)
         if missing_headers:
             raise ValidationError(_komunikat_brakujacych_naglowkow(missing_headers))
-    finally:
-        try:
-            os.unlink(tmp_file_path)
-        except FileNotFoundError:
-            pass  # już posprzątane
 
     return plik, byl_zaszyfrowany
 
