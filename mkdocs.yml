@@ -133,6 +133,7 @@ nav:
       - Dwudyscyplinowcy: redaktor/dwudyscyplinowcy.md
       - Przemapowanie prac autora: redaktor/przemapowanie-prac-autora.md
       - Duplikaty publikacji: redaktor/duplikaty-publikacji.md
+      - "Raporty: tabele, kolumny i źródła danych": redaktor/raporty-tabele-i-zrodla-danych.md
   - Instrukcja administratora:
       - Konfiguracja ogólna: administrator/ogolna.md
       - Konfigurator wyglądu: administrator/konfigurator-wygladu.md

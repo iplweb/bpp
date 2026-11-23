@@ -34,6 +34,7 @@
                     otwórz do edycji
                 </a>
             {% endif %}
+            {% include "nowe_raporty/_zrodla_danych.html" with otwarte=True %}
         {% else %}
             <p>Skontaktuj się z administratorem lub redaktorem systemu.</p>
         {% endif %}

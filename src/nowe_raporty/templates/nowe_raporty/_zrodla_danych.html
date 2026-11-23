@@ -1,0 +1,25 @@
+{# FD#448: odnośniki do edycji źródeł danych otwartego raportu. #}
+{# Lista jest pusta dla osób bez prawa zmiany źródeł danych. #}
+{% if zrodla_danych %}
+    <details class="hide-for-print"
+             data-zrodla-danych
+             {% if otwarte %}open{% endif %}
+             style="margin-bottom: 15px">
+        <summary style="cursor: pointer;">
+            <i class="fi-database" aria-hidden="true" style="margin-right: 4px;"></i>
+            Źródła danych tego raportu ({{ zrodla_danych|length }})
+        </summary>
+        <p style="margin-top: 8px;">
+            Po zapisaniu zmian w źródle danych wrócisz do tego raportu.
+        </p>
+        <ul>
+            {% for pozycja in zrodla_danych %}
+                <li>
+                    {{ pozycja.sekcja }}
+                    —
+                    <a href="{{ pozycja.url }}">edytuj źródło danych „{{ pozycja.zrodlo.label }}”</a>
+                </li>
+            {% endfor %}
+        </ul>
+    </details>
+{% endif %}

@@ -1,0 +1,10 @@
+{% extends "admin/change_form.html" %}
+{# FD#448: formularz źródła danych otwarty z raportu ma odnośnik powrotny. #}
+{% block object-tools-items %}
+    {% if powrot_url %}
+        <li>
+            <a href="{{ powrot_url }}" data-powrot-do-raportu>Wróć do raportu</a>
+        </li>
+    {% endif %}
+    {{ block.super }}
+{% endblock %}
