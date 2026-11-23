@@ -89,15 +89,29 @@
     });
   }
 
+  // Odstęp bloku wielokolumnowego od krawędzi okna, gdy trzeba go przesunąć.
+  var MARGINES_BOCZNY_PX = 8;
+
   /**
-   * Blok wielokolumnowy otwiera się w tę stronę, w którą mniej wystaje
-   * poza ekran. Na telefonie zajmuje całą szerokość (top_bar.scss), więc
+   * Blok wielokolumnowy otwiera się w prawo od swojej pozycji, a gdy się
+   * tam nie mieści — w lewo; gdy nie mieści się w żadną stronę, jest
+   * przesuwany tak, żeby cały leżał w oknie. Na telefonie zajmuje całą szerokość (top_bar.scss), więc
    * tam te ustawienia nie mają znaczenia.
    */
   function ustawStrone(li, sub) {
     li.classList.remove("opens-left");
     sub.style.left = "";
     sub.style.right = "";
+
+    // Szerokość okna mierzymy ZANIM blok trafi do układu i nie z samego
+    // window.innerWidth: na telefonie i tablecie blok wystający poza ekran
+    // poszerza obszar układu strony, więc innerWidth rośnie razem z nim
+    // i blok „mieścił się” zawsze — stąd ucięta „ewaluacja” w telefonie
+    // poziomo i na tablecie pionowo.
+    var szerokoscOkna = Math.min(
+      window.innerWidth,
+      document.documentElement.clientWidth,
+    );
 
     // Na czas pomiaru: w układzie, ale niewidoczne.
     var widocznosc = sub.style.visibility;
@@ -109,20 +123,30 @@
     var liRect = li.getBoundingClientRect();
     var wystajeWPrawo = Math.max(
       0,
-      liRect.left + szerokosc - window.innerWidth,
+      liRect.left + szerokosc - szerokoscOkna,
     );
     var wystajeWLewo = Math.max(0, -(liRect.right - szerokosc));
 
     sub.style.visibility = widocznosc;
     sub.style.display = wyswietlanie;
 
-    if (wystajeWLewo < wystajeWPrawo) {
+    if (wystajeWPrawo === 0) {
+      sub.style.left = "0";
+      sub.style.right = "";
+    } else if (wystajeWLewo === 0) {
       li.classList.add("opens-left");
       sub.style.left = "auto";
       sub.style.right = "0";
     } else {
-      sub.style.left = "0";
-      sub.style.right = "";
+      // Nie mieści się ani w prawo, ani w lewo od swojej pozycji (telefon
+      // poziomo, tablet pionowo: pozycja w środku paska, blok szeroki) —
+      // przesuń go tak, żeby cały leżał w oknie.
+      var lewaKrawedz = Math.max(
+        MARGINES_BOCZNY_PX,
+        szerokoscOkna - szerokosc - MARGINES_BOCZNY_PX,
+      );
+      sub.style.left = lewaKrawedz - liRect.left + "px";
+      sub.style.right = "auto";
     }
   }
 

@@ -481,6 +481,31 @@ body .uwy.userway_p1 .userway_buttons_wrapper {
             width: auto;
             max-width: none;
         }
+
+        // To samo dla zwykłych (jednokolumnowych) podmenu: na telefonie
+        // KAŻDE podmenu ma całą szerokość paska — inaczej część otwierała
+        // się wąsko pod swoją pozycją, a część szeroko, i wyglądało to
+        // jak błąd.
+        .dropdown.menu > li.is-dropdown-submenu-parent {
+            position: static;
+        }
+
+        .dropdown.menu > li.is-dropdown-submenu-parent > ul.menu {
+            top: auto;
+            left: 0 !important;
+            right: 0 !important;
+            width: auto;
+            min-width: 0;
+            max-width: none;
+        }
+    }
+
+    // Telefon poziomo i tablet pionowo: blok wielokolumnowy nigdy nie jest
+    // szerszy niż okno (stronę i przesunięcie dobiera top-bar-menu.js).
+    @media screen and (min-width: 640px) {
+        .dropdown.menu > li.has-submenu > .menu-columns-wrapper[data-submenu] {
+            max-width: calc(100vw - 16px);
+        }
     }
 }
 
@@ -963,6 +988,16 @@ html.global-search-scrollbar-gutter {
     padding: 4px 8px;
     border-radius: 4px;
     border: 1px solid #e0e0e0;
+}
+
+// FD#626: podpowiedź „Naciśnij / aby szukać” nie ma sensu na telefonie
+// (brak klawiatury). Telefon pionowo rozpoznajemy po szerokości, poziomo —
+// po niskim oknie obsługiwanym palcem. Tablet zostaje: bywa z klawiaturą.
+@media screen and (max-width: 639px),
+    screen and (max-height: 500px) and (pointer: coarse) {
+    .search-hint {
+        display: none;
+    }
 }
 
 // Logout form styling

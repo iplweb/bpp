@@ -342,3 +342,125 @@ def test_komputer_enter_otwiera_menu_wielokolumnowe(
     admin_page.keyboard.press("Enter")
     _oczekuj_zamkniete(podmenu)
     expect(link).to_have_attribute("aria-expanded", "false")
+
+
+# --- uwagi po obejrzeniu na telefonie i tablecie
+
+# Telefon poziomo i tablet pionowo: pasek menu rozwinięty jak na komputerze,
+# ale okno wąskie — blok wielokolumnowy pozycji ze środka paska nie mieści
+# się ani w prawo, ani w lewo od niej.
+TELEFON_POZIOMO = dict(
+    viewport={"width": 852, "height": 393},
+    device_scale_factor=2,
+    is_mobile=True,
+    has_touch=True,
+)
+TABLET_PIONOWO = dict(
+    viewport={"width": 820, "height": 1180},
+    device_scale_factor=2,
+    is_mobile=True,
+    has_touch=True,
+)
+
+
+def _poza_oknem(podmenu) -> bool:
+    return podmenu.evaluate(
+        """(e) => {
+            const r = e.getBoundingClientRect();
+            return r.left < 0 || r.right > document.documentElement.clientWidth + 1;
+        }"""
+    )
+
+
+def _wszystkie_podmenu_w_oknie(page: Page) -> list[str]:
+    """Stuknij po kolei każdą pozycję z podmenu; zwróć nazwy tych, których
+    podmenu wystaje poza okno."""
+    wystajace = []
+    pozycje = page.locator(POZYCJE_MENU)
+    for nr in range(pozycje.count()):
+        pozycja = pozycje.nth(nr)
+        podmenu = pozycja.locator(PODMENU)
+        if podmenu.count() == 0 or not pozycja.locator("> a").is_visible():
+            continue
+        _stuknij(pozycja)
+        _oczekuj_otwarte(podmenu.first)
+        if _poza_oknem(podmenu.first):
+            wystajace.append(" ".join(pozycja.locator("> a").inner_text().split()))
+        _stuknij(pozycja)
+        _oczekuj_zamkniete(podmenu.first)
+    return wystajace
+
+
+@pytest.mark.browser_context_args(**TELEFON_POZIOMO)
+def test_telefon_poziomo_zadne_podmenu_nie_wystaje_poza_ekran(
+    channels_live_server, admin_page: Page, uczelnia
+):
+    """„ewaluacja” otwierała się w prawo i była ucięta: skrypt porównywał
+    blok z ``window.innerWidth``, a ten na telefonie rośnie razem z blokiem
+    wystającym poza ekran — więc blok „mieścił się” zawsze."""
+    _otworz_strone(admin_page, channels_live_server.url)
+    expect(_pozycja(admin_page, "ewaluacja")).to_be_visible()
+
+    assert _wszystkie_podmenu_w_oknie(admin_page) == []
+
+
+@pytest.mark.browser_context_args(**TABLET_PIONOWO)
+def test_tablet_pionowo_zadne_podmenu_nie_wystaje_poza_ekran(
+    channels_live_server, admin_page: Page, uczelnia
+):
+    _otworz_strone(admin_page, channels_live_server.url)
+    expect(_pozycja(admin_page, "ewaluacja")).to_be_visible()
+
+    assert _wszystkie_podmenu_w_oknie(admin_page) == []
+
+
+@pytest.mark.browser_context_args(**TELEFON)
+def test_telefon_kazde_podmenu_ma_cala_szerokosc(
+    channels_live_server, admin_page: Page, uczelnia
+):
+    """Wcześniej blok wielokolumnowy zajmował całą szerokość, a zwykłe
+    podmenu otwierało się wąsko pod swoją pozycją — wyglądało to jak błąd."""
+    _otworz_strone(admin_page, channels_live_server.url)
+
+    szerokosci = {}
+    for nazwa in ("szukaj", "ewaluacja", "redagowanie"):
+        pozycja = _pozycja(admin_page, nazwa)
+        _stuknij(pozycja)
+        podmenu = _podmenu(pozycja)
+        _oczekuj_otwarte(podmenu)
+        szerokosci[nazwa] = round(
+            podmenu.evaluate("e => e.getBoundingClientRect().width")
+        )
+        assert not _poza_oknem(podmenu)
+        _stuknij(pozycja)
+        _oczekuj_zamkniete(podmenu)
+
+    assert len(set(szerokosci.values())) == 1, szerokosci
+    assert szerokosci["szukaj"] > 0.9 * TELEFON["viewport"]["width"]
+
+
+def _podpowiedz_klawisza_widoczna(page: Page) -> bool:
+    return page.evaluate(
+        "() => getComputedStyle(document.querySelector('.search-hint')).display"
+        " !== 'none'"
+    )
+
+
+@pytest.mark.browser_context_args(**TELEFON)
+def test_telefon_bez_podpowiedzi_klawisza_w_szybkim_wyszukiwaniu(
+    channels_live_server, admin_page: Page, uczelnia
+):
+    """„Naciśnij / aby szukać” — na telefonie nie ma klawisza „/”."""
+    _otworz_strone(admin_page, channels_live_server.url)
+
+    assert not _podpowiedz_klawisza_widoczna(admin_page)
+
+
+@pytest.mark.browser_context_args(**TABLET)
+def test_tablet_ma_podpowiedz_klawisza_w_szybkim_wyszukiwaniu(
+    channels_live_server, admin_page: Page, uczelnia
+):
+    """Tablet bywa z klawiaturą — podpowiedź zostaje."""
+    _otworz_strone(admin_page, channels_live_server.url)
+
+    assert _podpowiedz_klawisza_widoczna(admin_page)
