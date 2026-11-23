@@ -838,10 +838,22 @@ CELERY_RESULT_BACKEND = (
 )
 BROKER_URL = CELERY_BROKER_URL  # legacy alias for any third-party code
 
-CELERY_BROKER_TRANSPORT_OPTIONS = {
-    # Redis re-delivers in-flight task after this timeout if worker dies;
-    # must exceed longest job (PBN export, POLON import).
-    "visibility_timeout": 3600 * 6,
+# UWAGA NA NAZWĘ: aplikacja Celery ładuje ustawienia bez ``namespace``
+# (``config_from_object`` w celery_tasks.py), więc rozpoznaje stare nazwy
+# (``BROKER_TRANSPORT_OPTIONS``, ``CELERY_ROUTES``…), a ``CELERY_BROKER_*``
+# pomija BEZ OSTRZEŻENIA. Pod nazwą ``CELERY_BROKER_TRANSPORT_OPTIONS`` to
+# ustawienie nie działało i obowiązywała domyślna 1 godzina. Pilnuje tego
+# test src/django_bpp/tests/test_celery_visibility_timeout.py.
+#
+# Po tym czasie Redis uznaje zadanie POBRANE, ale NIEPOTWIERDZONE za zgubione
+# i wystawia je ponownie. Zadanie już wykonywane jest potwierdzone (nie ma
+# ``acks_late``), więc jego czas trwania nie ma tu znaczenia. Niepotwierdzone
+# są zadania czekające w rezerwie workera oraz odroczone (``countdown``/
+# ``eta``) — jeśli czekają dłużej niż ten limit, wykonają się w kilku
+# kopiach. Wartość musi więc przekraczać najdłuższe odroczenie: ponowienia
+# kolejki eksportu PBN sięgają 6 godzin (pbn_export_queue).
+BROKER_TRANSPORT_OPTIONS = {
+    "visibility_timeout": 3600 * 8,
 }
 
 CELERY_RESULT_EXTENDED = False
