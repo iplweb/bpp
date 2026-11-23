@@ -216,6 +216,38 @@ def powod_przerwania(
     return None
 
 
+def zwolnij_blokade_singletona(task_id):
+    """Zdejmij blokadę ``celery_singleton`` trzymaną przez zadanie
+    ``task_id``. Zwraca liczbę zdjętych blokad.
+
+    Zadanie-singleton, które przepadło, zostawia blokadę aż do jej
+    wygaśnięcia (godziny) albo do restartu workera. Bez zdjęcia jej ponowne
+    uruchomienie anulowanego przebiegu kończyłoby się „zadanie jest już
+    uruchomione” albo — po cichu — identyfikatorem tego samego, martwego
+    zadania.
+    """
+    from celery_singleton.backends import get_backend
+    from celery_singleton.config import Config
+
+    from django_bpp.celery_tasks import app
+
+    try:
+        config = Config(app)
+        klient = getattr(get_backend(config), "redis", None)
+        if klient is None:
+            return 0  # inny backend blokad — nie umiemy szukać po wartości
+        zdjete = 0
+        for klucz in klient.scan_iter(match=config.key_prefix + "*"):
+            if klient.get(klucz) == task_id:
+                klient.delete(klucz)
+                zdjete += 1
+        return zdjete
+    except (RedisError, OSError):
+        # Anulowanie statusu już się udało; blokada wygaśnie sama.
+        logger.exception("Nie udało się zdjąć blokady singletona %s", task_id)
+        return 0
+
+
 def komunikat_przerwania(nazwa, powod):
     """Komunikat dla użytkownika (trafia do ``ostatni_komunikat``)."""
     if powod == BRAK_WORKERA:
@@ -342,4 +374,5 @@ class PilnowanyPrzebiegMixin:
                 self.task_id,
                 powod,
             )
+            zwolnij_blokade_singletona(self.task_id)
         return bool(zmienione)

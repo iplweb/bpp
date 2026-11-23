@@ -335,3 +335,122 @@ def test_nowy_przebieg_po_anulowanym_dziala_normalnie(uczelnia):
 
     assert not StatusOptymalizacjiZOdpinaniem.przebieg_anulowany("zadanie-nowe")
     assert StatusOptymalizacjiZOdpinaniem.przebieg_anulowany(TASK_ID)
+
+
+# --- odpinanie sensownych możliwości: zadanie, które nigdy nie wystartowało
+
+WYSLIJ = "ewaluacja_optymalizacja.tasks.unpin_all_sensible_task.apply_async"
+
+
+def _wyslane(**kwargs):
+    """Atrapa wysłania zadania: zwraca wynik o zleconym identyfikatorze."""
+    return MagicMock(id=kwargs["task_id"])
+
+
+def test_odpinanie_sensownych_zostawia_slad_juz_przy_zleceniu(admin_client, uczelnia):
+    """Wcześniej status zapisywało dopiero samo zadanie — gdy nie wystartowało,
+    strona postępu kręciła się bez końca i strażnik nie miał czego anulować."""
+    with patch(WYSLIJ, side_effect=_wyslane) as wyslij:
+        odpowiedz = admin_client.get(
+            reverse("ewaluacja_optymalizacja:unpin-all-sensible")
+        )
+
+    wyslij.assert_called_once()
+    status = StatusOdpinaniaWszystkich.objects.get(pk=1)
+    assert status.w_trakcie
+    assert status.task_id == wyslij.call_args.kwargs["task_id"]
+    assert odpowiedz.url.endswith(f"/{status.task_id}/")
+
+
+def test_odpinanie_sensownych_ktore_nie_wystartowalo_jest_anulowane(
+    admin_client, uczelnia, martwy
+):
+    with patch(WYSLIJ, side_effect=_wyslane):
+        url_statusu = admin_client.get(
+            reverse("ewaluacja_optymalizacja:unpin-all-sensible")
+        ).url
+    StatusOdpinaniaWszystkich.objects.filter(pk=1).update(
+        data_rozpoczecia=timezone.now() - timedelta(seconds=600)
+    )
+
+    html = admin_client.get(url_statusu).content.decode()
+
+    assert PRZERWANE in html
+    assert StatusOdpinaniaWszystkich.objects.get(pk=1).przerwany
+
+
+def test_odpinanie_sensownych_w_toku_przekierowuje_na_status(admin_client, uczelnia):
+    _trwa(StatusOdpinaniaWszystkich)
+
+    with patch(POWOD, return_value=None), patch(WYSLIJ) as wyslij:
+        odpowiedz = admin_client.get(
+            reverse("ewaluacja_optymalizacja:unpin-all-sensible")
+        )
+
+    wyslij.assert_not_called()
+    assert odpowiedz.url.endswith(f"/{TASK_ID}/")
+
+
+def test_odpinanie_sensownych_po_przerwaniu_mozna_uruchomic_ponownie(
+    admin_client, uczelnia, martwy
+):
+    _trwa(StatusOdpinaniaWszystkich)
+
+    with patch(WYSLIJ, side_effect=_wyslane) as wyslij:
+        admin_client.get(reverse("ewaluacja_optymalizacja:unpin-all-sensible"))
+
+    wyslij.assert_called_once()
+    status = StatusOdpinaniaWszystkich.objects.get(pk=1)
+    assert status.w_trakcie
+    assert status.task_id != TASK_ID
+
+
+def test_odpinanie_sensownych_zwalnia_slot_gdy_zadanie_juz_jest(admin_client, uczelnia):
+    from celery_singleton import DuplicateTaskError
+
+    with patch(WYSLIJ, side_effect=DuplicateTaskError("już jest", "inne")):
+        admin_client.get(reverse("ewaluacja_optymalizacja:unpin-all-sensible"))
+
+    assert not StatusOdpinaniaWszystkich.objects.get(pk=1).w_trakcie
+
+
+def test_anulowane_odpinanie_sensownych_nie_odpina(uczelnia):
+    from ewaluacja_optymalizacja.tasks import unpin_all_sensible_task
+
+    _anulowany(StatusOdpinaniaWszystkich)
+
+    with patch(
+        "ewaluacja_optymalizacja.tasks.unpin_all_sensible._unpin_all_sensible"
+    ) as odpinanie:
+        wynik = unpin_all_sensible_task.apply(args=[uczelnia.pk], task_id=TASK_ID).get()
+
+    assert wynik["status"] == "cancelled"
+    odpinanie.assert_not_called()
+    assert StatusOdpinaniaWszystkich.objects.get(pk=1).przerwany
+
+
+# --- blokada celery_singleton po anulowaniu
+
+
+def test_anulowanie_zdejmuje_blokade_singletona_tego_zadania(martwy):
+    """Bez tego ponowne uruchomienie kończyłoby się „zadanie jest już
+    uruchomione” aż do wygaśnięcia blokady (godziny)."""
+    from celery_singleton.backends import get_backend
+    from celery_singleton.config import Config
+
+    from django_bpp.celery_tasks import app
+
+    config = Config(app)
+    redis = get_backend(config).redis
+    nasza = f"{config.key_prefix}test-fd633-nasza"
+    cudza = f"{config.key_prefix}test-fd633-cudza"
+    redis.set(nasza, TASK_ID, ex=60)
+    redis.set(cudza, "inne-zadanie", ex=60)
+    try:
+        _trwa(StatusDisciplineSwapAnalysis)
+        assert StatusDisciplineSwapAnalysis.aktualny().przerwany
+
+        assert redis.get(nasza) is None
+        assert redis.get(cudza) == "inne-zadanie"
+    finally:
+        redis.delete(nasza, cudza)
