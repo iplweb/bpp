@@ -168,48 +168,111 @@ def _strumien_binarny(plik):
         plik.seek(pozycja)
 
 
+class HasloDoPliku:
+    """Hasło do zaszyfrowanego pliku, które nie pokazuje się w ``repr``/``str``.
+
+    Monitoring błędów (Sentry/GlitchTip, Rollbar) i raport błędu Django
+    zapisują zmienne lokalne i argumenty KAŻDEJ ramki tracebacku — także
+    krotki ``*args`` dekoratorów (np. ``sensitive_variables``), gdzie nie ma
+    nazwy klucza, po której dałoby się wartość zamazać. Przekazujemy więc
+    wszędzie ten obiekt, a jawną wartość wyjmujemy (``odslon()``) dopiero
+    w wywołaniu biblioteki odszyfrowującej, bez przypisywania do zmiennej.
+    """
+
+    __slots__ = ("_wartosc",)
+    ZAMASKOWANE = "********"
+
+    def __init__(self, wartosc=""):
+        self._wartosc = wartosc or ""
+
+    def __bool__(self):
+        return bool(self._wartosc)
+
+    def __repr__(self):
+        return f"HasloDoPliku({self.ZAMASKOWANE!r})"
+
+    def __str__(self):
+        return self.ZAMASKOWANE
+
+    def odslon(self):
+        return self._wartosc
+
+
+def _odslon(haslo):
+    if isinstance(haslo, HasloDoPliku):
+        return haslo.odslon()
+    return haslo
+
+
+# Rekordy BIFF (.xls): BOF globals, FILEPASS (= plik zaszyfrowany), EOF.
+_BIFF_FILEPASS = 0x002F
+_BIFF_EOF = 0x000A
+
+
+def _xls_ma_filepass(f, ole):
+    """Czy strumień ``Workbook`` (.xls, BIFF8) zaczyna się od rekordu FILEPASS?
+
+    FILEPASS stoi zaraz po BOF podstrumienia globals, więc wystarczy PIERWSZY
+    sektor strumienia — czytamy go wprost z pliku, bez ``openstream()``
+    (olefile i ``msoffcrypto.Xls97File`` wczytują cały strumień do pamięci,
+    a to dzieje się PRZED sprawdzeniem limitów rozmiaru pliku z hasłem)."""
+    import struct
+
+    wpis = next((k for k in ole.root.kids if k.name.lower() == "workbook"), None)
+    if wpis is None:
+        return False
+    if wpis.size < ole.minisectorcutoff:
+        # Mały strumień (< 4 KB) siedzi w ministrumieniu — tani odczyt.
+        dane = ole.openstream(wpis.name).read(ole.sectorsize)
+    else:
+        f.seek((wpis.isectStart + 1) * ole.sectorsize)
+        dane = f.read(min(ole.sectorsize, wpis.size))
+
+    poz = 0
+    while poz + 4 <= len(dane):
+        numer, rozmiar = struct.unpack_from("<HH", dane, poz)
+        if numer == _BIFF_FILEPASS:
+            return True
+        if numer == _BIFF_EOF:
+            return False
+        poz += 4 + rozmiar
+    return False
+
+
 def czy_plik_zaszyfrowany(plik):
     """Czy ``plik`` (ścieżka albo obiekt plikowy) to dokument Office
     zaszyfrowany hasłem (XLSX/XLS „Zaszyfruj przy użyciu hasła")?
 
-    Czyta tylko nagłówek i katalog OLE2 — nie odszyfrowuje niczego. Pliki
-    nie-OLE2 (zwykły XLSX/ZIP, CSV) od razu dają ``False``."""
+    Czyta tylko nagłówek i katalog OLE2 (plus pierwszy sektor strumienia
+    ``Workbook`` dla .xls) — nie parsuje metadanych szyfrowania i nie
+    odszyfrowuje niczego. Pliki nie-OLE2 (zwykły XLSX/ZIP, CSV) od razu dają
+    ``False``. Kontener z TYLKO jednym ze strumieni szyfrowania (uszkodzony
+    plik z hasłem) daje ``PlikZabezpieczonyHaslemException`` „uszkodzony"."""
     with _strumien_binarny(plik) as f:
         if f is None or f.read(len(SYGNATURA_OLE2)) != SYGNATURA_OLE2:
             return False
 
-        # Leniwie i dopiero dla OLE2: msoffcrypto ciągnie ``cryptography``.
         import struct
 
-        import msoffcrypto
         import olefile
-        from msoffcrypto.exceptions import FileFormatError, ParseError
 
         try:
-            # Zaszyfrowany OOXML (.xlsx) rozpoznajemy po samych strumieniach,
-            # bez parsowania metadanych szyfrowania — uszkodzony EncryptionInfo
-            # rzuca w msoffcrypto ``IndexError``. Odszyfrowanie zgłosi wtedy
-            # „plik uszkodzony" (``odszyfruj_plik``).
             f.seek(0)
             ole = olefile.OleFileIO(f)
-            if ole.exists("EncryptionInfo") and ole.exists("EncryptedPackage"):
+            info = ole.exists("EncryptionInfo")
+            pakiet = ole.exists("EncryptedPackage")
+            if info or pakiet:
+                if not (info and pakiet):
+                    raise PlikZabezpieczonyHaslemException(
+                        KOMUNIKAT_NIE_DA_SIE_ODSZYFROWAC
+                    )
+                # Zaszyfrowany OOXML (.xlsx) — po samych strumieniach.
                 return True
-            # .xls (BIFF): szyfrowanie to rekord FILEPASS w strumieniu Workbook.
-            return bool(msoffcrypto.OfficeFile(f).is_encrypted())
-        except (
-            FileFormatError,
-            ParseError,
-            OSError,
-            ValueError,
-            IndexError,
-            KeyError,
-            AssertionError,
-            struct.error,
-        ):
-            # OLE2, ale nierozpoznany albo uszkodzony dokument (olefile rzuca
-            # ``OSError``/``ValueError``, msoffcrypto przy parsowaniu BIFF-u
-            # .xls używa ``assert`` i ``struct``). To nie jest „plik z hasłem"
-            # — błąd formatu zgłosi parser niżej.
+            return _xls_ma_filepass(f, ole)
+        except (OSError, ValueError, IndexError, KeyError, struct.error):
+            # OLE2, ale uszkodzony kontener (olefile rzuca ``OSError``/
+            # ``ValueError``). To nie jest „plik z hasłem" — błąd formatu
+            # zgłosi parser niżej.
             return False
 
 
@@ -263,7 +326,8 @@ def odszyfruj_plik(plik, haslo):
             raise PlikZabezpieczonyHaslemException(KOMUNIKAT_NIE_DA_SIE_ODSZYFROWAC)
         try:
             dokument = msoffcrypto.OfficeFile(f)
-            dokument.load_key(password=haslo)
+            # Jawne hasło tylko w argumencie wywołania — bez zmiennej lokalnej.
+            dokument.load_key(password=_odslon(haslo))
             dokument.decrypt(wynik)
         except InvalidKeyError:
             raise NieprawidloweHasloDoPlikuException(

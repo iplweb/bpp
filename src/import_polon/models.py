@@ -1,3 +1,5 @@
+import logging
+
 from django.core.serializers.json import DjangoJSONEncoder
 from django.db import models
 from django.db.models import Count, Q
@@ -5,6 +7,8 @@ from liveops.models import LiveOperation
 
 from bpp.fields import YearField
 from bpp.models import Autor, Dyscyplina_Naukowa
+
+logger = logging.getLogger(__name__)
 
 # Pola stanu operacji liveops zerowane przed (po)ponownym enqueue. Zwierciadło
 # ``liveops.views.RestartView.post`` (liveops inline'uje ten reset, nie wystawia
@@ -86,9 +90,22 @@ class _LiveopsResetMixin:
         if not self.plik_byl_zaszyfrowany or not self.plik:
             return
         nazwa, storage = self.plik.name, self.plik.storage
+        # Najpierw plik, POTEM pole: gdy storage zawiedzie, nazwa zostaje
+        # w rekordzie i zadanie sprzątające ponowi próbę. Odwrotna kolejność
+        # osierocałaby plik — pustego pola nikt już nie szuka.
+        try:
+            usun_plik_importu(storage, nazwa, pomin=self)
+        except OSError:
+            logger.exception(
+                "Nie udało się usunąć pliku importu %s (pk=%s) — zostaje do "
+                "ponownej próby przez zadanie sprzątające",
+                type(self).__name__,
+                self.pk,
+            )
+            return
+        # ``update()`` zamiast ``save()``: rekord mógł zniknąć w międzyczasie.
+        type(self).objects.filter(pk=self.pk).update(plik="")
         self.plik = ""
-        self.save(update_fields=["plik"])
-        usun_plik_importu(storage, nazwa)
 
     def on_restart(self):
         """Hook liveops wołany PRZED resetem stanu — także przez centralny
@@ -380,17 +397,25 @@ class ImportPolonOverride(models.Model):
         return f"{self.grupa_stanowisk} → {'TAK' if self.jest_badawczy else 'NIE'}"
 
 
-def usun_plik_importu(storage, nazwa):
+def usun_plik_importu(storage, nazwa, pomin=None):
     """Kasuje plik importu z dysku, o ile żaden import (POLON ani absencji)
-    go już nie wskazuje. Jedno miejsce dla ``post_delete`` i dla kasowania
-    odszyfrowanej kopii po przebiegu. Zwraca True, gdy plik skasowano."""
+    — poza ``pomin`` — go już nie wskazuje. Jedno miejsce dla ``post_delete``
+    i dla kasowania odszyfrowanej kopii po przebiegu. Zwraca True, gdy plik
+    skasowano. Błąd storage (``OSError``) przechodzi do wołającego.
+
+    Znane ograniczenie: sprawdzenie referencji i ``delete`` nie są atomowe —
+    import utworzony w tej chwili z TĄ SAMĄ ścieżką straciłby plik. W kodzie
+    nie ma ścieżki, która przypisuje istniejącą nazwę nowemu importowi
+    (``upload_to`` nadaje unikalne nazwy), więc nie blokujemy tego dodatkowo.
+    """
     if not nazwa:
         return False
-    if any(
-        model.objects.filter(plik=nazwa).exists()
-        for model in (ImportPlikuPolon, ImportPlikuAbsencji)
-    ):
-        return False  # plik współdzielony z innym importem
+    for model in (ImportPlikuPolon, ImportPlikuAbsencji):
+        qs = model.objects.filter(plik=nazwa)
+        if isinstance(pomin, model):
+            qs = qs.exclude(pk=pomin.pk)
+        if qs.exists():
+            return False  # plik współdzielony z innym importem
     # ``FileSystemStorage.delete`` po cichu pomija brakujący plik.
     storage.delete(nazwa)
     return True

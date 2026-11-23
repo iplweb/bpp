@@ -83,16 +83,22 @@ def test_zadanie_sprzata_stare_i_zakonczone_zostawia_reszte(model, admin_user):
     teraz = timezone.now()
     zakonczony = _import(model, admin_user, True, nazwa="z.xlsx", finished_on=teraz)
     stary = _import(model, admin_user, True, nazwa="s.xlsx")
-    model.objects.filter(pk=stary.pk).update(created_on=teraz - timedelta(hours=2))
-    swiezy_w_toku = _import(model, admin_user, True, nazwa="w.xlsx")
+    model.objects.filter(pk=stary.pk).update(created_on=teraz - timedelta(hours=25))
+    # Czeka w kolejce / właśnie ruszył — 2 h to za mało, żeby zabrać plik.
+    w_kolejce = _import(model, admin_user, True, nazwa="k.xlsx")
+    model.objects.filter(pk=w_kolejce.pk).update(created_on=teraz - timedelta(hours=2))
+    w_toku = _import(model, admin_user, True, nazwa="w.xlsx", started_on=teraz)
     zwykly = _import(model, admin_user, False, nazwa="n.xlsx", finished_on=teraz)
-    sciezki = {o.pk: o.plik.path for o in (zakonczony, stary, swiezy_w_toku, zwykly)}
+    sciezki = {
+        o.pk: o.plik.path for o in (zakonczony, stary, w_kolejce, w_toku, zwykly)
+    }
 
     assert usun_zalegle_pliki_z_haslem() == 2
 
     assert not os.path.exists(sciezki[zakonczony.pk])
     assert not os.path.exists(sciezki[stary.pk])
-    assert os.path.exists(sciezki[swiezy_w_toku.pk])
+    assert os.path.exists(sciezki[w_kolejce.pk])
+    assert os.path.exists(sciezki[w_toku.pk])
     assert os.path.exists(sciezki[zwykly.pk])
 
 

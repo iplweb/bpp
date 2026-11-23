@@ -21,12 +21,18 @@ from import_common.exceptions import (
 )
 from import_common.util import (
     INSTRUKCJA_USUNIECIA_HASLA,
+    HasloDoPliku,
     czy_plik_zaszyfrowany,
     odszyfruj_plik,
     sprawdz_plik_importu,
+    sprawdz_rozmiar_pliku,
 )
 from import_polon.models import ImportPlikuAbsencji, ImportPlikuPolon
-from import_polon.utils import read_excel_or_csv_dataframe_guess_encoding
+from import_polon.utils import (
+    PREFIKS_KATALOGU_TYMCZASOWEGO,
+    read_excel_or_csv_dataframe_guess_encoding,
+    usun_stare_katalogi_tymczasowe,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -183,13 +189,29 @@ def przygotuj_plik_importu(plik, haslo, waliduj_naglowki):
     # nagłówków (pandas) działają na ścieżce i wybierają parser po
     # rozszerzeniu. Katalog tymczasowy sprząta context manager — także przy
     # wyjątku — razem z oryginałem i odszyfrowaną kopią.
-    with tempfile.TemporaryDirectory(prefix="bpp-import-") as katalog:
+    # Katalogi osierocone przez zabity proces (SIGKILL/OOM pomija sprzątanie
+    # context managera) kasujemy przy kolejnym imporcie — w TYM procesie/
+    # kontenerze, bo /tmp nie jest współdzielony z workerem Celery.
+    usun_stare_katalogi_tymczasowe()
+
+    with tempfile.TemporaryDirectory(
+        prefix=PREFIKS_KATALOGU_TYMCZASOWEGO, dir=tempfile.gettempdir()
+    ) as katalog:
         tmp_file_path = os.path.join(katalog, "plik" + file_extension)
         with open(tmp_file_path, "wb") as tmp:
             for chunk in plik.chunks():
                 tmp.write(chunk)
 
-        if czy_plik_zaszyfrowany(tmp_file_path):
+        try:
+            # Ogólny limit rozmiaru PRZED czymkolwiek innym (także przed
+            # rozpoznawaniem szyfrowania), potem rozpoznanie pliku z hasłem —
+            # uszkodzony plik z hasłem daje tu komunikat, nie 500.
+            sprawdz_rozmiar_pliku(tmp_file_path)
+            zaszyfrowany = czy_plik_zaszyfrowany(tmp_file_path)
+        except NiebezpiecznyPlikException as e:
+            raise ValidationError(str(e)) from None
+
+        if zaszyfrowany:
             if not haslo:
                 raise ValidationError(KOMUNIKAT_PLIK_Z_HASLEM_FORMULARZ)
 
@@ -229,10 +251,18 @@ def przygotuj_plik_importu(plik, haslo, waliduj_naglowki):
     return plik, byl_zaszyfrowany
 
 
+class PoleHaslaDoPliku(forms.CharField):
+    """``CharField``, którego ``cleaned_data`` to ``HasloDoPliku`` — obiekt
+    nieujawniający wartości w ``repr`` (tracebacki w monitoringu błędów)."""
+
+    def clean(self, value):
+        return HasloDoPliku(super().clean(value))
+
+
 def pole_hasla_do_pliku():
     """Opcjonalne pole na hasło do zaszyfrowanego pliku Excel. NIE jest
     polem modelu — hasło żyje tylko w czasie walidacji formularza."""
-    return forms.CharField(
+    return PoleHaslaDoPliku(
         label="Hasło do pliku",
         required=False,
         strip=False,
@@ -265,7 +295,7 @@ class NowyImportAbsencjiForm(forms.ModelForm):
             # ``haslo_do_pliku`` jest czyszczone PRZED ``plik`` (``field_order``).
             plik, byl_zaszyfrowany = przygotuj_plik_importu(
                 plik,
-                self.cleaned_data.get("haslo_do_pliku") or "",
+                self.cleaned_data.get("haslo_do_pliku") or HasloDoPliku(),
                 validate_absencje_headers,
             )
             # Po przetworzeniu odszyfrowana kopia zostanie usunięta z serwera.
@@ -401,7 +431,7 @@ class NowyImportForm(forms.ModelForm):
             # ``haslo_do_pliku`` jest czyszczone PRZED ``plik`` (``field_order``).
             plik, byl_zaszyfrowany = przygotuj_plik_importu(
                 plik,
-                self.cleaned_data.get("haslo_do_pliku") or "",
+                self.cleaned_data.get("haslo_do_pliku") or HasloDoPliku(),
                 validate_polon_headers,
             )
             # Po przetworzeniu odszyfrowana kopia zostanie usunięta z serwera.

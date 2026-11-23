@@ -282,7 +282,8 @@ przed wgraniem.
 
 Jeśli import z takim plikiem w ogóle nie wystartuje (np. anulujesz go, zanim
 ruszy), plik i tak zostanie usunięty — BPP co 15 minut sprząta pliki z hasłem
-zakończonych importów oraz wszystkie starsze niż godzina.
+zakończonych importów (także anulowanych), a importów, które nigdy się nie
+zakończyły — po dobie.
 
 Plik zabezpieczony hasłem może mieć najwyżej **10 MB** (zwykły plik — 100 MB):
 odszyfrowanie odbywa się w pamięci serwera. Większy plik trzeba wgrać po
