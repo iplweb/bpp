@@ -16,10 +16,9 @@
                 <strong>{{ przebieg.get_tryb_display }}</strong>,
                 stan: <strong id="uzgodnienie-status">{{ przebieg.get_status_display }}</strong>,
                 uruchomiono {{ przebieg.utworzono|date:"Y-m-d H:i" }}{% if przebieg.user %} ({{ przebieg.user }}){% endif %}.
-                {% if przebieg.na_podstawie_id %}
+                {% if przebieg.na_podstawie_id and przebieg.na_podstawie.to_podglad %}
                     Wykonanie
-                    <a href="{% url "pbn_uzgadnianie:szczegoly" przebieg.na_podstawie_id %}">podglądu</a>
-                    (bez ponownego pobierania danych z PBN).
+                    <a href="{% url "pbn_uzgadnianie:szczegoly" przebieg.na_podstawie_id %}">podglądu</a>.
                 {% endif %}
             </p>
 
@@ -89,6 +88,41 @@
                     </div>
                 {% endif %}
 
+                {% if dane %}
+                    <div class="callout {% if dane.stare and not przebieg.to_pobranie %}warning{% else %}secondary{% endif %}" id="dane-z-pbn">
+                        <p>{% if przebieg.to_pobranie %}Pobrano z PBN:{% else %}Przebieg pracował na danych z PBN:{% endif %}</p>
+                        <ul>
+                            {% for zrodlo in dane.zrodla %}
+                                <li>{{ zrodlo.nazwa }} — pobrane <strong>{{ zrodlo.opis }}</strong></li>
+                            {% endfor %}
+                        </ul>
+                        {% if dane.stare and not przebieg.to_pobranie %}
+                            <p><span class="fi-alert"></span> Dane są starsze niż {{ dane.godzin }} godz. —
+                                zmian wprowadzonych w PBN później ten raport nie uwzględnia. Odśwież je przyciskiem
+                                „Pobierz dane z PBN” na stronie <a href="{% url "pbn_uzgadnianie:main" %}">uzgodnij z PBN</a>.</p>
+                        {% endif %}
+                    </div>
+                {% endif %}
+
+                {% if przebieg.to_pobranie %}
+                    {% if przebieg.status == "zakonczone" %}
+                        <p>Na profilu instytucji w PBN jest <strong>{{ ile_na_profilu }}</strong> prac,
+                            w tym <strong>{{ ile_w_latach }}</strong> z lat {{ przebieg.rok_od }}–{{ przebieg.rok_do }}.
+                            {% if not ile_na_profilu %}<strong>PBN nie zwrócił żadnej pracy z profilu instytucji</strong> —
+                                sprawdź autoryzację w PBN i identyfikator instytucji w ustawieniach uczelni.{% endif %}</p>
+                        {% if bledy_pobierania %}
+                            <div class="callout alert">
+                                <p>Części danych nie udało się pobrać ({{ bledy_pobierania|length }}):</p>
+                                <ul>
+                                    {% for blad in bledy_pobierania %}
+                                        <li>{{ blad.etap }}{% if blad.pbn_uid %}, praca {{ blad.pbn_uid }}{% endif %}: {{ blad.opis }}</li>
+                                    {% endfor %}
+                                </ul>
+                            </div>
+                        {% endif %}
+                        <p><a class="button" href="{% url "pbn_uzgadnianie:main" %}">Przejdź do uzgadniania</a></p>
+                    {% endif %}
+                {% else %}
                 <p>
                     <a class="button secondary" href="{% url "pbn_uzgadnianie:raport_xlsx" przebieg.pk %}">
                         <span class="fi-download"></span> Pobierz raport (XLSX)
@@ -146,9 +180,12 @@
                     {% endif %}
                 {% empty %}
                     {% if przebieg.status == "zakonczone" %}
-                        <p>Brak prac w wybranym zakresie — ani na profilu instytucji w PBN, ani w BPP.</p>
+                        <p>W pobranych danych nie ma prac z lat {{ przebieg.rok_od }}–{{ przebieg.rok_do }} na profilu
+                            instytucji w PBN, a w BPP nie ma rekordów z tych lat do wykazania. Jeśli spodziewasz się
+                            tu prac, sprawdź datę pobrania danych powyżej i pobierz je ponownie.</p>
                     {% endif %}
                 {% endfor %}
+                {% endif %}
             {% endif %}
         </div>
     </div>

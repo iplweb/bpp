@@ -21,6 +21,7 @@ from .forms import StartForm
 from .models import UzgodnienieZPBN
 from .raport import opis_dyscyplin, opis_roznic, pogrupuj, zbuduj_xlsx
 from .silnik import ZGODNE, ZMIENIAJACE
+from .swiezosc import stan_danych
 from .tasks import uzgodnij_z_pbn
 
 logger = logging.getLogger(__name__)
@@ -101,8 +102,11 @@ class StronaGlownaView(_UczelniaMixin, TemplateView):
         kontekst = super().get_context_data(**kwargs)
         uczelnia = self.uczelnia()
         rok = timezone.now().year
+        pobranie = UzgodnienieZPBN.ostatnie_pobranie(uczelnia)
         kontekst.update(
             form=StartForm(initial={"rok_od": rok, "rok_do": rok}),
+            pobranie=pobranie,
+            dane=stan_danych(pobranie.zakres) if pobranie else None,
             przebiegi=self.przebiegi().select_related("user")[:20],
             aktywny=self.przebiegi().filter(status__in=UzgodnienieZPBN.AKTYWNE).first(),
             powod_blokady=_powod_blokady(uczelnia, self.request.user),
@@ -128,7 +132,23 @@ class StartView(_UczelniaMixin, View):
                     messages.error(request, f"{form[pole].label}: {'; '.join(bledy)}")
             return redirect("pbn_uzgadnianie:main")
 
-        przebieg = _uruchom(request, uczelnia, **form.cleaned_data)
+        pola = dict(form.cleaned_data)
+        if pola["tryb"] != UzgodnienieZPBN.Tryb.POBRANIE:
+            # Podgląd i wykonanie niczego same nie pobierają — pracują na
+            # danych pobranych wcześniej przyciskiem „Pobierz dane z PBN”.
+            pola["na_podstawie"] = UzgodnienieZPBN.ostatnie_pobranie(
+                uczelnia, pola["rok_od"], pola["rok_do"]
+            )
+            if pola["na_podstawie"] is None:
+                messages.error(
+                    request,
+                    f"Nie ma pobranych danych z PBN dla lat {pola['rok_od']}–"
+                    f"{pola['rok_do']}. Najpierw kliknij „Pobierz dane z PBN” "
+                    "dla tych lat.",
+                )
+                return redirect("pbn_uzgadnianie:main")
+
+        przebieg = _uruchom(request, uczelnia, **pola)
         if przebieg is None:
             return redirect("pbn_uzgadnianie:main")
         return redirect("pbn_uzgadnianie:szczegoly", pk=przebieg.pk)
@@ -172,9 +192,14 @@ class SzczegolyView(_UczelniaMixin, TemplateView):
                     "zmienia": kod in ZMIENIAJACE,
                 }
             )
+        zakres = przebieg.zakres or {}
         kontekst.update(
             przebieg=przebieg,
             grupy=grupy,
+            dane=stan_danych(zakres),
+            ile_na_profilu=len(zakres.get("profil") or {}),
+            ile_w_latach=len(zakres.get("w_zakresie") or []),
+            bledy_pobierania=zakres.get("bledy_pobierania") or [],
             mozna_wykonac=(
                 przebieg.to_podglad
                 and przebieg.status == UzgodnienieZPBN.Status.ZAKONCZONE

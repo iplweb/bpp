@@ -5,10 +5,13 @@ rok zgadzał się z profilem instytucji w PBN**. Typowa sytuacja: w PBN
 poprawiłaś lub dodałaś do profilu instytucji kilkanaście prac i chcesz mieć
 je w BPP — bez przepisywania każdej osobno.
 
-Dotąd wymagało to trzech kroków w dwóch podobnie nazwanych miejscach
-(„pobieranie danych z PBN”, potem „Import z PBN”, potem komparatory).
-**„Uzgodnij z PBN” robi to jednym działaniem** i mówi wprost, co zmieniło,
-a co zostawiło do Twojej decyzji.
+Dotąd BPP nie miał do tego narzędzia: „Import z PBN” jest dla
+administratora i służy do pierwszego zasilenia pustej bazy, a „pobieranie
+danych z PBN” przygotowuje dane dla deduplikatorów i komparatorów — żadne
+z nich nie synchronizuje prac ([szczegóły niżej](#stare-funkcje)).
+**„Uzgodnij z PBN” jest drogą dla redaktora**: pobierasz dane z PBN,
+a system uzupełnia BPP i mówi wprost, co zmienił, a co zostawił do Twojej
+decyzji.
 
 Wysyłanie prac **z BPP do PBN** opisuje osobna strona:
 [PBN: wysyłanie prac, kolejka i porównanie](pbn-wysylka-i-synchronizacja.md).
@@ -26,20 +29,47 @@ Wysyłanie prac **z BPP do PBN** opisuje osobna strona:
 
 ## Jak uruchomić {#jak-uruchomic}
 
+Praca ma dwa kroki: **pobranie danych z PBN** i **uzgodnienie** na tych
+danych. Uzgadnianie samo niczego nie pobiera — dzięki temu zawsze widzisz,
+z kiedy są dane, na których pracuje.
+
 1. Menu **PBN** → **uzgodnij z PBN**.
 2. Wpisz zakres lat: **Rok od** i **Rok do** (dla jednego roku wpisz ten
    sam rok w obu polach, np. `2026` i `2026`).
-3. Kliknij jeden z przycisków:
-   - **Pokaż, co się zmieni** — podgląd. System pobiera dane z PBN
-     i pokazuje pełny raport, ale **nie zmienia żadnego rekordu w BPP**.
+3. Kliknij **Pobierz dane z PBN**. System czyta z PBN profil instytucji,
+   aktualne dane prac z wybranych lat i oświadczenia (dyscypliny). Trwa to
+   w tle; w rekordach BPP nic się nie zmienia.
+4. Wróć na stronę **uzgodnij z PBN** i kliknij:
+   - **Pokaż, co się zmieni** — podgląd: pełny raport, ale **żaden rekord
+     w BPP się nie zmienia**;
    - **Uzgodnij teraz** — to samo, ale zmiany są od razu wykonywane.
-4. Operacja działa w tle. Strona pokazuje pasek postępu i odświeża się
+5. Operacja działa w tle. Strona pokazuje pasek postępu i odświeża się
    sama; możesz ją zamknąć i wrócić później — przebieg jest na liście
    **Ostatnie przebiegi**.
 
 Jeśli zaczęłaś od podglądu i wynik Ci odpowiada, kliknij **Wykonaj ten
-podgląd**. System zrobi dokładnie to, co pokazał, i nie pobiera już danych
-z PBN ponownie.
+podgląd**. System zrobi dokładnie to, co pokazał.
+
+### Z kiedy są dane {#z-kiedy-dane}
+
+Ramka **„Dane z PBN, na których pracuje uzgadnianie”** podaje datę pobrania
+osobno dla każdego źródła — np. „profil instytucji — pobrane wczoraj,
+22.11.2026 14:10”:
+
+- **profil instytucji** — lista prac uczelni w PBN i wersje przypięte,
+- **publikacje** — dane prac z wybranych lat,
+- **oświadczenia** — dyscypliny autorów.
+
+Te same daty są w raporcie każdego przebiegu (na stronie i w pliku XLSX).
+
+- **Dane starsze niż 24 godziny** — ramka robi się żółta i ostrzega: zmian
+  wprowadzonych w PBN po tej dacie uzgadnianie nie zobaczy. Odśwież dane
+  przyciskiem **Pobierz dane z PBN**. Uruchomić uzgadnianie nadal możesz —
+  np. gdy wiesz, że w PBN nic się od tego czasu nie zmieniło.
+- **Brak danych** — strona pisze „Nie ma jeszcze pobranych danych z PBN”,
+  a próba uruchomienia kończy się komunikatem, dla jakich lat trzeba je
+  pobrać. Dane pobrane dla lat 2024–2025 nie wystarczą do uzgadniania roku
+  2026; pobrane dla 2025–2026 — wystarczą.
 
 Przycisk **Anuluj** zatrzymuje przebieg po bieżącej pracy. Anulowany podgląd
 niczego nie zmienia. Anulowane wykonanie zostawia to, co zdążyło zrobić —
@@ -62,9 +92,9 @@ wskazuje wersji, system bierze wersję bieżącą i pisze o tym w raporcie
 ### Dyscypliny w nowych rekordach {#dyscypliny}
 
 Nowo utworzony rekord od razu dostaje **dyscypliny autorów z oświadczeń
-złożonych na profilu instytucji w PBN**. System pobiera oświadczenia prosto
-z PBN przy każdym uruchomieniu i przypisuje dyscyplinę tylko wtedy, gdy nie
-musi niczego zgadywać:
+złożonych na profilu instytucji w PBN** (pobranych przyciskiem „Pobierz dane
+z PBN”). System przypisuje dyscyplinę tylko wtedy, gdy nie musi niczego
+zgadywać:
 
 - autor rekordu to ta sama osoba co w oświadczeniu (ten sam identyfikator
   PBN, ta sama rola — autor albo redaktor),
@@ -81,9 +111,8 @@ W każdym innym wypadku autor zostaje **bez dyscypliny**, a raport (kolumna
 | Dyscypliny … nie ma w słowniku dyscyplin BPP | Zgłoś administratorowi — słownik dyscyplin wymaga aktualizacji. |
 | W PBN jest oświadczenie osoby, której nie ma wśród autorów/redaktorów rekordu | Sprawdź listę osób w rekordzie i w PBN. |
 
-System **nie dopisuje sam autorowi dyscypliny na dany rok** (robi to
-dotychczasowy import oświadczeń w „Import z PBN”) — tu wolimy pokazać brak
-niż zgadywać.
+System **nie dopisuje sam autorowi dyscypliny na dany rok** — wolimy
+pokazać brak niż zgadywać.
 
 Każde utworzenie i powiązanie widać w **historii zmian** rekordu, razem
 z osobą, która uruchomiła uzgadnianie.
@@ -140,20 +169,26 @@ uczelni i o charakterze formalnym wysyłanym do PBN.
   to celowy bezpiecznik: przy części prac zbiorowych dane o rolach osób
   w PBN są niejednoznaczne i automat nie zgaduje. Takie prace importuj
   pojedynczo.
-- **Pierwsze uruchomienie trwa długo** — system czyta cały profil
+- **Pierwsze pobranie danych trwa długo** — system czyta cały profil
   instytucji z PBN. Kolejne są szybsze.
+- **Praca dodana w PBN przed chwilą nie pojawia się w raporcie** — sprawdź
+  datę w ramce „Dane z PBN…” i pobierz dane ponownie.
 
-## Stare funkcje: co z „Import z PBN” i „pobieranie danych z PBN”? {#stare-funkcje}
+## A „Import z PBN” i „pobieranie danych z PBN”? {#stare-funkcje}
 
-Obie zostają i działają jak dotąd:
+To **nie są** inne sposoby na to samo i nie są przeznaczone do
+synchronizacji prac przez redaktora:
 
-- **Import z PBN** — do pierwszego wdrożenia systemu i do słowników
-  (źródła, wydawcy, konferencje, punktacja źródeł).
-- **pobieranie danych z PBN** — odświeża lokalną kopię danych dla
-  komparatorów (oświadczenia, osoby, źródła).
-
-Do codziennej pracy — „poprawiłam coś w PBN i chcę to mieć w BPP” —
-używaj **uzgodnij z PBN**.
+- **Import z PBN** — narzędzie **administratora** do pierwszego zasilenia
+  **pustej bazy** przy wdrożeniu systemu (słowniki, autorzy, wszystkie
+  publikacje z lokalnej kopii danych PBN). Nie uruchamiaj go, żeby „dociągnąć”
+  kilka prac — do tego służy uzgadnianie.
+- **pobieranie danych z PBN** — pobiera dane na potrzeby **deduplikatorów
+  i komparatorów** (osoby, źródła, oświadczenia, publikacje instytucji).
+  Nie zmienia rekordów BPP i nie jest źródłem danych dla uzgadniania:
+  publikacji już pobranych nie pobiera ponownie, więc poprawek
+  wprowadzonych w PBN by nie zauważyło. Uzgadnianie ma własny przycisk
+  **Pobierz dane z PBN**.
 
 ## Zobacz też {#zobacz-tez}
 

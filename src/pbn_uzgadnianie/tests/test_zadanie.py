@@ -86,21 +86,100 @@ def test_nadzorca_bazy_zapisuje_postep_osobnym_polaczeniem(przebieg):
         nadzorca.zamknij()
 
 
-def test_komenda_dry_run_i_wykonanie(klient_uczelni, ksiazka_pbn, z_tokenem, tmp_path):
+def test_komenda_bez_danych_mowi_co_zrobic(klient_uczelni, z_tokenem):
+    from django.core.management.base import CommandError
+
+    user = z_tokenem(status="zakonczone").user
+
+    with pytest.raises(CommandError, match="--pobierz"):
+        call_command(
+            "pbn_uzgodnij", "--rok-od=2026", "--rok-do=2026", f"--uzytkownik={user}"
+        )
+
+    assert klient_uczelni.wywolania == []
+
+
+def test_komenda_pobierz_dry_run_i_wykonanie_na_pobranych(
+    klient_uczelni, ksiazka_pbn, z_tokenem, tmp_path, capsys
+):
     klient_uczelni.dodaj("pbn-nowa", ksiazka_pbn("Monografia z linii poleceń"))
     user = z_tokenem(status="zakonczone").user
     argumenty = ["--rok-od=2026", "--rok-do=2026", f"--uzytkownik={user.username}"]
     plik = tmp_path / "raport.xlsx"
 
-    call_command("pbn_uzgodnij", *argumenty, "--dry-run", f"--xlsx={plik}")
+    call_command("pbn_uzgodnij", *argumenty, "--pobierz", "--dry-run", f"--xlsx={plik}")
 
     assert not Wydawnictwo_Zwarte.objects.exists()
+    assert UzgodnienieZPBN.objects.filter(tryb="pobranie", status="zakonczone").exists()
     assert UzgodnienieZPBN.objects.filter(tryb="podglad", status="zakonczone").exists()
     assert plik.stat().st_size > 0
+    wyjscie = capsys.readouterr().out
+    assert "profil instytucji" in wyjscie and "pobrane dzisiaj" in wyjscie
 
+    # Drugie wywołanie pracuje na pobranych danych — PBN nie jest odpytywany.
+    klient_uczelni.wywolania.clear()
     call_command("pbn_uzgodnij", *argumenty)
 
+    assert klient_uczelni.wywolania == []
     assert Wydawnictwo_Zwarte.objects.filter(pbn_uid_id="pbn-nowa").exists()
+
+
+def test_pobranie_zapisuje_date_kazdego_zrodla_i_nic_nie_zmienia_w_bpp(
+    klient_uczelni, ksiazka_pbn, z_tokenem
+):
+    from pbn_uzgadnianie.swiezosc import stan_danych
+
+    klient_uczelni.dodaj("pbn-nowa", ksiazka_pbn("Monografia tylko pobrana"))
+    p = z_tokenem(tryb="pobranie")
+
+    tasks.uzgodnij_z_pbn(p.pk)
+
+    p.refresh_from_db()
+    assert p.status == "zakonczone" and p.wynik == []
+    assert not Wydawnictwo_Zwarte.objects.exists()
+    stan = stan_danych(p.zakres)
+    assert [z["klucz"] for z in stan["zrodla"]] == [
+        "profil",
+        "publikacje",
+        "oswiadczenia",
+    ]
+    assert stan["stare"] is False and stan["lata"] == (2026, 2026)
+
+
+def test_uzgadnianie_na_pobranych_danych_dla_wezszych_lat(
+    klient_uczelni, ksiazka_pbn, z_tokenem
+):
+    """Dane pobrane dla 2025–2026, uzgadnianie tylko 2026: bez pobierania
+    i tylko prace z 2026."""
+    klient_uczelni.dodaj("pbn-2025", ksiazka_pbn("Monografia z 2025", rok=2025))
+    klient_uczelni.dodaj("pbn-2026", ksiazka_pbn("Monografia z 2026", rok=2026))
+    pobranie = z_tokenem(tryb="pobranie", rok_od=2025, rok_do=2026)
+    tasks.uzgodnij_z_pbn(pobranie.pk)
+    pobranie.refresh_from_db()
+    klient_uczelni.wywolania.clear()
+    p = z_tokenem(rok_od=2026, rok_do=2026, na_podstawie=pobranie)
+    UzgodnienieZPBN.objects.filter(pk=p.pk).update(user=pobranie.user)
+
+    tasks.uzgodnij_z_pbn(p.pk)
+
+    assert klient_uczelni.wywolania == []
+    assert Wydawnictwo_Zwarte.objects.filter(pbn_uid_id="pbn-2026").exists()
+    assert not Wydawnictwo_Zwarte.objects.filter(pbn_uid_id="pbn-2025").exists()
+
+
+def test_opis_daty():
+    import datetime
+
+    from pbn_uzgadnianie.swiezosc import opis_daty
+
+    teraz = timezone.make_aware(datetime.datetime(2026, 11, 23, 9, 0))
+    wczoraj = timezone.make_aware(datetime.datetime(2026, 11, 22, 14, 10))
+
+    assert opis_daty(wczoraj, teraz) == "wczoraj, 22.11.2026 14:10"
+    assert opis_daty(teraz, teraz) == "dzisiaj, 23.11.2026 09:00"
+    assert opis_daty(wczoraj - datetime.timedelta(days=4), teraz).startswith(
+        "5 dni temu"
+    )
 
 
 # -- wybór wersji ---------------------------------------------------------------

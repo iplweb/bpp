@@ -1895,6 +1895,10 @@ POLISH_INFLECTION_STRICT = False
 
 PBN_TOKEN_HOURS_GRACE_TIME = 24
 
+# „Uzgodnij z PBN”: po tylu godzinach od pobrania dane z PBN uznajemy za
+# stare — ekran ostrzega i wskazuje, jak je odświeżyć (uruchomić wolno).
+PBN_UZGADNIANIE_DANE_AKTUALNE_GODZIN = 24
+
 #
 # Ograniczanie eksportu z Admina
 #

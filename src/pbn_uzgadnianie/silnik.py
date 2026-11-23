@@ -2,8 +2,11 @@
 
 Etapy:
 
-1. ``zakres.zbuduj_zakres`` — odświeżenie kopii danych PBN i lista prac
-   z profilu instytucji z wybranych lat (zmienia TYLKO kopię danych PBN).
+1. ``zakres.zbuduj_zakres`` — pobranie danych z PBN (profil instytucji,
+   publikacje z wybranych lat, oświadczenia); zmienia TYLKO kopię danych
+   PBN. To OSOBNY przebieg (tryb „pobranie”), uruchamiany świadomie:
+   podgląd i wykonanie pracują na pobranych wcześniej danych i pokazują,
+   z kiedy one są (``swiezosc``) — same niczego nie pobierają.
 2. i 3. ``_zastosuj`` — dla każdej pracy decyzja według stałych reguł
    i od razu jej wykonanie (jedna praca = jedna transakcja).
 4. raport: lista wpisów w ``UzgodnienieZPBN.wynik``.
@@ -684,10 +687,11 @@ def uzgodnij(uzgodnienie, client, nadzorca=None):
     uzgodnienie.save(update_fields=["status", "rozpoczeto", "ostatnia_aktualizacja"])
 
     try:
-        if uzgodnienie.na_podstawie_id:
-            # „Wykonaj ten podgląd”: ten sam zakres, bez ponownego pobierania.
-            uzgodnienie.zakres = uzgodnienie.na_podstawie.zakres
-        else:
+        zrodlo = uzgodnienie.na_podstawie
+        if zrodlo is None:
+            # Pobranie danych — albo przebieg, który pobiera sam (komenda
+            # z ``--pobierz``). Strony nigdy nie uruchamiają podglądu ani
+            # wykonania bez wskazania pobranych wcześniej danych.
             uzgodnienie.zakres = zakres_mod.zbuduj_zakres(
                 client,
                 uzgodnienie.uczelnia,
@@ -695,10 +699,22 @@ def uzgodnij(uzgodnienie, client, nadzorca=None):
                 uzgodnienie.rok_do,
                 nadzorca,
             )
-        przebieg = _Przebieg(uzgodnienie, client, nadzorca)
-        uzgodnienie.wpisy_czesciowe = przebieg.wpisy
-        with jako_uzytkownik(uzgodnienie.user):
-            wpisy = _zastosuj(przebieg)
+        elif zrodlo.to_pobranie:
+            # Praca na danych pobranych wcześniej — bez pobierania.
+            uzgodnienie.zakres = zakres_mod.zawez_zakres(
+                zrodlo.zakres, uzgodnienie.rok_od, uzgodnienie.rok_do
+            )
+        else:
+            # „Wykonaj ten podgląd”: dokładnie ten sam zakres.
+            uzgodnienie.zakres = zrodlo.zakres
+
+        if uzgodnienie.to_pobranie:
+            wpisy = []
+        else:
+            przebieg = _Przebieg(uzgodnienie, client, nadzorca)
+            uzgodnienie.wpisy_czesciowe = przebieg.wpisy
+            with jako_uzytkownik(uzgodnienie.user):
+                wpisy = _zastosuj(przebieg)
     except Anulowano:
         zapisz_przerwany(
             uzgodnienie,

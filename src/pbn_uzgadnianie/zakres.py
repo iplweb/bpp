@@ -10,6 +10,7 @@ import logging
 import sys
 
 from django.db import IntegrityError
+from django.utils import timezone
 
 from bpp.zglaszanie_bledow import capture_exception
 from pbn_api.exceptions import HttpException, PublicationNotFound
@@ -165,16 +166,26 @@ def odswiez_publikacje(client, pbn_uids, nadzorca, bledy):
 
 
 def zbuduj_zakres(client, uczelnia, rok_od, rok_do, nadzorca):
-    """Cały etap 1. Zwraca słownik zapisywany w ``UzgodnienieZPBN.zakres``."""
-    bledy = []
+    """Pobranie danych z PBN. Zwraca słownik dla ``UzgodnienieZPBN.zakres``.
+
+    ``pobrano`` to chwile zakończenia pobierania każdego ze źródeł (ISO) —
+    jedyne wiarygodne „z kiedy są dane”: daty modyfikacji wierszy kopii
+    mówią, kiedy wiersz się ZMIENIŁ, a nie kiedy sprawdzono go w PBN.
+    """
+    bledy, pobrano = [], {}
     profil = pobierz_profil_instytucji(client, uczelnia, nadzorca, bledy)
+    pobrano["profil"] = timezone.now().isoformat()
     w_zakresie, bez_roku = wyznacz_zakres(profil, rok_od, rok_do)
     nie_istnieja = odswiez_publikacje(client, w_zakresie, nadzorca, bledy)
+    pobrano["publikacje"] = timezone.now().isoformat()
     # Rok mógł się zmienić w PBN — po odświeżeniu sprawdzamy jeszcze raz
     # prace, dla których profil roku nie podał.
     w_zakresie, bez_roku = wyznacz_zakres(profil, rok_od, rok_do)
     oswiadczenia = odswiez_oswiadczenia(client, uczelnia, w_zakresie, nadzorca, bledy)
+    pobrano["oswiadczenia"] = timezone.now().isoformat()
     return {
+        "pobrano": pobrano,
+        "pobrano_lata": [rok_od, rok_do],
         "oswiadczenia": oswiadczenia,
         "profil": profil,
         "w_zakresie": w_zakresie,
@@ -182,3 +193,9 @@ def zbuduj_zakres(client, uczelnia, rok_od, rok_do, nadzorca):
         "nie_istnieja_w_pbn": nie_istnieja,
         "bledy_pobierania": bledy,
     }
+
+
+def zawez_zakres(zakres, rok_od, rok_do):
+    """Zakres pobrany dla szerszych lat, zawężony do ``rok_od``–``rok_do``."""
+    w_zakresie, bez_roku = wyznacz_zakres(zakres["profil"], rok_od, rok_do)
+    return {**zakres, "w_zakresie": w_zakresie, "bez_roku": bez_roku}

@@ -11,21 +11,45 @@
     <div class="row">
         <div class="large-12 columns">
             <h1>Uzgodnij z PBN</h1>
-            <p class="lead">Jedna operacja: pobranie aktualnych danych z profilu instytucji w PBN,
-                uzupełnienie brakujących prac w BPP i raport różnic.</p>
+            <p class="lead">Jedna operacja: uzupełnienie w BPP prac, które są na profilu instytucji w PBN,
+                i raport różnic — na danych pobranych z PBN.</p>
 
             <div class="callout secondary">
                 <p><strong>Co operacja robi sama:</strong></p>
                 <ul>
-                    <li>odświeża lokalną kopię danych PBN dla prac z profilu Twojej instytucji z wybranych lat,</li>
                     <li>tworzy w BPP rekordy prac, które są na profilu instytucji w PBN, a których w BPP nie ma
-                        (z wersji przypiętej na profilu instytucji),</li>
+                        (z wersji przypiętej na profilu instytucji, z dyscyplinami z oświadczeń),</li>
                     <li>wiąże pracę z PBN z istniejącym rekordem BPP, gdy zgadza się DOI albo ISBN książki
                         (zamiast tworzyć duplikat).</li>
                 </ul>
                 <p><strong>Czego nie robi:</strong> nie zmienia ani nie kasuje istniejących rekordów BPP,
-                    nie zmienia autorów ani dyscyplin, niczego nie wysyła do PBN. Różnice pokazuje w raporcie.</p>
+                    nie zmienia w nich autorów ani dyscyplin, niczego nie wysyła do PBN. Różnice pokazuje w raporcie.
+                    Sama też <strong>nie pobiera danych z PBN</strong> — pracuje na tych, które pobierzesz
+                    przyciskiem „Pobierz dane z PBN”.</p>
             </div>
+
+            <h3>Dane z PBN, na których pracuje uzgadnianie</h3>
+            {% if dane %}
+                <div class="callout {% if dane.stare %}warning{% else %}success{% endif %}" id="dane-z-pbn">
+                    <p>Pobrane dla lat <strong>{{ pobranie.rok_od }}–{{ pobranie.rok_do }}</strong>:</p>
+                    <ul>
+                        {% for zrodlo in dane.zrodla %}
+                            <li>{{ zrodlo.nazwa }} — pobrane <strong>{{ zrodlo.opis }}</strong></li>
+                        {% endfor %}
+                    </ul>
+                    {% if dane.stare %}
+                        <p><span class="fi-alert"></span> <strong>Dane są starsze niż {{ dane.godzin }} godz.</strong>
+                            Zmian wprowadzonych w PBN po tej dacie uzgadnianie nie zobaczy.
+                            Odśwież je przyciskiem „Pobierz dane z PBN” poniżej — albo uruchom uzgadnianie
+                            na tych danych, jeśli wiesz, że w PBN nic się nie zmieniło.</p>
+                    {% endif %}
+                </div>
+            {% else %}
+                <div class="callout warning" id="dane-z-pbn">
+                    <p><span class="fi-alert"></span> <strong>Nie ma jeszcze pobranych danych z PBN.</strong>
+                        Wpisz lata i kliknij „Pobierz dane z PBN” — dopiero potem uzgadnianie ma na czym pracować.</p>
+                </div>
+            {% endif %}
 
             {% if powod_blokady %}
                 <div class="callout alert">
@@ -47,6 +71,9 @@
                             <label>{{ form.rok_do.label }} {{ form.rok_do }}</label>
                         </div>
                     </div>
+                    <button type="submit" name="tryb" value="pobranie" class="button secondary">
+                        <span class="fi-download"></span> Pobierz dane z PBN
+                    </button>
                     <button type="submit" name="tryb" value="podglad" class="button">
                         <span class="fi-magnifying-glass"></span> Pokaż, co się zmieni
                     </button>

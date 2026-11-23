@@ -8,6 +8,7 @@ from openpyxl.styles import Font
 from bpp.util import sanitize_xlsx_row, worksheet_columns_autosize
 
 from .silnik import KATEGORIE
+from .swiezosc import linie_opisu, stan_danych
 
 NAGLOWKI = [
     "Co się stało",
@@ -84,6 +85,7 @@ def zbuduj_xlsx(uzgodnienie):
         ["Status", uzgodnienie.get_status_display()],
         ["Uruchomiono", str(uzgodnienie.rozpoczeto or uzgodnienie.utworzono)],
         ["Uruchomił(a)", str(uzgodnienie.user or "")],
+        *[[linia] for linia in linie_opisu(stan_danych(uzgodnienie.zakres))],
         [],
     ):
         ws.append(sanitize_xlsx_row(linia))

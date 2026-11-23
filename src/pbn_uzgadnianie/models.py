@@ -12,6 +12,7 @@ class UzgodnienieZPBN(models.Model):
     """Jeden przebieg uzgadniania: zakres, tryb, stan i wynik (raport)."""
 
     class Tryb(models.TextChoices):
+        POBRANIE = "pobranie", "pobranie danych z PBN"
         PODGLAD = "podglad", "podgląd (bez zmian w BPP)"
         WYKONANIE = "wykonanie", "wykonanie"
 
@@ -44,8 +45,9 @@ class UzgodnienieZPBN(models.Model):
     status = models.CharField(
         max_length=16, choices=Status.choices, default=Status.OCZEKUJE
     )
-    #: Wykonanie „dokładnie tego podglądu”: bierze zakres zapisany przez
-    #: wskazany podgląd i NIE pobiera danych z PBN ponownie.
+    #: Przebieg, z którego pochodzą dane z PBN: pobranie danych (podgląd
+    #: i wykonanie pracują na nim, same niczego nie pobierają) albo podgląd
+    #: (wykonanie „dokładnie tego podglądu”).
     na_podstawie = models.ForeignKey(
         "self",
         on_delete=models.SET_NULL,
@@ -102,6 +104,26 @@ class UzgodnienieZPBN(models.Model):
     @property
     def to_podglad(self):
         return self.tryb == self.Tryb.PODGLAD
+
+    @property
+    def to_pobranie(self):
+        return self.tryb == self.Tryb.POBRANIE
+
+    @classmethod
+    def ostatnie_pobranie(cls, uczelnia, rok_od=None, rok_do=None):
+        """Najnowsze zakończone pobranie danych uczelni (albo ``None``).
+
+        Z latami: tylko pobranie OBEJMUJĄCE cały zakres ``rok_od``–``rok_do``
+        (publikacje i oświadczenia pobieramy tylko dla lat pobrania).
+        """
+        pobrania = cls.objects.filter(
+            uczelnia=uczelnia,
+            tryb=cls.Tryb.POBRANIE,
+            status=cls.Status.ZAKONCZONE,
+        )
+        if rok_od is not None:
+            pobrania = pobrania.filter(rok_od__lte=rok_od, rok_do__gte=rok_do)
+        return pobrania.order_by("-zakonczono").first()
 
     @classmethod
     def oznacz_przerwane(cls, uczelnia):
