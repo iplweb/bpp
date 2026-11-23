@@ -83,6 +83,13 @@ def task_sprobuj_wyslac_do_pbn(pk):
 
 def check_and_send_next_in_queue():
     """Check if there are more items waiting to be sent and start sending them."""
+    from .bezpiecznik import automaty_wstrzymane
+
+    if automaty_wstrzymane():
+        # Lokalna kopia produkcji: jedna ręczna wysyłka nie może pociągnąć
+        # za sobą reszty kolejki.
+        return 0
+
     # Find the next items that haven't been processed yet
     # Priority order:
     # 1. Items that were never attempted (wysylke_podjeto=None)
@@ -126,6 +133,16 @@ def kolejka_wyczysc_wpisy_bez_rekordow():
 
 @app.task
 def kolejka_ponow_wysylke_prac_po_zalogowaniu(pk):
+    from .bezpiecznik import automaty_wstrzymane
+
+    if automaty_wstrzymane():
+        logger.info(
+            "PBN: automaty wstrzymane (PBN_WSTRZYMAJ_AUTOMATY) — po zalogowaniu "
+            "użytkownika pk=%s nie ponawiam wysyłki z kolejki.",
+            pk,
+        )
+        return
+
     # Użytkownik o ID pk zalogował się.
     # Odśwież do wysyłki prace które były jego po zalogowaniu
     for elem in PBN_Export_Queue.objects.filter(
@@ -224,6 +241,11 @@ def queue_watchdog():
     2. Elementy z utraconymi retry'ami (np. po PraceSerwisoweException)
        - wysylke_podjeto starsze niż 4 godziny
     """
+    from .bezpiecznik import automaty_wstrzymane
+
+    if automaty_wstrzymane():
+        return 0
+
     woken = 0
 
     # Scenariusz 1: elementy nigdy nie podjęte

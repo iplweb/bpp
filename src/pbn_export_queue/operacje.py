@@ -58,6 +58,13 @@ def _zakolejkuj(instance, operacja, user=None, uczelnia=None):
     # `tasks` importuje `models`, więc import na poziomie modułu zrobiłby
     # cykl — stąd import lokalny.
     from pbn_export_queue import tasks
+    from pbn_export_queue.bezpiecznik import automaty_wstrzymane
+
+    if automaty_wstrzymane():
+        # Lokalna kopia produkcji: kosz/przywrócenie nie zleca niczego w PBN
+        # (inaczej przeniesienie pracy do kosza na maszynie dewelopera
+        # wycofałoby oświadczenia w prawdziwym PBN).
+        return None
 
     try:
         wpis = PBN_Export_Queue.objects.sprobuj_utowrzyc_wpis(
