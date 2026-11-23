@@ -384,11 +384,13 @@ def test_extract_authors_dict_format():
         "family": "Kowalski",
         "given": "Jan",
         "orcid": "",
+        "pbn_uid": "aaa111bbb222ccc333ddd441",
     }
     assert authors[1] == {
         "family": "Nowak",
         "given": "Anna",
         "orcid": "",
+        "pbn_uid": "aaa111bbb222ccc333ddd442",
     }
 
 
@@ -406,6 +408,7 @@ def test_extract_authors_list_format():
         "family": "Kowalski",
         "given": "Jan",
         "orcid": "",
+        "pbn_uid": "",
     }
 
 

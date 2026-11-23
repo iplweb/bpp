@@ -79,6 +79,103 @@ bpp-manage.py pbn_upload_fees
     PBN UID czyli "odpowiednika PBN") wgra taką pracę na serwer.
 
 
+## Dopasowanie autorów do osób z PBN { #dopasowanie-autorow-do-osob-z-pbn }
+
+Autor w BPP, który nie ma **odpowiednika w PBN** (puste pole „PBN UID”)
+ani numeru ORCID, trafia do PBN tylko jako imię i nazwisko, a jego
+oświadczenia nie są wysyłane. Tacy autorzy powstawali m.in. w importerze
+publikacji (od tej wersji importer sam szuka odpowiednika — patrz
+[Importer publikacji](../redaktor/importer-publikacji.md)). Dla autorów,
+którzy już są w bazie, służy komenda `dopasuj_autorow_do_pbn`.
+
+Komenda pracuje wyłącznie na **lokalnej kopii danych PBN** (nie łączy się
+z PBN), więc najpierw pobierz aktualne dane osób i publikacji z PBN.
+
+### Podgląd (niczego nie zmienia)
+
+``` shell
+bpp-manage.py dopasuj_autorow_do_pbn --raport /tmp/autorzy-pbn.xlsx
+```
+
+To tryb domyślny — to samo robi jawne `--dry-run`. Komenda bada wszystkich
+autorów bez odpowiednika, wypisuje podsumowanie i zapisuje raport. Bez
+`--raport` plik `dopasowanie_autorow_pbn_<data>.xlsx` powstaje w bieżącym
+katalogu; rozszerzenie `.csv` daje plik CSV (średnik, UTF-8).
+
+### Zapis
+
+``` shell
+bpp-manage.py dopasuj_autorow_do_pbn --zapisz --uzytkownik jkowalski --raport /tmp/autorzy-pbn-zapis.xlsx
+```
+
+Zapisywane są **tylko** wskazania o poziomie „pewne”. Każdy zapis zostawia
+wpis w historii autora (*„Powiązano z naukowcem PBN … (dopasowanie autorów
+bez odpowiednika w PBN: …)”*) i wersję, do której można wrócić przyciskiem
+„Historia” na stronie autora. `--uzytkownik` wskazuje, komu przypisać
+zmiany; bez niego trafiają na konto systemowe. Istniejący odpowiednik
+nigdy nie jest nadpisywany — autorzy, którzy go mają, w ogóle nie są badani.
+
+### Skąd komenda wie, kto jest kim
+
+Dwa niezależne źródła:
+
+1. **Po autorach** — numer ORCID autora wśród osób z PBN oraz imię
+   i nazwisko wśród osób zatrudnionych w uczelni. Uwzględniane są poprzednie
+   nazwiska autora, człony nazwisk dwuczłonowych, drugie imiona i brak
+   polskich znaków.
+2. **Po publikacjach** — dla prac autora, które mają odpowiednik w PBN,
+   komenda bierze listę autorów z kopii publikacji PBN (z identyfikatorami
+   osób) i znajduje na niej tego autora po nazwisku i imieniu (także
+   inicjale); gdy pasuje kilka osób, rozstrzyga kolejność na liście autorów.
+
+| Poziom pewności | Kiedy | Zapis przy `--zapisz` |
+|---|---|---|
+| **pewne** | ORCID wskazuje jedną osobę **albo** imię i nazwisko oraz publikacje wskazują tę samą osobę | tak |
+| **prawdopodobne** | tylko jedno źródło: samo imię i nazwisko albo same publikacje | nie |
+| **sprzeczne** | źródła (albo różne prace) wskazują różne osoby | nie |
+| **możliwy duplikat autora** | wskazana osoba PBN jest już przypisana do innego autora BPP albo wskazuje ją kilku autorów bez odpowiednika | nie |
+| **brak** | żadne źródło niczego nie wskazało | nie |
+
+Wskazanie nie jest „pewne” także wtedy, gdy ORCID autora nosi w PBN kilka
+osób, osoba jest w PBN oznaczona jako usunięta albo nie ma jej w lokalnej
+kopii danych PBN (uwaga w raporcie mówi, żeby pobrać dane osób i uruchomić
+komendę ponownie).
+
+### Raport
+
+Jeden wiersz na autora, posortowane od „pewne” do „brak”. Kolumny:
+„ID autora”, „Nazwisko”, „Imiona”, „ORCID”, „Aktualna jednostka”,
+„Poziom pewności”, „Proponowany PBN UID”, „Osoba w PBN”, „Źródła dowodu”
+(np. `ORCID: 5e70…; publikacje: 5e70… (zgodnie w 4 pracach)`), „Liczba
+zgodnych prac”, „Uwagi” (powód, dla którego nie ma pewności: inni
+kandydaci, autor, do którego osoba jest już przypisana) i „Zapisano”
+(tak/nie).
+
+Wiersze „prawdopodobne” i „sprzeczne” rozstrzyga się ręcznie: w module
+redagowania otwórz autora o podanym ID i wybierz osobę w polu „PBN UID”.
+„Możliwy duplikat autora” to sprawa dla
+[scalania duplikatów autorów](../redaktor/duplikaty.md) — po scaleniu
+zostaje jeden autor z odpowiednikiem.
+
+### Zawężanie
+
+| Opcja | Znaczenie |
+|---|---|
+| `--uczelnia ID` | w instalacji z wieloma uczelniami (wymagane): tylko autorzy z zatrudnieniem w jednostkach tej uczelni; po imieniu i nazwisku szuka wśród osób z jej instytucji PBN |
+| `--rok-od R`, `--rok-do R` | tylko autorzy, którzy mają prace z podanych lat |
+| `--limit N` | najwyżej N autorów (alfabetycznie) — do próby |
+| `--pewne-od-prac N` | uznaj za „pewne” także wskazanie z samych publikacji, jeśli ta sama osoba wynika zgodnie z co najmniej N prac (domyślnie wyłączone) |
+
+### Bezpieczna kolejność
+
+1. Zrób kopię bazy danych.
+2. Pobierz aktualne dane osób i publikacji z PBN.
+3. Uruchom podgląd i przejrzyj raport — zwłaszcza wiersze „pewne”.
+4. Uruchom z `--zapisz` (z tymi samymi opcjami zawężenia).
+5. Rozstrzygnij ręcznie resztę raportu, a prace autorów, którzy dostali
+   odpowiednik, wyślij do PBN ponownie.
+
+
 ## Kody błędów
 
 Podczas synchronizacji z PBN mogą wystąpić m.in. następujące wyjątki:

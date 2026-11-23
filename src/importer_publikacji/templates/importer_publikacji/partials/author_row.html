@@ -38,6 +38,18 @@
                 <br>
                 <small>ORCID: {{ author.matched_autor.orcid }}</small>
             {% endif %}
+            {# FD#510: autor bez odpowiednika w PBN — oświadczenia nie trafią do PBN #}
+            {% if not author.matched_autor.pbn_uid_id %}
+                <br>
+                <span class="label {% if author.pbn_uwagi %}alert{% else %}secondary{% endif %} bez-odpowiednika-pbn"
+                      title="{{ author.pbn_uwagi|default:'Ten autor nie jest powiązany z osobą w PBN.' }} Jego oświadczenia nie trafią do PBN.">
+                    bez odpowiednika w PBN
+                </span>
+                {% if author.pbn_uwagi %}
+                    <br>
+                    <small>{{ author.pbn_uwagi }}</small>
+                {% endif %}
+            {% endif %}
             {% with candidates_count=author.candidates.all|length %}
                 {% if candidates_count > 1 %}
                     <br>

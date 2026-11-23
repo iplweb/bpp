@@ -73,23 +73,35 @@ def _get_pbn_client(uczelnia):
     return PBNClient(transport)
 
 
+def _identyfikator_osoby(wartosc) -> str:
+    """Identyfikator osoby w PBN, jeśli ``wartosc`` na niego wygląda."""
+    if isinstance(wartosc, str) and _PBN_UID_RE.match(wartosc.strip()):
+        return wartosc.strip()
+    return ""
+
+
 def _extract_authors(obj: dict, key: str = "authors") -> list[dict]:
     """Wyciągnij autorów (albo redaktorów: ``key="editors"``) z PBN
     publication object.
 
     PBN get_publication_by_id returns authors/editors as a dict:
         {pbn_uid: {lastName, name}, ...}
-    FetchedPublication format: {family, given, orcid}
+    FetchedPublication format: {family, given, orcid, pbn_uid}
+
+    ``pbn_uid`` to identyfikator OSOBY w PBN (klucz słownika). Bez niego
+    autor utworzony przy imporcie z PBN nie miał odpowiednika w PBN, choć
+    PBN podał go wprost (FD#510).
     """
     raw = obj.get(key, {})
     authors = []
     if isinstance(raw, dict):
-        for _pbn_uid, author in raw.items():
+        for pbn_uid, author in raw.items():
             authors.append(
                 {
                     "family": author.get("lastName", ""),
                     "given": author.get("name", ""),
-                    "orcid": "",
+                    "orcid": author.get("orcid") or "",
+                    "pbn_uid": _identyfikator_osoby(pbn_uid),
                 }
             )
     elif isinstance(raw, list):
@@ -102,10 +114,62 @@ def _extract_authors(obj: dict, key: str = "authors") -> list[dict]:
                             "firstName",
                             author.get("name", ""),
                         ),
-                        "orcid": "",
+                        "orcid": author.get("orcid") or "",
+                        "pbn_uid": _identyfikator_osoby(
+                            author.get("id") or author.get("personId")
+                        ),
                     }
                 )
     return authors
+
+
+#: Ilu najwyżej brakujących osób dociągamy z PBN przy jednym imporcie —
+#: każda to osobne zapytanie do PBN, a praca może mieć setki autorów.
+LIMIT_DOCIAGANYCH_OSOB = 50
+
+
+def pobierz_brakujace_osoby(uczelnia, identyfikatory) -> int:
+    """Pobierz z PBN osoby, których nie ma w lokalnej kopii danych PBN.
+
+    Bez lokalnego wpisu osoby nowo tworzony autor nie może dostać
+    odpowiednika w PBN, mimo że PBN podał jego identyfikator. Błąd PBN nie
+    przerywa importu — autor powstanie wtedy bez odpowiednika, co krok
+    „Autorzy” pokazuje wprost. Zwraca liczbę pobranych osób.
+    """
+    from pbn_api.models import Scientist
+    from pbn_integrator.utils.scientists import pobierz_i_zapisz_dane_jednej_osoby
+
+    identyfikatory = {i for i in identyfikatory if i}
+    brakujace = sorted(
+        identyfikatory
+        - set(
+            Scientist.objects.filter(pk__in=identyfikatory).values_list("pk", flat=True)
+        )
+    )[:LIMIT_DOCIAGANYCH_OSOB]
+    if not brakujace:
+        return 0
+
+    try:
+        client = _get_pbn_client(uczelnia)
+    except ValueError:
+        logger.warning("Brak konfiguracji PBN — nie pobieram danych osób")
+        return 0
+
+    pobrane = 0
+    for identyfikator in brakujace:
+        try:
+            pobierz_i_zapisz_dane_jednej_osoby(
+                client, identyfikator, from_institution_api=False
+            )
+        except (HttpException, PraceSerwisoweException, AccessDeniedException) as e:
+            logger.warning(
+                "PBN: nie udało się pobrać osoby %s (%s) — przerywam dociąganie",
+                identyfikator,
+                e,
+            )
+            break
+        pobrane += 1
+    return pobrane
 
 
 def _extract_keywords(obj: dict) -> list[str]:

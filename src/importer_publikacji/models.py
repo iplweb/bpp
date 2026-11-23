@@ -455,6 +455,17 @@ class ImportedAuthor(models.Model):
     family_name = models.CharField("nazwisko", max_length=255, blank=True, default="")
     given_name = models.CharField("imiona", max_length=255, blank=True, default="")
     orcid = models.CharField("ORCID", max_length=50, blank=True, default="")
+    # Identyfikator osoby w PBN podany przez dostawcę (dziś tylko import
+    # z PBN) — najmocniejszy klucz dopasowania i źródło ``Autor.pbn_uid``
+    # dla nowo tworzonego autora (FD#510).
+    pbn_uid = models.CharField(
+        "identyfikator osoby w PBN", max_length=32, blank=True, default=""
+    )
+    # Dlaczego autor utworzony w tej sesji nie dostał odpowiednika w PBN
+    # (np. „pasuje kilka osób”) — pokazywane w kroku „Autorzy”.
+    pbn_uwagi = models.CharField(
+        "uwagi o odpowiedniku w PBN", max_length=512, blank=True, default=""
+    )
     # Pełen zapis "tak jak ma figurować w publikacji" — domyślnie
     # tworzony z family_name+given_name dostawcy, ale edytowalny w UI
     # (autor mógł podpisać się inaczej, np. panieńskim). Przy tworzeniu
