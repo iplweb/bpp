@@ -127,8 +127,10 @@
 
                             // FD#526: opening the admin menu closes the quick
                             // search suggestions, so they never cover the menu.
+                            // touchstart: on touch screens the menu opens
+                            // without any mouse event (admin-menu-dotyk.js).
                             $('#navigation-menu > li').on(
-                                'mouseenter focusin',
+                                'mouseenter focusin touchstart',
                                 function() {
                                     var s2 = $select.data('select2');
                                     if (s2 && s2.isOpen()) {
@@ -204,6 +206,8 @@
     {% compress js %}
         <script type="text/javascript" src="{{ STATIC_URL }}bpp/js/admin-table-enhancements.js"></script>
         <script type="text/javascript" src="{{ STATIC_URL }}bpp/js/admin-theme-switcher.js"></script>
+        {# FD#626: menu redagowania na ekranie dotykowym (stuknięcie otwiera/zamyka). #}
+        <script type="text/javascript" src="{{ STATIC_URL }}bpp/js/admin-menu-dotyk.js"></script>
     {% endcompress %}
 
     <script type="text/javascript">

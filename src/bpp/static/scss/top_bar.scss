@@ -32,6 +32,30 @@ nav.sticky-header {
     padding-right: $padding-x - $shift;
 }
 
+// FD#626: `:hover` otwiera podmenu tylko tam, gdzie da się najechać kursorem.
+// Na telefonie „najechanie” po stuknięciu zostaje na elemencie do następnego
+// stuknięcia w coś klikalnego (na iOS — nieraz długo), więc podmenu nie dało
+// się tam zamknąć. Na dotyku otwarciem steruje wyłącznie klasa `is-active`
+// (Foundation dla zwykłych podmenu, top-bar-menu.js dla wielokolumnowych).
+// Pilnuje tego test src/integration_tests/test_top_bar_menu_dotyk.py.
+@mixin tylko-z-kursorem {
+    @media (hover: hover) {
+        @content;
+    }
+}
+
+// Stan „podmenu otwarte” (animacja wejścia).
+@mixin podmenu-otwarte {
+    max-height: 800px;  // Increased to accommodate larger menus
+    opacity: 1;
+    transform: translateY(0) scaleY(1);
+    visibility: visible;
+    // Slower entry transition (when mouse enters)
+    transition: max-height 0.3s cubic-bezier(0.4, 0, 0.2, 1),
+               opacity 0.25s cubic-bezier(0.4, 0, 0.2, 1),
+               transform 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
 // Widget dostępności UserWay (ładowany z CDN w base.html) stoi domyślnie
 // na sztywnych `top: 13px` — nie w osi paska menu, którego wysokość zależy
 // od motywu. Środek pierwszego wiersza paska mierzy JS w base.html
@@ -73,7 +97,8 @@ body .uwy.userway_p1 .userway_buttons_wrapper {
             position: relative;
 
             // Z-index fix: hovered item should be on top of siblings
-            &:hover {
+            &:hover,
+            &.is-active {
                 z-index: 10;
             }
 
@@ -98,20 +123,18 @@ body .uwy.userway_p1 .userway_buttons_wrapper {
             }
 
             // Show dropdown on hover with animation
-            &:hover > .menu.vertical,
-            &:hover > ul.menu,
+            @include tylko-z-kursorem {
+                &:hover > .menu.vertical,
+                &:hover > ul.menu {
+                    @include podmenu-otwarte;
+                }
+            }
+
             &.is-dropdown-submenu-parent.is-active > .menu.vertical,
             &.is-dropdown-submenu-parent.is-active > ul.menu,
             &.is-active > .menu.vertical,
             &.is-active > ul.menu {
-                max-height: 800px;  // Increased to accommodate larger menus
-                opacity: 1;
-                transform: translateY(0) scaleY(1);
-                visibility: visible;
-                // Slower entry transition (when mouse enters)
-                transition: max-height 0.3s cubic-bezier(0.4, 0, 0.2, 1),
-                           opacity 0.25s cubic-bezier(0.4, 0, 0.2, 1),
-                           transform 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+                @include podmenu-otwarte;
             }
         }
     }
@@ -150,7 +173,12 @@ body .uwy.userway_p1 .userway_buttons_wrapper {
         transition: transform 0.3s ease;
     }
 
-    .dropdown.menu > li.is-dropdown-submenu-parent:hover > a::after,
+    @include tylko-z-kursorem {
+        .dropdown.menu > li.is-dropdown-submenu-parent:hover > a::after {
+            transform: rotate(90deg);
+        }
+    }
+
     .dropdown.menu > li.is-dropdown-submenu-parent.is-active > a::after {
         transform: rotate(90deg);
     }
@@ -253,18 +281,6 @@ body .uwy.userway_p1 .userway_buttons_wrapper {
             display: flex !important;
         }
 
-        // Responsive: single column on mobile
-        @media screen and (max-width: 639px) {
-            display: block !important;  // Stack columns vertically
-            width: 95vw;  // Full width with small margin
-            min-width: unset;  // Remove fixed min-width
-            left: 2.5vw;  // Center horizontally
-
-            &[data-submenu] {
-                display: block !important;
-            }
-        }
-
         // Tylko jedna niepusta kolumna → zachowuj się jak zwykłe menu
         // jednokolumnowe: bez separatora, zaokrąglone wszystkie rogi.
         &:not(:has(> ul.menu.vertical:has(li) ~ ul.menu.vertical:has(li))) {
@@ -351,17 +367,18 @@ body .uwy.userway_p1 .userway_buttons_wrapper {
     }
 
     // Show menu-columns-wrapper on hover
-    .dropdown.menu > li:hover > .menu-columns-wrapper,
-    .dropdown.menu > li.has-submenu:hover > .menu-columns-wrapper {
-        max-height: 800px;
-        opacity: 1;
-        transform: translateY(0) scaleY(1);
-        visibility: visible;
-        display: flex !important;  // Ensure flex display is maintained when visible
-        // Entry transition (when mouse enters)
-        transition: max-height 0.3s cubic-bezier(0.4, 0, 0.2, 1),
-                   opacity 0.25s cubic-bezier(0.4, 0, 0.2, 1),
-                   transform 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+    @include tylko-z-kursorem {
+        .dropdown.menu > li:hover > .menu-columns-wrapper,
+        .dropdown.menu > li.has-submenu:hover > .menu-columns-wrapper {
+            @include podmenu-otwarte;
+            display: flex !important;  // Ensure flex display is maintained when visible
+        }
+    }
+
+    // ...i po stuknięciu (dotyk) albo Enterze — klasę ustawia top-bar-menu.js.
+    .dropdown.menu > li.has-submenu.is-active > .menu-columns-wrapper {
+        @include podmenu-otwarte;
+        display: flex !important;
     }
 
     // Opens-left support for two-column menus - align to right edge when button is near right side
@@ -384,7 +401,12 @@ body .uwy.userway_p1 .userway_buttons_wrapper {
         transition: transform 0.3s ease;
     }
 
-    .dropdown.menu > li.has-submenu:hover > a::after,
+    @include tylko-z-kursorem {
+        .dropdown.menu > li.has-submenu:hover > a::after {
+            transform: rotate(90deg);
+        }
+    }
+
     .dropdown.menu > li.has-submenu.is-active > a::after {
         transform: rotate(90deg);
     }
@@ -398,7 +420,16 @@ body .uwy.userway_p1 .userway_buttons_wrapper {
         }
 
         // Enable pointer events on hover (desktop) and when active (mobile touch)
-        &:hover,
+        @include tylko-z-kursorem {
+            &:hover {
+                > .menu-columns-wrapper,
+                > .menu.vertical,
+                > ul.menu {
+                    pointer-events: auto;  // Enable interaction when visible
+                }
+            }
+        }
+
         &.is-active,
         &.is-dropdown-submenu-parent.is-active {
             > .menu-columns-wrapper,
@@ -406,6 +437,74 @@ body .uwy.userway_p1 .userway_buttons_wrapper {
             > ul.menu {
                 pointer-events: auto;  // Enable interaction when visible
             }
+        }
+    }
+
+    // FD#626, dotyk: podmenu nie wychodzi poza dolną krawędź ekranu.
+    // Na szerokim ekranie (tablet) pasek menu jest przyklejony do góry,
+    // więc podmenu wyższe niż ekran nie przewinie się razem ze stroną
+    // i dolne pozycje były nieosiągalne. Wysokość ogranicza top-bar-menu.js
+    // (--bpp-podmenu-max = miejsce pod pozycją), reszta przewija się
+    // w środku podmenu.
+    @media (hover: none) {
+        .dropdown.menu > li.is-active,
+        .dropdown.menu > li.has-submenu.is-active,
+        .dropdown.menu > li.is-dropdown-submenu-parent.is-active {
+            > .menu-columns-wrapper,
+            > .menu.vertical,
+            > ul.menu {
+                max-height: var(--bpp-podmenu-max, 800px);
+                overflow-y: auto;
+                overscroll-behavior: contain;
+                -webkit-overflow-scrolling: touch;
+            }
+        }
+    }
+
+    // FD#626, telefon: blok wielokolumnowy na całą szerokość paska, kolumny
+    // jedna pod drugą. Wcześniej był przypięty do swojej pozycji (np. do
+    // „ewaluacja” w połowie wiersza) i wystawał poza ekran — druga kolumna
+    // była ucięta. Pozycja przestaje być punktem odniesienia (static), więc
+    // blok układa się względem całej listy; `top: auto` zostawia go tuż pod
+    // stukniętą pozycją. `!important`, bo stronę otwarcia ustawia też skrypt
+    // (style w atrybucie) i klasa `opens-left`.
+    @media screen and (max-width: 639px) {
+        .dropdown.menu > li.has-submenu {
+            position: static;
+        }
+
+        .dropdown.menu > li.has-submenu > .menu-columns-wrapper[data-submenu] {
+            display: block !important;
+            top: auto;
+            left: 0 !important;
+            right: 0 !important;
+            width: auto;
+            max-width: none;
+        }
+
+        // To samo dla zwykłych (jednokolumnowych) podmenu: na telefonie
+        // KAŻDE podmenu ma całą szerokość paska — inaczej część otwierała
+        // się wąsko pod swoją pozycją, a część szeroko, i wyglądało to
+        // jak błąd.
+        .dropdown.menu > li.is-dropdown-submenu-parent {
+            position: static;
+        }
+
+        .dropdown.menu > li.is-dropdown-submenu-parent > ul.menu {
+            top: auto;
+            left: 0 !important;
+            right: 0 !important;
+            width: auto;
+            min-width: 0;
+            max-width: none;
+        }
+    }
+
+    // Telefon poziomo i tablet pionowo: blok wielokolumnowy nigdy nie jest
+    // szerszy niż okno (stronę i przesunięcie dobiera top-bar-menu.js).
+    @media screen and (min-width: 640px) {
+        .dropdown.menu > li.has-submenu > .menu-columns-wrapper[data-submenu] {
+            max-width: calc(100vw - 16px);
         }
     }
 }
@@ -889,6 +988,16 @@ html.global-search-scrollbar-gutter {
     padding: 4px 8px;
     border-radius: 4px;
     border: 1px solid #e0e0e0;
+}
+
+// FD#626: podpowiedź „Naciśnij / aby szukać” nie ma sensu na telefonie
+// (brak klawiatury). Telefon pionowo rozpoznajemy po szerokości, poziomo —
+// po niskim oknie obsługiwanym palcem. Tablet zostaje: bywa z klawiaturą.
+@media screen and (max-width: 639px),
+    screen and (max-height: 500px) and (pointer: coarse) {
+    .search-hint {
+        display: none;
+    }
 }
 
 // Logout form styling
