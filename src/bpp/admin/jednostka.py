@@ -134,6 +134,42 @@ class JednostkaAdmin(
         # pasować do dzisiejszego drzewa — przeliczamy je z rodziców.
         Jednostka._tree_manager.rebuild()
 
+    def zablokuj_przed_przywroceniem(self):
+        # Kontrola cyklu czyta rodziców WSZYSTKICH jednostek, a ``rebuild()``
+        # i tak zapisze całe drzewo — blokujemy je od razu, żeby równoległe
+        # przywrócenie (albo przeniesienie) nie zmieniło rodziców między
+        # kontrolą a zapisem.
+        list(Jednostka._base_manager.select_for_update().values_list("pk"))
+
+    def przeszkody_przywrocenia(self, obj, wersja):
+        # Wersja przywraca dawnego rodzica bez walidacji formularza. Jeśli
+        # od tamtej pory drzewo przebudowano (np. dawny rodzic jest dziś
+        # PODjednostką tej jednostki), powstałby cykl — gałąź bez korzenia,
+        # której ``rebuild()`` nie naprawi.
+        rodzic_id = wersja.field_dict.get("parent_id")
+        if rodzic_id is None:
+            return []
+        rodzice = dict(Jednostka._base_manager.values_list("pk", "parent_id"))
+        if rodzic_id not in rodzice:
+            return [
+                "Jednostka nadrzędna z tej wersji już nie istnieje. Ustaw "
+                "jednostkę nadrzędną ręcznie w formularzu."
+            ]
+        odwiedzone = set()
+        biezacy = rodzic_id
+        while biezacy is not None and biezacy not in odwiedzone:
+            if biezacy == obj.pk:
+                nazwa = Jednostka._base_manager.get(pk=rodzic_id)
+                return [
+                    f"W tej wersji jednostką nadrzędną jest „{nazwa}”, która "
+                    "jest teraz podjednostką tej jednostki — przywrócenie "
+                    f"zapętliłoby strukturę. Najpierw przenieś „{nazwa}” "
+                    "w inne miejsce drzewa."
+                ]
+            odwiedzone.add(biezacy)
+            biezacy = rodzice.get(biezacy)
+        return []
+
     def get_import_resource_classes(self, request):
         resource_classes = [JednostkaImportResource]
         self.check_resource_classes(resource_classes)

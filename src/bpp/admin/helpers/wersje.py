@@ -36,6 +36,7 @@ from django.contrib.admin.models import LogEntry
 from django.contrib.admin.utils import unquote
 from django.contrib.contenttypes.models import ContentType
 from django.core.exceptions import PermissionDenied
+from django.db import IntegrityError
 from django.db.models.signals import pre_save
 from django.http import Http404
 from reversion.models import Version
@@ -64,13 +65,29 @@ _przywracanie_wersji = ContextVar("przywracanie_wersji", default=False)
 _podglad_wersji = ContextVar("podglad_wersji", default=False)
 
 
+class PrzeszkodaPrzywrocenia(Exception):
+    """Przywrócenie przerwane w transakcji — ``przeszkody`` to pełne zdania
+    dla użytkownika (patrz ``przeszkody_przywrocenia``)."""
+
+    def __init__(self, przeszkody):
+        super().__init__(" ".join(przeszkody))
+        self.przeszkody = przeszkody
+
+
 def zachowaj_pola_wrazliwe(sender, instance, raw=False, **kwargs):
     """Przy przywracaniu wersji (zapis surowy) pola z ``POLA_WRAZLIWE``
     dostają bieżące wartości z bazy: inaczej przywrócenie danych
-    użytkownika wyzerowałoby mu hasło."""
+    użytkownika wyzerowałoby mu hasło.
+
+    To samo dotyczy pól kosza (``POLA_KOSZA``): są poza wersją, więc zapis
+    surowy wpisałby ``deleted_at = NULL`` i po cichu wyjął wiersz z kosza
+    z pominięciem ``restore()``. ``_przywroc_wersje`` i tak pomija pozycje
+    z kosza — to druga linia obrony."""
     if not raw or not _przywracanie_wersji.get() or instance.pk is None:
         return
-    pola = POLA_WRAZLIWE.get(sender._meta.label_lower)
+    pola = POLA_WRAZLIWE.get(sender._meta.label_lower, ())
+    if hasattr(sender, "deleted_objects"):
+        pola = (*pola, *POLA_KOSZA)
     if not pola:
         return
     biezace = sender._base_manager.filter(pk=instance.pk).values(*pola).first()
@@ -406,8 +423,22 @@ class HistoriaWersjiMixin:
         )
 
     def po_przywroceniu_wersji(self, request, obj):
-        """Hook po udanym przywróceniu wersji ``obj`` (już zapisanej
-        formularzem). Domyślnie nic nie robi."""
+        """Hook po przywróceniu wersji ``obj`` — wołany w tej samej
+        transakcji co przywrócenie (błąd cofa całość). Domyślnie nic nie
+        robi."""
+
+    def zablokuj_przed_przywroceniem(self):
+        """Wołane na początku transakcji przywracania, przed ponownym
+        sprawdzeniem ``przeszkody_przywrocenia``. Domyślnie nic; admini,
+        których przeszkody zależą od innych wierszy (drzewo jednostek),
+        blokują tu te wiersze."""
+
+    def przeszkody_przywrocenia(self, obj, wersja):
+        """Powody, dla których ``wersja`` rekordu ``obj`` nie może zostać
+        przywrócona (pełne zdania dla użytkownika; pusta lista = można).
+        Domyślnie brak — nadpisują admini z regułami spójności (np. drzewo
+        jednostek)."""
+        return []
 
     def change_view(self, request, object_id, form_url="", extra_context=None):
         if request.method == "POST":
@@ -467,8 +498,12 @@ class HistoriaWersjiMixin:
             "konflikty_przywrocenia": (
                 konflikty := self._konflikty_przywrocenia(obj, wersja)
             ),
+            "przeszkody_przywrocenia": (
+                przeszkody := self.przeszkody_przywrocenia(obj, wersja)
+            ),
             "pokaz_przywroc": not bez_zmian
             and not konflikty
+            and not przeszkody
             and self.has_change_permission(request, obj),
             **(extra_context or {}),
         }
@@ -503,6 +538,31 @@ class HistoriaWersjiMixin:
             )
         return wynik
 
+    @staticmethod
+    def _pozycje_w_koszu(wersje):
+        """Wersje pozycji list (np. plików repozytorium), których wiersz jest
+        TERAZ w koszu. Przywrócenie wersji ich NIE odtwarza: zapis surowy
+        wyjąłby je z kosza z pominięciem ``restore()`` — plik usunięty np.
+        po omyłkowym udostępnieniu wróciłby z dawnym trybem dostępu.
+        Zwraca ``{(content_type_id, object_id): object_repr}``."""
+        wg_modelu = {}
+        for v in wersje:
+            model = v.content_type.model_class()
+            if hasattr(model, "deleted_objects") and v.object_id.isdigit():
+                wg_modelu.setdefault(model, []).append(v)
+        wynik = {}
+        for model, lista in wg_modelu.items():
+            w_koszu = set(
+                model._base_manager.filter(
+                    pk__in=[int(v.object_id) for v in lista],
+                    deleted_at__isnull=False,
+                ).values_list("pk", flat=True)
+            )
+            for v in lista:
+                if int(v.object_id) in w_koszu:
+                    wynik[(v.content_type_id, v.object_id)] = v.object_repr
+        return wynik
+
     def _konflikty_przywrocenia(self, obj, wersja):
         """Pozycje list z ``wersja``, które w bazie należą TERAZ do innego
         rekordu — np. wiersz autora przeniesiony w osobnym adminie autorstw
@@ -535,10 +595,8 @@ class HistoriaWersjiMixin:
         dokładnie zapisaną wersję: rekord i jego śledzone listy (pozycje
         dodane później są usuwane), potem zwykły ``save()`` (denormy, MPTT,
         data zmiany), przeliczenie punktacji i nowa rewizja w historii."""
-        import reversion
         from django.contrib import messages
         from django.contrib.admin.utils import quote
-        from django.db import transaction
         from django.http import HttpResponseRedirect
         from django.urls import reverse
         from django.utils import formats, timezone
@@ -562,6 +620,9 @@ class HistoriaWersjiMixin:
                 reverse(f"{nazwa}_history", args=(quote(obj.pk),))
             )
 
+        historia = HttpResponseRedirect(
+            reverse(f"{nazwa}_history", args=(quote(obj.pk),))
+        )
         zmienione = self._zmienione_przy_przywroceniu(obj, wersja)
         konflikty = self._konflikty_przywrocenia(obj, wersja)
         if konflikty:
@@ -572,42 +633,63 @@ class HistoriaWersjiMixin:
                 "najpierw przenieś je z powrotem.",
                 level=messages.ERROR,
             )
-            return HttpResponseRedirect(
-                reverse(f"{nazwa}_history", args=(quote(obj.pk),))
+            return historia
+        przeszkody = self.przeszkody_przywrocenia(obj, wersja)
+        if przeszkody:
+            self.message_user(
+                request,
+                f"Nie przywrócono wersji: {' '.join(przeszkody)}",
+                level=messages.ERROR,
             )
+            return historia
+
+        wersje = self._wersje_rekordu_w_rewizji(obj, wersja)
+        w_koszu = self._pozycje_w_koszu(wersje[1:])
+        do_przywrocenia = [
+            v for v in wersje if (v.content_type_id, v.object_id) not in w_koszu
+        ]
         komentarz = f"Przywrócono wersję z {data}."
         if zmienione:
             komentarz += f" Zmieniono: {', '.join(zmienione)}."
-        do_przywrocenia = self._wersje_rekordu_w_rewizji(obj, wersja)
+        if w_koszu:
+            komentarz += (
+                " Pominięto pozycje usunięte do kosza (nie zostały "
+                f"przywrócone): {', '.join(sorted(w_koszu.values()))}."
+            )
+
         token = _przywracanie_wersji.set(True)
         try:
-            with transaction.atomic(), self.create_revision(request):
-                for v in do_przywrocenia:
-                    v.revert()
-                # Pozycje list dopisane po tej wersji — usuwane (pokazane
-                # wcześniej w podglądzie jako „Zostaną usunięte”).
-                w_wersji = {(v.content_type_id, v.object_id) for v in do_przywrocenia}
-                for akcesor in FOLLOW_REVERSION.get(self.model, ()):
-                    menedzer = getattr(obj, akcesor)
-                    ct = ContentType.objects.get_for_model(menedzer.model)
-                    for pozycja in menedzer.all():
-                        if (ct.pk, str(pozycja.pk)) not in w_wersji:
-                            pozycja.delete()
-                swiezy = self.model._default_manager.get(pk=obj.pk)
-                swiezy.save()
-                reversion.add_to_revision(swiezy)
-                reversion.set_comment(komentarz)
+            swiezy = self._zapisz_przywrocenie(
+                request, obj, wersje, do_przywrocenia, komentarz
+            )
+        except PrzeszkodaPrzywrocenia as e:
+            self.message_user(
+                request,
+                f"Nie przywrócono wersji: {' '.join(e.przeszkody)}",
+                level=messages.ERROR,
+            )
+            return historia
+        except IntegrityError:
+            # Np. dwóch autorów zamienionych miejscami (te same wiersze,
+            # zamienione osoby) — unikalność nie przepuści stanu pośredniego.
+            # Transakcja jest cofnięta w całości, rekord bez zmian.
+            logger.warning(
+                "Przywrócenie wersji %s rekordu %s naruszyło ograniczenie bazy",
+                wersja.pk,
+                obj.pk,
+                exc_info=True,
+            )
+            self.message_user(
+                request,
+                "Nie przywrócono wersji: stan z tej wersji koliduje z obecnymi "
+                "danymi (np. powtórzony autor albo kolejność na liście autorów). "
+                "Rekord pozostał bez zmian — popraw go ręcznie w formularzu.",
+                level=messages.ERROR,
+            )
+            return historia
         finally:
             _przywracanie_wersji.reset(token)
         self.log_change(request, swiezy, komentarz)
-
-        from bpp.models.sloty.core import IPunktacjaCacher
-
-        cacher = IPunktacjaCacher(swiezy)
-        if cacher.canAdapt():
-            cacher.removeEntries()
-            cacher.rebuildEntries()
-        self.po_przywroceniu_wersji(request, swiezy)
 
         url = reverse(f"{nazwa}_change", args=(quote(swiezy.pk),))
         self.message_user(
@@ -621,7 +703,63 @@ class HistoriaWersjiMixin:
             ),
             level=messages.SUCCESS,
         )
+        if w_koszu:
+            self.message_user(
+                request,
+                "🗑️ Nie przywrócono pozycji usuniętych do kosza: "
+                f"{', '.join(sorted(w_koszu.values()))}. Przywracanie wersji "
+                "nie wyjmuje niczego z kosza — jeśli plik ma wrócić, przywróć "
+                "go w formularzu rekordu (sekcja „pliki repozytorium w koszu”).",
+                level=messages.WARNING,
+            )
         return HttpResponseRedirect(url)
+
+    def _zapisz_przywrocenie(self, request, obj, wersje, do_przywrocenia, komentarz):
+        """Zapis przywrócenia: rekord, listy, rewizja, punktacja i hook — w
+        JEDNEJ transakcji. Błąd przy przeliczaniu punktacji cofa też samo
+        przywrócenie; inaczej rekord miałby już treść wersji przy pustej
+        punktacji, a ponowna próba trafiłaby w gałąź „bez zmian” i nic by
+        nie przeliczyła. Zwraca świeżo zapisany rekord."""
+        import reversion
+        from django.db import transaction
+
+        from bpp.models.sloty.core import IPunktacjaCacher
+
+        with transaction.atomic(), self.create_revision(request):
+            # Kontrola przeszkód jeszcze raz, już pod blokadą: pierwsza
+            # (przed transakcją) mogła się zdezaktualizować przez równoległy
+            # zapis — np. dwa przywrócenia jednostek A pod B i B pod A.
+            self.zablokuj_przed_przywroceniem()
+            przeszkody = self.przeszkody_przywrocenia(obj, wersje[0])
+            if przeszkody:
+                raise PrzeszkodaPrzywrocenia(przeszkody)
+            # Najpierw usuń pozycje list dopisane po tej wersji (pokazane
+            # w podglądzie jako „Zostaną usunięte”), DOPIERO potem odtwórz
+            # wersję: autor usunięty i dodany ponownie ma nowy wiersz, który
+            # zajmuje unikalne (rekord, autor, typ odpowiedzialności) —
+            # odtworzenie starego wiersza przed jego usunięciem kończyło się
+            # błędem bazy. ``wersje`` obejmuje też pozycje z kosza: nie ma ich
+            # w ``menedzer.all()``, więc i tak nie są tu usuwane.
+            w_wersji = {(v.content_type_id, v.object_id) for v in wersje}
+            for akcesor in FOLLOW_REVERSION.get(self.model, ()):
+                menedzer = getattr(obj, akcesor)
+                ct = ContentType.objects.get_for_model(menedzer.model)
+                for pozycja in menedzer.all():
+                    if (ct.pk, str(pozycja.pk)) not in w_wersji:
+                        pozycja.delete()
+            for v in do_przywrocenia:
+                v.revert()
+            swiezy = self.model._default_manager.get(pk=obj.pk)
+            swiezy.save()
+            reversion.add_to_revision(swiezy)
+            reversion.set_comment(komentarz)
+
+            cacher = IPunktacjaCacher(swiezy)
+            if cacher.canAdapt():
+                cacher.removeEntries()
+                cacher.rebuildEntries()
+            self.po_przywroceniu_wersji(request, swiezy)
+        return swiezy
 
     def _zmienione_przy_przywroceniu(self, obj, wersja):
         """Etykiety pól i list, które przywrócenie ``wersja`` zmieni względem
@@ -664,33 +802,35 @@ class HistoriaWersjiMixin:
     def _zmiany_powiazanych(self, obj, version_id):
         """Co przywrócenie wersji zrobi ze śledzonymi listami rekordu
         (autorzy, granty, pliki…): które pozycje zostaną usunięte (dopisane
-        po tej wersji), a które przywrócone (usunięte po niej). Pokazywane
-        w formularzu przywracania, ZANIM użytkownik zapisze."""
+        po tej wersji), a które przywrócone (usunięte po niej). Pozycje,
+        które są teraz w koszu, NIE wracają — pokazujemy je osobno.
+        Pokazywane w formularzu przywracania, ZANIM użytkownik zapisze."""
         wersja = Version.objects.select_related("revision").get(pk=version_id)
-        w_rewizji = list(
-            wersja.revision.version_set.exclude(pk=wersja.pk).select_related(
-                "content_type"
-            )
-        )
+        wersje = self._wersje_rekordu_w_rewizji(obj, wersja)[1:]
+        w_koszu = self._pozycje_w_koszu(wersje)
         wynik = []
         for akcesor in FOLLOW_REVERSION.get(self.model, ()):
             menedzer = getattr(obj, akcesor)
             model = menedzer.model
             biezace = {str(o.pk): str(o) for o in menedzer.all()}
-            w_wersji = {
-                v.object_id: v.object_repr
-                for v in w_rewizji
-                if v.content_type.model_class() is model
-                and _nalezy_do(v, obj, menedzer)
-            }
+            w_wersji = {}
+            pominiete = []
+            for v in wersje:
+                if v.content_type.model_class() is not model:
+                    continue
+                if (v.content_type_id, v.object_id) in w_koszu:
+                    pominiete.append(v.object_repr)
+                else:
+                    w_wersji[v.object_id] = v.object_repr
             usuniete = [biezace[k] for k in biezace.keys() - w_wersji.keys()]
             przywrocone = [w_wersji[k] for k in w_wersji.keys() - biezace.keys()]
-            if usuniete or przywrocone:
+            if usuniete or przywrocone or pominiete:
                 wynik.append(
                     {
                         "nazwa": model._meta.verbose_name_plural,
                         "usuniete": sorted(usuniete),
                         "przywrocone": sorted(przywrocone),
+                        "w_koszu": sorted(pominiete),
                     }
                 )
         return wynik
