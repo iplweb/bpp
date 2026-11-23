@@ -38,7 +38,7 @@ class UruchomGenerowanieView(View):
 
         # Sprawdź czy generowanie nie jest już w trakcie
         uczelnia = uczelnia_dla_odczytu(request)
-        status = StatusGenerowania.get_or_create(
+        status = StatusGenerowania.aktualny(
             uczelnia=uczelnia, okres=okres_dla_request(request)
         )
         if status.w_trakcie:
@@ -114,7 +114,7 @@ class StatusGenerowaniaView(View):
 
     def get(self, request, *args, **kwargs):
         uczelnia = uczelnia_dla_odczytu(request)
-        status = StatusGenerowania.get_or_create(
+        status = StatusGenerowania.aktualny(
             uczelnia=uczelnia, okres=okres_dla_request(request)
         )
 
@@ -147,6 +147,7 @@ class StatusGenerowaniaView(View):
                     else 0
                 ),
                 "liczba_do_przetworzenia": status.liczba_do_przetworzenia,
+                "anulowane": status.anulowane,
             }
         )
 
@@ -160,7 +161,7 @@ class StatusGenerowaniaPartialView(View):
 
         # Pobierz status generowania
         uczelnia = uczelnia_dla_odczytu(request)
-        status = StatusGenerowania.get_or_create(
+        status = StatusGenerowania.aktualny(
             uczelnia=uczelnia, okres=okres_dla_request(request)
         )
 

@@ -40,7 +40,7 @@ def _handle_unpinning_task_in_progress(
     context["info"]["step"] = current_step
 
     # Check if metrics generation is running and add real progress
-    status = StatusGenerowania.get_or_create(
+    status = StatusGenerowania.aktualny(
         uczelnia=uczelnia_dla_odczytu(request), okres=okres_dla_request(request)
     )
     if status.w_trakcie and current_stage == "unknown":
@@ -151,7 +151,7 @@ def analyze_unpinning_opportunities(request):
         )
 
     # Sprawdź czy przeliczanie metryk już trwa
-    status = StatusGenerowania.get_or_create(
+    status = StatusGenerowania.aktualny(
         uczelnia=uczelnia_dla_odczytu(request), okres=okres_dla_request(request)
     )
 

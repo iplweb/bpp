@@ -111,7 +111,7 @@ def test_generation_requires_staff(client):
     with patch(
         "ewaluacja_metryki.brak_metryk.generuj_metryki_task_parallel"
     ) as mock_task:
-        mock_task.delay.return_value = MagicMock(id="test-task-id")
+        mock_task.apply_async.return_value = MagicMock(id="test-task-id")
 
         response = client.post(
             url,
@@ -120,7 +120,7 @@ def test_generation_requires_staff(client):
 
         # Teraz powinno działać
         assert response.status_code == 302
-        mock_task.delay.assert_called_once()
+        mock_task.apply_async.assert_called_once()
 
 
 @pytest.mark.django_db

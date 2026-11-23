@@ -25,6 +25,38 @@ def _resolve_uczelnia(uczelnia_id):
     return Uczelnia.objects.get()
 
 
+def _przebieg_nieaktualny(status, task_id, tylko_zlecony_przebieg):
+    """Czy zadanie ma wyjść, bo jego przebieg anulowano albo zastąpiono.
+
+    Dotyczy tylko zadań zleconych przez ``uruchom_generowanie_metryk``
+    (``tylko_zlecony_przebieg=True``) — te mają swoje ``task_id`` zapisane
+    w statusie PRZED wysłaniem do kolejki. Zadanie, które doczekało się
+    workera dopiero po automatycznym anulowaniu (albo po ponownym
+    uruchomieniu generowania przez użytkownika), nie może wskrzesić starego
+    przebiegu ani wejść w drogę nowemu. Przy okazji zapisuje w statusie
+    sygnał „zadanie ruszyło” (``StatusGenerowania.potwierdz_start``).
+    """
+    if not tylko_zlecony_przebieg or not task_id:
+        return False
+    if status.potwierdz_start(task_id):
+        return False
+    logger.info(
+        "Zadanie generowania metryk %s pominięte: przebieg został anulowany "
+        "albo zastąpiony nowym (status: w_trakcie=%s, task_id=%s)",
+        task_id,
+        status.w_trakcie,
+        status.task_id,
+    )
+    return True
+
+
+_WYNIK_PRZEBIEG_NIEAKTUALNY = {
+    "success": False,
+    "anulowane": True,
+    "message": "Przebieg generowania został anulowany albo zastąpiony nowym",
+}
+
+
 @shared_task(
     bind=True,
     autoretry_for=(Exception,),
@@ -204,6 +236,7 @@ def generuj_metryki_task_parallel(
     rodzaje_autora=None,
     uczelnia_id=None,
     okres_pk=None,
+    tylko_zlecony_przebieg=False,
 ):
     """
     Celery task do równoległego generowania metryk ewaluacyjnych.
@@ -220,6 +253,8 @@ def generuj_metryki_task_parallel(
         rodzaje_autora: Lista rodzajów autorów do przetworzenia (domyślnie pobierana z Rodzaj_Autora.filter(licz_sloty=True))
         okres_pk: ID OkresEwaluacji — okres, dla którego liczymy metryki
             (domyślnie okres obejmujący rok_min/rok_max albo okres domyślny)
+        tylko_zlecony_przebieg: pracuj tylko, jeśli status generowania nadal
+            wskazuje na to zadanie (patrz ``_przebieg_nieaktualny``)
     """
     if rodzaje_autora is None:
         from .utils import get_default_rodzaje_autora
@@ -245,6 +280,8 @@ def generuj_metryki_task_parallel(
             "error": str(e),
         }
     status = StatusGenerowania.get_or_create(uczelnia=uczelnia, okres=okres)
+    if _przebieg_nieaktualny(status, self.request.id, tylko_zlecony_przebieg):
+        return dict(_WYNIK_PRZEBIEG_NIEAKTUALNY)
 
     try:
         # Krok 1: Przelicz liczby N jeśli włączone
@@ -286,10 +323,13 @@ def generuj_metryki_task_parallel(
             logger.info(f"Usunięto {deleted_count} starych metryk")
 
         # Krok 4: Zainicjuj status generowania
+        # Własny komunikat = znak życia: status z samym „zlecono” i zerem
+        # przetworzonych autorów uchodzi za przebieg, który nie wystartował.
         status.rozpocznij_generowanie(
             task_id=self.request.id,
             liczba_do_przetworzenia=total_count,
             okres=okres,
+            komunikat=StatusGenerowania.KOMUNIKAT_OBLICZANIE,
         )
 
         # Krok 5: Utwórz group pojedynczych tasków
@@ -361,6 +401,7 @@ def generuj_metryki_task(
     rodzaje_autora=None,
     uczelnia_id=None,
     okres_pk=None,
+    tylko_zlecony_przebieg=False,
 ):
     """
     Celery task do generowania metryk ewaluacyjnych.
@@ -374,6 +415,8 @@ def generuj_metryki_task(
         rodzaje_autora: Lista rodzajów autorów do przetworzenia (domyślnie pobierana z Rodzaj_Autora.filter(licz_sloty=True))
         okres_pk: ID OkresEwaluacji — okres, dla którego liczymy metryki
             (domyślnie okres obejmujący rok_min/rok_max albo okres domyślny)
+        tylko_zlecony_przebieg: pracuj tylko, jeśli status generowania nadal
+            wskazuje na to zadanie (patrz ``_przebieg_nieaktualny``)
     """
     if rodzaje_autora is None:
         from .utils import get_default_rodzaje_autora
@@ -399,6 +442,8 @@ def generuj_metryki_task(
             "error": str(e),
         }
     status = StatusGenerowania.get_or_create(uczelnia=uczelnia, okres=okres)
+    if _przebieg_nieaktualny(status, self.request.id, tylko_zlecony_przebieg):
+        return dict(_WYNIK_PRZEBIEG_NIEAKTUALNY)
 
     # NOTE: Sprawdzanie w_trakcie przeniesione do widoku UruchomGenerowanie
     # Status jest ustawiany w widoku przed uruchomieniem taska, więc tutaj nie sprawdzamy
