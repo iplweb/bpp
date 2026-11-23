@@ -11,7 +11,9 @@ from queryset_sequence import QuerySetSequence
 from bpp.models import Uczelnia
 from bpp.util import zaloguj_polkniety_wyjatek
 from pbn_api.adapters.wydawnictwo import WydawnictwoPBNAdapter
+from pbn_api.adapters.wydawnictwo_autor import powiazania_bez_identyfikatora_osoby
 from pbn_api.exceptions import (
+    AutorBezIdentyfikatoraPBN,
     CannotDeleteStatementsException,
     DaneLokalneWymagajaAktualizacjiException,
     HttpException,
@@ -193,6 +195,19 @@ def process_single_publication(publication, pbn_client, task, log_model):
         pbn_uid=pbn_uid,
         status="error",  # Default to error, will update on success
     )
+
+    # FD#509: gdy czyjegoś oświadczenia nie da się wysłać (autor bez
+    # odpowiednika w PBN i bez ORCID), nie ruszamy tej pracy wcale — PRZED
+    # kasowaniem, żeby nie zostawić w PBN niepełnego zestawu oświadczeń.
+    bez_identyfikatora = list(
+        powiazania_bez_identyfikatora_osoby(publication.autorzy_set)
+    )
+    if bez_identyfikatora:
+        log_entry.error_message = (
+            f"Nie wysłano: {AutorBezIdentyfikatoraPBN(bez_identyfikatora)}"
+        )
+        log_entry.save()
+        return "error", log_entry
 
     # Step 1: Always delete existing statements
     _delete_existing_statements(publication, pbn_client, log_entry)

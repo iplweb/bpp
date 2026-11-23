@@ -2528,7 +2528,7 @@ def pbn_wysylka_i_synchronizacja(page: Page, base: str, out: Path) -> None:
     mark(
         red,
         [
-            {"sel": li_msg, "text": "nie posiada odpowiednika"},
+            {"sel": li_msg, "text": "NIE został wysłany"},
             {"sel": li_msg, "text": "nie zostanie wysłany"},
             {"sel": li_msg, "text": "W kolejce na wysłanie"},
         ],

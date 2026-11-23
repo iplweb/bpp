@@ -288,6 +288,14 @@ def _handle_no_pbn_uid(client: PBNClient, elem, upload_publication: bool) -> Non
     if upload_publication:
         try:
             client.upload_publication(elem)
+        except WillNotExportError as e:
+            # Rekordu nie da się wysłać, dopóki ktoś nie poprawi danych (np.
+            # autor bez odpowiednika w PBN i bez ORCID, FD#509) — to nie
+            # awaria, więc bez tracebacku i bez zgłoszenia do monitoringu.
+            tqdm.write(
+                f"UWAGA: {elem.pk},{elem.tytul_oryginalny},{elem.rok},"
+                f"nie wyeksportuje, bo: {e}"
+            )
         except Exception as e:
             # Catch-all — błąd uploadu nie może zostać tylko na ekranie
             # (tqdm.write). Pełny traceback do logów + monitoring błędów.

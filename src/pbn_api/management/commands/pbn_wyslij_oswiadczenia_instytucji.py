@@ -31,7 +31,9 @@ from tqdm import tqdm
 from bpp.models import Wydawnictwo_Ciagle, Wydawnictwo_Zwarte
 from bpp.util import zaloguj_polkniety_wyjatek
 from pbn_api.adapters.wydawnictwo import WydawnictwoPBNAdapter
+from pbn_api.adapters.wydawnictwo_autor import powiazania_bez_identyfikatora_osoby
 from pbn_api.exceptions import (
+    AutorBezIdentyfikatoraPBN,
     CannotDeleteStatementsException,
     DaneLokalneWymagajaAktualizacjiException,
     HttpException,
@@ -161,6 +163,23 @@ def process_single_publication(  # noqa: C901
         "error": None,
         "json_data": None,
     }
+
+    # FD#509: autor bez odpowiednika w PBN i bez ORCID — jego oświadczenie
+    # by przepadło, więc tej pracy nie ruszamy (nic nie kasujemy w PBN).
+    bez_identyfikatora = list(
+        powiazania_bez_identyfikatora_osoby(publication.autorzy_set)
+    )
+    if bez_identyfikatora:
+        result["error"] = str(AutorBezIdentyfikatoraPBN(bez_identyfikatora))
+        if stdout and style and progress_lock:
+            with progress_lock:
+                tqdm.write(
+                    style.ERROR(
+                        f"{publication.pk};{publication.tytul_oryginalny};"
+                        f"{result['error']}"
+                    )
+                )
+        return result
 
     try:
         json_data = WydawnictwoPBNAdapter(publication).pbn_get_api_statements()

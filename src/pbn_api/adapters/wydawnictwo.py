@@ -11,6 +11,7 @@ from bpp.util import strip_html
 from import_common.normalization import normalize_isbn, normalize_issn
 
 from ..exceptions import (
+    AutorBezIdentyfikatoraPBN,
     CharakterFormalnyMissingPBNUID,
     DaneLokalneWymagajaAktualizacjiException,
     DOIorWWWMissing,
@@ -20,7 +21,10 @@ from ..exceptions import (
 )
 from .autor import AutorSimplePBNAdapter, AutorZDyscyplinaPBNAdapter
 from .wydawca import WydawcaPBNAdapter
-from .wydawnictwo_autor import WydawnictwoAutorToStatementPBNAdapter
+from .wydawnictwo_autor import (
+    WydawnictwoAutorToStatementPBNAdapter,
+    powiazania_bez_identyfikatora_osoby,
+)
 from .wydawnictwo_nadrzedne import WydawnictwoNadrzednePBNAdapter
 from .zrodlo import ZrodloPBNAdapter
 
@@ -624,15 +628,28 @@ class WydawnictwoPBNAdapter:
         ):
             ret["evaluationWosConference"] = True
 
+    def sprawdz_identyfikatory_autorow(self) -> None:
+        """Zatrzymuje wysyłkę pracy, gdy czyjeś oświadczenie by przepadło (FD#509).
+
+        Dotyczy KAŻDEGO rodzaju pracy (także książek) i NIE zależy od
+        ``pbn_wysylaj_bez_oswiadczen``: tamto ustawienie pozwala wysyłać prace,
+        w których nikt nie ma przypiętej dyscypliny (ścieżka repozytoryjna),
+        a tutaj dyscyplina JEST przypięta — redaktor chce oświadczenia, tylko
+        nie da się go przypisać do osoby w PBN. Praca bez przypiętych dyscyplin
+        nie ma takich autorów i przechodzi jak dotąd.
+        """
+        autorzy = list(powiazania_bez_identyfikatora_osoby(self.original.autorzy_set))
+        if autorzy:
+            raise AutorBezIdentyfikatoraPBN(autorzy)
+
     def _validate_export(self, ret: dict) -> None:
         """Final validation before export."""
-        if ret["type"] not in [
+        artykul_lub_rozdzial = ret["type"] in [
             WydawnictwoPBNAdapter.ARTICLE,
             WydawnictwoPBNAdapter.CHAPTER,
-        ]:
-            return
+        ]
 
-        if self.export_pk_zero is False:
+        if artykul_lub_rozdzial and self.export_pk_zero is False:
             if hasattr(self.original, "punkty_kbn"):
                 if self.original.punkty_kbn == 0:
                     raise PKZeroExportDisabled(
@@ -640,6 +657,15 @@ class WydawnictwoPBNAdapter:
                         "zero jest wyłączony w konfiguracji systemu "
                         "(obiekt Uczelnia). "
                     )
+
+        # PRZED ``StatementsMissing``: gdy jedyny autor z dyscypliną nie ma
+        # identyfikatora, „brak oświadczeń" byłby prawdą, ale nie mówiłby
+        # redaktorowi, co poprawić. PO wykluczeniu PK=0: pracy, której i tak
+        # nie wysyłamy, nie każemy poprawiać.
+        self.sprawdz_identyfikatory_autorow()
+
+        if not artykul_lub_rozdzial:
+            return
 
         if not ret.get("statements") and not self.pbn_wysylaj_bez_oswiadczen:
             raise StatementsMissing(

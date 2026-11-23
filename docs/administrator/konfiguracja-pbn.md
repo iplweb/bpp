@@ -88,6 +88,10 @@ Pola sekcji **PBN API** (w kolejności, w jakiej występują w formularzu):
 - Umożliwia wysyłanie do PBN publikacji bez oświadczeń dyscyplinowych. Takie
   publikacje trafiają do repozytorium PBN zamiast do systemu ewaluacyjnego
   i nie zawierają informacji o dyscyplinach naukowych autorów.
+- Dotyczy prac, w których **nikt** nie ma przypiętej dyscypliny. Praca,
+  w której autor ma przypiętą dyscyplinę, ale nie ma ani odpowiednika
+  w PBN, ani ORCID, nie jest wysyłana niezależnie od tego ustawienia —
+  zob. [Autor bez odpowiednika w PBN i bez ORCID](../redaktor/pbn-wysylka-i-synchronizacja.md#autor-bez-identyfikatora).
 
 Poza tą sekcją, w pierwszej (bez nagłówka) części formularza uczelni, jest
 pole **Odpowiednik w PBN** — instytucja w bazie PBN odpowiadająca Twojej

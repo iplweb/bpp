@@ -75,6 +75,27 @@ def rozdzial_z_dyscyplina_pbn(praca_z_dyscyplina_pbn):
     return praca_z_dyscyplina_pbn
 
 
+def _odepnij_dyscypliny(praca):
+    """Praca świadomie BEZ oświadczeń: dyscypliny autorów odpięte.
+
+    Autor fikstury nie ma odpowiednika w PBN ani ORCID; z PRZYPIĘTĄ dyscypliną
+    wysyłkę zatrzymuje ``AutorBezIdentyfikatoraPBN`` (FD#509), a testy niżej
+    sprawdzają zachowanie dla pracy, w której oświadczeń po prostu nie ma.
+    """
+    praca.autorzy_set.update(przypieta=False)
+    return praca
+
+
+@pytest.fixture
+def praca_bez_oswiadczen_pbn(praca_z_dyscyplina_pbn):
+    return _odepnij_dyscypliny(praca_z_dyscyplina_pbn)
+
+
+@pytest.fixture
+def rozdzial_bez_oswiadczen_pbn(rozdzial_z_dyscyplina_pbn):
+    return _odepnij_dyscypliny(rozdzial_z_dyscyplina_pbn)
+
+
 @pytest.mark.django_db
 def test_WydawnictwoPBNAdapter_autor_eksport(
     pbn_wydawnictwo_ciagle_z_autorem_z_dyscyplina, jednostka
@@ -143,38 +164,38 @@ def test_WydawnictwoPBNAdapter_eksport_oswiadczen(
 
 @pytest.mark.django_db
 def test_WydawnictwoPBNAdapter_eksport_artykulu_bez_oswiadczen_zwraca_blad(
-    praca_z_dyscyplina_pbn,
+    praca_bez_oswiadczen_pbn,
 ):
     with pytest.raises(WillNotExportError, match="bez zadeklarowanych"):
-        WydawnictwoPBNAdapter(praca_z_dyscyplina_pbn).pbn_get_json()
+        WydawnictwoPBNAdapter(praca_bez_oswiadczen_pbn).pbn_get_json()
 
 
 @pytest.mark.django_db
 def test_WydawnictwoPBNAdapter_eksport_artykulu_bez_oswiadczen_nie_zwraca_bledu(
-    praca_z_dyscyplina_pbn, uczelnia
+    praca_bez_oswiadczen_pbn, uczelnia
 ):
     uczelnia.pbn_wysylaj_bez_oswiadczen = True
     uczelnia.save()
-    WydawnictwoPBNAdapter(praca_z_dyscyplina_pbn, uczelnia=uczelnia).pbn_get_json()
+    WydawnictwoPBNAdapter(praca_bez_oswiadczen_pbn, uczelnia=uczelnia).pbn_get_json()
 
 
 @pytest.mark.django_db
 def test_WydawnictwoPBNAdapter_eksport_artykulu_bez_oswiadczen_zwraca_ust_uczelni(
-    praca_z_dyscyplina_pbn, uczelnia
+    praca_bez_oswiadczen_pbn, uczelnia
 ):
     uczelnia.pbn_wysylaj_bez_oswiadczen = False
     uczelnia.save()
 
     with pytest.raises(WillNotExportError, match="bez zadeklarowanych"):
-        WydawnictwoPBNAdapter(praca_z_dyscyplina_pbn, uczelnia=uczelnia).pbn_get_json()
+        WydawnictwoPBNAdapter(praca_bez_oswiadczen_pbn, uczelnia=uczelnia).pbn_get_json()
 
 
 @pytest.mark.django_db
 def test_WydawnictwoPBNAdapter_eksport_rozdzialu_bez_oswiadczen_zwraca_blad(
-    rozdzial_z_dyscyplina_pbn,
+    rozdzial_bez_oswiadczen_pbn,
 ):
     with pytest.raises(WillNotExportError, match="bez zadeklarowanych"):
-        WydawnictwoPBNAdapter(rozdzial_z_dyscyplina_pbn).pbn_get_json()
+        WydawnictwoPBNAdapter(rozdzial_bez_oswiadczen_pbn).pbn_get_json()
 
 
 @pytest.mark.django_db

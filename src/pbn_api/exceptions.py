@@ -21,6 +21,7 @@ from pbn_client.exceptions import (
 __all__ = [
     "AccessDeniedException",
     "AlreadyEnqueuedError",
+    "AutorBezIdentyfikatoraPBN",
     "AuthenticationConfigurationError",
     "AuthenticationResponseError",
     "BPPAutorNotFound",
@@ -113,6 +114,39 @@ class StatementsMissing(WillNotExportError):
 
 class PKZeroExportDisabled(WillNotExportError):
     pass
+
+
+class AutorBezIdentyfikatoraPBN(WillNotExportError):
+    """Praca ma autorów, których oświadczenia nie da się wysłać do PBN (FD#509).
+
+    Autor afiliuje w jednostce skupiającej pracowników i ma w pracy przypiętą
+    dyscyplinę, ale nie ma ani odpowiednika w PBN, ani ORCID — PBN nie miałby
+    jak przypisać oświadczenia do osoby. Dawniej takie oświadczenie było po
+    cichu pomijane, a praca szła do PBN bez niego; teraz wysyłka całej pracy
+    jest zatrzymywana, dopóki ktoś nie uzupełni danych autora.
+
+    ``autorzy`` to lista powiązań autor–rekord (``Wydawnictwo_*_Autor``).
+    Komunikat tekstowy jest celowo JEDNOLINIOWY i krótki (najwyżej
+    ``MAKS_NAZWISK`` nazwisk): kolejka eksportu wyłuskuje go z linii wyjątku
+    w tracebacku i ucina komunikaty dłuższe niż 512 znaków.
+    """
+
+    MAKS_NAZWISK = 3
+
+    def __init__(self, autorzy):
+        self.autorzy = list(autorzy)
+        nazwiska = [str(wa.autor) for wa in self.autorzy[: self.MAKS_NAZWISK]]
+        reszta = len(self.autorzy) - len(nazwiska)
+        kto = ", ".join(nazwiska)
+        if reszta > 0:
+            kto += f" (oraz {reszta} kolejnych)"
+        super().__init__(
+            "oświadczenia nie mogą zostać wysłane, bo autor nie ma ani "
+            f"odpowiednika w PBN, ani ORCID: {kto}. Ustaw autorowi "
+            "„Odpowiednik w PBN” albo wpisz ORCID i wyślij pracę ponownie; "
+            "jeżeli osoba nie powinna być oświadczana, odepnij jej dyscyplinę "
+            "albo popraw afiliację w tej pracy"
+        )
 
 
 class CharakterFormalnyMissingPBNUID(WillNotExportError):

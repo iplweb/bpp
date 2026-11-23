@@ -269,6 +269,31 @@
                     </table>
                 </div>
 
+                {% if autorzy_bez_identyfikatora %}
+                    <div class="callout alert" id="autorzy-bez-identyfikatora">
+                        <h4>Autorzy bez odpowiednika w PBN i bez ORCID</h4>
+                        <p>
+                            Praca nie została wysłana do PBN. Ci autorzy mają w niej przypiętą
+                            dyscyplinę i afiliują, ale nie mają ani odpowiednika w PBN, ani
+                            identyfikatora ORCID, więc ich oświadczenia nie da się wysłać:
+                        </p>
+                        <ul>
+                            {% for wa in autorzy_bez_identyfikatora %}
+                                <li>
+                                    <a href="{% url 'admin:bpp_autor_change' wa.autor_id %}" target="_blank">{{ wa.autor }}</a>
+                                    (dyscyplina: {{ wa.dyscyplina_naukowa }})
+                                </li>
+                            {% endfor %}
+                        </ul>
+                        <p>
+                            Co zrobić: kliknij autora, ustaw mu „Odpowiednik w PBN” albo wpisz
+                            „Identyfikator ORCID”, a potem wyślij pracę ponownie. Jeżeli ta osoba
+                            nie powinna być oświadczana w tej pracy — odepnij jej dyscyplinę albo
+                            popraw afiliację w tej pracy.
+                        </p>
+                    </div>
+                {% endif %}
+
                 {% if sent_data %}
                     <div class="callout {% if export_queue_item.zakonczono_pomyslnie == True %}success{% elif export_queue_item.zakonczono_pomyslnie == False %}alert{% else %}secondary{% endif %}">
                         <h4>Linki do wyslanego rekordu</h4>

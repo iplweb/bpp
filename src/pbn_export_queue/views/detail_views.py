@@ -294,6 +294,27 @@ class PBNExportQueueDetailView(
                     do_monitoringu=True,
                 )
 
+    def _add_autorzy_bez_identyfikatora(self, context):
+        """Autorzy, przez których wysyłka tej pracy jest zatrzymana (FD#509).
+
+        Lista liczona NA ŻYWO z rekordu (nie z zapisanego komunikatu): po
+        uzupełnieniu autorowi odpowiednika w PBN albo ORCID znika sama i widać,
+        że wpis można wysłać ponownie. Tylko dla wpisów zakończonych błędem.
+        """
+        if self.object.zakonczono_pomyslnie is not False:
+            return
+        rekord = self.object.rekord_do_wysylki
+        if rekord is None or not hasattr(rekord, "autorzy_set"):
+            return
+
+        from pbn_api.adapters.wydawnictwo_autor import (
+            powiazania_bez_identyfikatora_osoby,
+        )
+
+        context["autorzy_bez_identyfikatora"] = list(
+            powiazania_bez_identyfikatora_osoby(rekord.autorzy_set)
+        )
+
     def _add_clipboard_data(self, context, sent_data):
         """Pre-fetch clipboard data for Safari compatibility."""
         if not sent_data:
@@ -339,5 +360,7 @@ class PBNExportQueueDetailView(
 
         # Pre-fetch clipboard data if SentData exists
         self._add_clipboard_data(context, sent_data)
+
+        self._add_autorzy_bez_identyfikatora(context)
 
         return context
