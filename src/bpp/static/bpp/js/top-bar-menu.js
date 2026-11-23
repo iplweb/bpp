@@ -31,7 +31,13 @@
   var MARGINES_DOLNY_PX = 12;
   var MIN_WYSOKOSC_PODMENU_PX = 160;
 
-  var STYLE_MYSZY = ["visibility", "opacity", "max-height", "transform"];
+  var STYLE_MYSZY = [
+    "visibility",
+    "opacity",
+    "max-height",
+    "transform",
+    "pointer-events",
+  ];
 
   var ostatniDotyk = 0;
   var zegary = new WeakMap();
@@ -59,6 +65,9 @@
     sub.style.opacity = "1";
     sub.style.maxHeight = "800px";
     sub.style.transform = "translateY(0) scaleY(1)";
+    // Jawnie, nie przez :hover z arkusza: ten działa tylko przy
+    // `(hover: hover)`, a mysz bywa też podpięta do tabletu.
+    sub.style.pointerEvents = "auto";
   }
 
   function schowajMysza(sub) {
@@ -66,6 +75,7 @@
     sub.style.opacity = "0";
     sub.style.maxHeight = "0";
     sub.style.transform = "translateY(-20px) scaleY(0.8)";
+    sub.style.removeProperty("pointer-events");
   }
 
   /**
@@ -253,13 +263,35 @@
       );
 
       link.addEventListener("click", function (e) {
-        // href="#" przewijał stronę na samą górę.
-        e.preventDefault();
+        // Dalej nie puszczamy: Foundation uważa tę pozycję za zwykły link
+        // i po kliknięciu zamyka wszystkie menu — także to, które właśnie
+        // otwieramy.
+        e.stopPropagation();
         // Klawiatura (Enter na pozycji): detail === 0.
         if (e.detail === 0) {
           przelaczWielokolumnowe(li);
         }
       });
+
+      // Z tego samego powodu: kliknięcie w puste miejsce otwartego bloku
+      // (odstęp, linia) nie może go zamykać. Kliknięcia linków idą dalej —
+      // korzystają z nich handlery na dokumencie (data-action).
+      podmenu(li).addEventListener("click", function (e) {
+        if (!e.target.closest("a")) {
+          e.stopPropagation();
+        }
+      });
+    });
+
+    // Pozycje z podmenu mają href="#": kliknięcie przewijało stronę na samą
+    // górę i dopisywało „#” do adresu.
+    pozycje.forEach(function (li) {
+      var link = li.querySelector(":scope > a");
+      if (link && link.getAttribute("href") === "#") {
+        link.addEventListener("click", function (e) {
+          e.preventDefault();
+        });
+      }
     });
 
     if (window.jQuery) {

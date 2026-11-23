@@ -19,7 +19,9 @@
 
 <div class="top-bar stacked-for-medium hide-for-print" id="example-menu">
     <div class="top-bar-left">
-        <ul class="dropdown menu" data-dropdown-menu>
+        {# data-force-follow="false": na dotyku ponowne stuknięcie pozycji zamyka podmenu #}
+        {# (domyślnie Foundation „idzie za linkiem” — tu href="#", czyli skok na górę strony). #}
+        <ul class="dropdown menu" data-dropdown-menu data-force-follow="false">
             <li>
                 {# Logo i napis może ukryć/podmienić motyw z konfiguratora wyglądu — stąd stała nazwa linku dla czytników ekranu. #}
                 <a href="/" class="bpp-strona-glowna" aria-label="Strona główna">

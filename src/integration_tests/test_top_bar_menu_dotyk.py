@@ -177,6 +177,38 @@ def test_telefon_po_menu_wielokolumnowym_dziala_zwykle_podmenu(
     admin_page.wait_for_url(f"**{cel}")
 
 
+@pytest.mark.browser_context_args(**TELEFON)
+def test_telefon_zwykle_podmenu_zamyka_ponowne_stukniecie_i_stukniecie_obok(
+    channels_live_server, admin_page: Page, uczelnia
+):
+    """Zwykłe podmenu obsługuje Foundation. Domyślnie drugie stuknięcie
+    pozycji „szło za linkiem” (``href="#"``) i zostawiało podmenu otwarte."""
+    _otworz_strone(admin_page, channels_live_server.url)
+
+    przegladaj = _pozycja(admin_page, "przeglądaj")
+    podmenu = _podmenu(przegladaj)
+
+    _stuknij(przegladaj)
+    _oczekuj_otwarte(podmenu)
+    admin_page.wait_for_timeout(PO_CZASIE_CHOWANIA_MS)
+    _oczekuj_otwarte(podmenu)
+
+    _stuknij(przegladaj)
+    _oczekuj_zamkniete(podmenu)
+    assert not admin_page.url.endswith("#")
+
+    _stuknij(przegladaj)
+    _oczekuj_otwarte(podmenu)
+    admin_page.locator(".title-bar-title").tap()
+    _oczekuj_zamkniete(podmenu)
+
+    _stuknij(przegladaj)
+    link = podmenu.locator("a", has_text="autorzy")
+    cel = link.get_attribute("href")
+    link.tap()
+    admin_page.wait_for_url(f"**{cel}")
+
+
 @pytest.mark.browser_context_args(**TABLET)
 def test_tablet_stukniecie_pozycji_nie_przewija_strony_na_gore(
     channels_live_server, admin_page: Page, uczelnia
@@ -193,13 +225,17 @@ def test_tablet_stukniecie_pozycji_nie_przewija_strony_na_gore(
     przed = admin_page.evaluate("window.scrollY")
     assert przed > 0
 
-    operacje = _pozycja(admin_page, "operacje")
-    _stuknij(operacje)
-    _oczekuj_otwarte(_podmenu(operacje))
-    admin_page.wait_for_timeout(300)
+    # Blok wielokolumnowy i zwykłe podmenu; każde otwarte i zamknięte.
+    for nazwa in ("operacje", "redagowanie"):
+        pozycja = _pozycja(admin_page, nazwa)
+        _stuknij(pozycja)
+        _oczekuj_otwarte(_podmenu(pozycja))
+        _stuknij(pozycja)
+        _oczekuj_zamkniete(_podmenu(pozycja))
+        admin_page.wait_for_timeout(300)
 
-    assert admin_page.evaluate("window.scrollY") == przed
-    assert not admin_page.url.endswith("#")
+        assert admin_page.evaluate("window.scrollY") == przed, nazwa
+        assert not admin_page.url.endswith("#"), nazwa
 
 
 @pytest.mark.browser_context_args(**TABLET)
@@ -263,12 +299,46 @@ def test_komputer_mysz_otwiera_i_chowa_menu_jak_dotad(
     admin_page.wait_for_timeout(PO_CZASIE_CHOWANIA_MS)
     _oczekuj_otwarte(_podmenu(operacje))
 
-    # Zjechanie kursorem z menu chowa podmenu.
+    # Zjechanie kursorem z menu chowa podmenu — ale dopiero po chwili
+    # (500 ms), żeby nie znikało przy przypadkowym zjechaniu z krawędzi.
     admin_page.mouse.move(700, 850)
+    admin_page.wait_for_timeout(250)
+    _oczekuj_otwarte(_podmenu(operacje))
     _oczekuj_zamkniete(_podmenu(operacje))
+
+    # Kliknięcie samej pozycji nie przewija strony i nie zmienia adresu.
+    operacje.locator("> a").click()
+    redagowanie.locator("> a").click()
+    assert not admin_page.url.endswith("#")
 
     operacje.locator("> a").hover()
     link = _podmenu(operacje).locator("a", has_text="import dyscyplin")
     cel = link.get_attribute("href")
     link.click()
     admin_page.wait_for_url(f"**{cel}")
+
+
+def test_komputer_enter_otwiera_menu_wielokolumnowe(
+    channels_live_server, admin_page: Page, uczelnia
+):
+    """Klawiatura: Enter na pozycji z blokiem wielokolumnowym otwiera go
+    (i nie zamyka w tym samym kliknięciu), drugi Enter zamyka."""
+    admin_page.set_viewport_size({"width": 1400, "height": 900})
+    _otworz_strone(admin_page, channels_live_server.url)
+    # Kursor z dala od menu, żeby nie mieszał się :hover.
+    admin_page.mouse.move(700, 850)
+
+    operacje = _pozycja(admin_page, "operacje")
+    podmenu = _podmenu(operacje)
+    link = operacje.locator("> a")
+
+    link.focus()
+    admin_page.keyboard.press("Enter")
+    _oczekuj_otwarte(podmenu)
+    expect(link).to_have_attribute("aria-expanded", "true")
+    admin_page.wait_for_timeout(PO_CZASIE_CHOWANIA_MS)
+    _oczekuj_otwarte(podmenu)
+
+    admin_page.keyboard.press("Enter")
+    _oczekuj_zamkniete(podmenu)
+    expect(link).to_have_attribute("aria-expanded", "false")

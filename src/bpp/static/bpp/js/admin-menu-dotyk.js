@@ -10,7 +10,7 @@
  * (preventDefault na touchstart), więc `:hover` się nie przykleja. Pozycje
  * z podmenu mają href="#", więc nie odbiera to żadnego linku.
  *
- * Mysz działa bez zmian — ten skrypt słucha wyłącznie zdarzeń dotyku.
+ * Mysz działa bez zmian — ten skrypt przełącza podmenu wyłącznie dotykiem.
  * Pilnuje tego test src/integration_tests/test_admin_menu_dotyk.py.
  */
 (function () {
@@ -58,6 +58,14 @@
       },
       { capture: true, passive: true },
     );
+
+    // Urządzenia z myszą i ekranem dotykowym: podmenu otwarte dotykiem
+    // zamyka też kliknięcie myszą obok.
+    document.addEventListener("mousedown", function (e) {
+      if (!menu.contains(e.target)) {
+        zamknij(null);
+      }
+    });
   }
 
   if (document.readyState === "loading") {
