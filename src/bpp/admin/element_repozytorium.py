@@ -55,12 +55,31 @@ class Element_RepozytoriumKoszInline(GenericTabularInline):
     def has_add_permission(self, request, obj=None):
         return False
 
+    @staticmethod
+    def moze_przywracac(request):
+        """Jak w ``BppSoftDeleteAdminMixin.moze_przywracac``: przywracanie
+        z kosza = uprawnienia ``delete`` + ``change`` do elementów."""
+        return request.user.has_perm(
+            "bpp.delete_element_repozytorium"
+        ) and request.user.has_perm("bpp.change_element_repozytorium")
+
+    def get_fields(self, request, obj=None):
+        pola = super().get_fields(request, obj)
+        if not self.moze_przywracac(request):
+            pola = [p for p in pola if p != "przywroc"]
+        return pola
+
     def get_formset(self, request, obj=None, **kwargs):
         formset = super().get_formset(request, obj, **kwargs)
+        moze_przywracac = self.moze_przywracac(request)
 
         class FormsetZUzytkownikiem(formset):
             def add_fields(self, form, index):
                 super().add_fields(form, index)
+                if not moze_przywracac:
+                    # Pole jest zadeklarowane w klasie formularza, więc bez
+                    # tego dałoby się je wysłać ręcznie spreparowanym POST-em.
+                    form.fields.pop("przywroc", None)
                 # Pole ``id`` formsetu szuka wiersza w domyślnym menedżerze,
                 # który ukrywa kosz — bez tego każdy zapis tego inline'a
                 # kończyłby się błędem „niepoprawny wybór”.

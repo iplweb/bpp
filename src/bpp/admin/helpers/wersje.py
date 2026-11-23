@@ -65,6 +65,15 @@ _przywracanie_wersji = ContextVar("przywracanie_wersji", default=False)
 _podglad_wersji = ContextVar("podglad_wersji", default=False)
 
 
+class PrzeszkodaPrzywrocenia(Exception):
+    """Przywrócenie przerwane w transakcji — ``przeszkody`` to pełne zdania
+    dla użytkownika (patrz ``przeszkody_przywrocenia``)."""
+
+    def __init__(self, przeszkody):
+        super().__init__(" ".join(przeszkody))
+        self.przeszkody = przeszkody
+
+
 def zachowaj_pola_wrazliwe(sender, instance, raw=False, **kwargs):
     """Przy przywracaniu wersji (zapis surowy) pola z ``POLA_WRAZLIWE``
     dostają bieżące wartości z bazy: inaczej przywrócenie danych
@@ -418,6 +427,12 @@ class HistoriaWersjiMixin:
         transakcji co przywrócenie (błąd cofa całość). Domyślnie nic nie
         robi."""
 
+    def zablokuj_przed_przywroceniem(self):
+        """Wołane na początku transakcji przywracania, przed ponownym
+        sprawdzeniem ``przeszkody_przywrocenia``. Domyślnie nic; admini,
+        których przeszkody zależą od innych wierszy (drzewo jednostek),
+        blokują tu te wiersze."""
+
     def przeszkody_przywrocenia(self, obj, wersja):
         """Powody, dla których ``wersja`` rekordu ``obj`` nie może zostać
         przywrócona (pełne zdania dla użytkownika; pusta lista = można).
@@ -647,6 +662,13 @@ class HistoriaWersjiMixin:
             swiezy = self._zapisz_przywrocenie(
                 request, obj, wersje, do_przywrocenia, komentarz
             )
+        except PrzeszkodaPrzywrocenia as e:
+            self.message_user(
+                request,
+                f"Nie przywrócono wersji: {' '.join(e.przeszkody)}",
+                level=messages.ERROR,
+            )
+            return historia
         except IntegrityError:
             # Np. dwóch autorów zamienionych miejscami (te same wiersze,
             # zamienione osoby) — unikalność nie przepuści stanu pośredniego.
@@ -704,6 +726,13 @@ class HistoriaWersjiMixin:
         from bpp.models.sloty.core import IPunktacjaCacher
 
         with transaction.atomic(), self.create_revision(request):
+            # Kontrola przeszkód jeszcze raz, już pod blokadą: pierwsza
+            # (przed transakcją) mogła się zdezaktualizować przez równoległy
+            # zapis — np. dwa przywrócenia jednostek A pod B i B pod A.
+            self.zablokuj_przed_przywroceniem()
+            przeszkody = self.przeszkody_przywrocenia(obj, wersje[0])
+            if przeszkody:
+                raise PrzeszkodaPrzywrocenia(przeszkody)
             # Najpierw usuń pozycje list dopisane po tej wersji (pokazane
             # w podglądzie jako „Zostaną usunięte”), DOPIERO potem odtwórz
             # wersję: autor usunięty i dodany ponownie ma nowy wiersz, który

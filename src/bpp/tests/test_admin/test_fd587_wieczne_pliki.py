@@ -164,9 +164,21 @@ def test_pobranie_z_archiwum(
     personel = baker.make(django_user_model, is_staff=True)
     client.force_login(personel)
     assert client.get(url).status_code == 403
+
+    # Samo uprawnienie do archiwum nie wystarcza — plik należał do elementu
+    # repozytorium, a tych personel oglądać nie może.
     personel.user_permissions.add(
         Permission.objects.get(codename="view_archiwalnyplik")
     )
+    assert client.get(url).status_code == 404
+    lista = client.get(reverse("admin:historia_zmian_archiwalnyplik_changelist"))
+    assert "do-pobrania.pdf" not in lista.content.decode()
+
+    personel.user_permissions.add(
+        Permission.objects.get(codename="view_element_repozytorium")
+    )
+    personel = django_user_model.objects.get(pk=personel.pk)  # cache uprawnień
+    client.force_login(personel)
     assert client.get(url).status_code == 200
 
 
@@ -198,3 +210,56 @@ def test_trwale_usuniecie_publikacji_archiwizuje_jej_pliki(wydawnictwo_ciagle):
     assert wpis.oryginalna_nazwa_pliku == "w-publikacji.pdf"
     assert wpis.powod == ArchiwalnyPlik.Powody.USUNIETO_WIERSZ
     assert tytul in wpis.opis
+
+
+def _redaktor_bez_usuwania_plikow(django_user_model):
+    """Personel z uprawnieniami grupy „wprowadzanie danych” poza
+    ``delete_element_repozytorium``."""
+    from django.contrib.auth.models import Group
+
+    from bpp.const import GR_WPROWADZANIE_DANYCH
+
+    redaktor = baker.make(django_user_model, is_staff=True)
+    redaktor.user_permissions.set(
+        Group.objects.get(name=GR_WPROWADZANIE_DANYCH).permissions.exclude(
+            codename="delete_element_repozytorium"
+        )
+    )
+    return redaktor
+
+
+def test_przywrocenie_z_kosza_wymaga_uprawnienia_do_usuwania(
+    admin_app, wydawnictwo_ciagle, django_user_model
+):
+    element = _element(wydawnictwo_ciagle)
+    element.delete()
+    redaktor = _redaktor_bez_usuwania_plikow(django_user_model)
+    url = reverse("admin:bpp_wydawnictwo_ciagle_change", args=(wydawnictwo_ciagle.pk,))
+
+    strona = admin_app.get(url, user=redaktor)
+    form = strona.forms["wydawnictwo_ciagle_form"]
+    assert not any(k.endswith("-przywroc") for k in form.fields)
+
+    # Spreparowany POST z polem „przywróć” też nic nie przywraca.
+    prefiks = next(
+        k[: -len("-TOTAL_FORMS")]
+        for k, v in form.fields.items()
+        if k.endswith("-TOTAL_FORMS")
+        and f"{k[: -len('-TOTAL_FORMS')]}-0-id" in form.fields
+        and form[f"{k[: -len('-TOTAL_FORMS')]}-0-id"].value == str(element.pk)
+        and f"{k[: -len('-TOTAL_FORMS')]}-0-DELETE" not in form.fields
+    )
+    pola = list(form.submit_fields()) + [(f"{prefiks}-0-przywroc", "on")]
+    res = admin_app.post(url, params=pola, user=redaktor)
+    assert res.status_code == 302, res.text[:2000]
+    assert Element_Repozytorium.deleted_objects.filter(pk=element.pk).exists()
+
+
+def test_podmiana_pliku_w_transakcji_blokuje_wiersz(zgloszenie_publikacji):
+    """W transakcji odczyt starego pliku idzie z ``FOR UPDATE``."""
+    zgloszenie_publikacji.plik = _plik("pierwszy.pdf")
+    zgloszenie_publikacji.save()
+    with transaction.atomic():
+        zgloszenie_publikacji.plik = _plik("drugi.pdf")
+        zgloszenie_publikacji.save()
+    assert ArchiwalnyPlik.objects.get().powod == ArchiwalnyPlik.Powody.PODMIENIONO

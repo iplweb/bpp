@@ -134,6 +134,13 @@ class JednostkaAdmin(
         # pasować do dzisiejszego drzewa — przeliczamy je z rodziców.
         Jednostka._tree_manager.rebuild()
 
+    def zablokuj_przed_przywroceniem(self):
+        # Kontrola cyklu czyta rodziców WSZYSTKICH jednostek, a ``rebuild()``
+        # i tak zapisze całe drzewo — blokujemy je od razu, żeby równoległe
+        # przywrócenie (albo przeniesienie) nie zmieniło rodziców między
+        # kontrolą a zapisem.
+        list(Jednostka._base_manager.select_for_update().values_list("pk"))
+
     def przeszkody_przywrocenia(self, obj, wersja):
         # Wersja przywraca dawnego rodzica bez walidacji formularza. Jeśli
         # od tamtej pory drzewo przebudowano (np. dawny rodzic jest dziś

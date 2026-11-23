@@ -177,3 +177,33 @@ def test_przywrocenie_rodzica_jednostki_bez_cyklu_dziala(admin_client, uczelnia)
     assert res.status_code == 302
     a.refresh_from_db()
     assert a.parent_id == b.pk
+
+
+def test_przeszkody_sprawdzane_ponownie_w_transakcji(
+    admin_client, uczelnia, monkeypatch
+):
+    """Równoległy zapis między podglądem a zapisem: druga kontrola (pod
+    blokadą, w transakcji) przerywa przywrócenie."""
+    from bpp.admin.jednostka import JednostkaAdmin
+
+    a = baker.make(Jednostka, nazwa="Jednostka A", uczelnia=uczelnia, parent=None)
+    b = baker.make(Jednostka, nazwa="Jednostka B", uczelnia=uczelnia, parent=None)
+    a.parent = b
+    a.save()
+    stara = _zapisz_wersje(a)
+    a = Jednostka.objects.get(pk=a.pk)
+    a.parent = None
+    a.save()
+    _zapisz_wersje(a)
+
+    wywolania = []
+
+    def przeszkody(self, obj, wersja):
+        wywolania.append(1)
+        return [] if len(wywolania) == 1 else ["Zmieniono równolegle."]
+
+    monkeypatch.setattr(JednostkaAdmin, "przeszkody_przywrocenia", przeszkody)
+    res = admin_client.post(_url_wersji(a, stara), follow=True)
+    assert "Zmieniono równolegle." in res.content.decode()
+    a.refresh_from_db()
+    assert a.parent_id is None

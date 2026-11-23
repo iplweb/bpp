@@ -11,10 +11,17 @@ transakcji co zmiana, więc wycofana zmiana nie zostawia wpisu.
 Usunięcie do kosza (soft delete) NIE trafia do archiwum: wiersz zostaje
 w bazie i plik da się przywrócić razem z nim.
 
+Granice: archiwum widzi zmiany przez ORM Django (``save()``/``delete()``,
+także kaskady). ``QuerySet.update()``/``bulk_update()`` na polu pliku
+i surowy SQL go omijają — kod BPP tak nie zmienia tych pól; migracja
+danych, która miałaby to robić, musi sama dopisać wpisy do archiwum.
+Samego dysku (i bazy) archiwum nie zastępuje — od tego są kopie zapasowe.
+
 Nowy model z plikiem, który ma być chroniony: dopisz go do ``CHRONIONE_PLIKI``.
 """
 
 from django.apps import apps
+from django.db import transaction
 from django.db.models.signals import post_delete, pre_delete, pre_save
 
 #: model → (pole pliku, pole z oryginalną nazwą pliku albo ``None``)
@@ -98,7 +105,14 @@ def archiwizuj_przy_podmianie(sender, instance, **kwargs):
         return
     pole, pole_nazwy = _pola(sender)
     kolumny = [pole] + ([pole_nazwy] if pole_nazwy else [])
-    stary = sender._base_manager.filter(pk=instance.pk).values_list(*kolumny).first()
+    qs = sender._base_manager.filter(pk=instance.pk)
+    if transaction.get_connection().in_atomic_block:
+        # Blokada wiersza do końca transakcji: dwa równoległe zapisy
+        # (A→B i A→C) czytałyby inaczej oba „A” i plik B zostałby bez
+        # śladu. Formularze admina zapisują w transakcji, więc tam działa
+        # zawsze; poza transakcją (autocommit) FOR UPDATE jest niedozwolone.
+        qs = qs.select_for_update()
+    stary = qs.values_list(*kolumny).first()
     if stary is None or not stary[0]:
         return
     nowy = getattr(instance, pole)

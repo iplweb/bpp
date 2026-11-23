@@ -104,6 +104,15 @@ class ZrodloZmianyAdmin(admin.ModelAdmin):
         return False
 
 
+def _moze_ogladac_model(user, etykieta):
+    """Czy ``user`` może oglądać model ``app_label.Model`` (``view`` albo
+    ``change``, jak ``has_view_permission`` w adminie)."""
+    app_label, nazwa = etykieta.lower().split(".")
+    return user.has_perm(f"{app_label}.view_{nazwa}") or user.has_perm(
+        f"{app_label}.change_{nazwa}"
+    )
+
+
 @admin.register(ArchiwalnyPlik)
 class ArchiwalnyPlikAdmin(admin.ModelAdmin):
     """„Archiwum plików” — pliki, które straciły odwołanie w bazie
@@ -134,6 +143,22 @@ class ArchiwalnyPlikAdmin(admin.ModelAdmin):
     def has_delete_permission(self, request, obj=None):
         return False
 
+    def get_queryset(self, request):
+        # Archiwum nie może być furtką do plików, których użytkownik nie
+        # zobaczyłby u źródła (np. załączniki zgłoszeń bez uprawnień do
+        # zgłoszeń): widać tylko pliki modeli, które może oglądać.
+        qs = super().get_queryset(request)
+        if request.user.is_superuser:
+            return qs
+        from .archiwum_plikow import CHRONIONE_PLIKI
+
+        dozwolone = [
+            etykieta.lower()
+            for etykieta in CHRONIONE_PLIKI
+            if _moze_ogladac_model(request.user, etykieta)
+        ]
+        return qs.filter(model_zrodlowy__in=dozwolone)
+
     def get_urls(self):
         from django.urls import path
 
@@ -157,7 +182,7 @@ class ArchiwalnyPlikAdmin(admin.ModelAdmin):
     def pobierz_view(self, request, pk):
         if not self.has_view_permission(request):
             raise PermissionDenied
-        obj = ArchiwalnyPlik.objects.filter(pk=pk).first()
+        obj = self.get_queryset(request).filter(pk=pk).first()
         if obj is None or not obj.plik.storage.exists(obj.plik.name):
             raise Http404("Brak pliku w archiwum.")
         return sendfile(

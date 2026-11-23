@@ -148,8 +148,14 @@ kasowane z serwera**.
   usunięty trwale z kosza (razem z jego plikami), usunięty załącznik
   zgłoszenia, plik podmieniony na inny albo usunięty z pola. Przy każdym
   wpisie widać, do czego plik należał, kto i kiedy go odpiął, a plik
-  można pobrać (⬇️). Dostęp do archiwum ma superużytkownik oraz osoby
-  z uprawnieniem do oglądania modelu „historia_zmian | plik w archiwum”.
+  można pobrać (⬇️). Archiwum widzą członkowie grup „wprowadzanie
+  danych” i „zgłoszenia publikacji” (oraz superużytkownik), ale każdy
+  tylko pliki z rekordów, do których ma dostęp — np. załączniki zgłoszeń
+  wyłącznie osoby z uprawnieniami do zgłoszeń.
+- Pliki leżą w chronionym katalogu serwera — nie da się ich pobrać
+  bezpośrednim adresem, tylko przez BPP po zalogowaniu.
+- Przywrócić plik z kosza może osoba z uprawnieniem do usuwania plików
+  repozytorium (jak w przypadku kosza rekordów).
 
 ## Dlaczego nie można usunąć pracy z wpisanym „Odpowiednikiem w PBN"
 
