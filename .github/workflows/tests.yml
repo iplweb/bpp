@@ -65,7 +65,7 @@ jobs:
       # so the heavy toolchain the test jobs need is unnecessary for
       # linting. uv is only a fast launcher for pre-commit (via uvx).
       - name: Install uv
-        uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
+        uses: astral-sh/setup-uv@1db35dd8eee11c5894872e0b383ae6c406cf738d # v10.4.0
         with:
           # Patrz komentarz przy jobie `lock-check` — bez `version` setup-uv
           # bierze "latest", co czyni CI niedeterministycznym.
@@ -157,7 +157,7 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - name: Install uv
-        uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
+        uses: astral-sh/setup-uv@1db35dd8eee11c5894872e0b383ae6c406cf738d # v10.4.0
         with:
           # PIN OBOWIAZKOWY. Bez `version` setup-uv loguje "Could not
           # determine uv version from uv.toml or pyproject.toml. Falling back
@@ -199,7 +199,7 @@ jobs:
         xargs -a docker/bpp_base/build.txt sudo apt-get install -y
 
     - name: Install uv
-      uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
+      uses: astral-sh/setup-uv@1db35dd8eee11c5894872e0b383ae6c406cf738d # v10.4.0
       with:
         # Patrz komentarz przy jobie `lock-check`. Tu dochodzi drugi powod:
         # `uv sync --frozen` czyta uv.lock, wiec plywajaca wersja uv czyni
