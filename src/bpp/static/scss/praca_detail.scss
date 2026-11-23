@@ -1163,6 +1163,86 @@
     }
 }
 
+// FD#626: telefon — zbity układ strony publikacji. Odstępy kontenera,
+// kart i ich wnętrza sumowały się do ok. 50 px z każdej strony (z 393 px
+// szerokości ekranu tekst dostawał ok. 270 px). Zostaje sam odstęp strony
+// (grid-container) i wąskie wnętrze karty.
+@media screen and (max-width: 639px) {
+    .praca-mono {
+        padding: 8px 0;
+    }
+
+    .praca-mono__title-section {
+        margin-bottom: 16px;
+    }
+
+    .praca-mono__title {
+        font-size: 1.25rem;
+        margin-bottom: 12px;
+    }
+
+    .praca-mono__authors-section {
+        padding: 10px 12px;
+        margin-bottom: 12px;
+    }
+
+    .praca-mono__columns {
+        gap: 0;
+    }
+
+    .praca-mono__card {
+        padding: 12px;
+        margin-bottom: 12px;
+    }
+
+    .praca-mono__card-title {
+        font-size: 1.1rem;
+        margin-bottom: 10px;
+        padding-bottom: 6px;
+    }
+
+    .praca-mono__biblio-container {
+        padding: 8px;
+    }
+
+    .praca-mono__detail-row {
+        margin-bottom: 8px;
+    }
+
+    .praca-mono__detail-value {
+        margin-left: 8px;
+        margin-top: 2px;
+    }
+
+    // Wyjustowany tekst w wąskiej kolumnie robi dziury między wyrazami.
+    .praca-mono__abstract-text {
+        text-align: left;
+    }
+
+    .praca-mono__metrics-grid {
+        gap: 8px;
+    }
+
+    .praca-mono__table-cell,
+    .praca-mono__table-cell--vertical-top {
+        padding: 6px 8px;
+    }
+
+    .praca-mono__additional-info,
+    .praca-mono__slots-section,
+    .praca-mono__detached-section {
+        margin-top: 16px;
+    }
+
+    .praca-mono__patent-details {
+        margin-left: 8px;
+    }
+
+    .praca-mono__related-list {
+        padding-left: 20px;
+    }
+}
+
 // Print styles for praca-mono
 @media print {
     .praca-mono .button,

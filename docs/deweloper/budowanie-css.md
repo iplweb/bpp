@@ -55,6 +55,34 @@ in `top_bar.scss`:**
 When adding new icons to menus, add them to the selector list in
 `top_bar.scss` (lines 389-426).
 
+## Menu górne: mysz i dotyk
+
+Rozwijane menu paska (`top_bar.html`) ma dwie ścieżki otwierania:
+
+- **mysz** — `:hover` plus skrypt `src/bpp/static/bpp/js/top-bar-menu.js`
+  (pokazanie od razu, schowanie po 500 ms od zjechania kursorem);
+- **dotyk** — klasa `is-active` na pozycji. Zwykłe podmenu (`li > ul`)
+  obsługuje Foundation DropdownMenu, bloki wielokolumnowe
+  (`li.has-submenu > .menu-columns-wrapper`) — `top-bar-menu.js`, bo
+  Foundation widzi tylko podmenu będące listą `<ul>`.
+
+Reguły `:hover`, które **otwierają** podmenu, pisz w mixinie
+`tylko-z-kursorem` (`@media (hover: hover)`) z `top_bar.scss`. Na telefonie
+„najechanie” po stuknięciu zostaje na elemencie do następnego stuknięcia
+w coś klikalnego, więc podmenu otwartego samym `:hover` nie da się tam
+zamknąć. Każdy stan otwarcia musi mieć odpowiednik z klasą `is-active`.
+
+Na telefonie (≤ 639 px) blok wielokolumnowy zajmuje całą szerokość paska.
+Na dotyku podmenu wyższe niż ekran przewija się w środku
+(`--bpp-podmenu-max` ustawia skrypt) — na szerokim ekranie pasek jest
+przyklejony, więc nie przewinie się ze stroną.
+
+Menu modułu redagowania (`admin-menu.css`) otwiera `:hover` albo klasa
+`over`; na dotyku przełącza ją `src/bpp/static/bpp/js/admin-menu-dotyk.js`.
+
+Testy: `src/integration_tests/test_top_bar_menu_dotyk.py`,
+`test_top_bar_menu_hover.py`, `test_admin_menu_dotyk.py`.
+
 ## Scroll Offset for Sticky Navigation
 
 The public frontend has TWO sticky elements at the top:
