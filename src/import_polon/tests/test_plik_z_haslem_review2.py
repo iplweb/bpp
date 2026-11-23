@@ -322,6 +322,36 @@ def test_ogolny_limit_przed_rozpoznawaniem_szyfrowania():
 
 
 @pytest.mark.django_db
+@pytest.mark.parametrize(
+    ("wiek_startu", "usuniete"),
+    [
+        pytest.param(timedelta(minutes=5), 0, id="swiezy-start"),
+        pytest.param(timedelta(hours=30), 1, id="stary-start"),
+        pytest.param(None, 1, id="bez-startu"),
+    ],
+)
+def test_zadanie_sprzata_tylko_porzucone_importy(admin_user, wiek_startu, usuniete):
+    teraz = timezone.now()
+    imp = _import(
+        ImportPlikuPolon,
+        admin_user,
+        zaszyfrowany=True,
+        started_on=None if wiek_startu is None else teraz - wiek_startu,
+        finished_on=None,
+    )
+    ImportPlikuPolon.objects.filter(pk=imp.pk).update(
+        created_on=teraz - timedelta(hours=30)
+    )
+    sciezka = imp.plik.path
+
+    assert usun_zalegle_pliki_z_haslem() == usuniete
+
+    imp.refresh_from_db()
+    assert bool(imp.plik) == (usuniete == 0)
+    assert os.path.exists(sciezka) == (usuniete == 0)
+
+
+@pytest.mark.django_db
 def test_zadanie_kontynuuje_po_bledzie_rekordu(admin_user, caplog):
     teraz = timezone.now()
     a = _import(ImportPlikuPolon, admin_user, True, nazwa="a.xlsx", finished_on=teraz)

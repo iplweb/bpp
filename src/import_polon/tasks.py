@@ -13,8 +13,9 @@ logger = get_task_logger(__name__)
 #: Niezakończony import z plikiem z hasłem kasujemy dopiero po dobie: tyle
 #: nie czeka w kolejce i nie trwa żaden żywy przebieg (eksport z POL-on
 #: przetwarza się w minuty), więc to na pewno sierota po zabitym workerze.
-#: Krótszy próg mógłby zabrać plik importowi, który czeka w kolejce Celery
-#: albo właśnie jest podejmowany przez workera.
+#: Doba liczy się od utworzenia ORAZ od rozpoczęcia — import, który czekał
+#: w kolejce dłużej (np. worker leżał) i właśnie został podjęty, ma świeże
+#: ``started_on`` i nie może stracić pliku spod rąk workera.
 MAKS_WIEK_NIEZAKONCZONEGO_GODZIN = 24
 
 
@@ -29,7 +30,8 @@ def usun_zalegle_pliki_z_haslem(maks_wiek_godzin=None):
 
     * pliki importów w stanie KOŃCOWYM (``finished_on`` ustawione: sukces,
       błąd, anulowanie) — od razu,
-    * pozostałe — dopiero gdy import jest starszy niż ``maks_wiek_godzin``.
+    * pozostałe — gdy od utworzenia minęło więcej niż ``maks_wiek_godzin``
+      i import jeszcze się nie rozpoczął lub od rozpoczęcia też minął ten czas.
 
     Gdyby po tym import jednak ruszył, ``run()`` bez pliku kończy się
     czytelnym komunikatem (``p.error``), nie wyjątkiem. Błąd przy jednym
@@ -49,7 +51,13 @@ def usun_zalegle_pliki_z_haslem(maks_wiek_godzin=None):
         qs = (
             model.objects.filter(plik_byl_zaszyfrowany=True)
             .exclude(plik="")
-            .filter(Q(finished_on__isnull=False) | Q(created_on__lt=prog))
+            .filter(
+                Q(finished_on__isnull=False)
+                | (
+                    Q(created_on__lt=prog)
+                    & (Q(started_on__isnull=True) | Q(started_on__lt=prog))
+                )
+            )
             .only("pk", "plik", "plik_byl_zaszyfrowany")
         )
         for imp in qs.iterator():
