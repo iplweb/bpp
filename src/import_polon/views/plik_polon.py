@@ -1,10 +1,13 @@
 from braces.views import GroupRequiredMixin
+from django.contrib import messages
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.db import transaction
 from django.db.models import Q
 from django.http import HttpResponseRedirect
 from django.shortcuts import get_object_or_404
+from django.utils.decorators import method_decorator
 from django.utils.functional import cached_property
+from django.views.decorators.debug import sensitive_post_parameters
 from django.views.generic import DetailView, ListView
 from liveops.views import CreateLiveOperationView, RestartView
 
@@ -39,6 +42,11 @@ class ZapiszDoBazyMixin(LoginRequiredMixin, DetailView):
         # równoległe POST-y nie przejdą obu przez guard i nie odpalą podwójnego
         # zapisu — drugi czeka, po commicie widzi już zapisz_zmiany_do_bazy=True.
         self.object = self.get_object(self.get_queryset().select_for_update())
+        if self.object.blokada_ponownego_przebiegu:
+            # Plik był zabezpieczony hasłem i został usunięty — ponowny przebieg
+            # z zapisem nie ma czego czytać. Komunikat zamiast błędu.
+            messages.error(self.request, self.object.komunikat_braku_pliku)
+            return HttpResponseRedirect(self.object.get_absolute_url())
         # Guard: domknąć zapisem można tylko dry-run zakończony POMYŚLNIE —
         # użytkownik musiał zobaczyć podgląd. Odsiewa import w trakcie, zakończony
         # błędem oraz już zapisany do bazy (ochrona przed podwójnym zapisem).
@@ -102,7 +110,33 @@ class PokazImporty(BaseImportPlikuPolonMixin, ListView):
         return qset
 
 
-class UtworzImportPlikuPolon(BaseImportPlikuPolonMixin, CreateLiveOperationView):
+class UtworzImportZHaslemMixin:
+    """Wspólne dla formularzy importu z polem „Hasło do pliku”.
+
+    * ``sensitive_post_parameters`` — hasło nie trafi do raportu błędu Django
+      (e-mail do ADMINS, strona debug), gdyby żądanie skończyło się 500.
+    * Gdy po zapisaniu odszyfrowanego pliku coś pójdzie nie tak (np.
+      ``enqueue()`` przy niedostępnym brokerze), plik nie może zostać na
+      serwerze — przebieg, który by go skasował, nigdy nie ruszy.
+    """
+
+    @method_decorator(sensitive_post_parameters("haslo_do_pliku"))
+    def dispatch(self, request, *args, **kwargs):
+        return super().dispatch(request, *args, **kwargs)
+
+    def form_valid(self, form):
+        try:
+            return super().form_valid(form)
+        except Exception:
+            # Sprzątamy i przekazujemy wyjątek dalej (zgłosi go Django).
+            if form.instance.pk:
+                form.instance.usun_plik_jesli_byl_zaszyfrowany()
+            raise
+
+
+class UtworzImportPlikuPolon(
+    UtworzImportZHaslemMixin, BaseImportPlikuPolonMixin, CreateLiveOperationView
+):
     form_class = NowyImportForm
 
     def form_valid(self, form):
@@ -140,6 +174,15 @@ class _PkOwnerRestartMixin(GroupRequiredMixin, RestartView):
         return get_object_or_404(
             self.model, pk=self.kwargs["pk"], owner=self.request.user
         )
+
+    def post(self, request, *args, **kwargs):
+        operation = self.get_object()
+        if operation.blokada_ponownego_przebiegu:
+            # Bez pliku restart nie ma czego czytać — komunikat, nie wyjątek
+            # (i nie kasujemy wyników poprzedniego przebiegu).
+            messages.error(request, operation.komunikat_braku_pliku)
+            return HttpResponseRedirect(operation.get_absolute_url())
+        return super().post(request, *args, **kwargs)
 
 
 class RestartImportView(_PkOwnerRestartMixin):

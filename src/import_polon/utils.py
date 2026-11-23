@@ -1,7 +1,54 @@
+import logging
 import os.path
 import sys
+import time
 
 from bpp.zglaszanie_bledow import capture_exception
+
+logger = logging.getLogger(__name__)
+
+# Katalogi tymczasowe walidacji pliku importu (oryginał + odszyfrowana kopia
+# pliku z hasłem) — prefiks pozwala znaleźć te osierocone przez zabity proces.
+PREFIKS_KATALOGU_TYMCZASOWEGO = "bpp-import-polon-"
+MAKS_WIEK_KATALOGU_TYMCZASOWEGO_S = 60 * 60
+
+
+def usun_stare_katalogi_tymczasowe(maks_wiek_s=None, katalog=None):
+    """Kasuje katalogi ``PREFIKS_KATALOGU_TYMCZASOWEGO*`` w katalogu
+    tymczasowym starsze niż ``maks_wiek_s``. Normalnie sprząta je context
+    manager ``TemporaryDirectory``, ale SIGKILL/OOM pomija sprzątanie, a
+    w środku może leżeć odszyfrowana kopia pliku z hasłem. Zwraca liczbę
+    skasowanych katalogów; błąd przy jednym nie przerywa pozostałych."""
+    import shutil
+    import tempfile
+
+    if maks_wiek_s is None:
+        maks_wiek_s = MAKS_WIEK_KATALOGU_TYMCZASOWEGO_S
+    katalog = katalog or tempfile.gettempdir()
+    prog = time.time() - maks_wiek_s
+
+    usunieto = 0
+    try:
+        wpisy = list(os.scandir(katalog))
+    except OSError:
+        logger.exception("Nie da się odczytać katalogu tymczasowego %s", katalog)
+        return 0
+    for wpis in wpisy:
+        if not wpis.name.startswith(PREFIKS_KATALOGU_TYMCZASOWEGO):
+            continue
+        try:
+            if not wpis.is_dir(follow_symlinks=False):
+                continue
+            if wpis.stat(follow_symlinks=False).st_mtime >= prog:
+                continue
+            shutil.rmtree(wpis.path)
+            usunieto += 1
+        except FileNotFoundError:
+            pass  # sprzątnięty równolegle (inny proces / context manager)
+        except OSError:
+            logger.exception("Nie da się usunąć katalogu tymczasowego %s", wpis.path)
+    return usunieto
+
 
 # Znak wstawiany w miejsce wyciętego środka nazwy pliku.
 WIELOKROPEK = "…"

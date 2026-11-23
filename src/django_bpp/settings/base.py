@@ -985,6 +985,15 @@ CELERYBEAT_SCHEDULE = {
         "task": "oauth_mcp.tasks.usun_osierocone_aplikacje_oauth",
         "schedule": crontab(hour=1, minute=45),  # Daily at 1:45 AM
     },
+    # Siatka bezpieczeństwa dla importu POLON/absencji z pliku zabezpieczonego
+    # hasłem: odszyfrowaną kopię kasuje sam przebieg importu, ale nie gdy
+    # import anulowano przed startem, worker zginął twardo albo kasowanie
+    # się nie udało. Co 15 minut kasujemy pliki zakończonych importów oraz
+    # niezakończonych starszych niż doba.
+    "import-polon-usun-zalegle-pliki-z-haslem": {
+        "task": "import_polon.tasks.usun_zalegle_pliki_z_haslem_importu_polon",
+        "schedule": crontab(minute="*/15"),
+    },
     # Typowe dyscypliny uczelni (najczęściej przypisywane w pracach z ostatnich
     # lat) — podpowiedź w importerze i formularzu zgłoszeń, gdy autor nie ma
     # dyscypliny na rok pracy (FD#620). Wynik siedzi w cache na dobę; przy
@@ -1987,6 +1996,10 @@ ROLLBAR_SCRUB_FIELDS = [
     "orcid_client_secret",
     "dspace_api_password",
     "clarivate_password",
+    # hasło do zaszyfrowanego pliku Excel w imporcie POLON/absencji (pole
+    # formularza ``haslo_do_pliku`` + zmienna lokalna ``haslo`` w ramkach):
+    "haslo_do_pliku",
+    "haslo",
 ]
 
 ROLLBAR = {

@@ -7,14 +7,32 @@ from crispy_forms.layout import ButtonHolder, Submit
 from crispy_forms_foundation.layout import Column, Fieldset, Layout, Row
 from django import forms
 from django.core.exceptions import ValidationError
+from django.core.files.uploadedfile import SimpleUploadedFile
+from django.views.decorators.debug import sensitive_variables
 
 from bpp.util import (
     formdefaults_html_after,
     formdefaults_html_before,
     zaloguj_polkniety_wyjatek,
 )
+from import_common.exceptions import (
+    NiebezpiecznyPlikException,
+    NieprawidloweHasloDoPlikuException,
+)
+from import_common.util import (
+    INSTRUKCJA_USUNIECIA_HASLA,
+    HasloDoPliku,
+    czy_plik_zaszyfrowany,
+    odszyfruj_plik,
+    sprawdz_plik_importu,
+    sprawdz_rozmiar_pliku,
+)
 from import_polon.models import ImportPlikuAbsencji, ImportPlikuPolon
-from import_polon.utils import read_excel_or_csv_dataframe_guess_encoding
+from import_polon.utils import (
+    PREFIKS_KATALOGU_TYMCZASOWEGO,
+    read_excel_or_csv_dataframe_guess_encoding,
+    usun_stare_katalogi_tymczasowe,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -62,6 +80,10 @@ def validate_polon_headers(file_path):
 
         return missing_headers
 
+    except NiebezpiecznyPlikException as e:
+        # Plik za duży / bomba dekompresyjna / zabezpieczony hasłem — błąd
+        # użytkownika z gotowym komunikatem, nie zgłaszamy do monitoringu.
+        return [str(e)]
     except Exception as e:
         zaloguj_polkniety_wyjatek(
             f"Walidacja nagłówków pliku importu POLON (file_path={file_path!r})",
@@ -103,6 +125,10 @@ def validate_absencje_headers(file_path):
 
         return missing_headers
 
+    except NiebezpiecznyPlikException as e:
+        # Plik za duży / bomba dekompresyjna / zabezpieczony hasłem — błąd
+        # użytkownika z gotowym komunikatem, nie zgłaszamy do monitoringu.
+        return [str(e)]
     except Exception as e:
         zaloguj_polkniety_wyjatek(
             f"Walidacja nagłówków pliku importu absencji (file_path={file_path!r})",
@@ -111,7 +137,154 @@ def validate_absencje_headers(file_path):
         return [f"Błąd podczas odczytu nagłówków: {str(e)}"]
 
 
+ROZSZERZENIA_PLIKU_IMPORTU = [".xlsx", ".xls", ".csv"]
+
+KOMUNIKAT_PLIK_Z_HASLEM_FORMULARZ = (
+    "Plik jest zabezpieczony hasłem. Wpisz hasło w polu „Hasło do pliku” albo "
+    + INSTRUKCJA_USUNIECIA_HASLA
+)
+
+
+def _sprawdz_rozszerzenie(plik):
+    """Odrzuca plik o rozszerzeniu innym niż .xlsx/.xls/.csv. Zwraca
+    rozszerzenie (małymi literami)."""
+    file_extension = os.path.splitext(plik.name)[1].lower()
+    if file_extension not in ROZSZERZENIA_PLIKU_IMPORTU:
+        raise ValidationError(
+            "Niewłaściwy format pliku. "
+            "Proszę przesłać plik Excel (.xlsx, .xls) lub CSV (.csv). "
+            f"Otrzymano plik z rozszerzeniem: {file_extension}"
+        )
+    return file_extension
+
+
+def _komunikat_brakujacych_naglowkow(missing_headers):
+    error_msg = "Plik nie zawiera wymaganych nagłówków. Brakujące nagłówki:\n"
+    error_msg += "\n".join(f"- {header}" for header in missing_headers)
+    error_msg += "\n\nProszę upewnić się, że plik zawiera wszystkie wymagane kolumny."
+    return error_msg
+
+
+@sensitive_variables("haslo")
+def przygotuj_plik_importu(plik, haslo, waliduj_naglowki):
+    """Wspólna walidacja pliku dla importu POLON i absencji.
+
+    Zapisuje upload do pliku tymczasowego, rozpoznaje plik Excel zabezpieczony
+    hasłem i — gdy podano poprawne ``haslo`` — PODMIENIA go na odszyfrowaną
+    kopię o tej samej nazwie. Dzięki temu do ``FileField`` (a więc i do
+    zadania w tle, które czyta plik z dysku) trafia plik już bez hasła.
+    Na koniec sprawdza nagłówki funkcją ``waliduj_naglowki(sciezka)``.
+
+    Zwraca krotkę ``(plik, byl_zaszyfrowany)`` — plik do zapisania w modelu
+    (oryginalny albo odszyfrowany) i informację, czy był zabezpieczony hasłem
+    (wtedy jego kopię kasujemy z serwera po przetworzeniu).
+
+    Hasło nie trafia do żadnego komunikatu, logu ani zgłoszenia błędu: ta
+    funkcja go nie loguje, a ``odszyfruj_plik`` nie wkleja go do wyjątków.
+    """
+    file_extension = _sprawdz_rozszerzenie(plik)
+    byl_zaszyfrowany = False
+
+    # Nazwany plik na dysku jest potrzebny: ``sprawdz_plik_importu`` i odczyt
+    # nagłówków (pandas) działają na ścieżce i wybierają parser po
+    # rozszerzeniu. Katalog tymczasowy sprząta context manager — także przy
+    # wyjątku — razem z oryginałem i odszyfrowaną kopią.
+    # Katalogi osierocone przez zabity proces (SIGKILL/OOM pomija sprzątanie
+    # context managera) kasujemy przy kolejnym imporcie — w TYM procesie/
+    # kontenerze, bo /tmp nie jest współdzielony z workerem Celery.
+    usun_stare_katalogi_tymczasowe()
+
+    with tempfile.TemporaryDirectory(
+        prefix=PREFIKS_KATALOGU_TYMCZASOWEGO, dir=tempfile.gettempdir()
+    ) as katalog:
+        tmp_file_path = os.path.join(katalog, "plik" + file_extension)
+        with open(tmp_file_path, "wb") as tmp:
+            for chunk in plik.chunks():
+                tmp.write(chunk)
+
+        try:
+            # Ogólny limit rozmiaru PRZED czymkolwiek innym (także przed
+            # rozpoznawaniem szyfrowania), potem rozpoznanie pliku z hasłem —
+            # uszkodzony plik z hasłem daje tu komunikat, nie 500.
+            sprawdz_rozmiar_pliku(tmp_file_path)
+            zaszyfrowany = czy_plik_zaszyfrowany(tmp_file_path)
+        except NiebezpiecznyPlikException as e:
+            raise ValidationError(str(e)) from None
+
+        if zaszyfrowany:
+            if not haslo:
+                raise ValidationError(KOMUNIKAT_PLIK_Z_HASLEM_FORMULARZ)
+
+            try:
+                # ``odszyfruj_plik`` sam pilnuje (niższego) limitu rozmiaru
+                # pliku z hasłem; odszyfrowana kopia przejdzie niżej przez
+                # pełne ``sprawdz_plik_importu`` (rozmiar + bomba dekompresji).
+                odszyfrowany = odszyfruj_plik(tmp_file_path, haslo)
+            except NieprawidloweHasloDoPlikuException as e:
+                raise ValidationError(str(e)) from None
+            except NiebezpiecznyPlikException as e:
+                raise ValidationError(str(e)) from None
+
+            with open(tmp_file_path, "wb") as f:
+                f.write(odszyfrowany)
+
+            plik = SimpleUploadedFile(
+                plik.name,
+                odszyfrowany,
+                content_type=getattr(plik, "content_type", None),
+            )
+            byl_zaszyfrowany = True
+        # Hasło do niezaszyfrowanego pliku po prostu ignorujemy.
+
+        # Limity (rozmiar, bomba dekompresji, hasło) sprawdzamy tu jawnie —
+        # także dla odszyfrowanej kopii — żeby komunikat nie trafił do listy
+        # „brakujących nagłówków".
+        try:
+            sprawdz_plik_importu(tmp_file_path)
+        except NiebezpiecznyPlikException as e:
+            raise ValidationError(str(e)) from None
+
+        missing_headers = waliduj_naglowki(tmp_file_path)
+        if missing_headers:
+            raise ValidationError(_komunikat_brakujacych_naglowkow(missing_headers))
+
+    return plik, byl_zaszyfrowany
+
+
+class PoleHaslaDoPliku(forms.CharField):
+    """``CharField``, którego ``cleaned_data`` to ``HasloDoPliku`` — obiekt
+    nieujawniający wartości w ``repr`` (tracebacki w monitoringu błędów)."""
+
+    def clean(self, value):
+        return HasloDoPliku(super().clean(value))
+
+
+def pole_hasla_do_pliku():
+    """Opcjonalne pole na hasło do zaszyfrowanego pliku Excel. NIE jest
+    polem modelu — hasło żyje tylko w czasie walidacji formularza."""
+    return PoleHaslaDoPliku(
+        label="Hasło do pliku",
+        required=False,
+        strip=False,
+        help_text=(
+            "Tylko jeśli plik Excel jest zabezpieczony hasłem. Hasło służy "
+            "wyłącznie do odszyfrowania pliku — nie jest nigdzie zapisywane."
+        ),
+        widget=forms.PasswordInput(
+            render_value=False,
+            # „new-password" — inaczej przeglądarka wpisze tu z pamięci hasło
+            # logowania do BPP i potraktujemy je jako hasło do pliku.
+            attrs={"autocomplete": "new-password"},
+        ),
+    )
+
+
 class NowyImportAbsencjiForm(forms.ModelForm):
+    haslo_do_pliku = pole_hasla_do_pliku()
+
+    # Hasło musi być w ``cleaned_data``, zanim ``clean_plik`` otworzy plik.
+    field_order = ["haslo_do_pliku"]
+
     class Meta:
         model = ImportPlikuAbsencji
         fields = ["plik", "zapisz_zmiany_do_bazy"]
@@ -119,64 +292,14 @@ class NowyImportAbsencjiForm(forms.ModelForm):
     def clean_plik(self):
         plik = self.cleaned_data.get("plik")
         if plik:
-            # Check file extension
-            file_extension = os.path.splitext(plik.name)[1].lower()
-            valid_extensions = [".xlsx", ".xls", ".csv"]
-
-            if file_extension not in valid_extensions:
-                raise ValidationError(
-                    "Niewłaściwy format pliku. "
-                    "Proszę przesłać plik Excel (.xlsx, .xls) lub CSV (.csv). "
-                    f"Otrzymano plik z rozszerzeniem: {file_extension}"
-                )
-
-            # Check MIME type if available
-            if hasattr(plik, "content_type"):
-                valid_mime_types = [
-                    # xlsx
-                    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-                    "application/vnd.ms-excel",  # xls
-                    "text/csv",  # csv
-                    "application/csv",  # csv alternative
-                    "application/octet-stream",  # sometimes detected as this
-                ]
-                if plik.content_type not in valid_mime_types:
-                    # Don't reject based on MIME type alone if extension is valid
-                    # Some browsers may report incorrect MIME types
-                    if file_extension not in valid_extensions:
-                        raise ValidationError(
-                            "Niewłaściwy typ pliku. "
-                            "Proszę przesłać plik Excel (.xlsx, .xls) lub CSV."
-                        )
-
-            # Validate headers for absences import
-            # Save file temporarily to validate headers
-            with tempfile.NamedTemporaryFile(
-                delete=False, suffix=file_extension
-            ) as tmp_file:
-                for chunk in plik.chunks():
-                    tmp_file.write(chunk)
-                tmp_file_path = tmp_file.name
-
-            try:
-                missing_headers = validate_absencje_headers(tmp_file_path)
-                if missing_headers:
-                    error_msg = (
-                        "Plik nie zawiera wymaganych nagłówków. Brakujące nagłówki:\n"
-                    )
-                    error_msg += "\n".join(f"- {header}" for header in missing_headers)
-                    error_msg += (
-                        "\n\nProszę upewnić się, "
-                        "że plik zawiera wszystkie wymagane kolumny."
-                    )
-                    raise ValidationError(error_msg)
-            finally:
-                # Clean up temporary file
-                try:
-                    os.unlink(tmp_file_path)
-                except OSError:
-                    pass
-
+            # ``haslo_do_pliku`` jest czyszczone PRZED ``plik`` (``field_order``).
+            plik, byl_zaszyfrowany = przygotuj_plik_importu(
+                plik,
+                self.cleaned_data.get("haslo_do_pliku") or HasloDoPliku(),
+                validate_absencje_headers,
+            )
+            # Po przetworzeniu odszyfrowana kopia zostanie usunięta z serwera.
+            self.instance.plik_byl_zaszyfrowany = byl_zaszyfrowany
         return plik
 
     def __init__(self, *args, **kwargs):
@@ -189,6 +312,9 @@ class NowyImportAbsencjiForm(forms.ModelForm):
                 formdefaults_html_before(self),
                 Row(
                     Column("plik", css_class="large-12 small-12"),
+                ),
+                Row(
+                    Column("haslo_do_pliku", css_class="large-12 small-12"),
                 ),
                 Row(
                     Column("zapisz_zmiany_do_bazy", css_class="large-12 small-12"),
@@ -284,6 +410,11 @@ class WierszImportuPlikuPolonFilterForm(forms.Form):
 
 
 class NowyImportForm(forms.ModelForm):
+    haslo_do_pliku = pole_hasla_do_pliku()
+
+    # Hasło musi być w ``cleaned_data``, zanim ``clean_plik`` otworzy plik.
+    field_order = ["haslo_do_pliku"]
+
     class Meta:
         model = ImportPlikuPolon
         fields = [
@@ -297,64 +428,14 @@ class NowyImportForm(forms.ModelForm):
     def clean_plik(self):
         plik = self.cleaned_data.get("plik")
         if plik:
-            # Check file extension
-            file_extension = os.path.splitext(plik.name)[1].lower()
-            valid_extensions = [".xlsx", ".xls", ".csv"]
-
-            if file_extension not in valid_extensions:
-                raise ValidationError(
-                    "Niewłaściwy format pliku. "
-                    "Proszę przesłać plik Excel (.xlsx, .xls) lub CSV (.csv). "
-                    f"Otrzymano plik z rozszerzeniem: {file_extension}"
-                )
-
-            # Check MIME type if available
-            if hasattr(plik, "content_type"):
-                valid_mime_types = [
-                    # xlsx
-                    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-                    "application/vnd.ms-excel",  # xls
-                    "text/csv",  # csv
-                    "application/csv",  # csv alternative
-                    "application/octet-stream",  # sometimes detected as this
-                ]
-                if plik.content_type not in valid_mime_types:
-                    # Don't reject based on MIME type alone if extension is valid
-                    # Some browsers may report incorrect MIME types
-                    if file_extension not in valid_extensions:
-                        raise ValidationError(
-                            "Niewłaściwy typ pliku. "
-                            "Proszę przesłać plik Excel (.xlsx, .xls) lub CSV."
-                        )
-
-            # Validate headers for POLON import
-            # Save file temporarily to validate headers
-            with tempfile.NamedTemporaryFile(
-                delete=False, suffix=file_extension
-            ) as tmp_file:
-                for chunk in plik.chunks():
-                    tmp_file.write(chunk)
-                tmp_file_path = tmp_file.name
-
-            try:
-                missing_headers = validate_polon_headers(tmp_file_path)
-                if missing_headers:
-                    error_msg = (
-                        "Plik nie zawiera wymaganych nagłówków. Brakujące nagłówki:\n"
-                    )
-                    error_msg += "\n".join(f"- {header}" for header in missing_headers)
-                    error_msg += (
-                        "\n\nProszę upewnić się, "
-                        "że plik zawiera wszystkie wymagane kolumny."
-                    )
-                    raise ValidationError(error_msg)
-            finally:
-                # Clean up temporary file
-                try:
-                    os.unlink(tmp_file_path)
-                except OSError:
-                    pass
-
+            # ``haslo_do_pliku`` jest czyszczone PRZED ``plik`` (``field_order``).
+            plik, byl_zaszyfrowany = przygotuj_plik_importu(
+                plik,
+                self.cleaned_data.get("haslo_do_pliku") or HasloDoPliku(),
+                validate_polon_headers,
+            )
+            # Po przetworzeniu odszyfrowana kopia zostanie usunięta z serwera.
+            self.instance.plik_byl_zaszyfrowany = byl_zaszyfrowany
         return plik
 
     def __init__(self, *args, **kwargs):
@@ -381,6 +462,9 @@ class NowyImportForm(forms.ModelForm):
                 ),
                 Row(
                     Column("plik", css_class="large-12 small-12"),
+                ),
+                Row(
+                    Column("haslo_do_pliku", css_class="large-12 small-12"),
                 ),
                 formdefaults_html_after(self),
             ),
