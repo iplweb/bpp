@@ -3,20 +3,23 @@
 {% block content %}
   <h1>Import punktacji źródeł</h1>
   <p><a class="button" href="{% url 'import_punktacji_zrodel:new' %}">
-     <i class="fi-plus"></i> Nowy import</a></p>
+     <i class="fi-plus"></i> Nowy import (JCR: IF i kwartyl WoS)</a>
+     <a class="button" href="{% url 'import_punktacji_zrodel:new-scopus' %}">
+     <i class="fi-plus"></i> Nowy import CiteScore (Scopus)</a></p>
   <table>
-    <thead><tr><th>Utworzono</th><th>Rok</th><th>Status</th></tr></thead>
+    <thead><tr><th>Utworzono</th><th>Rodzaj pliku</th><th>Rok</th><th>Status</th></tr></thead>
     <tbody>
     {% for op in object_list %}
       <tr>
         <td><a href="{{ op.get_absolute_url }}">
             {{ op.created_on }}</a></td>
+        <td>{{ op.get_rodzaj_pliku_display }}</td>
         <td>{{ op.rok|default:"—" }}</td>
         <td>{% if op.finished_successfully %}gotowe
             {% elif op.started_on %}w toku{% else %}oczekuje{% endif %}</td>
       </tr>
     {% empty %}
-      <tr><td colspan="3">Brak importów.</td></tr>
+      <tr><td colspan="4">Brak importów.</td></tr>
     {% endfor %}
     </tbody>
   </table>

@@ -1,0 +1,135 @@
+{% extends "base.html" %}
+{% block title %}Import CiteScore (Scopus) — wyniki{% endblock %}
+{% block breadcrumbs %}
+    {{ block.super }}
+    <li><a href="{% url "import_punktacji_zrodel:index" %}">import punktacji źródeł</a></li>
+    <li class="current">wyniki importu CiteScore</li>
+{% endblock %}
+{% block content %}
+  <h1>Wyniki importu CiteScore (Scopus) — rok {{ rok }}</h1>
+
+  <div class="callout">
+    <span class="label secondary">Wszystkich: {{ total_count }}</span>
+    <span class="label">Do aktualizacji: {{ do_aktualizacji_count }}</span>
+    <span class="label warning">Do rozstrzygnięcia: {{ do_rozstrzygniecia_count }}</span>
+    <span class="label alert">Niedopasowanych: {{ niedopasowane_count }}</span>
+  </div>
+
+  {% if byl_dry_run %}
+    <div class="callout warning">
+      <p>To jest <strong>podgląd</strong> — nic nie zapisano do bazy.</p>
+      {% if do_rozstrzygniecia_count %}
+        <p><strong>{{ do_rozstrzygniecia_count }}</strong> wierszy pasuje do
+           kilku źródeł (albo kilka wierszy pasuje do jednego źródła).
+           <a href="?tylko_do_rozstrzygniecia=1">Pokaż je</a> i przy każdym
+           wybierz właściwe źródło albo „pomiń”. Wiersze bez decyzji
+           <strong>nie zostaną zapisane</strong>.</p>
+      {% endif %}
+      <form method="post"
+            action="{% url 'import_punktacji_zrodel:zatwierdz' object.pk %}">
+        {% csrf_token %}
+        <button type="submit" class="button alert">
+          Zatwierdź i zapisz do bazy</button>
+      </form>
+    </div>
+  {% else %}
+    <div class="callout success">
+      <p>Zmiany zapisane{% if do_rozstrzygniecia_count %} — poza
+         <strong>{{ do_rozstrzygniecia_count }}</strong> wierszami, które
+         zostały bez decyzji{% endif %}. Aby przenieść kwartyle Scopus na prace
+         (publikacje):</p>
+      <a class="button"
+         href="{% url 'rozbieznosci:index' metryka='kw_scopus' %}?rok_od={{ rok }}&rok_do={{ rok }}">
+        rozbieżności kwartyla Scopus za {{ rok }}</a>
+    </div>
+  {% endif %}
+
+  {% if niedopasowane_count %}
+    <p><a class="button secondary"
+          href="{% url 'import_punktacji_zrodel:niedopasowane-csv' object.pk %}">
+       <i class="fi-download"></i> Pobierz listę niedopasowanych ({{ niedopasowane_count }})</a></p>
+  {% endif %}
+
+  <form method="get" class="callout">
+    <label><input type="checkbox" name="tylko_do_aktualizacji" value="1"
+      {% if request.GET.tylko_do_aktualizacji %}checked{% endif %}>
+      tylko do aktualizacji</label>
+    <label><input type="checkbox" name="tylko_do_rozstrzygniecia" value="1"
+      {% if request.GET.tylko_do_rozstrzygniecia %}checked{% endif %}>
+      tylko do rozstrzygnięcia</label>
+    <label><input type="checkbox" name="tylko_niedopasowane" value="1"
+      {% if request.GET.tylko_niedopasowane %}checked{% endif %}>
+      tylko niedopasowane</label>
+    <button type="submit" class="button">Filtruj</button>
+  </form>
+
+  <table>
+    <thead><tr>
+      <th>#</th><th>Czasopismo (plik)</th><th>Źródło w BPP</th>
+      <th>Rezultat</th>
+    </tr></thead>
+    <tbody>
+    {% for w in object_list %}
+      <tr {% if w.do_rozstrzygniecia %}class="warning"{% endif %}>
+        <td>{{ w.nr_wiersza }}</td>
+        <td>{{ w.dane_z_xls.nazwa }}<br>
+            <small>{{ w.dane_z_xls.issn|default:"" }}
+                   {{ w.dane_z_xls.e_issn|default:"" }}
+                   {% if w.dane_z_xls.wydawca %}· {{ w.dane_z_xls.wydawca }}{% endif %}</small><br>
+            <small>CiteScore: {{ w.dane_z_xls.citescore|default:"—" }},
+                   percentyl: {{ w.dane_z_xls.percentyl|default_if_none:"—" }}</small></td>
+        <td>
+          {% if w.dane_z_xls.niejednoznaczny %}
+            {% if byl_dry_run %}
+              <form method="post"
+                    action="{% url 'import_punktacji_zrodel:wybierz-zrodlo' object.pk w.pk %}">
+                {% csrf_token %}
+                <input type="hidden" name="filtry" value="{{ biezacy_adres }}">
+                {% for z in w.kandydaci_zrodla %}
+                  <label>
+                    <input type="radio" name="zrodlo" value="{{ z.pk }}"
+                           {% if w.wybor == z.pk %}checked{% endif %}>
+                    <strong>{{ z.nazwa }}</strong>
+                    <a href="{% url 'admin:bpp_zrodlo_change' z.pk %}"
+                       target="_blank" rel="noopener">(otwórz)</a><br>
+                    <small>ISSN: {{ z.issn|default:"—" }},
+                           E-ISSN: {{ z.e_issn|default:"—" }},
+                           wydawca: {{ z.wydawca|default:"—" }},
+                           prac: {{ z.liczba_prac }}</small>
+                  </label>
+                {% endfor %}
+                <label>
+                  <input type="radio" name="zrodlo" value="pomin"
+                         {% if w.pominiety %}checked{% endif %}>
+                  pomiń ten wiersz
+                </label>
+                <button type="submit" class="button small">Zapisz wybór</button>
+              </form>
+            {% else %}
+              {% if w.zrodlo %}{{ w.zrodlo.nazwa }}{% else %}—{% endif %}
+            {% endif %}
+          {% elif w.zrodlo %}
+            <a href="{% url 'admin:bpp_zrodlo_change' w.zrodlo.pk %}"
+               target="_blank" rel="noopener">{{ w.zrodlo.nazwa }}</a>
+          {% else %}—{% endif %}
+        </td>
+        <td>{{ w.rezultat|linebreaksbr }}</td>
+      </tr>
+    {% empty %}
+      <tr><td colspan="4">Brak wierszy.</td></tr>
+    {% endfor %}
+    </tbody>
+  </table>
+
+  {% if is_paginated %}
+    <p>
+      {% if page_obj.has_previous %}
+        <a href="?{% if filtry %}{{ filtry }}&{% endif %}page={{ page_obj.previous_page_number }}">« poprzednia</a>
+      {% endif %}
+      strona {{ page_obj.number }} z {{ page_obj.paginator.num_pages }}
+      {% if page_obj.has_next %}
+        <a href="?{% if filtry %}{{ filtry }}&{% endif %}page={{ page_obj.next_page_number }}">następna »</a>
+      {% endif %}
+    </p>
+  {% endif %}
+{% endblock %}
