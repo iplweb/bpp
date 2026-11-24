@@ -36,6 +36,7 @@ from pbn_api.exceptions import (
 )
 from pbn_api.models.pbn_odpowiedzi_niepozadane import PBNOdpowiedziNiepozadane
 from pbn_api.models.sentdata import SentData
+from pbn_api.porownanie_autorow import porownaj_autorow
 
 logger = logging.getLogger(__name__)
 
@@ -701,6 +702,10 @@ class PublicationSyncMixin(StatementsMixin):
         # KROK 2: pobierz lokalnie Publication (obiekt mongodb)
         publication = self.download_publication(objectId=objectId)
 
+        # FD#509: PBN potrafi zapisać mniej autorów, niż wysłaliśmy — powiedz
+        # to wprost, zamiast kończyć samym „wysłano poprawnie”.
+        self._ostrzez_o_brakujacych_autorach(pub, js, publication, notificator)
+
         # Update SentData with the publication link now that it exists
         try:
             sent_data = SentData.objects.get_for_rec(pub, self.uczelnia)
@@ -768,6 +773,28 @@ class PublicationSyncMixin(StatementsMixin):
             self._sync_fee_if_changed(pub, notificator)
 
         return publication
+
+    def _ostrzez_o_brakujacych_autorach(self, pub, js, publication, notificator):
+        """Porównuje autorów wysłanych z zapisanymi przez PBN (FD#509).
+
+        Wspólne dla każdej drogi przez ``sync_publication`` (formularz, akcja
+        zbiorcza, kolejka eksportu, komendy): ostrzeżenie idzie do
+        ``notificator`` (kolejka dopisuje je do komunikatu wpisu) i do logu.
+        """
+        porownanie = porownaj_autorow(js, publication)
+        if porownanie is None or not porownanie.niepelne:
+            return
+
+        komunikat = porownanie.komunikat()
+        logger.warning(
+            "Wysyłka do PBN rekordu %s (pk=%s, PBN %s): %s",
+            pub,
+            pub.pk,
+            publication.pk,
+            komunikat,
+        )
+        if notificator is not None:
+            notificator.warning(komunikat)
 
     def eventually_coerce_to_publication(self, pub: Model | str) -> Model:
         if type(pub) is str:

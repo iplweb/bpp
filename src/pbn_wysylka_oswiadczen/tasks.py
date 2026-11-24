@@ -11,7 +11,10 @@ from queryset_sequence import QuerySetSequence
 from bpp.models import Uczelnia
 from bpp.util import zaloguj_polkniety_wyjatek
 from pbn_api.adapters.wydawnictwo import WydawnictwoPBNAdapter
-from pbn_api.adapters.wydawnictwo_autor import powiazania_bez_identyfikatora_osoby
+from pbn_api.adapters.wydawnictwo_autor import (
+    ostrzezenie_o_pominietych_oswiadczeniach,
+    powiazania_bez_identyfikatora_osoby,
+)
 from pbn_api.exceptions import (
     AutorBezIdentyfikatoraPBN,
     CannotDeleteStatementsException,
@@ -202,12 +205,25 @@ def process_single_publication(publication, pbn_client, task, log_model):
     bez_identyfikatora = list(
         powiazania_bez_identyfikatora_osoby(publication.autorzy_set)
     )
-    if bez_identyfikatora:
+    uczelnia = getattr(pbn_client, "uczelnia", None)
+    wolno_bez_identyfikatora = (
+        getattr(uczelnia, "pbn_wysylaj_bez_identyfikatora_autora", False) is True
+    )
+    if bez_identyfikatora and not wolno_bez_identyfikatora:
         log_entry.error_message = (
             f"Nie wysłano: {AutorBezIdentyfikatoraPBN(bez_identyfikatora)}"
         )
         log_entry.save()
         return "error", log_entry
+
+    # Uczelnia pozwala wysyłać mimo braku identyfikatora: oświadczenia idą
+    # niepełne, a ostrzeżenie „M z N” zostaje w logu tej pracy także po
+    # udanej wysyłce.
+    ostrzezenie = ""
+    if bez_identyfikatora:
+        ostrzezenie = "UWAGA: " + ostrzezenie_o_pominietych_oswiadczeniach(
+            publication, bez_identyfikatora
+        )
 
     # Step 1: Always delete existing statements
     _delete_existing_statements(publication, pbn_client, log_entry)
@@ -246,7 +262,11 @@ def process_single_publication(publication, pbn_client, task, log_model):
     log_entry.json_sent = json_data
 
     # Step 4: Send statements with retry
-    return _send_statements_with_retry(pbn_client, json_data, log_entry)
+    status, log_entry = _send_statements_with_retry(pbn_client, json_data, log_entry)
+    if ostrzezenie and status == "success":
+        log_entry.error_message = ostrzezenie
+        log_entry.save()
+    return status, log_entry
 
 
 def _update_task_counter(task, status):

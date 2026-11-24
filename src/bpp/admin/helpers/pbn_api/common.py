@@ -6,6 +6,10 @@ from django.utils.html import format_html, format_html_join
 from bpp.admin.helpers import link_do_obiektu
 from bpp.zglaszanie_bledow import capture_exception
 from import_common.normalization import normalize_isbn
+from pbn_api.adapters.wydawnictwo_autor import (
+    powiazania_bez_identyfikatora_osoby,
+    powiazania_do_oswiadczenia,
+)
 from pbn_api.exceptions import (
     AccessDeniedException,
     AutorBezIdentyfikatoraPBN,
@@ -75,6 +79,63 @@ def komunikat_autorzy_bez_identyfikatora(obj, autorzy):
         "odepnij jej dyscyplinę albo popraw afiliację w tej pracy. ",
         link_do_obiektu(obj),
         lista,
+    )
+
+
+def komunikat_pominiete_oswiadczenia(obj, wszystkich, pominieci):
+    """Ostrzeżenie HTML po wysyłce pracy z niepełnymi oświadczeniami (FD#509).
+
+    Uczelnia ma włączone „Wysyłaj prace, gdy autor nie ma identyfikatora
+    w PBN”, więc praca poszła — ale bez oświadczeń autorów bez odpowiednika
+    w PBN i bez ORCID. Redaktor ma zobaczyć liczby i nazwiska, a nie sam
+    komunikat o sukcesie.
+
+    :param obj: wysłana praca (rekord BPP).
+    :param wszystkich: ilu autorów pracy ma dostać oświadczenie.
+    :param pominieci: powiązania autor–rekord, których oświadczeń nie wysłano.
+    """
+    lista = format_html_join(
+        "",
+        '<li><a href="{}" target="_blank">{}</a> (dyscyplina: {})</li>',
+        (
+            (
+                reverse("admin:bpp_autor_change", args=(wa.autor_id,)),
+                wa.autor,
+                wa.dyscyplina_naukowa,
+            )
+            for wa in pominieci
+        ),
+    )
+    return format_html(
+        'UWAGA: oświadczenia rekordu "{}" w PBN są NIEPEŁNE. Z {} autorów '
+        "z przypiętą dyscypliną do PBN trafiło {} oświadczeń, pominięto {}. "
+        "Bez oświadczenia zostali autorzy, którzy nie mają ani odpowiednika "
+        "w PBN, ani identyfikatora ORCID: <ul>{}</ul>Żeby dosłać brakujące "
+        "oświadczenia, kliknij autora, ustaw mu „Odpowiednik w PBN” albo "
+        "wpisz „Identyfikator ORCID”, a potem wyślij pracę ponownie. ",
+        link_do_obiektu(obj),
+        wszystkich,
+        wszystkich - len(pominieci),
+        len(pominieci),
+        lista,
+    )
+
+
+def ostrzez_o_pominietych_oswiadczeniach(obj, uczelnia, notificator):
+    """Po udanej wysyłce: ostrzeż, jeśli część oświadczeń nie poszła (FD#509).
+
+    Tylko dla uczelni z włączonym ``pbn_wysylaj_bez_identyfikatora_autora`` —
+    bez tego ustawienia taka praca w ogóle nie zostałaby wysłana.
+    """
+    if not uczelnia.pbn_wysylaj_bez_identyfikatora_autora:
+        return
+    pominieci = list(powiazania_bez_identyfikatora_osoby(obj.autorzy_set))
+    if not pominieci:
+        return
+    notificator.warning(
+        komunikat_pominiete_oswiadczenia(
+            obj, powiazania_do_oswiadczenia(obj.autorzy_set).count(), pominieci
+        )
     )
 
 
@@ -444,5 +505,8 @@ def sprobuj_wyslac_do_pbn(  # noqa: C901
             publication_link,
         ),
     )
+
+    # PO komunikacie o sukcesie: liczby dotyczą tego, co właśnie trafiło do PBN.
+    ostrzez_o_pominietych_oswiadczeniach(obj, uczelnia, notificator)
 
     return sent_data

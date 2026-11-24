@@ -294,6 +294,30 @@
                     </div>
                 {% endif %}
 
+                {% if autorzy_pominieci_w_oswiadczeniach %}
+                    <div class="callout warning" id="autorzy-pominieci-w-oswiadczeniach">
+                        <h4>Oświadczenia w PBN są niepełne</h4>
+                        <p>
+                            Praca została wysłana do PBN, ale z {{ oswiadczen_do_wyslania }} autorów
+                            z przypiętą dyscypliną do PBN trafiło {{ oswiadczen_wyslanych }} oświadczeń.
+                            Bez oświadczenia zostali autorzy, którzy nie mają ani odpowiednika w PBN,
+                            ani identyfikatora ORCID:
+                        </p>
+                        <ul>
+                            {% for wa in autorzy_pominieci_w_oswiadczeniach %}
+                                <li>
+                                    <a href="{% url 'admin:bpp_autor_change' wa.autor_id %}" target="_blank">{{ wa.autor }}</a>
+                                    (dyscyplina: {{ wa.dyscyplina_naukowa }})
+                                </li>
+                            {% endfor %}
+                        </ul>
+                        <p>
+                            Żeby dosłać brakujące oświadczenia: kliknij autora, ustaw mu „Odpowiednik
+                            w PBN” albo wpisz „Identyfikator ORCID”, a potem wyślij pracę ponownie.
+                        </p>
+                    </div>
+                {% endif %}
+
                 {% if sent_data %}
                     <div class="callout {% if export_queue_item.zakonczono_pomyslnie == True %}success{% elif export_queue_item.zakonczono_pomyslnie == False %}alert{% else %}secondary{% endif %}">
                         <h4>Linki do wyslanego rekordu</h4>

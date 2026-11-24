@@ -164,3 +164,44 @@ def test_fd509_kolejka_po_poprawieniu_autora_ponowna_wysylka_przechodzi(
     oswiadczenia = wyslane[PBN_POST_PUBLICATIONS_URL]["body"]["statements"]
     assert [s["personOrcidId"] for s in oswiadczenia] == [ORCID]
     assert PBN_POST_PUBLICATION_NO_STATEMENTS_URL not in wyslane
+
+
+@pytest.mark.django_db
+def test_fd509_kolejka_opcja_wlaczona_sukces_z_ostrzezeniem(
+    wpis,
+    praca_z_autorem_bez_identyfikatorow,
+    pbn_przyjmie_wszystko,
+    pbn_uczelnia,
+    client,
+):
+    """Uczelnia pozwala wysyłać mimo braku identyfikatora: wpis kończy się
+    sukcesem, ale komunikat i strona wpisu mówią, że oświadczenia są niepełne."""
+    autor = praca_z_autorem_bez_identyfikatorow.autorzy_set.get().autor
+    # Ten sam obiekt uczelni trzyma zamockowany klient PBN (``.uczelnia``),
+    # więc ustawiamy na nim, a wpis kolejki odświeżamy z bazy.
+    pbn_uczelnia.pbn_wysylaj_bez_identyfikatora_autora = True
+    pbn_uczelnia.save()
+    wpis.refresh_from_db()
+
+    wynik = wpis.send_to_pbn()
+
+    assert wynik == SendStatus.FINISHED_OKAY
+    wpis.refresh_from_db()
+    assert wpis.zakonczono_pomyslnie is True
+    assert "NIEPEŁNE" in wpis.komunikat
+    assert "Z 1 autorów" in wpis.komunikat
+    assert "trafiło 0 oświadczeń" in wpis.komunikat
+    assert str(autor) in wpis.komunikat
+
+    client.force_login(wpis.zamowil)
+    url = reverse("pbn_export_queue:export-queue-detail", args=[wpis.pk])
+    tresc = client.get(url).content.decode()
+    assert 'id="autorzy-pominieci-w-oswiadczeniach"' in tresc
+    assert 'id="autorzy-bez-identyfikatora"' not in tresc
+    assert reverse("admin:bpp_autor_change", args=(autor.pk,)) in tresc
+
+    # Po uzupełnieniu ORCID ostrzeżenie znika (liczone na żywo).
+    autor.orcid = ORCID
+    autor.save()
+    tresc = client.get(url).content.decode()
+    assert 'id="autorzy-pominieci-w-oswiadczeniach"' not in tresc

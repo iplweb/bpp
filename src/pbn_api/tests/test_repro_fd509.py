@@ -38,7 +38,9 @@ from fixtures.pbn_api import (
 from pbn_api.adapters.wydawnictwo import WydawnictwoPBNAdapter
 from pbn_api.adapters.wydawnictwo_autor import (
     WydawnictwoAutorToStatementPBNAdapter,
+    ostrzezenie_o_pominietych_oswiadczeniach,
     powiazania_bez_identyfikatora_osoby,
+    powiazania_do_oswiadczenia,
 )
 from pbn_api.exceptions import (
     AutorBezIdentyfikatoraPBN,
@@ -284,9 +286,7 @@ def test_fd509_jeden_z_dwoch_autorow_bez_identyfikatora_blokuje_cala_prace(
     bledy = [tresc for poziom, tresc in komunikaty if "error" in poziom]
     assert len(bledy) == 1, komunikaty
     assert str(autor_jan_kowalski) in bledy[0]
-    assert (
-        reverse("admin:bpp_autor_change", args=(kompletny.autor_id,)) not in bledy[0]
-    )
+    assert reverse("admin:bpp_autor_change", args=(kompletny.autor_id,)) not in bledy[0]
 
 
 @pytest.mark.django_db
@@ -520,3 +520,223 @@ def test_fd509_komenda_zestawienie(
     out = StringIO()
     call_command("pbn_oswiadczenia_bez_identyfikatora", stdout=out)
     assert "Prace z zatrzymaną wysyłką do PBN: 0;" in out.getvalue()
+
+
+# --------------------------------------------------------------------------
+# Ustawienie uczelni „Wysyłaj prace, gdy autor nie ma identyfikatora w PBN”
+# --------------------------------------------------------------------------
+
+
+def _dodaj_autora_bez_identyfikatorow(praca, autor, jednostka, dyscyplina):
+    Autor_Dyscyplina.objects.create(
+        autor=autor, rok=praca.rok, dyscyplina_naukowa=dyscyplina
+    )
+    praca.dodaj_autora(autor, jednostka, dyscyplina_naukowa=dyscyplina)
+    type(autor).objects.filter(pk=autor.pk).update(pbn_uid=None, orcid=None)
+
+
+@pytest.mark.django_db
+def test_fd509_opcja_domyslnie_wylaczona(pbn_uczelnia):
+    assert pbn_uczelnia.pbn_wysylaj_bez_identyfikatora_autora is False
+
+
+@pytest.mark.django_db
+def test_fd509_opcja_wlaczona_wysyla_i_ostrzega_ile_oswiadczen(
+    pbn_wydawnictwo_zwarte_z_autorem_z_dyscyplina,
+    pbn_client,
+    pbn_uczelnia,
+    rf,
+    autor_jan_kowalski,
+    dyscyplina1,
+):
+    """Uczelnia świadomie pozwala wysyłać: praca idzie z JEDNYM oświadczeniem
+    z dwóch, a redaktor dostaje ostrzeżenie z liczbami i pominiętym autorem."""
+    praca = pbn_wydawnictwo_zwarte_z_autorem_z_dyscyplina
+    kompletny = _ustaw_autora(praca, pbn_uid=True, orcid=False)
+    _dodaj_autora_bez_identyfikatorow(
+        praca, autor_jan_kowalski, kompletny.jednostka, dyscyplina1
+    )
+    pbn_uczelnia.pbn_wysylaj_bez_identyfikatora_autora = True
+    pbn_uczelnia.save()
+    _pbn_przyjmie_wszystko(pbn_client)
+
+    komunikaty = _wyslij_z_formularza(rf, praca, pbn_client)
+
+    wyslane = pbn_client.transport.input_values
+    oswiadczenia = wyslane[PBN_POST_PUBLICATIONS_URL]["body"]["statements"]
+    assert [s["personObjectId"] for s in oswiadczenia] == [kompletny.autor.pbn_uid_id]
+    assert len(wyslane[PBN_POST_PUBLICATIONS_URL]["body"]["authors"]) == 2
+
+    assert not [tresc for poziom, tresc in komunikaty if "error" in poziom]
+    assert any("zaktualizowane" in tresc for _, tresc in komunikaty)
+    ostrzezenia = [
+        tresc
+        for poziom, tresc in komunikaty
+        if "warning" in poziom and "NIEPEŁNE" in tresc
+    ]
+    assert len(ostrzezenia) == 1, komunikaty
+    ostrzezenie = ostrzezenia[0]
+    assert "Z 2 autorów" in ostrzezenie
+    assert "trafiło 1 oświadczeń" in ostrzezenie
+    assert "pominięto 1" in ostrzezenie
+    assert str(autor_jan_kowalski) in ostrzezenie
+    assert reverse("admin:bpp_autor_change", args=(autor_jan_kowalski.pk,)) in (
+        ostrzezenie
+    )
+    assert (
+        reverse("admin:bpp_autor_change", args=(kompletny.autor_id,)) not in ostrzezenie
+    )
+
+
+@pytest.mark.django_db
+def test_fd509_opcja_wlaczona_komplet_identyfikatorow_bez_ostrzezenia(
+    pbn_wydawnictwo_zwarte_z_autorem_z_dyscyplina, pbn_client, pbn_uczelnia, rf
+):
+    praca = pbn_wydawnictwo_zwarte_z_autorem_z_dyscyplina
+    _ustaw_autora(praca, pbn_uid=True, orcid=False)
+    pbn_uczelnia.pbn_wysylaj_bez_identyfikatora_autora = True
+    pbn_uczelnia.save()
+    _pbn_przyjmie_wszystko(pbn_client)
+
+    komunikaty = _wyslij_z_formularza(rf, praca, pbn_client)
+
+    assert PBN_POST_PUBLICATIONS_URL in _wyslane_do_pbn(pbn_client)
+    assert not any("NIEPEŁNE" in tresc for _, tresc in komunikaty)
+
+
+@pytest.mark.django_db
+def test_fd509_opcja_wlaczona_jedyny_autor_dalej_statements_missing(
+    pbn_wydawnictwo_zwarte_z_autorem_z_dyscyplina, pbn_uczelnia
+):
+    """Opcja nie zastępuje „Wysyłaj prace bez oświadczeń”: gdy wypadną WSZYSTKIE
+    oświadczenia, artykuł/rozdział dalej nie idzie bez tamtej zgody."""
+    praca = pbn_wydawnictwo_zwarte_z_autorem_z_dyscyplina
+    _ustaw_autora(praca, pbn_uid=False, orcid=False)
+    pbn_uczelnia.pbn_wysylaj_bez_identyfikatora_autora = True
+    pbn_uczelnia.pbn_wysylaj_bez_oswiadczen = False
+    pbn_uczelnia.save()
+
+    adapter = WydawnictwoPBNAdapter(praca, uczelnia=pbn_uczelnia)
+    if adapter.get_type() in (adapter.ARTICLE, adapter.CHAPTER):
+        with pytest.raises(StatementsMissing):
+            adapter.pbn_get_json()
+    else:
+        assert "statements" not in adapter.pbn_get_json()
+
+
+@pytest.mark.django_db
+def test_fd509_adapter_bez_uczelni_blokuje(
+    pbn_wydawnictwo_zwarte_z_autorem_z_dyscyplina, pbn_uczelnia
+):
+    """Adapter zbudowany bez uczelni nie wie o zgodzie — bezpiecznie blokuje."""
+    praca = pbn_wydawnictwo_zwarte_z_autorem_z_dyscyplina
+    _ustaw_autora(praca, pbn_uid=False, orcid=False)
+    pbn_uczelnia.pbn_wysylaj_bez_identyfikatora_autora = True
+    pbn_uczelnia.save()
+
+    with pytest.raises(AutorBezIdentyfikatoraPBN):
+        WydawnictwoPBNAdapter(praca).sprawdz_identyfikatory_autorow()
+
+
+@pytest.mark.django_db
+def test_fd509_opcja_wlaczona_adapter_zostawia_slad_w_logu(
+    pbn_wydawnictwo_zwarte_z_autorem_z_dyscyplina, pbn_uczelnia, caplog
+):
+    """Drogi bez redaktora przy ekranie (integrator, komendy): ślad w logu."""
+    praca = pbn_wydawnictwo_zwarte_z_autorem_z_dyscyplina
+    wa = _ustaw_autora(praca, pbn_uid=False, orcid=False)
+    pbn_uczelnia.pbn_wysylaj_bez_identyfikatora_autora = True
+    pbn_uczelnia.save()
+
+    with caplog.at_level("WARNING", logger="pbn_api.adapters.wydawnictwo"):
+        WydawnictwoPBNAdapter(
+            praca, uczelnia=pbn_uczelnia
+        ).sprawdz_identyfikatory_autorow()
+
+    assert "z 1 autorów" in caplog.text
+    assert "trafi 0 oświadczeń" in caplog.text
+    assert str(wa.autor) in caplog.text
+
+
+@pytest.mark.django_db
+def test_fd509_ostrzezenie_liczy_tylko_autorow_do_oswiadczenia(
+    pbn_wydawnictwo_zwarte_z_autorem_z_dyscyplina, autor_jan_kowalski, dyscyplina1
+):
+    """Mianownik to autorzy, którzy MAJĄ dostać oświadczenie — autor
+    z odpiętą dyscypliną do niego nie wchodzi."""
+    praca = pbn_wydawnictwo_zwarte_z_autorem_z_dyscyplina
+    kompletny = _ustaw_autora(praca, pbn_uid=True, orcid=False)
+    assert ostrzezenie_o_pominietych_oswiadczeniach(praca) is None
+
+    _dodaj_autora_bez_identyfikatorow(
+        praca, autor_jan_kowalski, kompletny.jednostka, dyscyplina1
+    )
+    assert powiazania_do_oswiadczenia(praca.autorzy_set).count() == 2
+    tekst = ostrzezenie_o_pominietych_oswiadczeniach(praca)
+    assert "z 2 autorów" in tekst
+    assert "trafi 1 oświadczeń" in tekst
+    assert str(autor_jan_kowalski) in tekst
+
+    praca.autorzy_set.filter(autor=autor_jan_kowalski).update(przypieta=False)
+    assert powiazania_do_oswiadczenia(praca.autorzy_set).count() == 1
+    assert ostrzezenie_o_pominietych_oswiadczeniach(praca) is None
+
+
+@pytest.mark.django_db
+def test_fd509_opcja_wlaczona_masowa_wysylka_oswiadczen_idzie_z_ostrzezeniem(
+    pbn_wydawnictwo_zwarte_z_autorem_z_dyscyplina,
+    pbn_uczelnia,
+    autor_jan_kowalski,
+    dyscyplina1,
+):
+    from pbn_wysylka_oswiadczen import tasks
+    from pbn_wysylka_oswiadczen.models import PbnWysylkaLog, PbnWysylkaOswiadczenTask
+
+    praca = pbn_wydawnictwo_zwarte_z_autorem_z_dyscyplina
+    kompletny = _ustaw_autora(praca, pbn_uid=True, orcid=False)
+    _dodaj_autora_bez_identyfikatorow(
+        praca, autor_jan_kowalski, kompletny.jednostka, dyscyplina1
+    )
+    pbn_uczelnia.pbn_wysylaj_bez_identyfikatora_autora = True
+    pbn_uczelnia.save()
+    klient = MagicMock()
+    klient.uczelnia = pbn_uczelnia
+    klient.post_discipline_statements.return_value = {"status": "ok"}
+    zadanie = baker.make(PbnWysylkaOswiadczenTask)
+    dane = {"publicationUuid": "x", "statements": [{"personObjectId": "1"}]}
+
+    with patch.object(
+        tasks.WydawnictwoPBNAdapter, "pbn_get_api_statements", return_value=dane
+    ):
+        status, wpis = tasks.process_single_publication(
+            praca, klient, zadanie, PbnWysylkaLog
+        )
+
+    assert status == "success"
+    klient.post_discipline_statements.assert_called_once()
+    assert wpis.error_message.startswith("UWAGA: ")
+    assert "z 2 autorów" in wpis.error_message
+    assert str(autor_jan_kowalski) in wpis.error_message
+
+
+@pytest.mark.django_db
+def test_fd509_opcja_wlaczona_komenda_wysylki_oswiadczen_idzie_z_ostrzezeniem(
+    pbn_wydawnictwo_zwarte_z_autorem_z_dyscyplina, pbn_uczelnia
+):
+    from pbn_api.management.commands import pbn_wyslij_oswiadczenia_instytucji as cmd
+
+    praca = pbn_wydawnictwo_zwarte_z_autorem_z_dyscyplina
+    wa = _ustaw_autora(praca, pbn_uid=False, orcid=False)
+    pbn_uczelnia.pbn_wysylaj_bez_identyfikatora_autora = True
+    pbn_uczelnia.save()
+    klient = MagicMock()
+    klient.uczelnia = pbn_uczelnia
+
+    with patch.object(
+        cmd.WydawnictwoPBNAdapter, "pbn_get_api_statements", return_value=None
+    ):
+        wynik = cmd.process_single_publication(praca, klient)
+
+    assert wynik["error"] is None
+    assert wynik["success"] is True
+    assert str(wa.autor) in wynik["warning"]
