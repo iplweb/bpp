@@ -280,6 +280,10 @@ urlpatterns = (
             include("pbn_downloader_app.urls", namespace="pbn_downloader_app"),
         ),
         path(
+            "uzgodnij-z-pbn/",
+            include("pbn_uzgadnianie.urls", namespace="pbn_uzgadnianie"),
+        ),
+        path(
             "pbn-wysylka-oswiadczen/",
             include("pbn_wysylka_oswiadczen.urls", namespace="pbn_wysylka_oswiadczen"),
         ),

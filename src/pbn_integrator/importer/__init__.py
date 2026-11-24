@@ -27,6 +27,7 @@ from .helpers import (
     get_or_download_publication,
     importuj_openaccess,
     importuj_streszczenia,
+    importuj_z_wersji,
     pbn_keywords_to_slowa_kluczowe,
     pobierz_jezyk,
     pobierz_lub_utworz_zrodlo,
@@ -35,6 +36,7 @@ from .helpers import (
     przetworz_slowa_kluczowe,
     przetworz_tytuly,
     ustaw_jezyk_oryginalny,
+    wersja_do_importu,
 )
 
 # Re-export publisher handling
@@ -46,6 +48,7 @@ from .publishers import (
 
 # Re-export source handling
 from .sources import dopisz_jedno_zrodlo, importuj_zrodla
+from .wersje import WersjePrzypieteNaProfilu
 
 logger = logging.getLogger(__name__)
 
@@ -106,7 +109,7 @@ def importuj_publikacje_po_pbn_uid_id(
     if pbn_publication.status == DELETED:
         return None
 
-    cv = pbn_publication.current_version
+    cv = wersja_do_importu(pbn_publication)
 
     # Bramka minimum-viable-record: bez wersji bieżącej / obiektu nie ma z czego
     # tworzyć rekordu.
@@ -185,6 +188,12 @@ def importuj_publikacje_po_pbn_uid_id(
     return ret
 
 
+def _zaloguj_wersje(wersje):
+    podsumowanie = wersje.podsumowanie()
+    if podsumowanie:
+        logger.log(logging.WARNING if wersje.z_biezacej else logging.INFO, podsumowanie)
+
+
 def importuj_publikacje_instytucji(
     client: PBNClient, default_jednostka: Jednostka, pbn_uid_id=None
 ):
@@ -200,16 +209,21 @@ def importuj_publikacje_instytucji(
     rodzaj_periodyk = Rodzaj_Zrodla.objects.get(nazwa="periodyk")
     dyscypliny_cache = {d.nazwa: d for d in Dyscyplina_Naukowa.objects.all()}
 
+    # Wersja przypięta na profilu instytucji zamiast bieżącej (FD#511);
+    # przy braku przypiętej — bieżąca, z ostrzeżeniem w logu.
+    wersje = WersjePrzypieteNaProfilu(getattr(client, "uczelnia", None))
+
     pominietych = 0
     for pbn_publication in tqdm(chciane):
         try:
-            ret = importuj_publikacje_po_pbn_uid_id(
-                pbn_publication.mongoId,
-                client=client,
-                default_jednostka=default_jednostka,
-                rodzaj_periodyk=rodzaj_periodyk,
-                dyscypliny_cache=dyscypliny_cache,
-            )
+            with importuj_z_wersji(wersje):
+                ret = importuj_publikacje_po_pbn_uid_id(
+                    pbn_publication.mongoId,
+                    client=client,
+                    default_jednostka=default_jednostka,
+                    rodzaj_periodyk=rodzaj_periodyk,
+                    dyscypliny_cache=dyscypliny_cache,
+                )
         except Exception:
             # Jeden zły rekord NIE MOŻE zabić całego wsadu. Loguj z pełnym
             # tracebackiem (nigdy po cichu — patrz CLAUDE.md) i leć dalej.
@@ -223,8 +237,10 @@ def importuj_publikacje_instytucji(
             continue
 
         if pbn_uid_id:
+            _zaloguj_wersje(wersje)
             return ret
 
+    _zaloguj_wersje(wersje)
     if pominietych:
         logger.warning(
             "Import instytucji zakończony: %d rekordów pominięto z powodu błędów.",

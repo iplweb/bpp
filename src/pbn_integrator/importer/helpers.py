@@ -1,7 +1,9 @@
 """Helper utilities for PBN importer."""
 
+import contextvars
 import copy
 import logging
+from contextlib import contextmanager
 from datetime import date
 
 from bpp.models import (
@@ -544,6 +546,44 @@ def _importuj_openaccess_daty(ret, oa_json):
 
     ret.openaccess_rok_udostepnienia = int(rok)
     ret.openaccess_miesiac_udostepnienia = numer_miesiaca
+
+
+#: Opcjonalny „wybieracz wersji” dla importu — patrz ``importuj_z_wersji``.
+_wybieracz_wersji = contextvars.ContextVar("pbn_importer_wybieracz_wersji")
+
+
+@contextmanager
+def importuj_z_wersji(wybieracz):
+    """W bloku importer bierze dane z wersji wskazanej przez ``wybieracz``.
+
+    ``wybieracz(pbn_publication)`` zwraca element listy ``versions`` (słownik
+    z kluczem ``object``), z którego ma powstać rekord BPP, albo ``None`` —
+    wtedy zostaje wersja bieżąca (``current``). Działa także dla książki
+    nadrzędnej rozdziału importowanej „przy okazji”.
+
+    Po co: uczelnia przypina na swoim profilu w PBN konkretną wersję
+    publikacji; wersja bieżąca w repozytorium mogła zostać zmieniona przez
+    kogoś innego (FD#511). Poza blokiem importer działa jak dotąd.
+    """
+    token = _wybieracz_wersji.set(wybieracz)
+    try:
+        yield
+    finally:
+        _wybieracz_wersji.reset(token)
+
+
+def wersja_do_importu(pbn_publication):
+    """Wersja publikacji PBN, z której importer buduje rekord BPP.
+
+    Domyślnie wersja bieżąca; w bloku ``importuj_z_wersji`` — ta, którą
+    wskaże wybieracz (o ile wskaże).
+    """
+    wybieracz = _wybieracz_wersji.get(None)
+    if wybieracz is not None:
+        wersja = wybieracz(pbn_publication)
+        if wersja is not None:
+            return wersja
+    return pbn_publication.current_version
 
 
 def get_or_download_publication(mongoId, client):
