@@ -217,6 +217,7 @@ dependencies = [
     "django-altcha>=1.0.0",
     "idutils>=1.7.2",
     "msoffcrypto-tool>=6.1.0",
+    "sentry-relay>=0.10.2,<0.11",
 ]
 
 [project.optional-dependencies]
