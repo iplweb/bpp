@@ -549,9 +549,14 @@ class Zgloszenie_Publikacji_AutorForm(forms.ModelForm):
             # podpowiedź (jego dyscypliny z wcześniejszego roku albo typowe
             # dla uczelni).
             forward=["autor", "rok", forward.Const(True, "typowe")],
+            # FD#640: ``autorform_dependant.js`` ukrywa pole, gdy wybrany
+            # autor nie jest autorem uczelni.
+            attrs={"data-tylko-autor-uczelni": "1"},
         ),
         required=False,
         help_text=(
+            "Dyscyplinę podaje się tylko dla autorów uczelni — dla autora "
+            "spoza uczelni to pole nie jest pokazywane. "
             "Jeśli autor nie ma przypisanej dyscypliny na rok publikacji, "
             "lista podpowiada jego dyscypliny z wcześniejszego roku (a gdy "
             "nie miał ich nigdy — dyscypliny typowe dla uczelni). Wybrana "
@@ -561,7 +566,7 @@ class Zgloszenie_Publikacji_AutorForm(forms.ModelForm):
 
     rok = forms.IntegerField(widget=HiddenInput)
 
-    def __init__(self, *args, **kw):
+    def __init__(self, *args, uczelnia=None, **kw):
         self.helper = FormHelper()
         self.helper.form_tag = False
         self.helper.form_class = "custom"
@@ -580,6 +585,9 @@ class Zgloszenie_Publikacji_AutorForm(forms.ModelForm):
         # przypisania na rok pracy (sprawdza ``Zgloszenie_Publikacji_Autor
         # .clean``); w module redagowania walidacja zostaje ścisła.
         self.instance.dopusc_propozycje_dyscypliny = True
+        # FD#640: „autor uczelni” liczony względem uczelni z requestu
+        # (multi-hosted); bez niej model bierze jedyną uczelnię w systemie.
+        self.instance._uczelnia = uczelnia
 
     def clean_jednostka(self):
         # #438: zgłoszony autor zawsze dostaje ``afiliuje=True`` (formularz nie

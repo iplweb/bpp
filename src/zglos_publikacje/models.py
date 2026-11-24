@@ -347,6 +347,13 @@ class Zgloszenie_Publikacji_Autor(
 
     rok = models.PositiveSmallIntegerField()
 
+    # FD#640: zgłoszenie to dane niezweryfikowane — zapis autora zgłoszenia NIE
+    # zakłada mu powiązania z jednostką. Wcześniej wybranie jednostki uczelni
+    # przy autorze obcym dopisywało go do niej (stawała się jego „aktualną
+    # jednostką”), a przez to autor obcy zaczynał wyglądać jak autor uczelni.
+    # Powiązanie powstanie dopiero przy zapisie pracy przez redakcję.
+    dodawaj_jednostke_autorowi_przy_zapisie = False
+
     class Meta:
         verbose_name = "autor w zgłoszeniu publikacji"
         verbose_name_plural = "autorzy w zgłoszeniu publikacji"
@@ -355,9 +362,39 @@ class Zgloszenie_Publikacji_Autor(
     def __str__(self):
         return f"autor {self.autor} dla zgłoszenia publikacji {self.rekord.tytul_oryginalny}"
 
+    def uczelnia_zgloszenia(self):
+        """Uczelnia, do której trafia zgłoszenie: z requestu (formularz
+        ustawia ``_uczelnia``), a bez niego — uczelnia wybranej jednostki,
+        w ostateczności jedyna uczelnia w systemie."""
+        uczelnia = getattr(self, "_uczelnia", None)
+        if uczelnia is None and self.jednostka_id is not None:
+            uczelnia = self.jednostka.uczelnia
+        if uczelnia is None:
+            uczelnia = Uczelnia.objects.get_single_uczelnia_or_none()
+        return uczelnia
+
+    def autor_jest_autorem_uczelni(self):
+        """FD#640: dyscyplinę określamy wyłącznie autorom uczelni."""
+        return self.autor.jest_autorem_uczelni(self.uczelnia_zgloszenia())
+
     def clean(self):
         if self.autor_id is None:
             raise ValidationError({"autor": "Wybierz jakiegoś autora"})
+
+        if not self.autor_jest_autorem_uczelni():
+            # FD#640: autorowi spoza uczelni nie określamy dyscypliny — ani
+            # nie wymagamy jej, ani nie przyjmujemy (nie może się zapisać
+            # w zgłoszeniu ani dopisać autorowi).
+            if self.dyscyplina_naukowa_id is not None:
+                raise ValidationError(
+                    {
+                        "dyscyplina_naukowa": f"Autor {self.autor} nie jest "
+                        "autorem uczelni (nie jest ani nie był zatrudniony "
+                        "w żadnej jej jednostce) — dla autorów spoza uczelni "
+                        "nie podaje się dyscypliny. Pozostaw to pole puste."
+                    }
+                )
+            return
 
         przypisanie_na_rok_istnieje = Autor_Dyscyplina.objects.filter(
             autor=self.autor,

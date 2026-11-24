@@ -18,7 +18,7 @@ from django.core.exceptions import ValidationError
 from django.urls import reverse
 from model_bakery import baker
 
-from bpp.models import Autor, Autor_Dyscyplina
+from bpp.models import Autor, Autor_Dyscyplina, Autor_Jednostka
 from bpp.wersjonowanie import konto_systemowe
 from zglos_publikacje.dyscypliny import przypisz_dyscypline_jesli_brak
 from zglos_publikacje.forms import Zgloszenie_Publikacji_AutorForm
@@ -32,8 +32,11 @@ ROK = 2020  # rok z _krok2_dane
 
 
 @pytest.fixture
-def autor():
-    return baker.make(Autor, nazwisko="Gromek", imiona="Paweł")
+def autor(jednostka):
+    # FD#640: dyscyplinę w zgłoszeniu określa się tylko autorom uczelni.
+    autor = baker.make(Autor, nazwisko="Gromek", imiona="Paweł")
+    Autor_Jednostka.objects.create(autor=autor, jednostka=jednostka)
+    return autor
 
 
 def _wpisy(obj):

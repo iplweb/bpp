@@ -58,6 +58,13 @@ punktacji ani opisu bibliograficznego: wystarczy tytuł, rok i link albo plik.
     wybrał (login albo — bez logowania — e-mail zgłaszającego), z tytułem
     i numerem zgłoszenia. Można wybrać tylko dyscyplinę z podpowiedzi.
 
+    **Dyscyplinę podaje się tylko dla autorów uczelni** — osób, które są
+    lub były zatrudnione w którejś z jednostek uczelni. Po wybraniu
+    autora spoza uczelni pole **Dyscyplina** znika z formularza, a
+    zgłoszenie z dyscypliną przy takim autorze nie zostanie przyjęte.
+    Wybrana przy autorze **Jednostka** trafia tylko do zgłoszenia — nie
+    zmienia danych autora w bazie (jego aktualnej jednostki).
+
     ![Krok „Autorzy”: autor, jednostka, dyscyplina i przycisk „Dodaj kolejnego autora”](../images/uzytkownik/zgloszenie-publikacji/05-autorzy.png)
 
 6. **Płatności** (tylko przy niektórych rodzajach prac) — zaznacz, czy

@@ -7,7 +7,8 @@ nigdy — typowe dla uczelni (``bpp.util.typowe_dyscypliny``). Walidacja
 wymaga przypisania ``Autor_Dyscyplina`` na rok pracy, więc przy zapisie
 zgłoszenia zakładamy je — z wpisem w historii autora i przypisania.
 
-Autora, który MA przypisanie na rok pracy, nie ruszamy.
+Autora, który MA przypisanie na rok pracy, nie ruszamy. Autorowi spoza
+uczelni (FD#640) dyscypliny w zgłoszeniu nie podaje się wcale.
 """
 
 from bpp.models import Autor_Dyscyplina
@@ -50,6 +51,10 @@ def przypisz_dyscypline_jesli_brak(zpa, user):
     if zpa.dyscyplina_naukowa_id is None or zpa.autor_id is None:
         return None
     if ma_przypisanie_na_rok(zpa.autor_id, zpa.rok):
+        return None
+    if not zpa.autor_jest_autorem_uczelni():
+        # FD#640: autorowi spoza uczelni dyscypliny nie dopisujemy (walidacja
+        # i tak jej nie przepuści — to druga linia obrony).
         return None
 
     autor = zpa.autor

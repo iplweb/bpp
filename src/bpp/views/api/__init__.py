@@ -226,6 +226,12 @@ class OstatniaJednostkaIDyscyplinaView(View):
         except (TypeError, ValueError):
             rok = None
 
+        # FD#640: formularz zgłaszania prac ukrywa pole dyscypliny dla autora
+        # spoza uczelni (``autorform_dependant.js``).
+        ret["autor_uczelni"] = a.jest_autorem_uczelni(
+            Uczelnia.objects.get_for_request(request)
+        )
+
         ost_dys = ostatnia_dyscyplina(request, a, rok)
 
         if ost_dys is not None:

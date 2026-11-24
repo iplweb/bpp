@@ -655,6 +655,26 @@ class Autor(
     def aktualna_subdyscyplina(self):
         return self.aktualna_dyscyplina(pole="subdyscyplina_naukowa")
 
+    def jest_autorem_uczelni(self, uczelnia):
+        """Czy autor jest „autorem uczelni” ``uczelnia`` (FD#640).
+
+        Autor uczelni = ma LUB miał zatrudnienie/przypisanie w realnej
+        jednostce tej uczelni (``skupia_pracownikow=True``) — obecnie albo
+        historycznie. Powiązanie wyłącznie z jednostką obcą (albo brak
+        powiązań) to autor spoza uczelni. Definicja to
+        ``AutorQuerySet.kiedykolwiek_zatrudnieni`` — nie dublujemy jej.
+
+        ``uczelnia=None`` → ``False`` (fail-closed, jak w querysecie).
+        """
+        if self.pk is None:
+            return False
+        return (
+            type(self)
+            .global_objects.filter(pk=self.pk)
+            .kiedykolwiek_zatrudnieni(uczelnia)
+            .exists()
+        )
+
     def __str__(self):
         buf = f"{self.nazwisko} {self.imiona}"
 

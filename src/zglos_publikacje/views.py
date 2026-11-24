@@ -343,6 +343,12 @@ class Zgloszenie_PublikacjiWizard(UczelniaSettingRequiredMixin, SessionWizardVie
             # pliki tymczasowe nie są zapisywane (process_step_files woła się
             # tylko dla ważnego formularza).
             kwargs["limit_przekroczony"] = limit_wyczerpany(self.request)
+        if step == "3":
+            # FD#640: formularz autora sprawdza „autora uczelni” względem
+            # uczelni z requestu (multi-hosted).
+            kwargs["form_kwargs"] = {
+                "uczelnia": Uczelnia.objects.get_for_request(self.request)
+            }
         if step == "4":
             # Krok opłat to też ModelForm na Zgloszenie_Publikacji → odpala
             # model.clean (walidacja opłat). Bez uczelni z requestu spada do

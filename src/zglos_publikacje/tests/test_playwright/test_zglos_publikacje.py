@@ -2,7 +2,7 @@ import os
 
 import pytest
 from django.urls import reverse
-from playwright.sync_api import Page
+from playwright.sync_api import Page, expect
 
 from bpp.models import Autor_Dyscyplina, Autor_Jednostka
 from django_bpp.playwright_util import (
@@ -246,6 +246,51 @@ def test_zglos_publikacje_wiele_klikniec(
     assert admin_page.locator(
         "#id_3-1-dyscyplina_naukowa"
     ).input_value() == str(dyscyplina1.pk)
+
+@pytest.mark.django_db(transaction=True)
+def test_fd640_dyscyplina_ukryta_dla_autora_spoza_uczelni(
+    admin_page: Page,
+    channels_live_server,
+    autor_jan_kowalski,
+    autor_jan_nowak,
+    jednostka,
+    obca_jednostka,
+    dyscyplina1,
+    rok,
+):
+    """FD#640: po wybraniu autora spoza uczelni pole „Dyscyplina naukowa”
+    znika (i jest czyszczone); po wybraniu autora uczelni wraca."""
+    obcy, swoj = autor_jan_nowak, autor_jan_kowalski
+    Autor_Jednostka.objects.get_or_create(autor=obcy, jednostka=obca_jednostka)
+    Autor_Jednostka.objects.get_or_create(autor=swoj, jednostka=jednostka)
+    for autor in obcy, swoj:
+        Autor_Dyscyplina.objects.get_or_create(
+            autor=autor, rok=rok, dyscyplina_naukowa=dyscyplina1
+        )
+
+    _przejdz_kroki_0_1_2(
+        admin_page,
+        channels_live_server,
+        rok,
+        rodzaj="POZOSTALE",
+        forma="OTWARTY",
+    )
+
+    pole = admin_page.locator("#div_id_3-0-dyscyplina_naukowa")
+    expect(pole).to_be_visible()
+
+    set_select2_value(
+        admin_page, "id_3-0-autor", obcy.pk, label=str(obcy), timeout=30000
+    )
+    expect(pole).to_be_hidden()
+    assert admin_page.locator("#id_3-0-dyscyplina_naukowa").input_value() == ""
+
+    set_select2_value(
+        admin_page, "id_3-0-autor", swoj.pk, label=str(swoj), timeout=30000
+    )
+    expect(pole).to_be_visible()
+    wait_for_discipline_populated(admin_page, "id_3-0-dyscyplina_naukowa")
+
 
 # Pełna integracja zgłoszenia z plikami (1 i wiele) jest pokryta
 # webtest-owymi testami `test_pelny_formularz_ograniczony_*`

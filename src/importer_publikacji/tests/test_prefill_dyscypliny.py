@@ -61,23 +61,26 @@ def _make_zgloszenie(
 def _make_zpa(zgloszenie, autor, dyscyplina=None, jednostka=None):
     """Utwórz Zgloszenie_Publikacji_Autor.
 
-    Jeśli podano dyscyplinę, tworzy też Autor_Dyscyplina
-    (wymagane przez clean() modelu).
+    Jeśli podano dyscyplinę, tworzy też Autor_Dyscyplina i powiązanie
+    z jednostką (wymagane przez clean() modelu).
     """
+    jednostka = jednostka or baker.make("bpp.Jednostka")
     if dyscyplina:
-        from bpp.models import Autor_Dyscyplina
+        from bpp.models import Autor_Dyscyplina, Autor_Jednostka
 
         Autor_Dyscyplina.objects.get_or_create(
             autor=autor,
             rok=2024,
             defaults={"dyscyplina_naukowa": dyscyplina},
         )
+        # FD#640: dyscyplinę w zgłoszeniu ma tylko autor uczelni.
+        Autor_Jednostka.objects.get_or_create(autor=autor, jednostka=jednostka)
 
     return baker.make(
         "zglos_publikacje.Zgloszenie_Publikacji_Autor",
         rekord=zgloszenie,
         autor=autor,
-        jednostka=jednostka or baker.make("bpp.Jednostka"),
+        jednostka=jednostka,
         dyscyplina_naukowa=dyscyplina,
         rok=2024,
     )
