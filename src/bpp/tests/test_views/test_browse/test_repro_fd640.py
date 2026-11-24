@@ -5,6 +5,8 @@ uczelni) dostaje pod swoim dotychczasowym adresem prostą stronę
 informacyjną zamiast profilu. Autorzy uczelni — obecni i byli — bez zmian.
 """
 
+from datetime import date
+
 import pytest
 from django.urls import reverse
 from model_bakery import baker
@@ -16,10 +18,8 @@ STRONA_OBCEGO = "Autor spoza uczelni."
 
 
 @pytest.fixture
-def uczelnia_z_obca(uczelnia, obca_jednostka):
-    uczelnia.obca_jednostka = obca_jednostka
-    uczelnia.save()
-    return uczelnia
+def uczelnia_z_obca(uczelnia_z_obca_jednostka):
+    return uczelnia_z_obca_jednostka
 
 
 @pytest.fixture
@@ -66,8 +66,6 @@ def test_fd640_byly_pracownik_ma_pelny_profil(
 ):
     """Zakończone zatrudnienie w jednostce uczelni + bieżąca jednostka obca
     — nadal autor uczelni."""
-    from datetime import date
-
     autor = baker.make(Autor)
     Autor_Jednostka.objects.create(
         autor=autor,
@@ -153,12 +151,87 @@ def test_fd640_api_recent_publications_bez_profil_url_dla_obcego(
 
     def profil_url(autor):
         res = client.get(
-            reverse(
-                "api_v1:recent_author_publications-detail", kwargs={"pk": autor.pk}
-            )
+            reverse("api_v1:recent_author_publications-detail", kwargs={"pk": autor.pk})
         )
         assert res.status_code == 200
         return res.json()["profil_url"]
 
     assert profil_url(autor_obcy) is None
     assert profil_url(nasz) is not None
+
+
+@pytest.mark.django_db
+def test_fd640_jednostka_bledna_o_ujemnym_pk_to_nie_uczelnia(
+    client, uczelnia_z_obca, wydzial
+):
+    """Jednostka „Błędna” (pk < 0) ze starych wdrożeń jest sztuczna."""
+    bledna = baker.make(Jednostka, pk=-1, uczelnia=uczelnia_z_obca, parent=wydzial)
+    autor = baker.make(Autor)
+    Autor_Jednostka.objects.create(autor=autor, jednostka=bledna)
+    assert autor.jest_spoza_uczelni(uczelnia_z_obca)
+    assert STRONA_OBCEGO in _strona(client, autor)
+
+
+@pytest.mark.django_db
+def test_fd640_aktualna_jednostka_w_uczelni_wystarcza(uczelnia_z_obca, jednostka):
+    """Sama aktualna jednostka (bez wiersza przypisania) też czyni autorem
+    uczelni — sprawdzamy obie drogi."""
+    autor = baker.make(Autor)
+    Autor.objects.filter(pk=autor.pk).update(aktualna_jednostka=jednostka)
+    assert not autor.jest_spoza_uczelni(uczelnia_z_obca)
+    assert autor in Autor.objects.autorzy_uczelni(uczelnia_z_obca)
+
+
+@pytest.fixture
+def druga_uczelnia(db):
+    from django.contrib.sites.models import Site
+
+    from bpp.models import Uczelnia
+
+    site = Site.objects.create(domain="uczelnia-b.example.com", name="B")
+    return baker.make(Uczelnia, skrot="UB", nazwa="Uczelnia B", site=site)
+
+
+@pytest.mark.django_db
+def test_fd640_dwie_uczelnie_granica_per_host(
+    client, settings, uczelnia_z_obca, jednostka, druga_uczelnia
+):
+    """Pracownik uczelni A: na hoście A pełny profil, na hoście B prosta
+    strona (dla B jest autorem spoza uczelni)."""
+    settings.ALLOWED_HOSTS = ["*"]
+    autor = baker.make(Autor)
+    Autor_Jednostka.objects.create(autor=autor, jednostka=jednostka)
+    url = reverse("bpp:browse_autor", args=(autor.slug,))
+
+    tresc_a = client.get(url, HTTP_HOST="testserver").content.decode("utf-8")
+    assert PROFIL in tresc_a
+
+    tresc_b = client.get(url, HTTP_HOST="uczelnia-b.example.com").content.decode(
+        "utf-8"
+    )
+    assert STRONA_OBCEGO in tresc_b
+    assert PROFIL not in tresc_b
+
+
+@pytest.mark.django_db
+def test_fd640_sitemap_dwie_uczelnie(
+    uczelnia_z_obca, autor_obcy, jednostka, druga_uczelnia
+):
+    """Mapa jest wspólna: zostaje autor, który jest autorem KTÓREJKOLWIEK
+    uczelni; znika tylko obcy dla wszystkich."""
+    from django_bpp.sitemaps import AutorSitemap
+
+    nasz = baker.make(Autor)
+    Autor_Jednostka.objects.create(autor=nasz, jednostka=jednostka)
+
+    items = AutorSitemap().items()
+    assert nasz in items
+    assert autor_obcy not in items
+
+
+def test_fd640_zmiana_przypisan_uniewaznia_cache_publiczny():
+    """Przypisania decydują o rodzaju strony autora — ich zapis (także
+    z importów, bez zapisu ``Autor``) musi unieważniać cache stron."""
+    from bpp.apps import BppConfig
+
+    assert "Autor_Jednostka" in BppConfig.MODELE_INWALIDUJACE_CACHE_PUBLICZNY

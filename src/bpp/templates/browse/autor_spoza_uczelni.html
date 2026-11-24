@@ -42,10 +42,9 @@
 <div class="callout secondary autor-page__spoza-uczelni" role="status">
     <span class="fi-info" aria-hidden="true"></span>
     <strong>Autor spoza uczelni.</strong>
-    Ta osoba nie jest i nie była przypisana do żadnej jednostki
-    {{ uczelnia.nazwa_dopelniacz_field|default:"uczelni" }} &mdash; występuje
-    w bibliografii jako współautor prac autorów uczelni (jednostka obca).
-    Dlatego nie ma tu profilu autora.
+    Ta osoba nie jest i nie była pracownikiem ani członkiem żadnej jednostki
+    {{ uczelnia.nazwa_dopelniacz }} &mdash; występuje w bibliografii jako
+    współautor prac autorów uczelni. Dlatego nie ma tu profilu autora.
 </div>
 
 {% if request.user.is_superuser or request.user|has_group:"wprowadzanie danych" %}

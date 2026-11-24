@@ -68,7 +68,8 @@ serwisu traktowany jako **autor spoza uczelni**: zamiast pełnej strony autora
 widać prostą stronę informacyjną z listą jego prac współautorskich (patrz
 [Autor spoza uczelni](../uzytkownik/przegladanie-i-wyszukiwanie.md#autor-spoza-uczelni)).
 Wystarczy jedno przypisanie (także zakończone) do innej jednostki uczelni, by
-autor miał pełną stronę.
+autor miał pełną stronę. Bez wskazanej *Obcej jednostki* ten mechanizm nie
+działa — wszyscy autorzy mają pełne strony jak dotąd.
 
 Aby określić *Obcą jednostkę*, otwórz rekord uczelni (Redagowanie ➡ Struktura ➡ Uczelnia, jak opisano
 wyżej), wybierz jednostkę w polu *Obca jednostka* (na końcu pierwszej części formularza) i zapisz rekord.

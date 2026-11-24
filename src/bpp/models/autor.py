@@ -158,8 +158,10 @@ class AutorQuerySet(BppSoftDeleteQuerySet):
         jednostką sztuczną — skonfigurowaną ``Uczelnia.obca_jednostka`` ani
         jednostką o ujemnym pk („Błędna” ze starych wdrożeń).
 
-        Ta sama granica co w przeglądaniu autorów
-        (``pokazuj_autorow_obcych_w_przegladaniu_danych``). Celowo NIE
+        Podobna granica jak w przeglądaniu autorów
+        (``pokazuj_autorow_obcych_w_przegladaniu_danych``), ale liczona dla
+        uczelni z requestu — przy kilku uczelniach w jednej bazie pracownik
+        uczelni A jest na stronach uczelni B autorem spoza uczelni. Celowo NIE
         wymagamy ``skupia_pracownikow=True``: jednostki „Doktoranci”,
         „Studenci”, „Pracownicy emerytowani” mają tę flagę wyłączoną, a ich
         autorzy są autorami uczelni. ``uczelnia=None`` → pusty queryset
@@ -190,13 +192,15 @@ class AutorQuerySet(BppSoftDeleteQuerySet):
         """
         if uczelnia is None:
             return self.none()
-        ma_przypisanie = Q(aktualna_jednostka__isnull=False) | models.Exists(
-            Autor_Jednostka.objects.filter(autor=models.OuterRef("pk"))
-        )
-        return self.filter(ma_przypisanie).exclude(
-            pk__in=self.model.global_objects.all()
-            .autorzy_uczelni(uczelnia)
-            .values("pk")
+        nasze = _jednostki_uczelni_bez_sztucznych(uczelnia)
+        przypisania = Autor_Jednostka.objects.filter(autor=models.OuterRef("pk"))
+        # Skorelowane (NOT) EXISTS: sprawdzenie jednego autora nie liczy
+        # zbioru wszystkich autorów uczelni (``exclude(pk__in=...)`` by liczył).
+        return self.filter(
+            Q(aktualna_jednostka__isnull=False) | models.Exists(przypisania)
+        ).filter(
+            ~Q(aktualna_jednostka__in=nasze),
+            ~models.Exists(przypisania.filter(jednostka__in=nasze)),
         )
 
 

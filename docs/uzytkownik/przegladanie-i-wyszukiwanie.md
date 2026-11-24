@@ -139,6 +139,11 @@ autora (z opisów prac, wyników wyszukiwania, zakładek) nadal działają.
 Taka strona nie trafia do mapy strony (sitemap) i jest oznaczona dla
 wyszukiwarek internetowych jako nieindeksowana.
 
+W instalacjach, w których jedna baza BPP obsługuje kilka uczelni, przynależność
+sprawdzana jest względem uczelni, której stronę oglądasz: pracownik innej
+uczelni tej samej instalacji jest tu autorem spoza uczelni. Jeżeli w ustawieniach
+uczelni nie wskazano *Obcej jednostki*, strony autorów działają jak dotąd.
+
 Strona autora składa się z **pasów**: sekcja zajmuje całą szerokość strony
 albo dwie sekcje stoją obok siebie. Sekcje bez danych (np. autor bez
 zdjęcia i biogramu) po prostu się nie pokazują, a sąsiednia sekcja zajmuje
