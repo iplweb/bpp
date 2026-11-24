@@ -32,6 +32,9 @@ import logging
 
 logger = logging.getLogger(__name__)
 
+#: Wartosci `--pbn-automaty`, ktore odblokowuja automaty wysylki do PBN.
+WARTOSCI_WLACZ = frozenset({"wlacz", "włącz", "tak", "1", "on"})
+
 
 def clear_password_policy(ctx: dict) -> None:
     """Skasuj wymog zmiany hasla i dodaj swiezy PasswordHistory dla admina.
@@ -94,7 +97,8 @@ def zabezpiecz_lokalna_kopie(ctx: dict) -> None:
     """Zamknij kolejke eksportu do PBN przyniesiona z kopia bazy.
 
     Biegnie przy KAZDYM starcie run-site (idempotentne; na swiezej bazie
-    z baseline nie ma czego zamykac). Po `--from-dump` z bazy klienta
+    z baseline nie ma czego zamykac). `--pbn-automaty wlacz` dodatkowo
+    odblokowuje automaty wysylki (swiadome testowanie kolejki). Po `--from-dump` z bazy klienta
     w kolejce leza wpisy z produkcji — bez tego pierwszy zapisany token PBN
     albo watchdog wyslalby je z maszyny dewelopera do prawdziwego PBN.
 
@@ -103,10 +107,19 @@ def zabezpiecz_lokalna_kopie(ctx: dict) -> None:
     """
     from django.core.management import CommandError, call_command
 
+    # Przelacznik automatow jest USTAWIANY przy kazdym starcie: bez flagi
+    # wraca do „wstrzymane", wiec odblokowanie z poprzedniej sesji (kontenery
+    # z `--reuse`) nie przezywa restartu po cichu.
+    wlacz = str((ctx.get("opts") or {}).get("pbn_automaty") or "").strip().lower()
+    automaty = "wlacz" if wlacz in WARTOSCI_WLACZ else "wstrzymaj"
+
     wyjscie = io.StringIO()
     try:
         call_command(
-            "pbn_bezpiecznik_lokalnej_kopii", potwierdzenie=True, stdout=wyjscie
+            "pbn_bezpiecznik_lokalnej_kopii",
+            potwierdzenie=True,
+            automaty=automaty,
+            stdout=wyjscie,
         )
     except CommandError as exc:
         logger.warning("[runsite-hook] PBN bezpiecznik: %s", exc)

@@ -51,11 +51,11 @@ def serwer(settings, uczelnia):
     return uczelnia, user
 
 
-def _wyjscie_zdalnego_skryptu(capsys, login="redaktor", skrot=None):
+def _wyjscie_zdalnego_skryptu(capsys, login="redaktor"):
     """Wykonuje DOKŁADNIE ten kod, który poleci na serwer, tą samą drogą
     (``manage.py shell -c``), i zwraca jego stdout."""
     capsys.readouterr()
-    call_command("shell", command=kzs.zdalny_skrypt(login, skrot))
+    call_command("shell", command=kzs.zdalny_skrypt(login))
     return capsys.readouterr().out
 
 
@@ -130,7 +130,7 @@ def test_wyjscie_z_szumem_powloki_django(serwer, settings, capsys):
 
     dane = kzs.rozbierz_odpowiedz(zaszumione)
 
-    assert dane["pbn_app_token"] == TOKEN_APLIKACJI
+    assert dane["uczelnie"][0]["pbn_app_token"] == TOKEN_APLIKACJI
     assert dane["uzytkownik"]["pbn_token"] == TOKEN_UZYTKOWNIKA
 
 
@@ -142,7 +142,7 @@ def test_serwer_sam_nie_umie_odszyfrowac(serwer, settings, capsys):
     wyjscie = _wyjscie_zdalnego_skryptu(capsys)
     _odtworz_kopie_lokalnie(settings)
 
-    with pytest.raises(kzs.BladPrzenoszenia, match="nie zwrócił nazwy lub tokenu"):
+    with pytest.raises(kzs.BladPrzenoszenia, match="nie zwrócił kompletnej"):
         kzs.zastosuj(kzs.rozbierz_odpowiedz(wyjscie))
 
 
@@ -160,18 +160,92 @@ def test_brak_uzytkownika_na_serwerze_nie_blokuje_konfiguracji(
     assert "UWAGA: na serwerze nie ma użytkownika 'nie-ma-takiego'" in raport
 
 
+@pytest.fixture
+def serwer_z_dwiema_uczelniami(serwer):
+    """Instalacja z kilkoma uczelniami: każda ma własną aplikację PBN."""
+    from django.contrib.sites.models import Site
+
+    druga = baker.make(
+        Uczelnia,
+        skrot="DRUGA",
+        site=Site.objects.create(domain="druga.example.org", name="druga"),
+        pbn_api_root="https://pbn.example.org",
+        pbn_app_name="aplikacja-drugiej",
+        pbn_app_token="tajny-token-aplikacji-DRUGIEJ",
+        pbn_integracja=True,
+    )
+    return serwer[0], druga
+
+
 @pytest.mark.django_db
-def test_kilka_uczelni_na_serwerze_wymaga_wskazania(serwer, capsys):
-    baker.make(Uczelnia, skrot="DRUGA")
+def test_kilka_uczelni_kazda_dostaje_swoja_aplikacje(
+    serwer_z_dwiema_uczelniami, settings, capsys
+):
+    pierwsza, druga = serwer_z_dwiema_uczelniami
+    wyjscie = _wyjscie_zdalnego_skryptu(capsys)
+    _odtworz_kopie_lokalnie(settings)
+    assert not Uczelnia.objects.get(pk=druga.pk).pbn_app_token
 
-    dane = kzs.rozbierz_odpowiedz(_wyjscie_zdalnego_skryptu(capsys))
-    assert "kilka uczelni" in dane["blad"]
-    with pytest.raises(kzs.BladPrzenoszenia, match="kilka uczelni"):
-        kzs.zastosuj(dane)
+    raport = "\n".join(kzs.zastosuj(kzs.rozbierz_odpowiedz(wyjscie)))
 
-    dane = kzs.rozbierz_odpowiedz(_wyjscie_zdalnego_skryptu(capsys, skrot="TE"))
-    assert dane["blad"] is None
-    assert dane["pbn_app_token"] == TOKEN_APLIKACJI
+    pierwsza = Uczelnia.objects.get(pk=pierwsza.pk)
+    druga = Uczelnia.objects.get(pk=druga.pk)
+    assert (pierwsza.pbn_app_name, pierwsza.pbn_app_token) == (
+        "aplikacja-bpp",
+        TOKEN_APLIKACJI,
+    )
+    assert (druga.pbn_app_name, druga.pbn_app_token) == (
+        "aplikacja-drugiej",
+        "tajny-token-aplikacji-DRUGIEJ",
+    )
+    assert "uczelni TE: zapisana" in raport
+    assert "uczelni DRUGA: zapisana" in raport
+    assert "tajny-token" not in raport
+
+
+@pytest.mark.django_db
+def test_kilka_uczelni_zawezenie_do_jednej(
+    serwer_z_dwiema_uczelniami, settings, capsys
+):
+    pierwsza, druga = serwer_z_dwiema_uczelniami
+    wyjscie = _wyjscie_zdalnego_skryptu(capsys)
+    _odtworz_kopie_lokalnie(settings)
+
+    kzs.zastosuj(kzs.rozbierz_odpowiedz(wyjscie), skrot="DRUGA")
+
+    assert Uczelnia.objects.get(pk=druga.pk).pbn_app_token
+    assert not Uczelnia.objects.get(pk=pierwsza.pk).pbn_app_token
+
+    with pytest.raises(kzs.BladPrzenoszenia, match="'NIE-MA'"):
+        kzs.zastosuj(kzs.rozbierz_odpowiedz(wyjscie), skrot="NIE-MA")
+
+
+@pytest.mark.django_db
+def test_uczelnia_bez_integracji_na_serwerze_jest_pomijana(
+    serwer_z_dwiema_uczelniami, settings, capsys
+):
+    """Jedna uczelnia bez aplikacji PBN nie blokuje pozostałych."""
+    pierwsza, druga = serwer_z_dwiema_uczelniami
+    druga.pbn_app_token = ""
+    druga.save()
+    wyjscie = _wyjscie_zdalnego_skryptu(capsys)
+    _odtworz_kopie_lokalnie(settings)
+
+    raport = "\n".join(kzs.zastosuj(kzs.rozbierz_odpowiedz(wyjscie)))
+
+    assert Uczelnia.objects.get(pk=pierwsza.pk).pbn_app_token == TOKEN_APLIKACJI
+    assert "UWAGA: uczelnia DRUGA" in raport
+
+
+@pytest.mark.django_db
+def test_rozne_skroty_po_obu_stronach(serwer_z_dwiema_uczelniami, settings, capsys):
+    wyjscie = _wyjscie_zdalnego_skryptu(capsys)
+    _odtworz_kopie_lokalnie(settings)
+    Uczelnia.objects.filter(skrot="TE").update(skrot="INNA1")
+    Uczelnia.objects.filter(skrot="DRUGA").update(skrot="INNA2")
+
+    with pytest.raises(kzs.BladPrzenoszenia, match="skróty uczelni"):
+        kzs.zastosuj(kzs.rozbierz_odpowiedz(wyjscie))
 
 
 def test_brak_znacznika_w_odpowiedzi():
@@ -188,7 +262,7 @@ def test_uszkodzony_json_nie_cytuje_tresci():
 def test_zdalne_polecenie_przechodzi_przez_powloke_bez_zmian():
     """Polecenie jedzie przez ssh → powłokę serwera; po rozbiorze przez
     powłokę ostatni argument musi być bajt w bajt naszym skryptem."""
-    polecenie = kzs.zdalne_polecenie("o'brien", "U W", "~/moj deploy", "appserver")
+    polecenie = kzs.zdalne_polecenie("o'brien", "~/moj deploy", "appserver")
 
     argumenty = shlex.split(polecenie)
 
@@ -198,7 +272,7 @@ def test_zdalne_polecenie_przechodzi_przez_powloke_bez_zmian():
         "python", "src/manage.py", "shell",
     ]  # fmt: skip
     assert argumenty[11] == "-c"
-    assert argumenty[12] == kzs.zdalny_skrypt("o'brien", "U W")
+    assert argumenty[12] == kzs.zdalny_skrypt("o'brien")
     assert polecenie.startswith("cd ~/'moj deploy' && ")
     compile(argumenty[12], "<zdalny skrypt>", "exec")
 

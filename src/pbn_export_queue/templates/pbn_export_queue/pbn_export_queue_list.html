@@ -60,6 +60,39 @@
         {% endif %}
     </div>
 
+    {% if automaty_pbn %}
+        {# Tylko lokalna instancja (settings/local.py) — na produkcji tego bloku nie ma. #}
+        <div id="pbn-automaty-stan"
+             class="callout {% if automaty_pbn.wstrzymane %}secondary{% else %}alert{% endif %}">
+            {% if automaty_pbn.wstrzymane %}
+                <strong>Instancja lokalna — automatyczna wysyłka do PBN: wstrzymana.</strong>
+                Kolejka, watchdog i kosz niczego nie wysyłają same; ręczna wysyłka rekordu działa.
+            {% else %}
+                <strong>Instancja lokalna — automatyczna wysyłka do PBN: WŁĄCZONA.</strong>
+                Kolejka, watchdog i kosz wysyłają do prawdziwego PBN, jak na produkcji.
+            {% endif %}
+            {% if automaty_pbn.przelaczalne %}
+                <form method="post"
+                      action="{% url 'pbn_export_queue:export-queue-automaty' %}"
+                      class="pbn-export-queue__form--inline">
+                    {% csrf_token %}
+                    {% if automaty_pbn.wstrzymane %}
+                        <input type="hidden" name="stan" value="wlacz">
+                        <button type="submit" class="button small alert"
+                                data-confirm="Włączyć automatyczną wysyłkę do PBN? Kolejka, watchdog i kosz zaczną wysyłać do PRAWDZIWEGO PBN.">
+                            <span class="fi-play"></span> Włącz automatyczną wysyłkę
+                        </button>
+                    {% else %}
+                        <input type="hidden" name="stan" value="wstrzymaj">
+                        <button type="submit" class="button small">
+                            <span class="fi-pause"></span> Wstrzymaj automatyczną wysyłkę
+                        </button>
+                    {% endif %}
+                </form>
+            {% endif %}
+        </div>
+    {% endif %}
+
     {% if request.user.is_staff or perms.pbn_api %}
 
         <fieldset class="filter-section pbn-export-queue__filter-fieldset">
