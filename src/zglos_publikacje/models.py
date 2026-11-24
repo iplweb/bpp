@@ -363,15 +363,18 @@ class Zgloszenie_Publikacji_Autor(
         return f"autor {self.autor} dla zgłoszenia publikacji {self.rekord.tytul_oryginalny}"
 
     def uczelnia_zgloszenia(self):
-        """Uczelnia, do której trafia zgłoszenie: z requestu (formularz
-        ustawia ``_uczelnia``), a bez niego — uczelnia wybranej jednostki,
-        w ostateczności jedyna uczelnia w systemie."""
-        uczelnia = getattr(self, "_uczelnia", None)
-        if uczelnia is None and self.jednostka_id is not None:
-            uczelnia = self.jednostka.uczelnia
-        if uczelnia is None:
-            uczelnia = Uczelnia.objects.get_single_uczelnia_or_none()
-        return uczelnia
+        """Uczelnia, do której trafia zgłoszenie.
+
+        Formularz publiczny ustawia ``_uczelnia`` z requestu i ta wartość
+        jest wiążąca — także ``None`` (wtedy fail-closed: nikt nie jest
+        autorem uczelni), żeby zgłaszający nie mógł wybrać uczelni wyborem
+        jednostki. Poza formularzem (kod, testy): uczelnia wybranej
+        jednostki, w ostateczności jedyna uczelnia w systemie."""
+        if hasattr(self, "_uczelnia"):
+            return self._uczelnia
+        if self.jednostka_id is not None:
+            return self.jednostka.uczelnia
+        return Uczelnia.objects.get_single_uczelnia_or_none()
 
     def autor_jest_autorem_uczelni(self):
         """FD#640: dyscyplinę określamy wyłącznie autorom uczelni."""

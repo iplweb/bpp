@@ -53,8 +53,12 @@
             if (tylkoDlaAutorowUczelni(prefix))
                 pokazDyscypline(prefix, true);
         } else {
+            var pole = this;
             zapytajOAutora(this).done(function (data) {
                 if (data.status == 'error')
+                    return;
+                // Odpowiedź dla autora, którego w międzyczasie zmieniono.
+                if ($(pole).val() !== value)
                     return;
 
                 if (data.jednostka_id && data.nazwa) {
@@ -93,8 +97,9 @@
         var prefix = $(element).getFormPrefix();
         if (!$(element).val() || !tylkoDlaAutorowUczelni(prefix))
             return;
+        var wyslany = $(element).val();
         zapytajOAutora(element).done(function (data) {
-            if (data.status == 'error')
+            if (data.status == 'error' || $(element).val() !== wyslany)
                 return;
             pokazDyscypline(prefix, data.autor_uczelni !== false);
         });

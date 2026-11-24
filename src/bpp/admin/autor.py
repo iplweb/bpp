@@ -44,6 +44,7 @@ from .filters import (
 )
 from .helpers.fieldsets import ADNOTACJE_FIELDSET, ZapiszZAdnotacjaMixin
 from .helpers.mixins import BppSoftDeleteAdminMixin
+from .helpers.okresy_pracy import OkresyPracyFormSetMixin
 from .helpers.site_filtered import SiteFilteredAdminMixin
 from .helpers.wersje import HistoriaWersjiMixin
 from .helpers.widgets import CHARMAP_SINGLE_LINE
@@ -159,7 +160,7 @@ class Autor_JednostkaInlineForm(forms.ModelForm):
         ]
 
 
-class Autor_JednostkaInlineFormSet(BaseInlineFormSet):
+class Autor_JednostkaInlineFormSet(OkresyPracyFormSetMixin, BaseInlineFormSet):
     """Pilnuje przyjaznie (na poziomie formularza, zanim cokolwiek trafi do
     bazy), zeby autor mial najwyzej jedno podstawowe miejsce pracy.
 
@@ -188,69 +189,6 @@ class Autor_JednostkaInlineFormSet(BaseInlineFormSet):
                 f"zaznaczono je dla {ile_podstawowych} powiązań. Ustaw 'Tak' "
                 "tylko przy jednym powiązaniu (przy pozostałych 'Nie' lub puste)."
             )
-
-        self._sprawdz_nakladanie_okresow()
-
-    def _sprawdz_nakladanie_okresow(self):
-        """Okresy pracy tego samego autora w tej samej jednostce nie mogą się
-        nakładać (constraint ``bpp_autor_jednostka_okresy_bez_nakladan``).
-
-        Walidacja modelu tego nie złapie: w formsecie inline pole klucza do
-        rodzica jest wyłączone z walidacji, więc Django pomija constrainty,
-        w których ono występuje — a nakładanie między dwoma NOWYMI wierszami
-        formularza i tak byłoby niewidoczne dla zapytania do bazy. Bez tego
-        zapis kończył się błędem 500 (GlitchTip BPP-1A, FD#640) i przepadała
-        cała edycja autora."""
-        okresy = self._okresy_po_zapisie()
-        for i, (autor, jednostka, od, do) in enumerate(okresy):
-            for autor2, jednostka2, od2, do2 in okresy[i + 1 :]:
-                if autor.pk != autor2.pk or jednostka.pk != jednostka2.pk:
-                    continue
-                # Przedziały domknięte, jak ``daterange(..., '[]')`` w bazie.
-                if (do2 is None or od <= do2) and (do is None or od2 <= do):
-                    raise ValidationError(
-                        f"Okresy pracy autora {autor} w jednostce "
-                        f"„{jednostka}” nakładają się ({_opis_okresu(od, do)} "
-                        f"oraz {_opis_okresu(od2, do2)}). Przed dodaniem "
-                        "nowego okresu uzupełnij datę zakończenia poprzedniego "
-                        "(pole „Zakończył pracę”) albo popraw daty."
-                    )
-
-    def _okresy_po_zapisie(self):
-        """Datowane okresy w stanie KOŃCOWYM: wiersze z formularza (bez
-        zaznaczonych do usunięcia) plus wiersze z bazy, których formularz nie
-        pokazuje (np. innej uczelni). Krotki (autor, jednostka, od, do)."""
-        okresy = []
-        pk_w_formularzu = set()
-        for form in self.forms:
-            if form.instance.pk is not None:
-                pk_w_formularzu.add(form.instance.pk)
-            cd = getattr(form, "cleaned_data", None) or {}
-            okres = tuple(
-                cd.get(pole)
-                for pole in ("autor", "jednostka", "rozpoczal_prace", "zakonczyl_prace")
-            )
-            if not cd.get("DELETE") and None not in okres[:3]:
-                okresy.append(okres)
-
-        if self.instance.pk is not None:
-            z_bazy = (
-                Autor_Jednostka.objects.filter(
-                    **{self.fk.name: self.instance}, rozpoczal_prace__isnull=False
-                )
-                .exclude(pk__in=pk_w_formularzu)
-                .select_related("autor", "jednostka")
-            )
-            okresy.extend(
-                (aj.autor, aj.jednostka, aj.rozpoczal_prace, aj.zakonczyl_prace)
-                for aj in z_bazy
-            )
-        return okresy
-
-
-def _opis_okresu(od, do):
-    koniec = f"do {do:%Y-%m-%d}" if do is not None else "bez daty zakończenia"
-    return f"od {od:%Y-%m-%d} {koniec}"
 
 
 class Autor_JednostkaInline(admin.TabularInline):

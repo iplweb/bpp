@@ -46,7 +46,7 @@ def autor_uczelni(jednostka):
     return autor
 
 
-def _form(autor, jednostka, dyscyplina, rok=ROK, uczelnia=None):
+def _form(autor, jednostka, dyscyplina, rok=ROK, **kw):
     return Zgloszenie_Publikacji_AutorForm(
         data={
             "autor": autor.pk,
@@ -54,7 +54,7 @@ def _form(autor, jednostka, dyscyplina, rok=ROK, uczelnia=None):
             "dyscyplina_naukowa": dyscyplina.pk if dyscyplina else "",
             "rok": rok,
         },
-        uczelnia=uczelnia,
+        **kw,
     )
 
 
@@ -353,7 +353,7 @@ def test_komenda_raport_i_usuwanie(
     raport = out.getvalue()
     assert "Yilmaz" in raport
     assert "Swój" not in raport and "Zpraca" not in raport
-    assert "Przypadków: 1 (tylko raport" in raport
+    assert "Przypadków: 1, do usunięcia: 1 (tylko raport" in raport
     assert Autor_Dyscyplina.objects.filter(pk=ad_obcy.pk).exists()
 
     call_command("fd640_dyscypliny_obcych_ze_zgloszen", "--usun", stdout=StringIO())
@@ -366,3 +366,94 @@ def test_komenda_raport_i_usuwanie(
         autor=autor_obcy, jednostka=obca_jednostka
     ).exists()
     assert Autor_Dyscyplina.objects.filter(autor__in=[swoj, z_praca]).count() == 2
+
+
+@pytest.mark.django_db
+def test_komenda_pomija_pracownika_innej_uczelni(uczelnia, jednostka, dyscyplina1):
+    """Baza wielu uczelni: autor obcy dla jednej, pracownik drugiej."""
+    from bpp.models import Jednostka, Uczelnia
+    from zglos_publikacje.fd640 import znajdz_przypadki
+
+    inna = baker.make(Uczelnia, skrot="IN", nazwa="Inna uczelnia")
+    jednostka_innej = baker.make(
+        Jednostka, uczelnia=inna, skupia_pracownikow=True, parent=None
+    )
+    autor = baker.make(Autor, nazwisko="Zinnej")
+    Autor_Jednostka.objects.create(
+        autor=autor,
+        jednostka=jednostka_innej,
+        rozpoczal_prace=datetime.date(2020, 1, 1),
+    )
+    _dopiete_przez_zgloszenie(autor, jednostka_innej, dyscyplina1)
+    assert znajdz_przypadki() == []
+
+
+@pytest.mark.django_db
+def test_komenda_pomija_uzyte_w_pracach_i_zmienione(
+    uczelnia, jednostka, obca_jednostka, dyscyplina1
+):
+    from django.contrib.admin.models import CHANGE, LogEntry
+
+    from bpp.models import Wydawnictwo_Ciagle, Wydawnictwo_Ciagle_Autor
+    from zglos_publikacje.fd640 import POWOD_ZMIENIONE, usun, znajdz_przypadki
+
+    w_pracy = baker.make(Autor, nazwisko="Wpracy")
+    Autor_Jednostka.objects.create(autor=w_pracy, jednostka=obca_jednostka)
+    _dopiete_przez_zgloszenie(w_pracy, jednostka, dyscyplina1)
+    praca = baker.make(Wydawnictwo_Ciagle, rok=ROK)
+    wca = baker.prepare(
+        Wydawnictwo_Ciagle_Autor,
+        rekord=praca,
+        autor=w_pracy,
+        jednostka=obca_jednostka,
+        dyscyplina_naukowa=dyscyplina1,
+        _save_related=True,
+    )
+    wca.save(**{"__disable_bmoa_clean_method": True})
+
+    zmienione = baker.make(Autor, nazwisko="Zmienione")
+    ad = _dopiete_przez_zgloszenie(zmienione, jednostka, dyscyplina1)
+    LogEntry.objects.log_actions(
+        baker.make("bpp.BppUser").pk, [ad], CHANGE, change_message="ręcznie"
+    )
+
+    przypadki = {p.autor.nazwisko: p for p in znajdz_przypadki()}
+    assert "dyscyplina użyta w pracach (1)" in przypadki["Wpracy"].pominiety
+    assert przypadki["Zmienione"].pominiety == POWOD_ZMIENIONE
+    with pytest.raises(ValueError):
+        usun(przypadki["Zmienione"])
+
+
+@pytest.mark.django_db
+def test_komenda_dwa_lata_jednego_autora(uczelnia, jednostka, autor_obcy, dyscyplina1):
+    from io import StringIO
+
+    from django.contrib.admin.models import DELETION, LogEntry
+    from django.core.management import call_command
+
+    _dopiete_przez_zgloszenie(autor_obcy, jednostka, dyscyplina1, rok=ROK)
+    _dopiete_przez_zgloszenie(autor_obcy, jednostka, dyscyplina1, rok=ROK + 1)
+
+    call_command("fd640_dyscypliny_obcych_ze_zgloszen", "--usun", stdout=StringIO())
+
+    assert not Autor_Dyscyplina.objects.filter(autor=autor_obcy).exists()
+    assert not Autor_Jednostka.objects.filter(
+        autor=autor_obcy, jednostka=jednostka
+    ).exists()
+    assert (
+        LogEntry.objects.filter(
+            action_flag=DELETION, change_message__contains="powiązanie z jednostką"
+        ).count()
+        == 1
+    )
+
+
+@pytest.mark.django_db
+def test_formularz_bez_uczelni_z_requestu_fail_closed(
+    jednostka, autor_uczelni, dyscyplina1
+):
+    """Uczelnia z requestu (także brak) jest wiążąca — zgłaszający nie
+    „wybiera” uczelni jednostką."""
+    form = _form(autor_uczelni, jednostka, dyscyplina1, uczelnia=None)
+    assert not form.is_valid()
+    assert KOMUNIKAT_OBCY in str(form.errors["dyscyplina_naukowa"])

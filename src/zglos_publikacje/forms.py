@@ -523,6 +523,9 @@ class Zgloszenie_Publikacji_Plik(forms.ModelForm):
         return self.cleaned_data["plik"]
 
 
+_NIE_PODANO = object()
+
+
 class Zgloszenie_Publikacji_AutorForm(forms.ModelForm):
     class Media:
         js = ["/static/bpp/js/autorform_dependant.js"]
@@ -566,7 +569,7 @@ class Zgloszenie_Publikacji_AutorForm(forms.ModelForm):
 
     rok = forms.IntegerField(widget=HiddenInput)
 
-    def __init__(self, *args, uczelnia=None, **kw):
+    def __init__(self, *args, uczelnia=_NIE_PODANO, **kw):
         self.helper = FormHelper()
         self.helper.form_tag = False
         self.helper.form_class = "custom"
@@ -586,8 +589,11 @@ class Zgloszenie_Publikacji_AutorForm(forms.ModelForm):
         # .clean``); w module redagowania walidacja zostaje ścisła.
         self.instance.dopusc_propozycje_dyscypliny = True
         # FD#640: „autor uczelni” liczony względem uczelni z requestu
-        # (multi-hosted); bez niej model bierze jedyną uczelnię w systemie.
-        self.instance._uczelnia = uczelnia
+        # (multi-hosted). Kreator przekazuje ją zawsze — także ``None``, które
+        # model traktuje fail-closed. Bez argumentu (kod, testy) model bierze
+        # uczelnię jednostki albo jedyną w systemie.
+        if uczelnia is not _NIE_PODANO:
+            self.instance._uczelnia = uczelnia
 
     def clean_jednostka(self):
         # #438: zgłoszony autor zawsze dostaje ``afiliuje=True`` (formularz nie

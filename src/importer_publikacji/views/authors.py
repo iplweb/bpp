@@ -242,7 +242,9 @@ def _prefill_dyscypliny_z_zgloszen(session):
     zpa_by_autor = {}
     for zpa in Zgloszenie_Publikacji_Autor.objects.filter(
         rekord=zgloszenie,
-    ).select_related("dyscyplina_naukowa", "jednostka"):
+    ).select_related("dyscyplina_naukowa", "jednostka", "autor"):
+        if session.uczelnia_id is not None:
+            zpa._uczelnia = session.uczelnia
         zpa_by_autor[zpa.autor_id] = zpa
 
     to_update = session.authors.filter(
@@ -254,7 +256,9 @@ def _prefill_dyscypliny_z_zgloszen(session):
         zpa = zpa_by_autor.get(imported.matched_autor_id)
         if not zpa:
             continue
-        if zpa.dyscyplina_naukowa_id:
+        # FD#640: dyscypliny ze zgłoszenia nie przenosimy autorowi spoza
+        # uczelni (stare zgłoszenia mogły ją mieć).
+        if zpa.dyscyplina_naukowa_id and zpa.autor_jest_autorem_uczelni():
             imported.matched_dyscyplina = zpa.dyscyplina_naukowa
             imported.dyscyplina_source = ImportedAuthor.DyscyplinaSource.ZGLOSZENIE
         if not imported.matched_jednostka_id and zpa.jednostka_id:

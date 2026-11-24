@@ -278,3 +278,25 @@ def test_find_matching_zgloszenie_returns_none_for_short_title(
     _make_zgloszenie(doi=None, title="Short")
 
     assert _find_matching_zgloszenie(session) is None
+
+
+@pytest.mark.django_db
+def test_fd640_nie_przenosi_dyscypliny_autorowi_spoza_uczelni(
+    session, autor, dyscyplina
+):
+    """Stare zgłoszenie z dyscypliną przy autorze, który nie jest autorem
+    uczelni (np. powiązanie ze zgłoszenia już usunięte) — bez podpowiedzi."""
+    from bpp.models import Autor_Jednostka
+
+    zgl = _make_zgloszenie(doi="10.1234/test")
+    zpa = _make_zpa(zgl, autor, dyscyplina=dyscyplina)
+    Autor_Jednostka.objects.filter(autor=autor).delete()
+
+    imported = _make_imported_author(session, autor=autor)
+
+    _prefill_dyscypliny_z_zgloszen(session)
+
+    imported.refresh_from_db()
+    assert imported.matched_dyscyplina is None
+    # Jednostka nadal podpowiadana (decyzja redaktora).
+    assert imported.matched_jednostka == zpa.jednostka

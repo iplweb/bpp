@@ -247,6 +247,7 @@ def test_zglos_publikacje_wiele_klikniec(
         "#id_3-1-dyscyplina_naukowa"
     ).input_value() == str(dyscyplina1.pk)
 
+
 @pytest.mark.django_db(transaction=True)
 def test_fd640_dyscyplina_ukryta_dla_autora_spoza_uczelni(
     admin_page: Page,
