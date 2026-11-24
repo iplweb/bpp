@@ -151,6 +151,65 @@ class AutorQuerySet(BppSoftDeleteQuerySet):
             )
         ).distinct()
 
+    def autorzy_uczelni(self, uczelnia):
+        """Autorzy uczelni — obecni lub byli — w rozumieniu publicznej strony
+        autora (FD#640): autor ma lub miał przypisanie (``Autor_Jednostka``)
+        albo aktualną jednostkę w jednostce TEJ uczelni, która nie jest
+        jednostką sztuczną — skonfigurowaną ``Uczelnia.obca_jednostka`` ani
+        jednostką o ujemnym pk („Błędna” ze starych wdrożeń).
+
+        Ta sama granica co w przeglądaniu autorów
+        (``pokazuj_autorow_obcych_w_przegladaniu_danych``). Celowo NIE
+        wymagamy ``skupia_pracownikow=True``: jednostki „Doktoranci”,
+        „Studenci”, „Pracownicy emerytowani” mają tę flagę wyłączoną, a ich
+        autorzy są autorami uczelni. ``uczelnia=None`` → pusty queryset
+        (fail-closed).
+        """
+        if uczelnia is None:
+            return self.none()
+        nasze = _jednostki_uczelni_bez_sztucznych(uczelnia)
+        return self.filter(
+            Q(aktualna_jednostka__in=nasze)
+            | models.Exists(
+                Autor_Jednostka.objects.filter(
+                    autor=models.OuterRef("pk"), jednostka__in=nasze
+                )
+            )
+        )
+
+    def spoza_uczelni(self, uczelnia):
+        """Autorzy spoza uczelni (FD#640): mają jakiekolwiek przypisanie do
+        jednostki (``Autor_Jednostka`` lub aktualna jednostka), ale żadne
+        nie czyni ich autorami ``uczelnia`` (``autorzy_uczelni``) — typowo
+        jedynym przypisaniem jest jednostka obca, którą BPP dopina autorowi
+        przy zapisie pracy.
+
+        Autor BEZ żadnego przypisania nie jest tu liczony: brak danych to
+        nie dowód obcości (np. świeżo założony pracownik przed
+        przypisaniem jednostki). ``uczelnia=None`` → pusty queryset.
+        """
+        if uczelnia is None:
+            return self.none()
+        ma_przypisanie = Q(aktualna_jednostka__isnull=False) | models.Exists(
+            Autor_Jednostka.objects.filter(autor=models.OuterRef("pk"))
+        )
+        return self.filter(ma_przypisanie).exclude(
+            pk__in=self.model.global_objects.all()
+            .autorzy_uczelni(uczelnia)
+            .values("pk")
+        )
+
+
+def _jednostki_uczelni_bez_sztucznych(uczelnia):
+    """Subquery pk jednostek ``uczelnia`` z pominięciem jednostek sztucznych
+    (``Uczelnia.obca_jednostka``, pk < 0) — patrz ``autorzy_uczelni``."""
+    from bpp.models.jednostka import Jednostka
+
+    qs = Jednostka.objects.filter(uczelnia=uczelnia, pk__gte=0)
+    if uczelnia.obca_jednostka_id is not None:
+        qs = qs.exclude(pk=uczelnia.obca_jednostka_id)
+    return qs.values("pk")
+
 
 class AutorManager(FulltextSearchMixin, models.Manager.from_queryset(AutorQuerySet)):
     # Nie włączaj websearch gdy podano minus (podwójne nazwiska z myślnikiem)
@@ -593,6 +652,21 @@ class Autor(
         if uczelnia is None:
             return True
         return bool(uczelnia.pokazuj_siec_powiazan)
+
+    def jest_spoza_uczelni(self, uczelnia):
+        """Czy autor jest spoza ``uczelnia`` — definicja
+        w ``AutorQuerySet.spoza_uczelni``. Gdy uczelni nie da się ustalić
+        (``None``, np. pusta baza), zwraca ``False``: bez punktu odniesienia
+        nikogo nie traktujemy jako obcego i strona autora działa jak dawniej.
+        """
+        if uczelnia is None:
+            return False
+        return (
+            type(self)
+            .global_objects.filter(pk=self.pk)
+            .spoza_uczelni(uczelnia)
+            .exists()
+        )
 
     KOMUNIKAT_STRONA_AUTORA = (
         "Aby schować stronę autora, najpierw wyłącz pokazywanie autora "

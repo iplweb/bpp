@@ -122,6 +122,23 @@ prace autora powstałe w innej uczelni tej samej instalacji (szczegóły
 w [instrukcji administratora](../administrator/ogolna.md#układ-podstrony-autora-profil-autora)).
 Ten sam zakres obejmuje [eksport do BibTeX i RIS](#eksport-publikacji-autora-bibtex-i-ris).
 
+### Autor spoza uczelni {#autor-spoza-uczelni}
+
+Pełną stronę autora (podsumowanie dorobku, biogram, statystyki, wykresy,
+metryki) mają wyłącznie **autorzy uczelni — obecni i byli**, czyli osoby,
+które mają lub miały przypisanie do jakiejkolwiek jednostki uczelni innej niż
+[*Obca jednostka*](../redaktor/uczelnia.md#obca-jednostka) (liczą się też
+jednostki typu „Doktoranci”, „Studenci”, „Pracownicy emerytowani” i
+zatrudnienia już zakończone).
+
+Współautor spoza uczelni — osoba przypisana wyłącznie do *Obcej jednostki* —
+pod tym samym adresem dostaje **prostą stronę informacyjną**: imię i nazwisko,
+komunikat „Autor spoza uczelni” oraz przycisk **Pokaż prace współautorskie**,
+który otwiera listę jego prac w bibliografii. Dotychczasowe linki do takiego
+autora (z opisów prac, wyników wyszukiwania, zakładek) nadal działają.
+Taka strona nie trafia do mapy strony (sitemap) i jest oznaczona dla
+wyszukiwarek internetowych jako nieindeksowana.
+
 Strona autora składa się z **pasów**: sekcja zajmuje całą szerokość strony
 albo dwie sekcje stoją obok siebie. Sekcje bez danych (np. autor bez
 zdjęcia i biogramu) po prostu się nie pokazują, a sąsiednia sekcja zajmuje

@@ -1,0 +1,76 @@
+{% extends "base.html" %}
+{# FD#640: prosta strona autora spoza uczelni (z obcej jednostki). #}
+{# Pełny profil (punktacja, biogram, statystyki) mają tylko autorzy uczelni. #}
+
+{% block extratitle %}
+    {{ autor }} (autor spoza uczelni)
+{% endblock %}
+
+{% block extrahead %}
+    {{ block.super }}
+    {# Strona informacyjna, bez treści profilu — nie podsuwamy jej wyszukiwarkom. #}
+    <meta name="robots" content="noindex"/>
+{% endblock %}
+
+{% block breadcrumbs %}
+    {{ block.super }}
+    <li><a href="{% url "bpp:browse_autorzy" %}">Autorzy</a></li>
+    <li class="current">{{ autor }}</li>
+{% endblock %}
+
+{% block content %}
+<div class="author-header">
+    <div class="grid-x grid-margin-x align-middle">
+        <div class="cell small-12 medium-auto">
+            <h1 class="autor-page__heading">{{ autor }}</h1>
+        </div>
+        <div class="cell small-12 medium-shrink">
+            <div class="hide-for-print autor-page__actions">
+                {% load user_in_group %}
+                {% if request.user.is_superuser or request.user|has_group:"wprowadzanie danych" %}
+                    <a target="_blank"
+                       href="{% url "admin:bpp_autor_change" autor.pk %}"
+                       class="jednostka-edit-button">
+                        <span class="fi fi-page-edit"></span>Otwórz do edycji
+                    </a>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="callout secondary autor-page__spoza-uczelni" role="status">
+    <span class="fi-info" aria-hidden="true"></span>
+    <strong>Autor spoza uczelni.</strong>
+    Ta osoba nie jest i nie była przypisana do żadnej jednostki
+    {{ uczelnia.nazwa_dopelniacz_field|default:"uczelni" }} &mdash; występuje
+    w bibliografii jako współautor prac autorów uczelni (jednostka obca).
+    Dlatego nie ma tu profilu autora.
+</div>
+
+{% if request.user.is_superuser or request.user|has_group:"wprowadzanie danych" %}
+    {# Wskazówka tylko dla redakcji: skąd ta strona i jak przywrócić profil. #}
+    <p class="hide-for-print">
+        <small>
+            Widok dla redakcji: autor ma przypisania wyłącznie do jednostki
+            obcej (wskazanej w ustawieniach uczelni). Pełny profil pojawi się
+            po dodaniu mu przypisania do jednostki uczelni (także
+            zakończonego, dla byłych pracowników).
+        </small>
+    </p>
+{% endif %}
+
+<div class="autor-page__quick-actions">
+    <form method="post"
+          action="{% url "bpp:browse_build_search" %}"
+          class="autor-page__quick-actions-form">
+        {# Brak {% csrf_token %} celowo — BuildSearch jest @csrf_exempt. #}
+        <input type="hidden" name="autor" value="{{ autor.pk }}"/>
+        <input type="hidden" name="suggested-title" value="{{ autor }}"/>
+        <input type="hidden" name="cel" value="wyniki"/>
+        <button type="submit" class="button primary large autor-page__show-all-btn">
+            <i class="fi-list-bullet autor-page__icon--mr-lg"></i>Pokaż prace współautorskie ({{ liczby_prac.wszystkie }})
+        </button>
+    </form>
+</div>
+{% endblock %}

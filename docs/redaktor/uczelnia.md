@@ -63,6 +63,13 @@ W systemie BPP powinna znajdować się jedna i wyłącznie jedna *Obca jednostka
 
 Jest to taka jednostka, do której trafiają autorzy, którzy afiliują na jednostkę nie będącą w strukturach uczelni.
 
+Autor przypisany wyłącznie do *Obcej jednostki* jest w publicznej części
+serwisu traktowany jako **autor spoza uczelni**: zamiast pełnej strony autora
+widać prostą stronę informacyjną z listą jego prac współautorskich (patrz
+[Autor spoza uczelni](../uzytkownik/przegladanie-i-wyszukiwanie.md#autor-spoza-uczelni)).
+Wystarczy jedno przypisanie (także zakończone) do innej jednostki uczelni, by
+autor miał pełną stronę.
+
 Aby określić *Obcą jednostkę*, otwórz rekord uczelni (Redagowanie ➡ Struktura ➡ Uczelnia, jak opisano
 wyżej), wybierz jednostkę w polu *Obca jednostka* (na końcu pierwszej części formularza) i zapisz rekord.
 
@@ -71,4 +78,3 @@ wyżej), wybierz jednostkę w polu *Obca jednostka* (na końcu pierwszej częśc
 !!! note
 
     warto, aby *Obca jednostka* miała odznaczone [Pole *Skupia pracowników*](jednostki.md#pole-skupia-pracowników) oraz [Pole *Zarządzaj automatycznie*](jednostki.md#pole-zarządzaj-automatycznie)
-
