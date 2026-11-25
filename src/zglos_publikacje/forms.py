@@ -644,6 +644,26 @@ class Zgloszenie_Publikacji_AutorForm(forms.ModelForm):
             )
         return jednostka
 
+    def clean(self):
+        cleaned_data = super().clean()
+        # FD#640: autor spoza uczelni bez wybranej jednostki — zamiast
+        # ogólnego „To pole jest wymagane” pokaż, jaką jednostkę można mu
+        # wybrać (albo że uczelnia nie ma obcej jednostki). Gdy uczelnia jej
+        # nie ma, wyszukiwarka jednostek nie podpowiada temu autorowi nic,
+        # więc ogólny komunikat byłby jedynym, jaki zobaczy zgłaszający.
+        autor = cleaned_data.get("autor")
+        if autor is not None and self.has_error("jednostka", code="required"):
+            if hasattr(self.instance, "_uczelnia"):
+                uczelnia = self.instance._uczelnia
+            else:
+                uczelnia = Uczelnia.objects.get_single_uczelnia_or_none()
+            if not autor.jest_autorem_uczelni(uczelnia):
+                blad = Zgloszenie_Publikacji_Autor.blad_jednostki_autora_spoza_uczelni(
+                    autor, None, uczelnia
+                )
+                self.errors["jednostka"] = self.error_class([blad])
+        return cleaned_data
+
 
 Zgloszenie_Publikacji_AutorFormSet = inlineformset_factory(
     Zgloszenie_Publikacji,

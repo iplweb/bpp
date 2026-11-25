@@ -112,10 +112,22 @@ def _jest_jednostka_uczelni(jednostka):
     )
 
 
+def _content_type(model):
+    """Typ zawartości ``model`` TYLKO do odczytu — w przeciwieństwie do
+    ``ContentType.objects.get_for_model`` nie zakłada brakującego wiersza
+    (komenda raportu niczego nie zapisuje). ``None`` — w bazie nie ma typu,
+    więc nie ma też żadnych wpisów historii dla tego modelu."""
+    return ContentType.objects.filter(
+        app_label=model._meta.app_label, model=model._meta.model_name
+    ).first()
+
+
 def _wpisy_historii_autora(autor_id):
     """Teksty z historii autora: wpisy ``LogEntry`` (JSON zmian z admina)
     i komentarze rewizji reversion — z datą."""
-    ct = ContentType.objects.get_for_model(Autor)
+    ct = _content_type(Autor)
+    if ct is None:
+        return []
     wynik = [
         (w.action_time, w.action_flag, w.change_message or "")
         for w in LogEntry.objects.filter(content_type=ct, object_id=str(autor_id))
@@ -167,7 +179,9 @@ def _zrodlo_jednostki_znane(aj, zgloszenie, historia):
                 return True
     if zgloszenie is None or zgloszenie.utworzono is None:
         return False
-    ct = ContentType.objects.get_for_model(Autor)
+    ct = _content_type(Autor)
+    if ct is None:
+        return False
     for v in Version.objects.filter(
         content_type=ct,
         object_id=str(aj.autor_id),
@@ -256,10 +270,13 @@ def _zmienione_przez_redakcje(ad, utworzono, historia):
     przypisaniu albo — typowa ścieżka — zmiana przez inline „Powiązania
     autor-dyscyplina” w edycji autora (wpis w historii autora o zmianie
     przypisania na ten rok)."""
-    ct = ContentType.objects.get_for_model(Autor_Dyscyplina)
-    if LogEntry.objects.filter(
-        content_type=ct, action_flag=CHANGE, object_id=str(ad.pk)
-    ).exists():
+    ct = _content_type(Autor_Dyscyplina)
+    if (
+        ct is not None
+        and LogEntry.objects.filter(
+            content_type=ct, action_flag=CHANGE, object_id=str(ad.pk)
+        ).exists()
+    ):
         return True
     na_rok = f"na rok {ad.rok} "
     for kiedy, _flaga, tekst in historia:
@@ -275,7 +292,9 @@ def znajdz_przypadki():
     """Przypisania dyscyplin dopisane przez zgłoszenia autorom, którzy (po
     pominięciu powiązań wyglądających na założone przez te zgłoszenia) nie są
     autorami żadnej uczelni w bazie."""
-    ct = ContentType.objects.get_for_model(Autor_Dyscyplina)
+    ct = _content_type(Autor_Dyscyplina)
+    if ct is None:
+        return []
     opisy = {}
     for wpis in LogEntry.objects.filter(
         content_type=ct,

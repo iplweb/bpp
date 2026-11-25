@@ -11,13 +11,10 @@ from django_bpp.playwright_util import (
 )
 
 
-def wait_for_discipline_populated(
-    page: Page, field_id: str, timeout: int = 10000
-):
+def wait_for_discipline_populated(page: Page, field_id: str, timeout: int = 10000):
     """Wait for discipline field to be populated via AJAX."""
     page.wait_for_function(
-        f"() => document.querySelector('#{field_id}')"
-        f".value !== ''",
+        f"() => document.querySelector('#{field_id}').value !== ''",
         timeout=timeout,
     )
 
@@ -31,14 +28,9 @@ def _przejdz_kroki_0_1_2(
     strona_www="https://www.onet.pl/",
 ):
     """Przejdź kroki 0 (rodzaj), 1 (dostęp), 2 (dane)."""
-    page.goto(
-        channels_live_server.url
-        + reverse("zglos_publikacje:nowe_zgloszenie")
-    )
+    page.goto(channels_live_server.url + reverse("zglos_publikacje:nowe_zgloszenie"))
     page.wait_for_load_state("domcontentloaded")
-    page.evaluate(
-        "if(window.Cookielaw) Cookielaw.accept()"
-    )
+    page.evaluate("if(window.Cookielaw) Cookielaw.accept()")
 
     # Krok 0: rodzaj — klik na kafelek auto-submituje form (tile JS handler).
     # Radio input jest ukryty wewnątrz <label class="tile-card">.
@@ -82,9 +74,7 @@ def test_zglos_publikacje_drugi_autor_dyscyplina(
             rok=rok,
             dyscyplina_naukowa=dyscyplina1,
         )
-        Autor_Jednostka.objects.get_or_create(
-            autor=autor, jednostka=jednostka
-        )
+        Autor_Jednostka.objects.get_or_create(autor=autor, jednostka=jednostka)
 
     _przejdz_kroki_0_1_2(
         admin_page,
@@ -97,9 +87,7 @@ def test_zglos_publikacje_drugi_autor_dyscyplina(
     # Krok 3: autorzy
     n = 1
     admin_page.click("#add-form")
-    admin_page.wait_for_selector(
-        f"#id_3-{n}-autor", state="visible"
-    )
+    admin_page.wait_for_selector(f"#id_3-{n}-autor", state="visible")
     set_select2_value(
         admin_page,
         f"id_3-{n}-autor",
@@ -108,13 +96,11 @@ def test_zglos_publikacje_drugi_autor_dyscyplina(
         timeout=30000,
     )
 
-    wait_for_discipline_populated(
-        admin_page, f"id_3-{n}-dyscyplina_naukowa"
-    )
+    wait_for_discipline_populated(admin_page, f"id_3-{n}-dyscyplina_naukowa")
 
-    assert admin_page.locator(
-        f"#id_3-{n}-dyscyplina_naukowa"
-    ).input_value() == str(dyscyplina1.pk)
+    assert admin_page.locator(f"#id_3-{n}-dyscyplina_naukowa").input_value() == str(
+        dyscyplina1.pk
+    )
 
 
 @pytest.mark.django_db(transaction=True)
@@ -134,9 +120,7 @@ def test_zglos_publikacje_ograniczony_dostep(
             rok=rok,
             dyscyplina_naukowa=dyscyplina1,
         )
-        Autor_Jednostka.objects.get_or_create(
-            autor=autor, jednostka=jednostka
-        )
+        Autor_Jednostka.objects.get_or_create(autor=autor, jednostka=jednostka)
 
     _przejdz_kroki_0_1_2(
         admin_page,
@@ -151,11 +135,7 @@ def test_zglos_publikacje_ograniczony_dostep(
     assert admin_page.locator("[name='2-pliki']").count() > 0
 
     # Dodaj plik
-    plik = os.path.abspath(
-        os.path.join(
-            os.path.dirname(__file__), "..", "example.pdf"
-        )
-    )
+    plik = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "example.pdf"))
     admin_page.set_input_files("[name='2-pliki']", plik)
     admin_page.click("#id-wizard-submit")
     admin_page.wait_for_load_state("domcontentloaded")
@@ -163,9 +143,7 @@ def test_zglos_publikacje_ograniczony_dostep(
     # Krok 3: autorzy
     n = 1
     admin_page.click("#add-form")
-    admin_page.wait_for_selector(
-        f"#id_3-{n}-autor", state="attached", timeout=10000
-    )
+    admin_page.wait_for_selector(f"#id_3-{n}-autor", state="attached", timeout=10000)
 
     admin_page.locator(f"#id_3-{n}-autor").scroll_into_view_if_needed()
 
@@ -177,13 +155,11 @@ def test_zglos_publikacje_ograniczony_dostep(
         timeout=30000,
     )
 
-    wait_for_discipline_populated(
-        admin_page, f"id_3-{n}-dyscyplina_naukowa"
-    )
+    wait_for_discipline_populated(admin_page, f"id_3-{n}-dyscyplina_naukowa")
 
-    assert admin_page.locator(
-        f"#id_3-{n}-dyscyplina_naukowa"
-    ).input_value() == str(dyscyplina1.pk)
+    assert admin_page.locator(f"#id_3-{n}-dyscyplina_naukowa").input_value() == str(
+        dyscyplina1.pk
+    )
 
 
 @pytest.mark.django_db(transaction=True)
@@ -204,9 +180,7 @@ def test_zglos_publikacje_wiele_klikniec(
             rok=rok,
             dyscyplina_naukowa=dyscyplina1,
         )
-        Autor_Jednostka.objects.get_or_create(
-            autor=autor, jednostka=jednostka
-        )
+        Autor_Jednostka.objects.get_or_create(autor=autor, jednostka=jednostka)
 
     _przejdz_kroki_0_1_2(
         admin_page,
@@ -218,17 +192,11 @@ def test_zglos_publikacje_wiele_klikniec(
 
     # Krok 3: autorzy - kliknij "dodaj" 3 razy
     admin_page.click("#add-form")
-    admin_page.wait_for_selector(
-        "#id_3-0-autor", state="visible"
-    )
+    admin_page.wait_for_selector("#id_3-0-autor", state="visible")
     admin_page.click("#add-form")
-    admin_page.wait_for_selector(
-        "#id_3-1-autor", state="visible"
-    )
+    admin_page.wait_for_selector("#id_3-1-autor", state="visible")
     admin_page.click("#add-form")
-    admin_page.wait_for_selector(
-        "#id_3-2-autor", state="visible"
-    )
+    admin_page.wait_for_selector("#id_3-2-autor", state="visible")
 
     # NIE ZASTĘPOWAĆ przez set_select2_value: test ma potwierdzać, że po
     # wielokrotnym dodaniu formularzy Select2 nadal przyjmuje wpisywanie.
@@ -239,13 +207,11 @@ def test_zglos_publikacje_wiele_klikniec(
         timeout=30000,
     )
 
-    wait_for_discipline_populated(
-        admin_page, "id_3-1-dyscyplina_naukowa"
-    )
+    wait_for_discipline_populated(admin_page, "id_3-1-dyscyplina_naukowa")
 
-    assert admin_page.locator(
-        "#id_3-1-dyscyplina_naukowa"
-    ).input_value() == str(dyscyplina1.pk)
+    assert admin_page.locator("#id_3-1-dyscyplina_naukowa").input_value() == str(
+        dyscyplina1.pk
+    )
 
 
 @pytest.mark.django_db(transaction=True)
@@ -385,3 +351,48 @@ def test_fd640_spozniona_odpowiedz_nie_nadpisuje_wyboru(
     _zwolnij_odpowiedz(admin_page, 2)
     admin_page.wait_for_timeout(300)
     expect(jednostka_pole).to_have_value(str(trzecia.pk))
+
+
+@pytest.mark.django_db(transaction=True)
+def test_fd640_zmiana_autora_czysci_dyscypline_poprzedniego(
+    admin_page: Page,
+    channels_live_server,
+    autor_jan_kowalski,
+    autor_jan_nowak,
+    uczelnia,
+    jednostka,
+    druga_jednostka,
+    dyscyplina1,
+    dyscyplina2,
+    dyscyplina3,
+    rok,
+):
+    """FD#640: po zmianie autora A → B, gdy B ma w roku dwie dyscypliny (API
+    nie podpowiada żadnej), dyscyplina autora A nie zostaje w polu."""
+    a, b = autor_jan_kowalski, autor_jan_nowak
+    Autor_Jednostka.objects.get_or_create(autor=a, jednostka=jednostka)
+    Autor_Jednostka.objects.get_or_create(autor=b, jednostka=druga_jednostka)
+    Autor_Dyscyplina.objects.get_or_create(
+        autor=a, rok=rok, dyscyplina_naukowa=dyscyplina1
+    )
+    Autor_Dyscyplina.objects.get_or_create(
+        autor=b,
+        rok=rok,
+        dyscyplina_naukowa=dyscyplina2,
+        subdyscyplina_naukowa=dyscyplina3,
+    )
+
+    _przejdz_kroki_0_1_2(
+        admin_page, channels_live_server, rok, rodzaj="POZOSTALE", forma="OTWARTY"
+    )
+    dyscyplina_pole = admin_page.locator("#id_3-0-dyscyplina_naukowa")
+    jednostka_pole = admin_page.locator("#id_3-0-jednostka")
+
+    set_select2_value(admin_page, "id_3-0-autor", a.pk, label=str(a), timeout=30000)
+    expect(dyscyplina_pole).to_have_value(str(dyscyplina1.pk))
+
+    set_select2_value(admin_page, "id_3-0-autor", b.pk, label=str(b), timeout=30000)
+    # Jednostka B przychodzi w tej samej odpowiedzi — po niej pole dyscypliny
+    # musi być puste.
+    expect(jednostka_pole).to_have_value(str(druga_jednostka.pk))
+    expect(dyscyplina_pole).to_have_value("")

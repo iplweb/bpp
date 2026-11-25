@@ -267,10 +267,26 @@ def _prefill_dyscypliny_z_zgloszen(session):
             imported.matched_dyscyplina = dyscyplina
             imported.dyscyplina_source = ImportedAuthor.DyscyplinaSource.ZGLOSZENIE
         if not imported.matched_jednostka_id:
-            jednostka = zpa.jednostka_dla_redakcji()
+            jednostka = _jednostka_ze_zgloszenia(zpa)
             if jednostka is not None:
                 imported.matched_jednostka = jednostka
         imported.save()
+
+
+def _jednostka_ze_zgloszenia(zpa):
+    """Jednostka autora zgłoszenia do podpowiedzi w importerze (FD#640).
+
+    Autor spoza uczelni z inną jednostką niż obca (stare zgłoszenie,
+    jednostka uczelni albo innej uczelni) dostaje w zamian obcą jednostkę
+    uczelni — ``_add_authors_to_record`` zapisze ją bez afiliacji. Gdy
+    uczelnia jej nie ma, jednostka zostaje pusta (wiersz autora pokazuje
+    ostrzeżenie) i redaktor wybiera ją ręcznie."""
+    jednostka = zpa.jednostka_dla_redakcji()
+    if jednostka is None and zpa.jednostka_id is not None:
+        uczelnia = zpa.uczelnia_zgloszenia()
+        if uczelnia is not None:
+            jednostka = uczelnia.obca_jednostka
+    return jednostka
 
 
 @transaction.atomic

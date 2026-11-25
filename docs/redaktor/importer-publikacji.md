@@ -128,7 +128,14 @@ Importer otworzysz na dwa sposoby:
     jeśli autor nie ma przypisania na rok publikacji, powstanie ono
     dopiero przy **„Utwórz publikację”** (w Twoim imieniu). Autorowi spoza
     uczelni importer nie podpowiada ze zgłoszenia ani dyscypliny, ani
-    jednostki uczelni.
+    żadnej jednostki poza obcą jednostką uczelni — w zamian wpisuje obcą
+    jednostkę (praca zapisze go bez afiliacji). Gdy uczelnia nie ma
+    ustawionej obcej jednostki, kolumna „Jednostka” pokazuje **„wybierz
+    jednostkę”** — autor bez jednostki nie trafi do pracy. Autorowi, który
+    w chwili tworzenia pracy nie jest autorem uczelni (np. po odpięciu go od
+    jednostek uczelni), importer nie założy przypisania do dyscypliny ze
+    zgłoszenia — **„Utwórz publikację”** pokaże komunikat; usuń wtedy jego
+    dyscyplinę w kroku „Autorzy”.
 
     ![Dopasowanie autorów: statusy dokładne, luźne i niedopasowany oraz przycisk „Edytuj”](../images/redaktor/importer-publikacji/09-autorzy.png)
 

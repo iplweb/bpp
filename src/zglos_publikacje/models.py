@@ -398,17 +398,24 @@ class Zgloszenie_Publikacji_Autor(
 
     def jednostka_dla_redakcji(self):
         """Jednostka ze zgłoszenia do podpowiedzi przy zatwierdzaniu
-        (importer, „Dodaj wyd. …” w adminie). FD#640: obcemu autorowi NIE
-        podpowiadamy jednostki uczelni (stare zgłoszenia mogły ją mieć) —
-        zapis pracy założyłby mu ``Autor_Jednostka`` i „zrobił” z niego
-        autora uczelni. Jednostkę obcą albo innej uczelni podpowiadamy."""
+        (importer, „Dodaj wyd. …” w adminie).
+
+        FD#640: autorowi spoza uczelni podpowiadamy WYŁĄCZNIE obcą jednostkę
+        uczelni zgłoszenia (``Uczelnia.obca_jednostka``) — tę samą regułę
+        stosuje formularz zgłoszenia. Każda inna jednostka (uczelni albo
+        innej uczelni w tej samej bazie — stare zgłoszenia mogły ją mieć)
+        daje ``None``: zapis pracy założyłby autorowi ``Autor_Jednostka``
+        i z afiliacją „zrobił” z niego autora uczelni. Wołający uzupełnia
+        wtedy obcą jednostkę bez afiliacji (albo ostrzega redaktora, gdy
+        uczelnia jej nie ma)."""
         if self.jednostka_id is None:
             return None
-        if self.jednostka_jest_jednostka_uczelni() and (
-            not self.autor_jest_autorem_uczelni()
-        ):
-            return None
-        return self.jednostka
+        if self.autor_jest_autorem_uczelni():
+            return self.jednostka
+        uczelnia = self.uczelnia_zgloszenia()
+        if uczelnia is not None and self.jednostka_id == uczelnia.obca_jednostka_id:
+            return self.jednostka
+        return None
 
     def dyscyplina_dla_redakcji(self):
         """Dyscyplina-propozycja ze zgłoszenia do podpowiedzi przy

@@ -54,6 +54,12 @@
     <td>
         {% if author.matched_jednostka %}
             <small>{{ author.matched_jednostka }}</small>
+        {% elif author.matched_autor %}
+            {# FD#640: autor bez jednostki nie trafi do rekordu pracy #}
+            <span class="label alert"
+                  title="Autor bez jednostki nie zostanie dodany do pracy. Wybierz jednostkę w edycji autora (dla autora spoza uczelni: obcą jednostkę uczelni).">
+                wybierz jednostkę
+            </span>
         {% else %}
             <em>-</em>
         {% endif %}

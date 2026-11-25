@@ -262,6 +262,67 @@ def test_obcy_bez_skonfigurowanej_obcej_jednostki(
     assert "Obca jednostka" in bledy
 
 
+def _form_bez_jednostki(autor, **kw):
+    return Zgloszenie_Publikacji_AutorForm(
+        data={
+            "autor": autor.pk,
+            "jednostka": "",
+            "dyscyplina_naukowa": "",
+            "rok": ROK,
+        },
+        **kw,
+    )
+
+
+@pytest.mark.django_db
+def test_obcy_bez_jednostki_bez_obcej_jednostki_wlasciwy_komunikat(uczelnia, jednostka):
+    """Uczelnia bez ``obca_jednostka``: wyszukiwarka jednostek nie podpowiada
+    obcemu autorowi nic, więc pole „Jednostka” zostaje puste. Zgłaszający ma
+    dostać komunikat o obcej jednostce, nie ogólne „To pole jest wymagane”."""
+    assert uczelnia.obca_jednostka_id is None
+    autor = baker.make(Autor)  # bez żadnych przypisań = nie autor uczelni
+    form = _form_bez_jednostki(autor, uczelnia=uczelnia)
+    assert not form.is_valid()
+    bledy = form.errors["jednostka"]
+    assert len(bledy) == 1
+    assert "nie ma jej ustawionej" in bledy[0]
+    assert "Obca jednostka" in bledy[0]
+
+
+@pytest.mark.django_db
+def test_obcy_bez_jednostki_z_obca_jednostka_podpowiada_ja(uczelnia, autor_obcy):
+    form = _form_bez_jednostki(autor_obcy, uczelnia=uczelnia)
+    assert not form.is_valid()
+    bledy = form.errors["jednostka"]
+    assert len(bledy) == 1
+    assert KOMUNIKAT_JEDNOSTKA_OBCEGO in bledy[0]
+    assert "Obca Jednostka" in bledy[0]
+
+
+@pytest.mark.django_db
+def test_autor_uczelni_bez_jednostki_pole_wymagane_jak_dotad(uczelnia, autor_uczelni):
+    form = _form_bez_jednostki(autor_uczelni, uczelnia=uczelnia)
+    assert not form.is_valid()
+    assert form.has_error("jednostka", code="required")
+
+
+@pytest.mark.django_db
+def test_zgloszenie_obcego_bez_jednostki_bez_obcej_jednostki(
+    webtest_app, typy_odpowiedzialnosci, uczelnia, jednostka
+):
+    """Ścieżka zgłaszającego: obcy autor, puste pole „Jednostka”, uczelnia
+    bez obcej jednostki — strona pokazuje komunikat o obcej jednostce."""
+    assert uczelnia.obca_jednostka_id is None
+    autor = baker.make(Autor, nazwisko="Yilmaz", imiona="Oktay")
+    page = _przejdz_do_kroku_danych(webtest_app, rodzaj="POZOSTALE")
+    page = _krok2_dane(page, tytul="Mastitis", strona_www="https://example.com/")
+    page2 = page.forms[0].submit()
+    page2.forms[0]["3-0-autor"].force_value(autor.pk)
+    res = page2.forms[0].submit()
+    assert "nie ma jej ustawionej" in res.text
+    assert not Zgloszenie_Publikacji.objects.exists()
+
+
 @pytest.mark.django_db
 def test_autocomplete_jednostki_dla_obcego_tylko_obca(
     webtest_app, uczelnia, jednostka, obca_jednostka, autor_obcy, autor_uczelni
@@ -455,6 +516,65 @@ def test_admin_podpowiedz_obcemu_bez_jednostki_uczelni_i_dyscypliny(
 
 
 @pytest.mark.django_db
+def test_jednostka_dla_redakcji_obcemu_tylko_obca(
+    uczelnia, jednostka, obca_jednostka, autor_obcy
+):
+    """FD#640: obcemu autorowi redakcja dostaje ze zgłoszenia wyłącznie obcą
+    jednostkę uczelni — jednostka uczelni i jednostka innej uczelni (stare
+    zgłoszenia, kilka uczelni w bazie) dają ``None``."""
+    from bpp.models import Uczelnia
+
+    inna = baker.make(Uczelnia, skrot="IN", nazwa="Inna uczelnia")
+    jednostka_innej = baker.make(
+        Jednostka, uczelnia=inna, skupia_pracownikow=True, parent=None
+    )
+    for jedn, oczekiwana in (
+        (obca_jednostka, obca_jednostka),
+        (jednostka, None),
+        (jednostka_innej, None),
+    ):
+        zpa = _zpa_bez_walidacji(autor_obcy, jedn)
+        zpa._uczelnia = uczelnia
+        assert zpa.jednostka_dla_redakcji() == oczekiwana, jedn
+
+
+@pytest.mark.django_db
+def test_admin_podpowiedz_obcemu_z_jednostka_innej_uczelni(
+    uczelnia, obca_jednostka, autor_obcy
+):
+    """Jednostka innej uczelni nie trafia do rekordu (z afiliacją) — w zamian
+    obca jednostka bez afiliacji i uwaga dla redaktora."""
+    from bpp.models import Uczelnia
+    from zglos_publikacje.dyscypliny import podpowiedz_dla_redakcji
+
+    inna = baker.make(Uczelnia, skrot="IN", nazwa="Inna uczelnia")
+    jednostka_innej = baker.make(
+        Jednostka, uczelnia=inna, skupia_pracownikow=True, parent=None
+    )
+    zpa = _zpa_bez_walidacji(autor_obcy, jednostka_innej)
+    zpa._uczelnia = uczelnia
+    initial, uwagi = podpowiedz_dla_redakcji(zpa, ROK)
+    assert initial["jednostka"] == obca_jednostka.pk
+    assert initial["afiliuje"] is False
+    assert "jest spoza uczelni" in uwagi[0]
+
+
+@pytest.mark.django_db
+def test_admin_podpowiedz_obcemu_bez_obcej_jednostki(uczelnia, jednostka):
+    """Uczelnia bez obcej jednostki: jednostka zostaje pusta, a redaktor
+    dostaje komunikat, żeby ją wybrał."""
+    from zglos_publikacje.dyscypliny import podpowiedz_dla_redakcji
+
+    assert uczelnia.obca_jednostka_id is None
+    autor = baker.make(Autor)
+    zpa = _zpa_bez_walidacji(autor, jednostka)
+    zpa._uczelnia = uczelnia
+    initial, uwagi = podpowiedz_dla_redakcji(zpa, ROK)
+    assert initial["jednostka"] is None
+    assert "wybierz ją" in uwagi[0]
+
+
+@pytest.mark.django_db
 def test_admin_podpowiedz_propozycji_bez_przypisania(
     uczelnia, jednostka, autor_uczelni, dyscyplina1
 ):
@@ -585,6 +705,31 @@ def _stan_bazy():
         sorted(Autor_Dyscyplina.objects.values_list("pk", "autor_id", "rok")),
         sorted(Autor_Jednostka.objects.values_list("pk", "autor_id", "jednostka_id")),
     )
+
+
+@pytest.mark.django_db
+def test_komenda_nie_zaklada_typow_zawartosci(uczelnia, autor_obcy):
+    """Komenda raportu jest wyłącznie do odczytu — także brakujących
+    ``ContentType`` nie zakłada (``get_for_model`` by je dopisał)."""
+    from django.contrib.contenttypes.models import ContentType
+
+    from zglos_publikacje.fd640 import znajdz_jednostki_bez_dyscyplin
+
+    baker.make(Zgloszenie_Publikacji_Autor, autor=autor_obcy, rok=ROK)
+    ContentType.objects.filter(
+        app_label="bpp", model__in=["autor", "autor_dyscyplina"]
+    ).delete()
+    ContentType.objects.clear_cache()
+    try:
+        _raport()
+        znajdz_jednostki_bez_dyscyplin()
+        assert not ContentType.objects.filter(
+            app_label="bpp", model__in=["autor", "autor_dyscyplina"]
+        ).exists()
+    finally:
+        # Po wycofaniu transakcji testu wiersze wrócą — cache nie może
+        # trzymać stanu z jej środka.
+        ContentType.objects.clear_cache()
 
 
 @pytest.mark.django_db

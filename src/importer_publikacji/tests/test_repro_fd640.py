@@ -142,3 +142,144 @@ def test_obcy_z_obca_jednostka_bez_afiliacji(
     autorstwo = record.autorzy_set.get()
     assert autorstwo.jednostka == obca_jednostka
     assert autorstwo.afiliuje is False
+
+
+def _imported(sesja, autor, jednostka=None, **kw):
+    return baker.make(
+        ImportedAuthor,
+        session=sesja,
+        order=0,
+        family_name=autor.nazwisko,
+        given_name=autor.imiona,
+        match_status=ImportedAuthor.MatchStatus.MANUAL,
+        matched_autor=autor,
+        matched_jednostka=jednostka,
+        zapisany_jako=f"{autor.nazwisko} {autor.imiona}",
+        **kw,
+    )
+
+
+@pytest.mark.django_db
+def test_odpiety_od_uczelni_nie_dostaje_dyscypliny_ze_zgloszenia(
+    webtest_app,
+    django_capture_on_commit_callbacks,
+    sesja,
+    uczelnia,
+    jednostka,
+    dyscyplina1,
+):
+    """Redakcja odpina autora od jedynej jednostki uczelni PO wczytaniu
+    zgłoszenia do importera — zapamiętana propozycja dyscypliny nie może
+    założyć mu ``Autor_Dyscyplina`` (nie jest już autorem uczelni)."""
+    from django.core.exceptions import ValidationError
+
+    from importer_publikacji.dyscypliny import (
+        autorzy_spoza_uczelni_bez_prawa_do_dyscypliny,
+        przypisz_brakujace_dyscypliny,
+    )
+
+    autor = baker.make(Autor, nazwisko="Burmańczuk", imiona="Artur")
+    Autor_Jednostka.objects.create(autor=autor, jednostka=jednostka)
+    zgloszenie = _zglos(
+        webtest_app, django_capture_on_commit_callbacks, autor, jednostka, dyscyplina1
+    )
+    sesja.zgloszenie = zgloszenie
+    sesja.save()
+    imported = _imported(sesja, autor, jednostka)
+    _prefill_dyscypliny_z_zgloszen(sesja)
+    imported.refresh_from_db()
+    assert imported.matched_dyscyplina == dyscyplina1
+
+    # Redakcja odpina autora od uczelni.
+    Autor_Jednostka.objects.filter(autor=autor).delete()
+    Autor.objects.filter(pk=autor.pk).update(aktualna_jednostka=None)
+
+    assert autorzy_spoza_uczelni_bez_prawa_do_dyscypliny(sesja) == [imported]
+    with pytest.raises(ValidationError, match="autorom spoza uczelni"):
+        _create_publication(sesja)
+    # Bezpiecznik także w samym zakładaniu przypisań.
+    with pytest.raises(ValidationError, match="autorom spoza uczelni"):
+        przypisz_brakujace_dyscypliny(sesja, type("R", (), {"rok": ROK})(), None)
+    assert not Autor_Dyscyplina.objects.filter(autor=autor).exists()
+
+
+@pytest.mark.django_db
+def test_operator_wybiera_dyscypline_nowemu_pracownikowi(
+    sesja, uczelnia, jednostka, dyscyplina1
+):
+    """FD#620 bez zmian: operator importu wybiera dyscyplinę autorowi bez
+    przypisań i dopasowuje go do jednostki uczelni — przypisanie powstaje
+    (zapis pracy i tak dopisze mu tę jednostkę)."""
+    autor = baker.make(Autor, nazwisko="Nowy", imiona="Pracownik")
+    _imported(
+        sesja,
+        autor,
+        jednostka,
+        matched_dyscyplina=dyscyplina1,
+        dyscyplina_source=ImportedAuthor.DyscyplinaSource.MANUAL,
+    )
+    record = _create_publication(sesja)
+    assert Autor_Dyscyplina.objects.filter(autor=autor, rok=ROK).exists()
+    assert record.autorzy_set.get().dyscyplina_naukowa == dyscyplina1
+
+
+@pytest.mark.django_db
+def test_operator_nie_przypisze_dyscypliny_obcemu_z_obca_jednostka(
+    sesja, uczelnia_z_obca_jednostka, obca_jednostka, dyscyplina1
+):
+    from django.core.exceptions import ValidationError
+
+    sesja.uczelnia = uczelnia_z_obca_jednostka
+    sesja.save()
+    autor = baker.make(Autor, nazwisko="Yilmaz", imiona="Oktay")
+    Autor_Jednostka.objects.create(autor=autor, jednostka=obca_jednostka)
+    _imported(
+        sesja,
+        autor,
+        obca_jednostka,
+        matched_dyscyplina=dyscyplina1,
+        dyscyplina_source=ImportedAuthor.DyscyplinaSource.MANUAL,
+    )
+    with pytest.raises(ValidationError, match="autorom spoza uczelni"):
+        _create_publication(sesja)
+    assert not Autor_Dyscyplina.objects.filter(autor=autor).exists()
+
+
+@pytest.mark.django_db
+def test_prefill_obcemu_z_jednostka_innej_uczelni_daje_obca(
+    sesja, uczelnia_z_obca_jednostka, obca_jednostka
+):
+    """FD#640 (A): stare zgłoszenie z jednostką innej uczelni przy obcym
+    autorze — importer podpowiada obcą jednostkę, rekord bez afiliacji."""
+    from bpp.models import Jednostka, Uczelnia
+    from zglos_publikacje.models import Zgloszenie_Publikacji_Autor
+
+    sesja.uczelnia = uczelnia_z_obca_jednostka
+    sesja.save()
+    inna = baker.make(Uczelnia, skrot="IN", nazwa="Inna uczelnia")
+    jednostka_innej = baker.make(
+        Jednostka, uczelnia=inna, skupia_pracownikow=True, parent=None
+    )
+    autor = baker.make(Autor, nazwisko="Yilmaz", imiona="Oktay")
+    Autor_Jednostka.objects.create(autor=autor, jednostka=obca_jednostka)
+    zgloszenie = baker.make(Zgloszenie_Publikacji, tytul_oryginalny="Mastitis")
+    zpa = baker.prepare(
+        Zgloszenie_Publikacji_Autor,
+        rekord=zgloszenie,
+        autor=autor,
+        jednostka=jednostka_innej,
+        rok=ROK,
+        _save_related=True,
+    )
+    zpa.save(**{"__disable_bmoa_clean_method": True})
+    sesja.zgloszenie = zgloszenie
+    sesja.save()
+    imported = _imported(sesja, autor)
+
+    _prefill_dyscypliny_z_zgloszen(sesja)
+    imported.refresh_from_db()
+    assert imported.matched_jednostka == obca_jednostka
+
+    autorstwo = _create_publication(sesja).autorzy_set.get()
+    assert autorstwo.jednostka == obca_jednostka
+    assert autorstwo.afiliuje is False

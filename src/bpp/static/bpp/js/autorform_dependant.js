@@ -159,13 +159,26 @@
                 if (tylkoDlaAutorowUczelni(prefix))
                     pokazDyscypline(prefix, !spozaUczelni);
 
-                if (data['dyscyplina_id'] && !spozaUczelni
-                    && dyscyplinaNieruszona(prefix, zadanie)) {
-                    $(':input[name=' + prefix + 'dyscyplina_naukowa]').append(
-                        '<option selected="selected" value=' + data['dyscyplina_id'] + '>'
-                        + data['dyscyplina_nazwa'] + '</option>');
-
-                    $(':input[name=' + prefix + 'dyscyplina_naukowa]').trigger("change");
+                // FD#640: dyscyplina poprzedniego autora nie może zostać przy
+                // nowym (np. autor B ma dwie dyscypliny w roku i API nie
+                // podaje żadnej). Jeśli użytkownik nie ruszał pola od zmiany
+                // autora, czyścimy je, a potem ewentualnie wpisujemy
+                // podpowiedź dla nowego autora.
+                if (dyscyplinaNieruszona(prefix, zadanie)) {
+                    var pole = poleDyscypliny(prefix);
+                    if (data['dyscyplina_id'] && !spozaUczelni) {
+                        pole.find('option').filter(function () {
+                            return this.value === String(data['dyscyplina_id']);
+                        }).remove();
+                        pole.append($('<option>', {
+                            value: data['dyscyplina_id'],
+                            text: data['dyscyplina_nazwa'],
+                            selected: true
+                        }));
+                        pole.val(String(data['dyscyplina_id'])).trigger('change');
+                    } else if (pole.val()) {
+                        pole.val(null).trigger('change');
+                    }
                 }
 
                 $(':input[name=' + prefix + 'zapisany_jako]').val(null).trigger('change');
