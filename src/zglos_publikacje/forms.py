@@ -6,6 +6,7 @@ from dal_select2_queryset_sequence.widgets import (
 )
 from django import forms
 from django.core.exceptions import ValidationError
+from django.db.models import Q
 from django.forms import inlineformset_factory
 from django.forms.widgets import HiddenInput
 from django.urls import reverse_lazy
@@ -523,6 +524,9 @@ class Zgloszenie_Publikacji_Plik(forms.ModelForm):
         return self.cleaned_data["plik"]
 
 
+_NIE_PODANO = object()
+
+
 class Zgloszenie_Publikacji_AutorForm(forms.ModelForm):
     class Media:
         js = ["/static/bpp/js/autorform_dependant.js"]
@@ -537,8 +541,24 @@ class Zgloszenie_Publikacji_AutorForm(forms.ModelForm):
     )
 
     jednostka = forms.ModelChoiceField(
-        queryset=Jednostka.objects.publiczne(),
-        widget=autocomplete.ModelSelect2(url="bpp:public-jednostka-autocomplete"),
+        # FD#640: także (zwykle niewidoczne) obce jednostki uczelni — jedyny
+        # dozwolony wybór dla autora spoza uczelni.
+        queryset=Jednostka.objects.filter(
+            Q(pk__in=Jednostka.objects.publiczne().values("pk"))
+            | Q(
+                pk__in=Uczelnia.objects.exclude(obca_jednostka=None).values(
+                    "obca_jednostka"
+                )
+            )
+        ),
+        widget=autocomplete.ModelSelect2(
+            url="bpp:zgloszenie-jednostka-autocomplete",
+            # FD#640: autorowi spoza uczelni lista podpowiada tylko jednostkę
+            # obcą, a ``autorform_dependant.js`` ustawia ją po wybraniu
+            # autora (tylko pola z tym atrybutem — admin bez zmian).
+            forward=["autor"],
+            attrs={"data-obcy-tylko-obca-jednostka": "1"},
+        ),
     )
 
     dyscyplina_naukowa = forms.ModelChoiceField(
@@ -549,19 +569,25 @@ class Zgloszenie_Publikacji_AutorForm(forms.ModelForm):
             # podpowiedź (jego dyscypliny z wcześniejszego roku albo typowe
             # dla uczelni).
             forward=["autor", "rok", forward.Const(True, "typowe")],
+            # FD#640: ``autorform_dependant.js`` ukrywa pole, gdy wybrany
+            # autor nie jest autorem uczelni.
+            attrs={"data-tylko-autor-uczelni": "1"},
         ),
         required=False,
         help_text=(
+            "Dyscyplinę podaje się tylko dla autorów uczelni — dla autora "
+            "spoza uczelni to pole nie jest pokazywane. "
             "Jeśli autor nie ma przypisanej dyscypliny na rok publikacji, "
             "lista podpowiada jego dyscypliny z wcześniejszego roku (a gdy "
             "nie miał ich nigdy — dyscypliny typowe dla uczelni). Wybrana "
-            "dyscyplina zostanie przypisana autorowi na rok publikacji."
+            "dyscyplina to propozycja dla redakcji — autorowi zostanie "
+            "przypisana dopiero po zatwierdzeniu zgłoszenia."
         ),
     )
 
     rok = forms.IntegerField(widget=HiddenInput)
 
-    def __init__(self, *args, **kw):
+    def __init__(self, *args, uczelnia=_NIE_PODANO, **kw):
         self.helper = FormHelper()
         self.helper.form_tag = False
         self.helper.form_class = "custom"
@@ -580,20 +606,63 @@ class Zgloszenie_Publikacji_AutorForm(forms.ModelForm):
         # przypisania na rok pracy (sprawdza ``Zgloszenie_Publikacji_Autor
         # .clean``); w module redagowania walidacja zostaje ścisła.
         self.instance.dopusc_propozycje_dyscypliny = True
+        # FD#640: „autor uczelni” liczony względem uczelni z requestu
+        # (multi-hosted). Kreator przekazuje ją zawsze — także ``None``, które
+        # model traktuje fail-closed. Bez argumentu (kod, testy) model bierze
+        # uczelnię jednostki albo jedyną w systemie.
+        if uczelnia is not _NIE_PODANO:
+            self.instance._uczelnia = uczelnia
 
     def clean_jednostka(self):
-        # #438: zgłoszony autor zawsze dostaje ``afiliuje=True`` (formularz nie
-        # ma pola do odznaczenia), więc jednostka MUSI przyjmować afiliację.
+        # #438: zgłoszony autor dostaje ``afiliuje=True`` (formularz nie ma
+        # pola do odznaczenia), więc jednostka MUSI przyjmować afiliację.
         # Odrzucamy tu — czytelnie na polu „Jednostka" — zamiast pozwolić na
         # nieczytelny błąd walidacji modelu (o polu 'Afiliuje') przy zapisie.
         jednostka = self.cleaned_data.get("jednostka")
-        if jednostka is not None and not jednostka.przyjmuje_afiliacje():
+        if jednostka is None:
+            return jednostka
+
+        # FD#640: autor spoza uczelni może mieć wyłącznie obcą jednostkę
+        # uczelni, bez afiliacji (obca jednostka nigdy nie afiliuje).
+        autor = self.cleaned_data.get("autor")
+        uczelnia = getattr(self.instance, "_uczelnia", jednostka.uczelnia)
+        if autor is not None and not autor.jest_autorem_uczelni(uczelnia):
+            blad = Zgloszenie_Publikacji_Autor.blad_jednostki_autora_spoza_uczelni(
+                autor, jednostka, uczelnia
+            )
+            if blad is not None:
+                raise forms.ValidationError(blad)
+            self.instance.afiliuje = False
+            return jednostka
+        self.instance.afiliuje = True
+
+        if not jednostka.przyjmuje_afiliacje():
             raise forms.ValidationError(
                 f"Do jednostki „{jednostka}” nie można afiliować autora "
                 "(np. jest to wydział albo jednostka obca). Wybierz jednostkę "
                 "podrzędną, do której autor faktycznie się afiliuje."
             )
         return jednostka
+
+    def clean(self):
+        cleaned_data = super().clean()
+        # FD#640: autor spoza uczelni bez wybranej jednostki — zamiast
+        # ogólnego „To pole jest wymagane” pokaż, jaką jednostkę można mu
+        # wybrać (albo że uczelnia nie ma obcej jednostki). Gdy uczelnia jej
+        # nie ma, wyszukiwarka jednostek nie podpowiada temu autorowi nic,
+        # więc ogólny komunikat byłby jedynym, jaki zobaczy zgłaszający.
+        autor = cleaned_data.get("autor")
+        if autor is not None and self.has_error("jednostka", code="required"):
+            if hasattr(self.instance, "_uczelnia"):
+                uczelnia = self.instance._uczelnia
+            else:
+                uczelnia = Uczelnia.objects.get_single_uczelnia_or_none()
+            if not autor.jest_autorem_uczelni(uczelnia):
+                blad = Zgloszenie_Publikacji_Autor.blad_jednostki_autora_spoza_uczelni(
+                    autor, None, uczelnia
+                )
+                self.errors["jednostka"] = self.error_class([blad])
+        return cleaned_data
 
 
 Zgloszenie_Publikacji_AutorFormSet = inlineformset_factory(

@@ -61,23 +61,26 @@ def _make_zgloszenie(
 def _make_zpa(zgloszenie, autor, dyscyplina=None, jednostka=None):
     """Utwórz Zgloszenie_Publikacji_Autor.
 
-    Jeśli podano dyscyplinę, tworzy też Autor_Dyscyplina
-    (wymagane przez clean() modelu).
+    Jeśli podano dyscyplinę, tworzy też Autor_Dyscyplina i powiązanie
+    z jednostką (wymagane przez clean() modelu).
     """
+    jednostka = jednostka or baker.make("bpp.Jednostka")
     if dyscyplina:
-        from bpp.models import Autor_Dyscyplina
+        from bpp.models import Autor_Dyscyplina, Autor_Jednostka
 
         Autor_Dyscyplina.objects.get_or_create(
             autor=autor,
             rok=2024,
             defaults={"dyscyplina_naukowa": dyscyplina},
         )
+        # FD#640: dyscyplinę w zgłoszeniu ma tylko autor uczelni.
+        Autor_Jednostka.objects.get_or_create(autor=autor, jednostka=jednostka)
 
     return baker.make(
         "zglos_publikacje.Zgloszenie_Publikacji_Autor",
         rekord=zgloszenie,
         autor=autor,
-        jednostka=jednostka or baker.make("bpp.Jednostka"),
+        jednostka=jednostka,
         dyscyplina_naukowa=dyscyplina,
         rok=2024,
     )
@@ -275,3 +278,48 @@ def test_find_matching_zgloszenie_returns_none_for_short_title(
     _make_zgloszenie(doi=None, title="Short")
 
     assert _find_matching_zgloszenie(session) is None
+
+
+@pytest.mark.django_db
+def test_fd640_nie_przenosi_dyscypliny_autorowi_spoza_uczelni(
+    session, autor, dyscyplina
+):
+    """Stare zgłoszenie z dyscypliną przy autorze, który nie jest autorem
+    uczelni (np. powiązanie ze zgłoszenia już usunięte) — bez podpowiedzi."""
+    from bpp.models import Autor_Jednostka
+
+    zgl = _make_zgloszenie(doi="10.1234/test")
+    zpa = _make_zpa(zgl, autor, dyscyplina=dyscyplina)
+    Autor_Jednostka.objects.filter(autor=autor).delete()
+
+    imported = _make_imported_author(session, autor=autor)
+
+    _prefill_dyscypliny_z_zgloszen(session)
+
+    imported.refresh_from_db()
+    assert imported.matched_dyscyplina is None
+    # Jednostki uczelni też nie — zapis pracy założyłby obcemu autorowi
+    # ``Autor_Jednostka`` i „zrobił” z niego autora uczelni.
+    assert zpa.jednostka_jest_jednostka_uczelni()
+    assert imported.matched_jednostka is None
+
+
+@pytest.mark.django_db
+def test_fd640_obcemu_podpowiada_jednostke_obca(session, autor):
+    """Jednostkę obcą uczelni (i jednostkę innej uczelni) obcemu autorowi
+    nadal podpowiadamy."""
+    from bpp.models import Autor_Jednostka
+
+    obca = baker.make("bpp.Jednostka", skupia_pracownikow=False)
+    obca.uczelnia.obca_jednostka = obca
+    obca.uczelnia.save()
+    Autor_Jednostka.objects.create(autor=autor, jednostka=obca)
+
+    zgl = _make_zgloszenie(doi="10.1234/test")
+    _make_zpa(zgl, autor, jednostka=obca)
+    imported = _make_imported_author(session, autor=autor)
+
+    _prefill_dyscypliny_z_zgloszen(session)
+
+    imported.refresh_from_db()
+    assert imported.matched_jednostka == obca

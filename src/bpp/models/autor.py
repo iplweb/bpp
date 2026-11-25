@@ -151,6 +151,69 @@ class AutorQuerySet(BppSoftDeleteQuerySet):
             )
         ).distinct()
 
+    def autorzy_uczelni(self, uczelnia):
+        """Autorzy uczelni — obecni lub byli — w rozumieniu publicznej strony
+        autora (FD#640): autor ma lub miał przypisanie (``Autor_Jednostka``)
+        albo aktualną jednostkę w jednostce TEJ uczelni, która nie jest
+        jednostką sztuczną — skonfigurowaną ``Uczelnia.obca_jednostka`` ani
+        jednostką o ujemnym pk („Błędna” ze starych wdrożeń).
+
+        Podobna granica jak w przeglądaniu autorów
+        (``pokazuj_autorow_obcych_w_przegladaniu_danych``), ale liczona dla
+        uczelni z requestu — przy kilku uczelniach w jednej bazie pracownik
+        uczelni A jest na stronach uczelni B autorem spoza uczelni. Celowo NIE
+        wymagamy ``skupia_pracownikow=True``: jednostki „Doktoranci”,
+        „Studenci”, „Pracownicy emerytowani” mają tę flagę wyłączoną, a ich
+        autorzy są autorami uczelni. ``uczelnia=None`` → pusty queryset
+        (fail-closed).
+        """
+        if uczelnia is None:
+            return self.none()
+        nasze = _jednostki_uczelni_bez_sztucznych(uczelnia)
+        return self.filter(
+            Q(aktualna_jednostka__in=nasze)
+            | models.Exists(
+                Autor_Jednostka.objects.filter(
+                    autor=models.OuterRef("pk"), jednostka__in=nasze
+                )
+            )
+        )
+
+    def spoza_uczelni(self, uczelnia):
+        """Autorzy spoza uczelni (FD#640): mają jakiekolwiek przypisanie do
+        jednostki (``Autor_Jednostka`` lub aktualna jednostka), ale żadne
+        nie czyni ich autorami ``uczelnia`` (``autorzy_uczelni``) — typowo
+        jedynym przypisaniem jest jednostka obca, którą BPP dopina autorowi
+        przy zapisie pracy.
+
+        Autor BEZ żadnego przypisania nie jest tu liczony: brak danych to
+        nie dowód obcości (np. świeżo założony pracownik przed
+        przypisaniem jednostki). ``uczelnia=None`` → pusty queryset.
+        """
+        if uczelnia is None:
+            return self.none()
+        nasze = _jednostki_uczelni_bez_sztucznych(uczelnia)
+        przypisania = Autor_Jednostka.objects.filter(autor=models.OuterRef("pk"))
+        # Skorelowane (NOT) EXISTS: sprawdzenie jednego autora nie liczy
+        # zbioru wszystkich autorów uczelni (``exclude(pk__in=...)`` by liczył).
+        return self.filter(
+            Q(aktualna_jednostka__isnull=False) | models.Exists(przypisania)
+        ).filter(
+            ~Q(aktualna_jednostka__in=nasze),
+            ~models.Exists(przypisania.filter(jednostka__in=nasze)),
+        )
+
+
+def _jednostki_uczelni_bez_sztucznych(uczelnia):
+    """Subquery pk jednostek ``uczelnia`` z pominięciem jednostek sztucznych
+    (``Uczelnia.obca_jednostka``, pk < 0) — patrz ``autorzy_uczelni``."""
+    from bpp.models.jednostka import Jednostka
+
+    qs = Jednostka.objects.filter(uczelnia=uczelnia, pk__gte=0)
+    if uczelnia.obca_jednostka_id is not None:
+        qs = qs.exclude(pk=uczelnia.obca_jednostka_id)
+    return qs.values("pk")
+
 
 class AutorManager(FulltextSearchMixin, models.Manager.from_queryset(AutorQuerySet)):
     # Nie włączaj websearch gdy podano minus (podwójne nazwiska z myślnikiem)
@@ -654,6 +717,29 @@ class Autor(
 
     def aktualna_subdyscyplina(self):
         return self.aktualna_dyscyplina(pole="subdyscyplina_naukowa")
+
+    def jest_autorem_uczelni(self, uczelnia):
+        """Czy autor jest „autorem uczelni” ``uczelnia`` (FD#640).
+
+        Cienka nakładka na ``AutorQuerySet.autorzy_uczelni`` — ta sama
+        definicja co dla publicznej strony autora: autor ma lub miał
+        przypisanie (albo aktualną jednostkę) w jednostce tej uczelni innej
+        niż sztuczna (``Uczelnia.obca_jednostka``, pk < 0). NIE wymaga
+        ``skupia_pracownikow=True`` — doktoranci, studenci i emeryci to
+        autorzy uczelni.
+
+        Autor bez żadnych przypisań → ``False``: w zgłoszeniu pracy (anonim)
+        nie dostaje dyscypliny ani jednostki uczelni (fail-closed).
+        ``uczelnia=None`` → ``False``.
+        """
+        if self.pk is None:
+            return False
+        return (
+            type(self)
+            .global_objects.filter(pk=self.pk)
+            .autorzy_uczelni(uczelnia)
+            .exists()
+        )
 
     def __str__(self):
         buf = f"{self.nazwisko} {self.imiona}"

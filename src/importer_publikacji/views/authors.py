@@ -260,7 +260,9 @@ def _prefill_dyscypliny_z_zgloszen(session):
     zpa_by_autor = {}
     for zpa in Zgloszenie_Publikacji_Autor.objects.filter(
         rekord=zgloszenie,
-    ).select_related("dyscyplina_naukowa", "jednostka"):
+    ).select_related("dyscyplina_naukowa", "jednostka", "autor"):
+        if session.uczelnia_id is not None:
+            zpa._uczelnia = session.uczelnia
         zpa_by_autor[zpa.autor_id] = zpa
 
     to_update = session.authors.filter(
@@ -272,12 +274,37 @@ def _prefill_dyscypliny_z_zgloszen(session):
         zpa = zpa_by_autor.get(imported.matched_autor_id)
         if not zpa:
             continue
-        if zpa.dyscyplina_naukowa_id:
-            imported.matched_dyscyplina = zpa.dyscyplina_naukowa
+        # FD#640: autorowi spoza uczelni nie przenosimy ze zgłoszenia ani
+        # dyscypliny, ani jednostki uczelni (stare zgłoszenia mogły je mieć) —
+        # zapis pracy założyłby mu ``Autor_Jednostka`` w jednostce uczelni.
+        # Dyscyplina-propozycja autora uczelni bez przypisania na rok pracy
+        # stanie się przypisaniem dopiero przy tworzeniu rekordu
+        # (``przypisz_brakujace_dyscypliny``, w imieniu redaktora).
+        dyscyplina = zpa.dyscyplina_dla_redakcji()
+        if dyscyplina is not None:
+            imported.matched_dyscyplina = dyscyplina
             imported.dyscyplina_source = ImportedAuthor.DyscyplinaSource.ZGLOSZENIE
-        if not imported.matched_jednostka_id and zpa.jednostka_id:
-            imported.matched_jednostka = zpa.jednostka
+        if not imported.matched_jednostka_id:
+            jednostka = _jednostka_ze_zgloszenia(zpa)
+            if jednostka is not None:
+                imported.matched_jednostka = jednostka
         imported.save()
+
+
+def _jednostka_ze_zgloszenia(zpa):
+    """Jednostka autora zgłoszenia do podpowiedzi w importerze (FD#640).
+
+    Autor spoza uczelni z inną jednostką niż obca (stare zgłoszenie,
+    jednostka uczelni albo innej uczelni) dostaje w zamian obcą jednostkę
+    uczelni — ``_add_authors_to_record`` zapisze ją bez afiliacji. Gdy
+    uczelnia jej nie ma, jednostka zostaje pusta (wiersz autora pokazuje
+    ostrzeżenie) i redaktor wybiera ją ręcznie."""
+    jednostka = zpa.jednostka_dla_redakcji()
+    if jednostka is None and zpa.jednostka_id is not None:
+        uczelnia = zpa.uczelnia_zgloszenia()
+        if uczelnia is not None:
+            jednostka = uczelnia.obca_jednostka
+    return jednostka
 
 
 @transaction.atomic
