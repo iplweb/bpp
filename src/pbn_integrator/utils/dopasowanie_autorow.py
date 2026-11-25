@@ -475,13 +475,15 @@ def _zastosuj_bezpieczniki(propozycje):
             propozycja.uwagi.append("osoba jest w PBN oznaczona jako usunięta")
 
 
-def zbadaj_autorow(autorzy, *, uczelnia=None, pewne_od_prac=0):
+def zbadaj_autorow(autorzy, *, uczelnia=None, pewne_od_prac=0, osoby_instytucji=None):
     """Zbadaj autorów bez odpowiednika w PBN. Niczego nie zapisuje.
 
-    Zwraca listę ``Propozycja`` w kolejności autorów.
+    Zwraca listę ``Propozycja`` w kolejności autorów. ``osoby_instytucji``
+    — już wczytana lista osób z instytucji (gdy wołający też jej używa).
     """
     autorzy = list(autorzy)
-    osoby_instytucji = OsobyInstytucji(uczelnia)
+    if osoby_instytucji is None:
+        osoby_instytucji = OsobyInstytucji(uczelnia)
     glosy = dowody_z_publikacji(autorzy)
     propozycje = [
         _ocen_autora(autor, osoby_instytucji, glosy.get(autor.pk, {}), pewne_od_prac)
@@ -489,3 +491,44 @@ def zbadaj_autorow(autorzy, *, uczelnia=None, pewne_od_prac=0):
     ]
     _zastosuj_bezpieczniki(propozycje)
     return propozycje
+
+
+def zapisz_propozycje(propozycje, uzytkownik=None):
+    """Zapisz wskazania „pewne”. Każdy autor w osobnej transakcji,
+    z ponownym sprawdzeniem pod blokadą — PBN UID, który pojawił się
+    w międzyczasie, nigdy nie jest nadpisywany. Historia zmian trafia na
+    konto ``uzytkownik`` (``None`` = konto systemowe)."""
+    from django.db import transaction
+
+    from bpp.models import Autor
+    from bpp.wersjonowanie import jako_uzytkownik
+    from pbn_integrator.utils.scientists import _powiaz_autora_z_pbn
+
+    with jako_uzytkownik(uzytkownik):
+        for propozycja in propozycje:
+            if not propozycja.do_zapisu:
+                continue
+            with transaction.atomic():
+                autor = Autor.objects.select_for_update().get(pk=propozycja.autor.pk)
+                if autor.pbn_uid_id is not None:
+                    propozycja.uwagi.append(
+                        "nie zapisano: autor dostał PBN UID w międzyczasie"
+                    )
+                    continue
+                if (
+                    Autor.objects.filter(pbn_uid_id=propozycja.scientist_id)
+                    .exclude(pk=autor.pk)
+                    .exists()
+                ):
+                    propozycja.uwagi.append(
+                        "nie zapisano: osoba PBN została w międzyczasie "
+                        "przypisana do innego autora"
+                    )
+                    continue
+                _powiaz_autora_z_pbn(
+                    autor,
+                    propozycja.scientist_id,
+                    "dopasowanie autorów bez odpowiednika w PBN: "
+                    + "; ".join(propozycja.zrodla),
+                )
+                propozycja.zapisano = True
