@@ -125,6 +125,9 @@ def rekord_z_odpowiednikiem_pbn(session):
     „cudzy”. Wynik liczymy raz na renderowanie."""
     from bpp.models import Wydawnictwo_Ciagle, Wydawnictwo_Zwarte
 
+    if not hasattr(session, "matched_data"):
+        # Szablon wyrenderowany bez obiektu sesji (np. test samego szablonu).
+        return None
     if hasattr(session, "_fd512_zajety_odpowiednik"):
         return session._fd512_zajety_odpowiednik
 
