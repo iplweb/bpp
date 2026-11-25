@@ -41,6 +41,7 @@ from crossref_bpp.mixins import AdminCrossrefAPIMixin, AdminCrossrefPBNAPIMixin
 from dspace_api.actions import wyslij_do_dspace, wyslij_do_dspace_w_tle
 from dspace_api.admin_mixins import DSpaceLinkAdminMixin
 from import_common.normalization import normalize_isbn
+from importer_publikacji.wzbogacanie.admin import WzbogacanieRekorduAdminMixin
 from pbn_api.models import Publication
 
 from .actions import (
@@ -502,6 +503,7 @@ class Wydawnictwo_Zwarte_Zewnetrzna_Baza_DanychInline(admin.StackedInline):
 
 
 class Wydawnictwo_ZwarteAdmin(
+    WzbogacanieRekorduAdminMixin,
     DSpaceLinkAdminMixin,
     ConstanceScoringFieldsMixin,
     BppDjangoQLSearchMixin,

@@ -1,0 +1,210 @@
+{% extends "admin/base_site.html" %}
+{% load i18n admin_urls %}
+{# FD#517/FD#518: porównanie rekordu BPP z CrossRef albo PBN i przeniesienie wybranych pól. #}
+{# Wygląd tabeli jak w porównaniu wersji z historii rekordu (FD#587). #}
+
+{% block title %}{{ title }} | {{ site_title|default:_('Django site admin') }}{% endblock %}
+
+{% block extrastyle %}
+    {{ block.super }}
+    {% include "reversion/_style_historii.html" %}
+    <style>
+        .bpp-wzbogacanie-zakladki { display: flex; gap: 6px; margin: 0 0 14px; }
+        .bpp-wzbogacanie-zakladki .grp-button { width: auto; min-width: 0; padding: 0 14px; height: 28px; line-height: 28px; box-sizing: border-box; }
+        .bpp-wzbogacanie-zakladki .bpp-zakladka-aktywna { font-weight: bold; box-shadow: inset 0 -3px 0 #309bbf; }
+        .bpp-wzbogacanie-ramka { border: 1px solid #ccc; border-radius: 4px; padding: 10px 14px; margin: 0 0 14px; font-size: 13px; line-height: 19px; }
+        .bpp-wzbogacanie-ostrzezenie { border-color: #e0c36a; background: #fff3cd; color: #6b5200; }
+        .bpp-wzbogacanie-blad { border-color: #c0392b; background: #fdecea; color: #82071e; }
+        .bpp-wzbogacanie-zgodne { border-color: #2e8b57; background: #e8f6ee; color: #055d20; }
+        .bpp-wzbogacanie-rozne { border-color: #b8860b; background: #fff8e1; color: #5f4500; }
+        .bpp-status { display: inline-block; border-radius: 3px; padding: 0 6px; font-size: 10px; line-height: 16px; color: #fff; white-space: nowrap; }
+        .bpp-status-zgodne { background: #7a8a80; }
+        .bpp-status-rozne { background: #b8860b; }
+        .bpp-status-brak_w_bpp { background: #2e8b57; }
+        .bpp-status-brak_w_zrodle { background: #8a7a7a; }
+        .bpp-status-nierozpoznane { background: #c0392b; }
+        table.bpp-porownanie tbody th { white-space: normal; }
+        table.bpp-porownanie tbody th label { cursor: pointer; display: block; margin: 0 0 4px; }
+        table.bpp-porownanie .bpp-naroznik .grp-button { width: auto; min-width: 0; height: auto; white-space: normal; line-height: 16px; padding: 4px 8px; text-align: left; }
+        table.bpp-porownanie th input[type=checkbox] { margin-right: 6px; vertical-align: middle; }
+        table.bpp-porownanie .bpp-uwaga { display: block; margin-top: 4px; font-weight: normal; white-space: normal; }
+        table.bpp-porownanie tr.bpp-wiersz-zgodny td { color: var(--bpp-tekst-przygaszony, #777); }
+        table.bpp-wersje-pbn, table.bpp-autorzy-porownanie { width: 100%; margin: 0 0 14px; }
+        table.bpp-wersje-pbn td, table.bpp-wersje-pbn th, table.bpp-autorzy-porownanie td, table.bpp-autorzy-porownanie th { font-size: 12px; line-height: 18px; vertical-align: top; }
+        table.bpp-wersje-pbn tr.bpp-wersja-wybrana td { font-weight: bold; background: var(--bpp-tlo-pow-2, #f3f8fb); }
+        .bpp-wzbogacanie h2 { margin: 18px 0 8px; font-size: 15px; }
+    </style>
+{% endblock %}
+
+{% block breadcrumbs %}
+    <ul class="grp-horizontal-list">
+        <li><a href="{% url 'admin:index' %}">{% trans 'Home' %}</a></li>
+        <li><a href="{% url 'admin:app_list' app_label=opts.app_label %}">{{ opts.app_config.verbose_name }}</a></li>
+        <li><a href="{{ changelist_url }}">{{ opts.verbose_name_plural|capfirst }}</a></li>
+        <li><a href="{{ change_url }}">{{ original|truncatewords:"18" }}</a></li>
+        <li>Wzbogać z {{ dane.nazwa }}</li>
+    </ul>
+{% endblock %}
+
+{% block object-tools %}
+    <ul class="grp-object-tools">
+        <li><a href="{{ history_url }}">Historia</a></li>
+    </ul>
+{% endblock %}
+
+{% block content_title %}<h1>Wzbogać z {{ dane.nazwa }}: {{ original|truncatewords:"24" }}</h1>{% endblock %}
+
+{% block javascripts %}
+    {{ block.super }}
+    <script type="text/javascript">
+        // „Zaznacz wszystkie różnice” / „Odznacz wszystkie”.
+        document.addEventListener("DOMContentLoaded", function () {
+            var pola = document.querySelectorAll("input[name=pole]");
+            document.querySelectorAll("[data-zaznacz]").forEach(function (przycisk) {
+                przycisk.addEventListener("click", function () {
+                    var stan = przycisk.getAttribute("data-zaznacz") === "1";
+                    pola.forEach(function (pole) { pole.checked = stan; });
+                });
+            });
+        });
+    </script>
+{% endblock %}
+
+{% block content %}
+    <div class="g-d-c bpp-historia bpp-wzbogacanie">
+        <div class="bpp-wzbogacanie-zakladki">
+            {% for nazwa, url, aktywna in zakladki %}
+                <a class="grp-button{% if aktywna %} bpp-zakladka-aktywna{% endif %}" href="{{ url }}"{% if aktywna %} aria-current="page"{% endif %}>{{ nazwa }}</a>
+            {% endfor %}
+        </div>
+
+        {% for ostrzezenie in dane.ostrzezenia %}
+            <div class="bpp-wzbogacanie-ramka bpp-wzbogacanie-ostrzezenie">⚠️ {{ ostrzezenie }}</div>
+        {% endfor %}
+
+        {% if wersje %}
+            <h2>Wersje tej publikacji w PBN</h2>
+            <table class="grp-table bpp-wersje-pbn">
+                <thead>
+                    <tr><th scope="col">Data wersji</th><th scope="col">Oznaczenia</th><th scope="col"></th></tr>
+                </thead>
+                <tbody>
+                    {% for wersja, url, wybrana in wersje %}
+                        <tr{% if wybrana %} class="bpp-wersja-wybrana"{% endif %}>
+                            <td>{{ wersja.data_tekst }}</td>
+                            <td>{% for oznaczenie in wersja.oznaczenia %}<span class="bpp-status bpp-status-zgodne">{{ oznaczenie }}</span> {% empty %}<span class="bpp-przygaszony">wcześniejsza</span>{% endfor %}</td>
+                            <td>{% if wybrana %}👉 porównywana poniżej{% else %}<a href="{{ url }}">Porównaj z tą wersją</a>{% endif %}</td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        {% endif %}
+
+        {% if dane.blad %}
+            <div class="bpp-wzbogacanie-ramka bpp-wzbogacanie-blad">⛔ {{ dane.blad }}</div>
+        {% else %}
+            {% if rozne %}
+                <div class="bpp-wzbogacanie-ramka bpp-wzbogacanie-rozne">
+                    <strong>Różni się {{ rozne|length }} {% if rozne|length == 1 %}pole{% elif rozne|length < 5 %}pola{% else %}pól{% endif %}:</strong>
+                    {% for wiersz in rozne %}{{ wiersz.etykieta }}{% if not forloop.last %}, {% endif %}{% endfor %}.
+                    Zaznacz pola, które chcesz przenieść do BPP, i zatwierdź przyciskiem na dole strony. Niezaznaczone pola zostaną bez zmian.
+                </div>
+            {% else %}
+                <div class="bpp-wzbogacanie-ramka bpp-wzbogacanie-zgodne">
+                    <strong>✅ Wszystko się zgadza</strong> — {{ dane.nazwa }} nie ma danych, których brakuje w rekordzie BPP albo które się od niego różnią.
+                </div>
+            {% endif %}
+            {% if tylko_w_bpp %}
+                <div class="bpp-przygaszony" style="margin: 0 0 14px;">Pola wypełnione tylko w BPP (źródło ich nie podaje): {% for wiersz in tylko_w_bpp %}{{ wiersz.etykieta }}{% if not forloop.last %}, {% endif %}{% endfor %}.</div>
+            {% endif %}
+
+            <form method="post" id="bpp-wzbogacanie-form">
+                {% csrf_token %}
+                <input type="hidden" name="wersja" value="{{ identyfikator_wersji }}">
+                {% if wiersze %}
+                    <table class="grp-table bpp-porownanie">
+                        <thead>
+                            <tr>
+                                <td class="bpp-kol-pole bpp-naroznik">
+                                    {% if do_przeniesienia %}
+                                        <button type="button" class="grp-button" data-zaznacz="1">☑️ Zaznacz wszystkie różnice</button>
+                                    {% endif %}
+                                </td>
+                                <th scope="col" class="bpp-naglowek-wersji bpp-wersja-b">
+                                    <div class="bpp-naglowek-nazwa">Źródło: {{ dane.nazwa }}</div>
+                                    {% if dane.wersja %}<div class="bpp-naglowek-opis">wersja {{ dane.wersja.opis }}</div>{% endif %}
+                                </th>
+                                <th scope="col" class="bpp-kol-zmiana-diff">Zmiana po przeniesieniu</th>
+                                <th scope="col" class="bpp-naglowek-wersji bpp-wersja-a">
+                                    <div class="bpp-naglowek-nazwa">Rekord w BPP</div>
+                                    <div class="bpp-naglowek-opis">stan obecny</div>
+                                </th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for wiersz in wiersze %}
+                                <tr class="{% if wiersz.rozni_sie %}bpp-wiersz-rozny{% else %}bpp-wiersz-zgodny{% endif %}">
+                                    <th scope="row">
+                                        {% if wiersz.mozna_przeniesc %}
+                                            <label><input type="checkbox" name="pole" value="{{ wiersz.wartosc_wyboru }}">{{ wiersz.etykieta }}</label>
+                                        {% else %}
+                                            {{ wiersz.etykieta }}
+                                        {% endif %}
+                                        <span class="bpp-status bpp-status-{{ wiersz.status }}">{{ wiersz.status_tekst }}</span>
+                                        {% if wiersz.uwaga %}<span class="bpp-przygaszony bpp-uwaga">{{ wiersz.uwaga }}</span>{% endif %}
+                                    </th>
+                                    <td>{{ wiersz.zrodlo }}</td>
+                                    <td class="bpp-kol-zmiana-diff"><div class="bpp-zmiana-tresc">{{ wiersz.zmiana }}</div></td>
+                                    <td>{{ wiersz.bpp }}</td>
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                {% endif %}
+            </form>
+
+            {% if autorzy %}
+                <h2>Autorzy — tylko do podglądu</h2>
+                {% if autorzy.sa_roznice %}
+                    <div class="bpp-wzbogacanie-ramka bpp-wzbogacanie-rozne">
+                        W źródle: {{ autorzy.w_zrodle }}, w BPP: {{ autorzy.w_bpp }}.
+                        Brakuje w BPP: <strong>{{ autorzy.brakujacy }}</strong>, tylko w BPP: <strong>{{ autorzy.nadmiarowi }}</strong>, w innej kolejności: <strong>{{ autorzy.inna_kolejnosc }}</strong>.
+                        Autorów nie przenosimy automatycznie — dodanie autora wymaga wskazania jednostki i dyscypliny. Popraw ich w formularzu rekordu.
+                    </div>
+                {% else %}
+                    <div class="bpp-wzbogacanie-ramka bpp-wzbogacanie-zgodne">✅ Lista autorów się zgadza ({{ autorzy.w_bpp }}).</div>
+                {% endif %}
+                {% if autorzy.widoczne %}
+                    <table class="grp-table bpp-autorzy-porownanie">
+                        <thead>
+                            <tr><th scope="col">Nr w źródle</th><th scope="col">Źródło: {{ dane.nazwa }}</th><th scope="col">Nr w BPP</th><th scope="col">Rekord w BPP</th><th scope="col">Wynik</th></tr>
+                        </thead>
+                        <tbody>
+                            {% for a in autorzy.widoczne %}
+                                <tr>
+                                    <td>{{ a.nr_zrodlo|default_if_none:"" }}</td>
+                                    <td>{{ a.zrodlo|default:"—" }}</td>
+                                    <td>{{ a.nr_bpp|default_if_none:"" }}</td>
+                                    <td>{{ a.bpp|default:"—" }}</td>
+                                    <td>{{ a.status }}{% if a.sposob %} <span class="bpp-przygaszony">(dopasowano: {{ a.sposob }})</span>{% endif %}</td>
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                {% endif %}
+                {% if autorzy.ukryci_zgodni %}
+                    <div class="bpp-przygaszony">Pozostali autorzy zgodni: {{ autorzy.ukryci_zgodni }} (długa lista — pokazano same różnice).</div>
+                {% endif %}
+            {% endif %}
+        {% endif %}
+    </div>
+    {# Dolna belka przyklejona do ekranu (jak „Zapisz” w formularzach). #}
+    <footer class="grp-module grp-submit-row grp-fixed-footer bpp-belka-porownania">
+        <div>
+            <div class="grp-float-left"><a class="grp-button" href="{{ change_url }}">✏️ Wróć do rekordu</a></div>
+            {% if do_przeniesienia %}
+                <div><button type="submit" form="bpp-wzbogacanie-form" class="grp-button grp-default">⬇️ Przenieś zaznaczone pola do BPP</button></div>
+            {% endif %}
+        </div>
+    </footer>
+{% endblock %}

@@ -269,6 +269,44 @@ def _save_to_pbn_publication(pbn_uid: str, data: dict):
     zapisz_mongodb(data, Publication)
 
 
+def publikacja_z_obiektu_wersji(data: dict, obj: dict, uid: str) -> FetchedPublication:
+    """Zamień ``object`` jednej wersji publikacji PBN na ``FetchedPublication``.
+
+    ``data`` to cała odpowiedź PBN (wszystkie wersje), ``obj`` — ``object``
+    tej wersji, z której bierzemy dane: bieżącej (import) albo dowolnej
+    wcześniejszej (wzbogacanie rekordu, FD#517/FD#518).
+    """
+    journal = obj.get("journal") or {}
+
+    return FetchedPublication(
+        raw_data=data,
+        title=obj.get("title", ""),
+        doi=obj.get("doi"),
+        year=_extract_year(obj),
+        # Redaktorzy książki redagowanej (PBN ``editors``) — FD#619.
+        authors=dolacz_redaktorow(
+            _extract_authors(obj),
+            _extract_authors(obj, "editors"),
+            PBN_TYPE_MAP.get(obj.get("type", "")),
+        ),
+        source_title=journal.get("title"),
+        issn=_extract_issn(journal.get("issn")),
+        e_issn=_extract_issn(journal.get("eissn")),
+        isbn=_extract_isbn(obj),
+        publisher=journal.get("publisher"),
+        publication_type=PBN_TYPE_MAP.get(obj.get("type", "")),
+        language=obj.get("mainLanguage"),
+        abstract=_extract_abstract(obj),
+        volume=obj.get("volume"),
+        issue=obj.get("issue"),
+        pages=obj.get("pagesFromTo"),
+        url=obj.get("publicUri"),
+        license_url=_extract_license_url(obj),
+        keywords=_extract_keywords(obj),
+        extra={"pbn_uid": uid},
+    )
+
+
 @register_provider
 class PBNProvider(DataProvider):
     @property
@@ -346,32 +384,4 @@ class PBNProvider(DataProvider):
         if obj is None:
             return None
 
-        journal = obj.get("journal") or {}
-
-        return FetchedPublication(
-            raw_data=data,
-            title=obj.get("title", ""),
-            doi=obj.get("doi"),
-            year=_extract_year(obj),
-            # Redaktorzy książki redagowanej (PBN ``editors``) — FD#619.
-            authors=dolacz_redaktorow(
-                _extract_authors(obj),
-                _extract_authors(obj, "editors"),
-                PBN_TYPE_MAP.get(obj.get("type", "")),
-            ),
-            source_title=journal.get("title"),
-            issn=_extract_issn(journal.get("issn")),
-            e_issn=_extract_issn(journal.get("eissn")),
-            isbn=_extract_isbn(obj),
-            publisher=journal.get("publisher"),
-            publication_type=PBN_TYPE_MAP.get(obj.get("type", "")),
-            language=obj.get("mainLanguage"),
-            abstract=_extract_abstract(obj),
-            volume=obj.get("volume"),
-            issue=obj.get("issue"),
-            pages=obj.get("pagesFromTo"),
-            url=obj.get("publicUri"),
-            license_url=_extract_license_url(obj),
-            keywords=_extract_keywords(obj),
-            extra={"pbn_uid": uid},
-        )
+        return publikacja_z_obiektu_wersji(data, obj, uid)
