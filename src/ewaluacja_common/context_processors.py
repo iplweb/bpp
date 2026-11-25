@@ -5,11 +5,12 @@ from ewaluacja_common.url_okres import adres_dla_okresu
 
 
 def _linki_okresow(request):
-    """``[(okres, adres)]`` — bieżąca strona w każdym z okresów (pasek)."""
+    """``[(okres, adres)]`` — bieżąca strona w każdym z okresów (pasek);
+    bez ręcznie wpisanych lat, żeby dane zgadzały się z wybranym okresem."""
     from ewaluacja_common.models import OkresEwaluacji
 
     return [
-        (okres, adres_dla_okresu(request, okres))
+        (okres, adres_dla_okresu(request, okres, bez_lat=True))
         for okres in OkresEwaluacji.objects.all()
     ]
 

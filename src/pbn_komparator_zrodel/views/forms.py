@@ -89,3 +89,16 @@ class DyscyplinyFilterForm(_LataOkresuMixin, forms.Form):
 
     def clean_search(self):
         return self.cleaned_data.get("search") or ""
+
+
+class PrzebudujForm(forms.Form):
+    """Formularz przebudowy porównania; puste „Minimalny rok” = domyślny."""
+
+    DOMYSLNY_MIN_ROK = 2022
+
+    min_rok = forms.IntegerField(required=False, min_value=2000, max_value=2100)
+    clear_existing = forms.BooleanField(required=False)
+
+    def clean_min_rok(self):
+        min_rok = self.cleaned_data.get("min_rok")
+        return self.DOMYSLNY_MIN_ROK if min_rok is None else min_rok

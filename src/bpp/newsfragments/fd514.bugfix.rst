@@ -11,3 +11,10 @@ kafelki „Statystyki” liczą teraz te same lata co tabela poniżej (dotąd
 liczyły wszystkie lata, więc liczby nie zgadzały się z listą), a pole
 „Szukaj” przestało kończyć się błędem serwera — każde wyszukiwanie dawało
 dotąd stronę błędu.
+Przełączenie okresu na pasku „Okres ewaluacji” w komparatorze publikacji,
+komparatorze źródeł i „Problemach PBN” nie przenosi już ręcznie wpisanych lat
+„Rok od” / „Rok do” — po kliknięciu drugiego okresu strona pokazuje lata tego
+okresu, więc pasek nie wskazuje innego okresu niż dane (pozostałe filtry,
+np. wyszukiwana fraza, zostają). W komparatorze źródeł PBN puste albo
+błędne pole „Minimalny rok” na stronie „Przebuduj” nie kończy się już
+błędem serwera: puste oznacza rok 2022, a błędna wartość daje komunikat.

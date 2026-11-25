@@ -24,7 +24,7 @@ import sys
 import types
 
 from django.conf import settings
-from django.http import HttpResponseRedirect
+from django.http import HttpResponseRedirect, QueryDict
 from django.urls import URLResolver, include, path
 from django.urls.exceptions import Resolver404
 
@@ -43,6 +43,14 @@ APLIKACJE_W_URL = (
     "komparator-publikacji-pbn/",
     "deduplikator_autorow/",
 )
+
+#: Parametry GET z ręcznie wpisanym zakresem lat (prefiks aplikacji → nazwy).
+#: Linki paska okresu je gubią — patrz ``adres_dla_okresu(bez_lat=True)``.
+PARAMETRY_LAT = {
+    "komparator-zrodel-pbn/": ("rok_od", "rok_do"),
+    "komparator-pbn-udzialy/": ("rok_min", "rok_max"),
+    "komparator-publikacji-pbn/": ("year_min", "year_max"),
+}
 
 _SLUG = r"(?P<rok_od>\d{4})-(?P<rok_do>\d{4})"
 _ADRES = re.compile(
@@ -119,17 +127,27 @@ def rozbierz_adres(sciezka):
     return m["prefiks"], slug, m["reszta"]
 
 
-def adres_dla_okresu(request, okres):
+def adres_dla_okresu(request, okres, bez_lat=False):
     """Bieżący adres (ze ścieżką i query stringiem) przełączony na ``okres``
-    albo ``None``, gdy strona nie należy do aplikacji z okresem w URL."""
+    albo ``None``, gdy strona nie należy do aplikacji z okresem w URL.
+
+    ``bez_lat=True`` (linki paska okresu): z adresu znikają ręcznie wpisane
+    lata (``PARAMETRY_LAT``), żeby po przełączeniu okresu strona pokazała
+    lata nowego okresu, a nie stary zakres. Pozostałe parametry zostają."""
     czesci = rozbierz_adres(request.path_info)
     if czesci is None:
         return None
     prefiks, _slug, reszta = czesci
     script_name = request.path[: len(request.path) - len(request.path_info)]
     adres = f"{script_name}/{prefiks}{okres.slug}/{reszta}"
-    if request.META.get("QUERY_STRING"):
-        adres += "?" + request.META["QUERY_STRING"]
+    zapytanie = request.META.get("QUERY_STRING", "")
+    if bez_lat and zapytanie and prefiks in PARAMETRY_LAT:
+        parametry = QueryDict(zapytanie, mutable=True)
+        for nazwa in PARAMETRY_LAT[prefiks]:
+            parametry.pop(nazwa, None)
+        zapytanie = parametry.urlencode()
+    if zapytanie:
+        adres += "?" + zapytanie
     return adres
 
 
