@@ -63,12 +63,14 @@ punktacji ani opisu bibliograficznego: wystarczy tytuł, rok i link albo plik.
     uczelni (także doktorantów, studentów czy emerytów). Po wybraniu
     autora spoza uczelni pole **Dyscyplina** znika z formularza, a pole
     **Jednostka** ustawia się na obcą jednostkę uczelni — lista jednostek
-    podpowiada wtedy tylko ją. Zgłoszenie z dyscypliną albo z jednostką
-    uczelni przy takim autorze nie zostanie przyjęte (komunikat przy
-    polu). Jeśli uczelnia nie ma ustawionej obcej jednostki (moduł
-    redagowania → Uczelnia → „Obca jednostka”), jednostkę wybiera się jak
-    dotąd. Wybrana przy autorze **Jednostka** trafia tylko do zgłoszenia —
-    nie zmienia danych autora w bazie (jego aktualnej jednostki).
+    podpowiada wtedy tylko ją. Zgłoszenie z dyscypliną albo z inną
+    jednostką niż obca (także jednostką innej uczelni) przy takim autorze
+    nie zostanie przyjęte (komunikat przy polu). Jeśli uczelnia nie ma
+    ustawionej obcej jednostki, autora spoza uczelni nie da się zgłosić —
+    formularz poprosi o kontakt z biblioteką lub redakcją. Wybrana przy
+    autorze **Jednostka** trafia tylko do zgłoszenia — nie zmienia danych
+    autora w bazie (jego aktualnej jednostki). Zgłoszenie, także poprawione
+    po zwrocie, nie zmienia żadnych danych autorów.
 
     ![Krok „Autorzy”: autor, jednostka, dyscyplina i przycisk „Dodaj kolejnego autora”](../images/uzytkownik/zgloszenie-publikacji/05-autorzy.png)
 

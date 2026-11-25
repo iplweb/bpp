@@ -217,6 +217,8 @@ class OstatniaJednostkaIDyscyplinaView(View):
                 dict(
                     jednostka_id=ost_jed.pk,
                     nazwa=ost_jed.nazwa,
+                    # FD#640: JS odznacza „Afiliuje” dla jednostki obcej.
+                    jednostka_przyjmuje_afiliacje=ost_jed.przyjmuje_afiliacje(),
                     status="ok",
                 )
             )

@@ -148,13 +148,18 @@ def _process_autorzy_formset(
     if not autorzy_formset.is_valid():
         return
 
+    do_usuniecia = autorzy_formset.deleted_forms
     for no, form in enumerate(autorzy_formset):
-        if not form.is_valid():
-            continue
-
-        if form.cleaned_data.get("DELETE"):
+        # FD#640: usunięcie PRZED walidacją wiersza — formset pomija błędy
+        # wierszy oznaczonych do usunięcia, więc przy poprawce zwróconego
+        # zgłoszenia niepoprawny stary wiersz (np. obcy autor z dyscypliną)
+        # musi dać się usunąć, a nie zostać po cichu.
+        if form in do_usuniecia:
             if form.instance.pk:
                 form.instance.delete()
+            continue
+
+        if not form.is_valid():
             continue
 
         if not form.cleaned_data:

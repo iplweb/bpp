@@ -23,10 +23,18 @@ class _JednostkaAutocompleteBase(
     qset = Jednostka.objects.all().select_related("wydzial")
 
     def get_queryset(self):
-        qs = self.qset
+        qs = self.qset.select_related("rodzaj")
         if self.q:
             qs = qs.filter(Q(nazwa__icontains=self.q) | Q(skrot__icontains=self.q))
         return qs.order_by(*Jednostka.objects.get_default_ordering())
+
+    def get_results(self, context):
+        # FD#640: ``autorform_dependant.js`` odznacza „Afiliuje” po wybraniu
+        # jednostki, która nie przyjmuje afiliacji (np. obcej).
+        wyniki = super().get_results(context)
+        for wynik, jednostka in zip(wyniki, context["object_list"], strict=True):
+            wynik["przyjmuje_afiliacje"] = jednostka.przyjmuje_afiliacje()
+        return wyniki
 
 
 class JednostkaAutocomplete(LoginRequiredMixin, _JednostkaAutocompleteBase):
@@ -72,34 +80,32 @@ class ZgloszenieJednostkaAutocomplete(PublicJednostkaAutocomplete):
 
     Jak ``PublicJednostkaAutocomplete``, ale z przekazanym (``forward``)
     autorem: autorowi spoza uczelni z requestu podpowiada wyłącznie jednostkę
-    obcą (``Uczelnia.obca_jednostka``) — autor spoza uczelni nie może
-    dostać w zgłoszeniu jednostki uczelni. Gdy uczelnia nie ma
-    skonfigurowanej obcej jednostki, lista jest jak w publicznym
-    autocomplete (nie ma czego zaproponować w zamian).
+    obcą (``Uczelnia.obca_jednostka``) — tylko ją wolno mu wybrać. Gdy
+    uczelnia nie ma ustawionej obcej jednostki, takiemu autorowi lista jest
+    pusta (serwer i tak odrzuci każdą inną jednostkę z komunikatem).
     """
 
-    def _obca_jednostka_dla_autora(self):
-        from bpp.models import Autor, Uczelnia
+    def _autor_spoza_uczelni(self, uczelnia):
+        from bpp.models import Autor
 
-        uczelnia = Uczelnia.objects.get_for_request(self.request)
-        if uczelnia is None or uczelnia.obca_jednostka_id is None:
-            return None
         try:
             autor = Autor.objects.get(pk=int(self.forwarded.get("autor")))
         except (Autor.DoesNotExist, TypeError, ValueError):
-            return None
-        if autor.jest_autorem_uczelni(uczelnia):
-            return None
-        return uczelnia.obca_jednostka
+            return False
+        return not autor.jest_autorem_uczelni(uczelnia)
 
     def get_queryset(self):
-        obca = self._obca_jednostka_dla_autora()
-        if obca is None:
+        from bpp.models import Uczelnia
+
+        uczelnia = Uczelnia.objects.get_for_request(self.request)
+        if uczelnia is None or not self._autor_spoza_uczelni(uczelnia):
             return super().get_queryset()
-        qs = Jednostka.objects.filter(pk=obca.pk).select_related("wydzial")
+        if uczelnia.obca_jednostka_id is None:
+            return Jednostka.objects.none()
+        qs = Jednostka.objects.filter(pk=uczelnia.obca_jednostka_id)
         if self.q:
             qs = qs.filter(Q(nazwa__icontains=self.q) | Q(skrot__icontains=self.q))
-        return qs
+        return qs.select_related("wydzial")
 
 
 class PublicJednostkaToplevelAutocomplete(

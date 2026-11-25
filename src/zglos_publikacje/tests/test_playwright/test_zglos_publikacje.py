@@ -311,3 +311,77 @@ def test_fd640_dyscyplina_ukryta_dla_autora_spoza_uczelni(
 # w `tests_zglos_publikacje.py`. Browser tu nie jest potrzebny
 # (a wprowadza flakiness przy autouzupełnianiu jednostki przez
 # autorform_dependant.js).
+
+
+_WSTRZYMAJ_AJAX_AUTORA = """() => {
+    const $ = django.jQuery;
+    const oryginalny = $.ajax;
+    window.__zadaniaAutora = [];
+    $.ajax = function (opcje) {
+        if ((opcje.url || '').indexOf('ostatnia-jednostka-i-dyscyplina') < 0)
+            return oryginalny.apply(this, arguments);
+        const odroczone = $.Deferred();
+        const zadanie = {odroczone: odroczone, odpowiedz: null};
+        oryginalny(opcje).done(function (dane) { zadanie.odpowiedz = dane; });
+        window.__zadaniaAutora.push(zadanie);
+        return odroczone.promise();
+    };
+}"""
+
+
+def _zwolnij_odpowiedz(page: Page, nr: int):
+    """Oddaj odpowiedź serwera na ``nr``-te żądanie (gdy już przyszła)."""
+    page.wait_for_function(
+        f"() => window.__zadaniaAutora[{nr}] "
+        f"&& window.__zadaniaAutora[{nr}].odpowiedz !== null"
+    )
+    page.evaluate(
+        f"() => {{ const z = window.__zadaniaAutora[{nr}];"
+        f" z.odroczone.resolve(z.odpowiedz); }}"
+    )
+
+
+@pytest.mark.django_db(transaction=True)
+def test_fd640_spozniona_odpowiedz_nie_nadpisuje_wyboru(
+    admin_page: Page,
+    channels_live_server,
+    autor_jan_kowalski,
+    autor_jan_nowak,
+    jednostka,
+    druga_jednostka,
+    wydzial,
+    jednostka_maker,
+    rok,
+):
+    """FD#640 (punkt 5): ostatnie żądanie wygrywa — spóźniona odpowiedź dla
+    autora A po zmianie A → B nie nadpisuje jednostki B; odpowiedź po ręcznej
+    zmianie jednostki nie nadpisuje wyboru użytkownika."""
+    a, b = autor_jan_kowalski, autor_jan_nowak
+    Autor_Jednostka.objects.get_or_create(autor=a, jednostka=jednostka)
+    Autor_Jednostka.objects.get_or_create(autor=b, jednostka=druga_jednostka)
+    for autor, j in ((a, jednostka), (b, druga_jednostka)):
+        autor.refresh_from_db()
+        assert autor.aktualna_jednostka == j
+
+    _przejdz_kroki_0_1_2(
+        admin_page, channels_live_server, rok, rodzaj="POZOSTALE", forma="OTWARTY"
+    )
+    admin_page.evaluate(_WSTRZYMAJ_AJAX_AUTORA)
+    jednostka_pole = admin_page.locator("#id_3-0-jednostka")
+
+    # A → B, odpowiedzi w odwrotnej kolejności.
+    set_select2_value(admin_page, "id_3-0-autor", a.pk, label=str(a))
+    set_select2_value(admin_page, "id_3-0-autor", b.pk, label=str(b))
+    _zwolnij_odpowiedz(admin_page, 1)
+    expect(jednostka_pole).to_have_value(str(druga_jednostka.pk))
+    _zwolnij_odpowiedz(admin_page, 0)
+    admin_page.wait_for_timeout(300)
+    expect(jednostka_pole).to_have_value(str(druga_jednostka.pk))
+
+    # A, potem ręczna zmiana jednostki zanim przyjdzie odpowiedź.
+    trzecia = jednostka_maker("Trzecia Katedra", skrot="TK", wydzial=wydzial)
+    set_select2_value(admin_page, "id_3-0-autor", a.pk, label=str(a))
+    set_select2_value(admin_page, "id_3-0-jednostka", trzecia.pk, label=str(trzecia))
+    _zwolnij_odpowiedz(admin_page, 2)
+    admin_page.wait_for_timeout(300)
+    expect(jednostka_pole).to_have_value(str(trzecia.pk))

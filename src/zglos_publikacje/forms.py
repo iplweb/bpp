@@ -622,17 +622,16 @@ class Zgloszenie_Publikacji_AutorForm(forms.ModelForm):
         if jednostka is None:
             return jednostka
 
-        # FD#640: wyjątek — autor spoza uczelni z jej obcą jednostką
-        # (``Uczelnia.obca_jednostka``), bez afiliacji. Jednostki uczelni
-        # takiemu autorowi nie przepuści ``Zgloszenie_Publikacji_Autor.clean``.
+        # FD#640: autor spoza uczelni może mieć wyłącznie obcą jednostkę
+        # uczelni, bez afiliacji (obca jednostka nigdy nie afiliuje).
         autor = self.cleaned_data.get("autor")
         uczelnia = getattr(self.instance, "_uczelnia", jednostka.uczelnia)
-        if (
-            autor is not None
-            and uczelnia is not None
-            and uczelnia.obca_jednostka_id == jednostka.pk
-            and not autor.jest_autorem_uczelni(uczelnia)
-        ):
+        if autor is not None and not autor.jest_autorem_uczelni(uczelnia):
+            blad = Zgloszenie_Publikacji_Autor.blad_jednostki_autora_spoza_uczelni(
+                autor, jednostka, uczelnia
+            )
+            if blad is not None:
+                raise forms.ValidationError(blad)
             self.instance.afiliuje = False
             return jednostka
         self.instance.afiliuje = True

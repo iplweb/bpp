@@ -26,7 +26,7 @@
     // ``data-obcy-tylko-obca-jednostka`` — autorowi spoza uczelni ustawiamy
     // jednostkę obcą uczelni (API zwraca ją w ``obca_jednostka_*``, gdy jest
     // skonfigurowana). Autocomplete tego pola i tak podpowiada takiemu
-    // autorowi tylko ją, a serwer odrzuca jednostkę uczelni.
+    // autorowi tylko ją, a serwer odrzuca każdą inną jednostkę.
     var poleJednostki = function (prefix) {
         return $(':input[name=' + prefix + 'jednostka]');
     };
@@ -35,13 +35,39 @@
         return poleJednostki(prefix).is('[data-obcy-tylko-obca-jednostka]');
     };
 
-    var ustawJednostke = function (prefix, id, nazwa) {
+    // FD#640: jednostka obca nigdy nie afiliuje. Po wybraniu jednostki, która
+    // nie przyjmuje afiliacji (autocomplete i API podają
+    // ``przyjmuje_afiliacje``), odznaczamy „Afiliuje”; gdy potem wybrano
+    // jednostkę przyjmującą afiliację, zaznaczamy je z powrotem — ale tylko,
+    // jeśli to my je odznaczyliśmy (nie nadpisujemy decyzji użytkownika).
+    var poleAfiliuje = function (prefix) {
+        return $(':input[name=' + prefix + 'afiliuje]').filter('[type=checkbox]');
+    };
+
+    var ustawAfiliacje = function (prefix, przyjmuje) {
+        var pole = poleAfiliuje(prefix);
+        if (!pole.length)
+            return;
+        if (przyjmuje === false) {
+            if (pole.prop('checked'))
+                pole.prop('checked', false)
+                    .data('bpp-odznaczone-automatycznie', true)
+                    .trigger('change');
+        } else if (przyjmuje === true && pole.data('bpp-odznaczone-automatycznie')) {
+            pole.prop('checked', true)
+                .removeData('bpp-odznaczone-automatycznie')
+                .trigger('change');
+        }
+    };
+
+    var ustawJednostke = function (prefix, id, nazwa, przyjmujeAfiliacje) {
         var pole = poleJednostki(prefix);
         pole.find('option').filter(function () {
             return this.value === String(id);
         }).remove();
         pole.append($('<option>', {value: id, text: nazwa, selected: true}));
         pole.trigger('change');
+        ustawAfiliacje(prefix, przyjmujeAfiliacje);
     };
 
     var obcaJednostkaDlaObcego = function (prefix, data) {
@@ -50,6 +76,32 @@
         if (!data.obca_jednostka_id)
             return null;
         return {id: data.obca_jednostka_id, nazwa: data.obca_jednostka_nazwa};
+    };
+
+    // FD#640: ostatnie żądanie wygrywa. Odpowiedź na wcześniejsze żądanie
+    // (np. po zmianie autora A → B → A) jest ignorowana, a pola, które
+    // użytkownik zmienił po wysłaniu żądania, nie są nadpisywane.
+    var licznikZadan = {};
+
+    var noweZadanie = function (prefix) {
+        licznikZadan[prefix] = (licznikZadan[prefix] || 0) + 1;
+        return {
+            nr: licznikZadan[prefix],
+            jednostka: poleJednostki(prefix).val(),
+            dyscyplina: poleDyscypliny(prefix).val()
+        };
+    };
+
+    var zadanieAktualne = function (prefix, zadanie) {
+        return licznikZadan[prefix] === zadanie.nr;
+    };
+
+    var jednostkaNieruszona = function (prefix, zadanie) {
+        return poleJednostki(prefix).val() === zadanie.jednostka;
+    };
+
+    var dyscyplinaNieruszona = function (prefix, zadanie) {
+        return poleDyscypliny(prefix).val() === zadanie.dyscyplina;
     };
 
     var zapytajOAutora = function (element) {
@@ -76,6 +128,7 @@
         var value = $(this).val();
 
         if (!value) {
+            noweZadanie(prefix);  // unieważnia odpowiedzi w drodze
             $(':input[name=' + prefix + 'jednostka]').val(null).trigger('change');
             $(':input[name=' + prefix + 'typ_odpowiedzialnosci]').val(null).trigger('change');
             $(':input[name=' + prefix + 'zapisany_jako]').val(null).trigger('change');
@@ -83,23 +136,21 @@
             if (tylkoDlaAutorowUczelni(prefix))
                 pokazDyscypline(prefix, true);
         } else {
-            var pole = this;
+            var zadanie = noweZadanie(prefix);
             zapytajOAutora(this).done(function (data) {
-                if (data.status == 'error')
-                    return;
-                // Odpowiedź dla autora, którego w międzyczasie zmieniono.
-                if ($(pole).val() !== value)
+                if (data.status == 'error' || !zadanieAktualne(prefix, zadanie))
                     return;
 
-                var obca = obcaJednostkaDlaObcego(prefix, data);
-                if (obca) {
-                    ustawJednostke(prefix, obca.id, obca.nazwa);
-                } else if (data.jednostka_id && data.nazwa) {
-                    $(':input[name=' + prefix + 'jednostka]').append(
-                        '<option selected="selected" value=' + data['jednostka_id'] + '>'
-                        + data['nazwa'] + '</option>');
-
-                    $(':input[name=' + prefix + 'jednostka]').trigger("change");
+                if (jednostkaNieruszona(prefix, zadanie)) {
+                    var obca = obcaJednostkaDlaObcego(prefix, data);
+                    if (obca) {
+                        ustawJednostke(prefix, obca.id, obca.nazwa, false);
+                    } else if (data.jednostka_id && data.nazwa) {
+                        ustawJednostke(
+                            prefix, data.jednostka_id, data.nazwa,
+                            data.jednostka_przyjmuje_afiliacje
+                        );
+                    }
                 }
 
                 var spozaUczelni = (
@@ -108,7 +159,8 @@
                 if (tylkoDlaAutorowUczelni(prefix))
                     pokazDyscypline(prefix, !spozaUczelni);
 
-                if (data['dyscyplina_id'] && !spozaUczelni) {
+                if (data['dyscyplina_id'] && !spozaUczelni
+                    && dyscyplinaNieruszona(prefix, zadanie)) {
                     $(':input[name=' + prefix + 'dyscyplina_naukowa]').append(
                         '<option selected="selected" value=' + data['dyscyplina_id'] + '>'
                         + data['dyscyplina_nazwa'] + '</option>');
@@ -133,15 +185,16 @@
             return;
         if (!tylkoDlaAutorowUczelni(prefix) && !obcyTylkoObcaJednostka(prefix))
             return;
-        var wyslany = $(element).val();
+        var zadanie = noweZadanie(prefix);
         zapytajOAutora(element).done(function (data) {
-            if (data.status == 'error' || $(element).val() !== wyslany)
+            if (data.status == 'error' || !zadanieAktualne(prefix, zadanie))
                 return;
             if (tylkoDlaAutorowUczelni(prefix))
                 pokazDyscypline(prefix, data.autor_uczelni !== false);
             var obca = obcaJednostkaDlaObcego(prefix, data);
-            if (obca && poleJednostki(prefix).val() !== String(obca.id))
-                ustawJednostke(prefix, obca.id, obca.nazwa);
+            if (obca && jednostkaNieruszona(prefix, zadanie)
+                && poleJednostki(prefix).val() !== String(obca.id))
+                ustawJednostke(prefix, obca.id, obca.nazwa, false);
         });
     };
 
@@ -150,5 +203,19 @@
         $(':input[name$=autor]').on('change', autorform_dependant);
         if (/(^|-)autor$/.test($(this).attr('name') || ''))
             sprawdzWybranegoAutora(this);
-    })
+    });
+
+    // FD#640: ręczny wybór jednostki z listy — wynik autocomplete niesie
+    // ``przyjmuje_afiliacje``.
+    $(document).on('select2:select', ':input[name$=jednostka]', function (e) {
+        var dane = e.params && e.params.data;
+        if (dane && typeof dane.przyjmuje_afiliacje === 'boolean')
+            ustawAfiliacje($(this).getFormPrefix(), dane.przyjmuje_afiliacje);
+    });
+
+    // Ręczna zmiana „Afiliuje” przez użytkownika — od teraz to jego decyzja.
+    $(document).on('change', ':input[name$=afiliuje]', function (e) {
+        if (!e.isTrigger)
+            $(this).removeData('bpp-odznaczone-automatycznie');
+    });
 }(django.jQuery || jQuery));

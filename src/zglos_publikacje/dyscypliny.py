@@ -36,7 +36,8 @@ def podpowiedz_dla_redakcji(zpa, rok):
     w adminie („Dodaj wyd. ciągłe/zwarte” ze zgłoszenia, rok pracy ``rok``).
 
     Zwraca ``(initial, uwagi)``: słownik ``autor``/``jednostka``/
-    ``dyscyplina_naukowa`` dla wiersza autora oraz listę komunikatów dla
+    ``dyscyplina_naukowa`` (i ``afiliuje=False`` dla jednostki obcej) dla
+    wiersza autora oraz listę komunikatów dla
     redaktora o tym, czego ze zgłoszenia nie przeniesiono:
 
     - autorowi spoza uczelni — jednostki uczelni (w zamian jednostka obca
@@ -83,4 +84,9 @@ def podpowiedz_dla_redakcji(zpa, rok):
         "jednostka": jednostka.pk if jednostka is not None else None,
         "dyscyplina_naukowa": dyscyplina.pk if dyscyplina is not None else None,
     }
+    if jednostka is not None and not jednostka.przyjmuje_afiliacje():
+        # Obca jednostka (i każda nieprzyjmująca afiliacji) nigdy nie
+        # afiliuje — bez tego domyślnie zaznaczone „Afiliuje” zablokowałoby
+        # zapis rekordu.
+        initial["afiliuje"] = False
     return initial, uwagi

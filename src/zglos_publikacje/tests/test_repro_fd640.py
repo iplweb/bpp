@@ -30,7 +30,7 @@ from zglos_publikacje.tests.tests_zglos_publikacje import (
 
 ROK = 2020  # rok z _krok2_dane
 KOMUNIKAT_OBCY = "nie jest autorem uczelni"
-KOMUNIKAT_JEDNOSTKA_OBCEGO = "nie można go przypisać do jednostki uczelni"
+KOMUNIKAT_JEDNOSTKA_OBCEGO = "można go przypisać wyłącznie do jednostki"
 
 
 @pytest.fixture
@@ -225,37 +225,41 @@ def test_autor_uczelni_z_obca_jednostka_odrzucony_jak_dotad(
     uczelnia_z_obca_jednostka, obca_jednostka, autor_uczelni
 ):
     """Strażnik #438: autor uczelni (afiliuje) nie dostaje jednostki obcej."""
-    form = _form(autor_uczelni, obca_jednostka, None, uczelnia=uczelnia_z_obca_jednostka)
+    form = _form(
+        autor_uczelni, obca_jednostka, None, uczelnia=uczelnia_z_obca_jednostka
+    )
     assert not form.is_valid()
     assert "nie można afiliować" in str(form.errors["jednostka"])
 
 
 @pytest.mark.django_db
-def test_obcy_z_jednostka_innej_uczelni_przechodzi(uczelnia, autor_obcy):
+def test_obcy_z_jednostka_innej_uczelni_odrzucony(uczelnia, autor_obcy):
+    """„Zostaje wyłącznie jednostka obca” — także jednostka INNEJ uczelni
+    w tej samej bazie nie przechodzi."""
     from bpp.models import Uczelnia
 
     inna = baker.make(Uczelnia, skrot="IN", nazwa="Inna uczelnia")
     jednostka_innej = baker.make(
         Jednostka, uczelnia=inna, skupia_pracownikow=True, parent=None
     )
-    zpa = Zgloszenie_Publikacji_Autor(autor=autor_obcy, jednostka=jednostka_innej)
-    zpa._uczelnia = uczelnia
-    zpa.rok = ROK
-    zpa.clean()  # bez wyjątku
+    form = _form(autor_obcy, jednostka_innej, None, uczelnia=uczelnia)
+    assert not form.is_valid()
+    assert KOMUNIKAT_JEDNOSTKA_OBCEGO in str(form.errors["jednostka"])
 
 
 @pytest.mark.django_db
 def test_obcy_bez_skonfigurowanej_obcej_jednostki(
     uczelnia, jednostka, obca_jednostka, dyscyplina1
 ):
-    """Uczelnia bez ``obca_jednostka``: nie ma czego zaproponować w zamian,
-    więc jednostki uczelni nie blokujemy (dyscyplinę — tak)."""
+    """Uczelnia bez ``obca_jednostka``: autora spoza uczelni nie da się
+    zgłosić — komunikat kieruje do redakcji (ustawienie ręczne)."""
     assert uczelnia.obca_jednostka_id is None
     autor = baker.make(Autor)  # bez żadnych przypisań = nie autor uczelni
-    assert _form(autor, jednostka, None, uczelnia=uczelnia).is_valid()
-    form = _form(autor, jednostka, dyscyplina1, uczelnia=uczelnia)
+    form = _form(autor, jednostka, None, uczelnia=uczelnia)
     assert not form.is_valid()
-    assert KOMUNIKAT_OBCY in str(form.errors["dyscyplina_naukowa"])
+    bledy = str(form.errors["jednostka"])
+    assert "nie ma jej ustawionej" in bledy
+    assert "Obca jednostka" in bledy
 
 
 @pytest.mark.django_db
@@ -272,6 +276,26 @@ def test_autocomplete_jednostki_dla_obcego_tylko_obca(
     assert ids(autor_obcy) == {obca_jednostka.pk}
     assert jednostka.pk in ids(autor_uczelni)
     assert jednostka.pk in ids(None)
+
+    # Bez ustawionej obcej jednostki obcemu (tu: autor bez przypisań) nie ma
+    # czego podpowiedzieć.
+    uczelnia.obca_jednostka = None
+    uczelnia.save()
+    assert ids(baker.make(Autor)) == set()
+
+
+@pytest.mark.django_db
+def test_autocomplete_jednostki_mowi_o_afiliacji(
+    webtest_app, uczelnia, jednostka, obca_jednostka
+):
+    """FD#640 (punkt 4): wynik autocomplete niesie ``przyjmuje_afiliacje`` —
+    ``autorform_dependant.js`` odznacza wtedy „Afiliuje”."""
+    obca_jednostka.widoczna = True
+    obca_jednostka.save()
+    res = webtest_app.get(reverse("bpp:public-jednostka-autocomplete")).json
+    wg_id = {int(r["id"]): r["przyjmuje_afiliacje"] for r in res["results"]}
+    assert wg_id[jednostka.pk] is True
+    assert wg_id[obca_jednostka.pk] is False
 
 
 def test_pole_jednostki_oznaczone_dla_js():
@@ -340,19 +364,22 @@ def test_zgloszenie_nie_zaklada_autorowi_jednostki(
     django_capture_on_commit_callbacks,
     typy_odpowiedzialnosci,
     uczelnia,
-    jednostka,
+    wydzial,
+    jednostka_maker,
+    autor_uczelni,
 ):
-    """Uczelnia bez obcej jednostki: autor bez przypisań z jednostką uczelni
-    przechodzi, ale zgłoszenie nie zakłada mu ``Autor_Jednostka`` (dawniej
-    stawał się przez to autorem uczelni)."""
-    autor = baker.make(Autor, nazwisko="Nowy")
-    page = _wypelnij_autora(webtest_app, autor, jednostka)
+    """Autor uczelni zgłoszony z INNĄ jednostką uczelni: zgłoszenie nie
+    zakłada mu ``Autor_Jednostka`` w tej jednostce (dawniej zakładało)."""
+    druga = jednostka_maker("Druga Katedra", skrot="DK", wydzial=wydzial)
+    page = _wypelnij_autora(webtest_app, autor_uczelni, druga)
     with django_capture_on_commit_callbacks(execute=True):
         page.forms[0].submit().maybe_follow()
 
-    assert Zgloszenie_Publikacji.objects.get().zgloszenie_publikacji_autor_set.get()
-    assert not Autor_Jednostka.objects.filter(autor=autor).exists()
-    assert not autor.jest_autorem_uczelni(uczelnia)
+    zpa = Zgloszenie_Publikacji.objects.get().zgloszenie_publikacji_autor_set.get()
+    assert zpa.jednostka == druga
+    assert not Autor_Jednostka.objects.filter(
+        autor=autor_uczelni, jednostka=druga
+    ).exists()
 
 
 @pytest.mark.django_db
@@ -422,6 +449,7 @@ def test_admin_podpowiedz_obcemu_bez_jednostki_uczelni_i_dyscypliny(
         "autor": autor_obcy.pk,
         "jednostka": obca_jednostka.pk,
         "dyscyplina_naukowa": None,
+        "afiliuje": False,  # obca jednostka nigdy nie afiliuje
     }
     assert "jest spoza uczelni" in uwagi[0]
 
@@ -451,8 +479,13 @@ def test_admin_podpowiedz_propozycji_bez_przypisania(
 
 @pytest.mark.django_db
 def test_admin_dodaj_wydawnictwo_ze_zgloszenia_obcego(
-    admin_app, typy_odpowiedzialnosci, uczelnia, jednostka, obca_jednostka,
-    autor_obcy, dyscyplina1,
+    admin_app,
+    typy_odpowiedzialnosci,
+    uczelnia,
+    jednostka,
+    obca_jednostka,
+    autor_obcy,
+    dyscyplina1,
 ):
     from bpp.const import NUMER_ZGLOSZENIA_PARAM
 
@@ -537,56 +570,90 @@ def _dopiete_przez_zgloszenie(autor, jednostka, dyscyplina, rok=ROK):
     return ad
 
 
-@pytest.mark.django_db
-def test_komenda_raport_i_usuwanie(
-    uczelnia, jednostka, obca_jednostka, autor_obcy, dyscyplina1
-):
+def _raport(*args):
     from io import StringIO
 
     from django.core.management import call_command
 
+    out = StringIO()
+    call_command("fd640_dyscypliny_obcych_ze_zgloszen", *args, stdout=out)
+    return out.getvalue()
+
+
+def _stan_bazy():
+    return (
+        sorted(Autor_Dyscyplina.objects.values_list("pk", "autor_id", "rok")),
+        sorted(Autor_Jednostka.objects.values_list("pk", "autor_id", "jednostka_id")),
+    )
+
+
+@pytest.mark.django_db
+def test_komenda_tylko_raport(
+    uczelnia, jednostka, obca_jednostka, autor_obcy, dyscyplina1
+):
+    from django.core.management.base import CommandError
+
     from bpp.models import Wydawnictwo_Ciagle_Autor
+    from zglos_publikacje.fd640 import znajdz_przypadki
 
-    # Obcy: dyscyplina + jednostka uczelni tylko ze zgłoszenia → do usunięcia.
-    ad_obcy = _dopiete_przez_zgloszenie(autor_obcy, jednostka, dyscyplina1)
+    # Obcy: dyscyplina + jednostka uczelni wyglądająca na „ze zgłoszenia”.
+    _dopiete_przez_zgloszenie(autor_obcy, jednostka, dyscyplina1)
 
-    # Autor uczelni (datowane zatrudnienie) — zostaje.
+    # Autor uczelni (datowane zatrudnienie) — nie trafia do raportu.
     swoj = baker.make(Autor, nazwisko="Swój")
     Autor_Jednostka.objects.create(
         autor=swoj, jednostka=jednostka, rozpoczal_prace=datetime.date(2020, 1, 1)
     )
     _dopiete_przez_zgloszenie(swoj, jednostka, dyscyplina1)
 
-    # Autor z pracą w bazie w tej jednostce (powiązanie nie tylko ze
-    # zgłoszenia) — zostaje.
+    # Autor z pracą w tej jednostce (powiązanie nie tylko ze zgłoszenia).
     z_praca = baker.make(Autor, nazwisko="Zpraca")
     _dopiete_przez_zgloszenie(z_praca, jednostka, dyscyplina1)
     baker.make(Wydawnictwo_Ciagle_Autor, autor=z_praca, jednostka=jednostka)
 
-    out = StringIO()
-    call_command("fd640_dyscypliny_obcych_ze_zgloszen", stdout=out)
-    raport = out.getvalue()
-    assert "Yilmaz" in raport
-    assert "Swój" not in raport and "Zpraca" not in raport
-    assert "Przypadków: 1, do usunięcia: 1 (tylko raport" in raport
-    assert Autor_Dyscyplina.objects.filter(pk=ad_obcy.pk).exists()
+    # Obcy, któremu zgłoszenie dopisało tylko dyscyplinę (jednostka obca) —
+    # przypadek pewny.
+    pewny = baker.make(Autor, nazwisko="Pewny")
+    Autor_Jednostka.objects.create(autor=pewny, jednostka=obca_jednostka)
+    _dopiete_przez_zgloszenie(pewny, obca_jednostka, dyscyplina1)
 
-    call_command("fd640_dyscypliny_obcych_ze_zgloszen", "--usun", stdout=StringIO())
-    assert not Autor_Dyscyplina.objects.filter(pk=ad_obcy.pk).exists()
-    assert not Autor_Jednostka.objects.filter(
-        autor=autor_obcy, jednostka=jednostka
-    ).exists()
-    # Powiązanie z jednostką obcą i dane pozostałych autorów — bez zmian.
-    assert Autor_Jednostka.objects.filter(
-        autor=autor_obcy, jednostka=obca_jednostka
-    ).exists()
-    assert Autor_Dyscyplina.objects.filter(autor__in=[swoj, z_praca]).count() == 2
+    przed = _stan_bazy()
+    raport = _raport()
+    assert _stan_bazy() == przed  # tylko odczyt
+
+    assert "tylko odczyt" in raport
+    assert "Yilmaz" in raport and "Pewny" in raport
+    assert "Swój" not in raport and "Zpraca" not in raport
+    assert "Przypadków: 2, w tym niepewnych: 1" in raport
+    przypadki = {p.autor.nazwisko: p for p in znajdz_przypadki()}
+    assert przypadki["Yilmaz"].niepewne
+    assert [aj.jednostka for aj in przypadki["Yilmaz"].jednostki_ze_zgloszenia] == [
+        jednostka
+    ]
+    assert not przypadki["Pewny"].niepewne
+
+    with pytest.raises(CommandError):
+        _raport("--usun")
+
+
+@pytest.mark.django_db
+def test_komenda_csv(uczelnia, jednostka, autor_obcy, dyscyplina1):
+    import csv
+    from io import StringIO
+
+    _dopiete_przez_zgloszenie(autor_obcy, jednostka, dyscyplina1)
+    wiersze = list(csv.DictReader(StringIO(_raport("--csv"))))
+    assert len(wiersze) == 1
+    assert wiersze[0]["sekcja"] == "dyscyplina"
+    assert wiersze[0]["autor_id"] == str(autor_obcy.pk)
+    assert wiersze[0]["niepewne"] == "tak"
+    assert wiersze[0]["zmienione_przez_redakcje"] == "nie"
 
 
 @pytest.mark.django_db
 def test_komenda_pomija_pracownika_innej_uczelni(uczelnia, jednostka, dyscyplina1):
     """Baza wielu uczelni: autor obcy dla jednej, pracownik drugiej."""
-    from bpp.models import Jednostka, Uczelnia
+    from bpp.models import Uczelnia
     from zglos_publikacje.fd640 import znajdz_przypadki
 
     inna = baker.make(Uczelnia, skrot="IN", nazwa="Inna uczelnia")
@@ -604,63 +671,124 @@ def test_komenda_pomija_pracownika_innej_uczelni(uczelnia, jednostka, dyscyplina
 
 
 @pytest.mark.django_db
-def test_komenda_pomija_uzyte_w_pracach_i_zmienione(
-    uczelnia_z_obca_jednostka, jednostka, obca_jednostka, dyscyplina1
+def test_komenda_zmiana_przez_inline_w_edycji_autora(
+    admin_app, uczelnia, obca_jednostka, autor_obcy, dyscyplina1
 ):
-    from django.contrib.admin.models import CHANGE, LogEntry
+    """Prawdziwa ścieżka redakcji: zmiana przypisania w inline „Powiązania
+    autor-dyscyplina” formularza autora (POST) — raport oznacza przypadek
+    jako zmieniony."""
+    from zglos_publikacje.fd640 import znajdz_przypadki
 
-    from bpp.models import Wydawnictwo_Ciagle, Wydawnictwo_Ciagle_Autor
-    from zglos_publikacje.fd640 import POWOD_ZMIENIONE, usun, znajdz_przypadki
+    ad = _dopiete_przez_zgloszenie(autor_obcy, obca_jednostka, dyscyplina1)
+    (przypadek,) = znajdz_przypadki()
+    assert not przypadek.zmienione
 
-    w_pracy = baker.make(Autor, nazwisko="Wpracy")
-    Autor_Jednostka.objects.create(autor=w_pracy, jednostka=obca_jednostka)
-    _dopiete_przez_zgloszenie(w_pracy, jednostka, dyscyplina1)
-    praca = baker.make(Wydawnictwo_Ciagle, rok=ROK)
-    wca = baker.prepare(
-        Wydawnictwo_Ciagle_Autor,
-        rekord=praca,
-        autor=w_pracy,
-        jednostka=obca_jednostka,
-        dyscyplina_naukowa=dyscyplina1,
-        _save_related=True,
+    form = admin_app.get(
+        reverse("admin:bpp_autor_change", args=(autor_obcy.pk,))
+    ).forms["autor_form"]
+    i = next(
+        n
+        for n in range(int(form["autor_dyscyplina_set-TOTAL_FORMS"].value))
+        if form[f"autor_dyscyplina_set-{n}-id"].value == str(ad.pk)
     )
-    wca.save(**{"__disable_bmoa_clean_method": True})
+    form[f"autor_dyscyplina_set-{i}-procent_dyscypliny"] = "50.00"
+    res = form.submit()
+    assert res.status_code == 302, res.text[:2000]
+    ad.refresh_from_db()
+    assert ad.procent_dyscypliny == 50
 
-    zmienione = baker.make(Autor, nazwisko="Zmienione")
-    ad = _dopiete_przez_zgloszenie(zmienione, jednostka, dyscyplina1)
-    LogEntry.objects.log_actions(
-        baker.make("bpp.BppUser").pk, [ad], CHANGE, change_message="ręcznie"
-    )
-
-    przypadki = {p.autor.nazwisko: p for p in znajdz_przypadki()}
-    assert "dyscyplina użyta w pracach (1)" in przypadki["Wpracy"].pominiety
-    assert przypadki["Zmienione"].pominiety == POWOD_ZMIENIONE
-    with pytest.raises(ValueError):
-        usun(przypadki["Zmienione"])
+    (przypadek,) = znajdz_przypadki()
+    assert przypadek.zmienione
+    assert "zmieniono później" in _raport()
 
 
 @pytest.mark.django_db
-def test_komenda_dwa_lata_jednego_autora(uczelnia, jednostka, autor_obcy, dyscyplina1):
-    from io import StringIO
+def test_komenda_liczy_prace_jak_trigger(
+    uczelnia, obca_jednostka, autor_obcy, dyscyplina1, dyscyplina2
+):
+    """Trigger ``bpp_autor_dyscyplina_delete`` zeruje dyscyplinę we
+    wszystkich autorstwach autora z danego roku — także z INNĄ dyscypliną.
+    Raport liczy tak samo (sprawdzone na prawdziwym usunięciu, cofniętym)."""
+    from django.db import transaction
 
-    from django.contrib.admin.models import DELETION, LogEntry
-    from django.core.management import call_command
+    from bpp.models import Wydawnictwo_Ciagle, Wydawnictwo_Ciagle_Autor
+    from zglos_publikacje.fd640 import znajdz_przypadki
 
-    _dopiete_przez_zgloszenie(autor_obcy, jednostka, dyscyplina1, rok=ROK)
-    _dopiete_przez_zgloszenie(autor_obcy, jednostka, dyscyplina1, rok=ROK + 1)
+    ad = _dopiete_przez_zgloszenie(autor_obcy, obca_jednostka, dyscyplina1)
 
-    call_command("fd640_dyscypliny_obcych_ze_zgloszen", "--usun", stdout=StringIO())
+    def autorstwo(rok, dyscyplina):
+        wca = baker.prepare(
+            Wydawnictwo_Ciagle_Autor,
+            rekord=baker.make(Wydawnictwo_Ciagle, rok=rok),
+            autor=autor_obcy,
+            jednostka=obca_jednostka,
+            afiliuje=False,
+            dyscyplina_naukowa=dyscyplina,
+            _save_related=True,
+        )
+        wca.save(**{"__disable_bmoa_clean_method": True})
 
-    assert not Autor_Dyscyplina.objects.filter(autor=autor_obcy).exists()
-    assert not Autor_Jednostka.objects.filter(
-        autor=autor_obcy, jednostka=jednostka
-    ).exists()
-    assert (
-        LogEntry.objects.filter(
-            action_flag=DELETION, change_message__contains="powiązanie z jednostką"
-        ).count()
-        == 1
+    autorstwo(ROK, dyscyplina1)
+    autorstwo(ROK, dyscyplina2)  # inna dyscyplina — trigger też ją zeruje
+    autorstwo(ROK, None)
+    autorstwo(ROK + 1, dyscyplina1)  # inny rok — bez zmian
+
+    (przypadek,) = znajdz_przypadki()
+    assert przypadek.prace_tracace_dyscypline == 2
+    assert "wyzerowałoby dyscyplinę w 2 autorstwach" in _raport()
+
+    z_dyscyplina = Wydawnictwo_Ciagle_Autor.objects.filter(
+        autor=autor_obcy, dyscyplina_naukowa__isnull=False
     )
+    przed = z_dyscyplina.count()
+    with transaction.atomic():
+        Autor_Dyscyplina.objects.filter(pk=ad.pk).delete()
+        assert przed - z_dyscyplina.count() == 2
+        transaction.set_rollback(True)
+
+
+@pytest.mark.django_db
+def test_komenda_sekcja_jednostek_bez_dyscyplin(
+    admin_app, uczelnia_z_obca_jednostka, jednostka, obca_jednostka
+):
+    """Zgłoszenie sprzed FD#620: powiązanie z jednostką bez dyscypliny.
+    Raport pokazuje autora w osobnej sekcji (niepewne); powiązanie dodane
+    w edycji autora (historia admina) nie jest brane za „ze zgłoszenia”."""
+    from zglos_publikacje.fd640 import znajdz_jednostki_bez_dyscyplin
+
+    def stare_zgloszenie(autor):
+        Autor_Jednostka.objects.create(autor=autor, jednostka=obca_jednostka)
+        zpa = baker.prepare(
+            Zgloszenie_Publikacji_Autor,
+            _save_related=True,
+            autor=autor,
+            jednostka=jednostka,
+            rok=ROK,
+        )
+        zpa.save(**{"__disable_bmoa_clean_method": True})
+
+    ze_zgloszenia = baker.make(Autor, nazwisko="Zezgloszenia")
+    stare_zgloszenie(ze_zgloszenia)
+    Autor_Jednostka.objects.create(autor=ze_zgloszenia, jednostka=jednostka)
+
+    z_redakcji = baker.make(Autor, nazwisko="Zredakcji")
+    stare_zgloszenie(z_redakcji)
+    form = admin_app.get(
+        reverse("admin:bpp_autor_change", args=(z_redakcji.pk,))
+    ).forms["autor_form"]
+    i = int(form["autor_jednostka_set-INITIAL_FORMS"].value)
+    form[f"autor_jednostka_set-{i}-jednostka"].force_value(jednostka.pk)
+    assert form.submit().status_code == 302
+    assert Autor_Jednostka.objects.filter(
+        autor=z_redakcji, jednostka=jednostka
+    ).exists()
+
+    wynik = znajdz_jednostki_bez_dyscyplin()
+    assert [p.autor for p in wynik] == [ze_zgloszenia]
+    assert wynik[0].niepewne
+    raport = _raport()
+    assert "2. Autorzy" in raport and "Zezgloszenia" in raport
+    assert "Zredakcji" not in raport
 
 
 @pytest.mark.django_db
@@ -672,3 +800,242 @@ def test_formularz_bez_uczelni_z_requestu_fail_closed(
     form = _form(autor_uczelni, jednostka, dyscyplina1, uczelnia=None)
     assert not form.is_valid()
     assert KOMUNIKAT_OBCY in str(form.errors["dyscyplina_naukowa"])
+
+
+# --- anonimowy zgłaszający niczego nie zapisuje w danych autorów ------------
+
+
+def _migawka_autorow():
+    """Pełny stan ``Autor`` / ``Autor_Jednostka`` / ``Autor_Dyscyplina`` oraz
+    ich historii — do porównania przed i po działaniu zgłaszającego."""
+    from django.contrib.admin.models import LogEntry
+    from django.contrib.contenttypes.models import ContentType
+    from reversion.models import Version
+
+    modele = (Autor, Autor_Jednostka, Autor_Dyscyplina)
+    cts = [ContentType.objects.get_for_model(m) for m in modele]
+    return (
+        list(Autor.global_objects.order_by("pk").values()),
+        list(Autor_Jednostka.objects.order_by("pk").values()),
+        list(Autor_Dyscyplina.all_objects.order_by("pk").values()),
+        LogEntry.objects.filter(content_type__in=cts).count(),
+        Version.objects.filter(content_type__in=cts).count(),
+    )
+
+
+def _przejdz_poprawke(webtest_app, zgloszenie):
+    """Kroki 0–2 poprawki zwróconego zgłoszenia (link z e-maila)."""
+    url = reverse("zglos_publikacje:edycja_zgloszenia", args=[zgloszenie.kod_do_edycji])
+    page = webtest_app.get(url)
+    page.forms[0]["0-rodzaj"] = "POZOSTALE"
+    page = page.forms[0].submit()
+    page.forms[0]["1-forma_dostepu"] = "OTWARTY"
+    page = page.forms[0].submit()
+    page = page.forms[0].submit()  # dane — bez zmian
+    assert "3-TOTAL_FORMS" in page.forms[0].fields, page.text[:3000]
+    return page
+
+
+@pytest.mark.django_db
+def test_anonim_nie_zmienia_danych_autorow_przy_zgloszeniu_i_poprawce(
+    webtest_app,
+    django_capture_on_commit_callbacks,
+    typy_odpowiedzialnosci,
+    uczelnia,
+    jednostka,
+    obca_jednostka,
+    autor_uczelni,
+    autor_obcy,
+    dyscyplina1,
+):
+    """Wymaganie właściciela (punkt 6): anonimowy zgłaszający nie powoduje
+    żadnego zapisu w ``Autor``/``Autor_Jednostka``/``Autor_Dyscyplina`` — ani
+    przy złożeniu zgłoszenia, ani przy poprawce zwróconego. Przypisania
+    powstają dopiero przy zatwierdzeniu przez redakcję."""
+    import uuid
+
+    przed = _migawka_autorow()
+
+    page = _wypelnij_autora(webtest_app, autor_uczelni, jednostka, dyscyplina1)
+    with django_capture_on_commit_callbacks(execute=True):
+        page.forms[0].submit().maybe_follow()
+    assert _migawka_autorow() == przed
+
+    # Redakcja zwraca zgłoszenie; zgłaszający poprawia je i dopisuje obcego.
+    zgloszenie = Zgloszenie_Publikacji.objects.get()
+    zgloszenie.status = Zgloszenie_Publikacji.Statusy.WYMAGA_ZMIAN
+    zgloszenie.kod_do_edycji = uuid.uuid4()
+    zgloszenie.save()
+
+    page = _przejdz_poprawke(webtest_app, zgloszenie)
+    form = page.forms[0]
+    form["3-TOTAL_FORMS"] = "2"
+    form["3-1-autor"].force_value(autor_obcy.pk)
+    form["3-1-jednostka"].force_value(obca_jednostka.pk)
+    form["3-1-rok"].force_value(ROK)
+    with django_capture_on_commit_callbacks(execute=True):
+        res = form.submit().maybe_follow()
+    assert "3-0-autor" not in res.text, res.text[:3000]
+
+    autorzy = set(
+        Zgloszenie_Publikacji.objects.get().zgloszenie_publikacji_autor_set.values_list(
+            "autor_id", flat=True
+        )
+    )
+    assert autorzy == {autor_uczelni.pk, autor_obcy.pk}
+    assert _migawka_autorow() == przed
+
+
+@pytest.mark.django_db
+def test_poprawka_usuwa_niepoprawny_wiersz_oznaczony_do_usuniecia(
+    webtest_app,
+    django_capture_on_commit_callbacks,
+    typy_odpowiedzialnosci,
+    uczelnia,
+    jednostka,
+    autor_uczelni,
+    autor_obcy,
+    dyscyplina1,
+):
+    """Repro (punkt 2): stary wiersz zgłoszenia, który nie przechodzi już
+    walidacji (obcy autor z jednostką uczelni i dyscypliną), oznaczony przez
+    zgłaszającego do usunięcia, zostawał w zgłoszeniu — zapis sprawdzał
+    poprawność wiersza PRZED „Usuń”."""
+    import uuid
+
+    page = _wypelnij_autora(webtest_app, autor_uczelni, jednostka)
+    with django_capture_on_commit_callbacks(execute=True):
+        page.forms[0].submit().maybe_follow()
+    zgloszenie = Zgloszenie_Publikacji.objects.get()
+    stary = baker.prepare(
+        Zgloszenie_Publikacji_Autor,
+        rekord=zgloszenie,
+        autor=autor_obcy,
+        jednostka=jednostka,
+        dyscyplina_naukowa=dyscyplina1,
+        typ_odpowiedzialnosci=typy_odpowiedzialnosci["aut."],
+        rok=ROK,
+        kolejnosc=1,
+    )
+    stary.save(**{"__disable_bmoa_clean_method": True})
+    zgloszenie.status = Zgloszenie_Publikacji.Statusy.WYMAGA_ZMIAN
+    zgloszenie.kod_do_edycji = uuid.uuid4()
+    zgloszenie.save()
+    przed = _migawka_autorow()
+
+    page = _przejdz_poprawke(webtest_app, zgloszenie)
+    form = page.forms[0]
+    i = next(
+        n
+        for n in range(int(form["3-TOTAL_FORMS"].value))
+        if form[f"3-{n}-autor"].value == str(autor_obcy.pk)
+    )
+    form[f"3-{i}-DELETE"].checked = True
+    with django_capture_on_commit_callbacks(execute=True):
+        form.submit().maybe_follow()
+
+    assert not Zgloszenie_Publikacji_Autor.objects.filter(pk=stary.pk).exists()
+    assert list(
+        zgloszenie.zgloszenie_publikacji_autor_set.values_list("autor_id", flat=True)
+    ) == [autor_uczelni.pk]
+    assert (
+        Zgloszenie_Publikacji.objects.get().status
+        == Zgloszenie_Publikacji.Statusy.PO_ZMIANACH
+    )
+    assert _migawka_autorow() == przed
+
+
+# --- obca jednostka: system check i komunikat w adminie -------------------
+
+
+@pytest.mark.django_db
+def test_system_check_uczelnia_bez_obcej_jednostki(uczelnia, obca_jednostka):
+    from bpp.checks import W301_ID, uczelnia_bez_obcej_jednostki_check
+
+    wynik = uczelnia_bez_obcej_jednostki_check(None, databases=["default"])
+    assert [w.id for w in wynik] == [W301_ID]
+    assert uczelnia.nazwa in wynik[0].msg
+    assert uczelnia_bez_obcej_jednostki_check(None) == []  # bez bazy — nic
+
+    uczelnia.obca_jednostka = obca_jednostka
+    uczelnia.save()
+    assert uczelnia_bez_obcej_jednostki_check(None, databases=["default"]) == []
+
+
+@pytest.mark.django_db
+def test_admin_zgloszen_przypomina_o_obcej_jednostce(
+    admin_app, uczelnia, obca_jednostka
+):
+    url = reverse("admin:zglos_publikacje_zgloszenie_publikacji_changelist")
+    assert "nie ma ustawionej obcej jednostki" in admin_app.get(url).text
+
+    uczelnia.obca_jednostka = obca_jednostka
+    uczelnia.save()
+    assert "nie ma ustawionej obcej jednostki" not in admin_app.get(url).text
+
+
+# --- afiliacja jednostki obcej przy zatwierdzaniu (punkt 4) -----------------
+
+
+def _formularz_ze_zgloszenia(admin_app, zgloszenie_id, zrodlo, slowniki):
+    from bpp.const import NUMER_ZGLOSZENIA_PARAM
+    from bpp.models import Status_Korekty, Typ_KBN
+
+    page = admin_app.get(
+        reverse("admin:bpp_wydawnictwo_ciagle_add")
+        + f"?{NUMER_ZGLOSZENIA_PARAM}={zgloszenie_id}"
+    )
+    form = page.forms["wydawnictwo_ciagle_form"]
+    form["tytul_oryginalny"] = "Mastitis"
+    form["rok"] = str(ROK)
+    form["zrodlo"].force_value([zrodlo.pk])
+    charaktery, jezyki = slowniki
+    form["charakter_formalny"] = charaktery["AC"].pk
+    form["jezyk"] = jezyki["pol."].pk
+    form["typ_kbn"] = Typ_KBN.objects.get(skrot="PO").pk
+    form["status_korekty"] = Status_Korekty.objects.first().pk
+    return form
+
+
+@pytest.mark.django_db
+def test_dodaj_wydawnictwo_ze_zgloszenia_obcy_bez_afiliacji_zapis(
+    admin_app,
+    typy_odpowiedzialnosci,
+    uczelnia,
+    jednostka,
+    obca_jednostka,
+    autor_obcy,
+    zrodlo,
+    charaktery_formalne,
+    jezyki,
+    typy_kbn,
+    statusy_korekt,
+):
+    """Prefill „Dodaj wyd. ciągłe” ze zgłoszenia: obcy autor dostaje obcą
+    jednostkę z odznaczonym „Afiliuje” — i rekord się zapisuje (POST).
+    Walidacja afiliacji zostaje: zaznaczone „Afiliuje” przy jednostce obcej
+    jest odrzucane."""
+    from bpp.models import Wydawnictwo_Ciagle_Autor
+
+    zpa = _zpa_bez_walidacji(autor_obcy, jednostka)
+    slowniki = (charaktery_formalne, jezyki)
+
+    form = _formularz_ze_zgloszenia(admin_app, zpa.rekord_id, zrodlo, slowniki)
+    assert form["autorzy_set-0-jednostka"].value == str(obca_jednostka.pk)
+    assert not form["autorzy_set-0-afiliuje"].checked
+    form["autorzy_set-0-zapisany_jako"].force_value(f"{autor_obcy}")
+
+    # Walidacja bez zmian: obca jednostka + „Afiliuje” → błąd, bez zapisu.
+    form["autorzy_set-0-afiliuje"].checked = True
+    res = form.submit(expect_errors=True)
+    assert res.status_code == 200
+    assert not Wydawnictwo_Ciagle_Autor.objects.filter(autor=autor_obcy).exists()
+
+    form = _formularz_ze_zgloszenia(admin_app, zpa.rekord_id, zrodlo, slowniki)
+    form["autorzy_set-0-zapisany_jako"].force_value(f"{autor_obcy}")
+    res = form.submit()
+    assert res.status_code == 302, res.text[:3000]
+    wca = Wydawnictwo_Ciagle_Autor.objects.get(autor=autor_obcy)
+    assert wca.jednostka == obca_jednostka
+    assert wca.afiliuje is False
+    assert wca.dyscyplina_naukowa is None

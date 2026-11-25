@@ -116,3 +116,29 @@ def test_dyscyplina_przypisana_dopiero_po_zatwierdzeniu_w_importerze(
     )
     assert wpis.action_flag == ADDITION
     assert wpis.user == redaktor
+
+
+@pytest.mark.django_db
+def test_obcy_z_obca_jednostka_bez_afiliacji(
+    sesja, uczelnia_z_obca_jednostka, obca_jednostka
+):
+    """Punkt 4: importer zapisuje autora z jednostką obcą bez afiliacji."""
+    sesja.uczelnia = uczelnia_z_obca_jednostka
+    sesja.save()
+    autor = baker.make(Autor, nazwisko="Yilmaz", imiona="Oktay")
+    Autor_Jednostka.objects.create(autor=autor, jednostka=obca_jednostka)
+    baker.make(
+        ImportedAuthor,
+        session=sesja,
+        order=0,
+        family_name="Yilmaz",
+        given_name="Oktay",
+        match_status=ImportedAuthor.MatchStatus.MANUAL,
+        matched_autor=autor,
+        matched_jednostka=obca_jednostka,
+        zapisany_jako="Yilmaz Oktay",
+    )
+    record = _create_publication(sesja)
+    autorstwo = record.autorzy_set.get()
+    assert autorstwo.jednostka == obca_jednostka
+    assert autorstwo.afiliuje is False

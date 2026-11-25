@@ -419,25 +419,34 @@ class Zgloszenie_Publikacji_Autor(
             return None
         return self.dyscyplina_naukowa
 
-    def _waliduj_jednostke_obcego(self):
-        """FD#640: autor spoza uczelni nie może dostać w zgłoszeniu jednostki
-        uczelni — tylko jednostkę obcą (``Uczelnia.obca_jednostka``). Gdy
-        uczelnia nie ma skonfigurowanej obcej jednostki, nie ma czego
-        zaproponować w zamian — wtedy nie blokujemy (zgłoszenie i tak nie
-        zakłada autorowi powiązania z jednostką, a redakcja przy
-        zatwierdzaniu nie dostaje podpowiedzi jednostki uczelni)."""
-        uczelnia = self.uczelnia_zgloszenia()
-        if uczelnia is None or uczelnia.obca_jednostka_id is None:
-            return
-        if not self.jednostka_jest_jednostka_uczelni():
-            return
-        raise ValidationError(
-            {
-                "jednostka": f"Autor {self.autor} nie jest autorem uczelni "
-                "(nie jest ani nie był przypisany do żadnej jej jednostki) — "
-                "nie można go przypisać do jednostki uczelni. Wybierz "
-                f"jednostkę „{uczelnia.obca_jednostka}”."
-            }
+    @staticmethod
+    def blad_jednostki_autora_spoza_uczelni(autor, jednostka, uczelnia):
+        """FD#640: komunikat błędu, gdy autor spoza uczelni ``uczelnia`` ma
+        w zgłoszeniu inną jednostkę niż obca jednostka uczelni
+        (``Uczelnia.obca_jednostka``) — także jednostkę innej uczelni z tej
+        samej bazie. Gdy uczelnia nie ma ustawionej obcej jednostki, takiego
+        autora nie da się zgłosić (komunikat kieruje do redakcji — obcą
+        jednostkę ustawia się ręcznie). ``None`` — jednostka w porządku.
+
+        Sprawdza to formularz zgłoszenia (``Zgloszenie_Publikacji_AutorForm
+        .clean``) — jedyna ścieżka, którą dane zgłoszenia wpisuje
+        zgłaszający; model tego nie wymusza, żeby dało się odczytać i zapisać
+        dawne zgłoszenia (i dane testowe) bez obcej jednostki."""
+        obca_id = uczelnia.obca_jednostka_id if uczelnia is not None else None
+        if obca_id is not None and jednostka is not None and jednostka.pk == obca_id:
+            return None
+        if obca_id is None:
+            return (
+                f"Autor {autor} nie jest autorem uczelni — można go zgłosić "
+                "tylko z obcą jednostką uczelni, a uczelnia nie ma jej "
+                "ustawionej. Skontaktuj się z biblioteką lub redakcją (obcą "
+                "jednostkę ustawia się w module redagowania: Uczelnia → "
+                "„Obca jednostka”)."
+            )
+        return (
+            f"Autor {autor} nie jest autorem uczelni (nie jest ani nie był "
+            "przypisany do żadnej jej jednostki) — można go przypisać "
+            f"wyłącznie do jednostki „{uczelnia.obca_jednostka}”."
         )
 
     def clean(self):
@@ -446,8 +455,8 @@ class Zgloszenie_Publikacji_Autor(
 
         if not self.autor_jest_autorem_uczelni():
             # FD#640: autorowi spoza uczelni nie określamy dyscypliny — ani
-            # nie wymagamy jej, ani nie przyjmujemy — i nie przypisujemy go
-            # do jednostki uczelni.
+            # nie wymagamy jej, ani nie przyjmujemy. Jednostkę (tylko obca)
+            # sprawdza formularz — ``blad_jednostki_autora_spoza_uczelni``.
             if self.dyscyplina_naukowa_id is not None:
                 raise ValidationError(
                     {
@@ -457,7 +466,6 @@ class Zgloszenie_Publikacji_Autor(
                         "nie podaje się dyscypliny. Pozostaw to pole puste."
                     }
                 )
-            self._waliduj_jednostke_obcego()
             return
 
         przypisanie_na_rok_istnieje = Autor_Dyscyplina.objects.filter(
