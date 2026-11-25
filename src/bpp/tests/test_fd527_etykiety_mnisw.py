@@ -404,3 +404,13 @@ def test_fd527_migracja_raportow_nie_tworzy_duplikatow_w_tabeli(migracja, caplog
     )
     assert len(etykiety) == len(set(etykiety))
     assert "zajęta" in caplog.text
+
+
+def test_fd527_opisy_funkcji_na_stronie_uczelni_bez_mein():
+    """Opis narzędzia „Import list ministerialnych” mówi o wykazie MNiSW."""
+    from django.template.loader import get_template
+
+    zrodlo = get_template("browse/uczelnia.html").template.source
+    assert "wykazu czasopism MNiSW" in zrodlo
+    assert "MEiN" not in zrodlo
+    assert "KBN" not in zrodlo
