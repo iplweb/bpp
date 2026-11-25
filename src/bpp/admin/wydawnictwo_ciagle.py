@@ -63,6 +63,7 @@ from bpp.models.wydawnictwo_ciagle import Wydawnictwo_Ciagle_Autor
 from crossref_bpp.mixins import AdminCrossrefAPIMixin, AdminCrossrefPBNAPIMixin
 from dspace_api.actions import wyslij_do_dspace, wyslij_do_dspace_w_tle
 from dspace_api.admin_mixins import DSpaceLinkAdminMixin
+from importer_publikacji.wzbogacanie.admin import WzbogacanieRekorduAdminMixin
 from pbn_api.models import Publication
 
 from . import BaseBppAdminMixin
@@ -286,6 +287,7 @@ class Wydawnictwo_Ciagle_Zewnetrzna_Baza_DanychInline(admin.StackedInline):
 
 
 class Wydawnictwo_CiagleAdmin(
+    WzbogacanieRekorduAdminMixin,
     OdroczPunktyDyscyplinMixin,
     BlokujRekordPrzedZapisemMixin,
     DSpaceLinkAdminMixin,

@@ -21,6 +21,7 @@
     {% if original.wydawnictwa_powiazane_set.exists %}
         <li><a target="_blank" href="../../?q-l=on&q=wydawnictwo_nadrzedne.id%3D+{{ original.pk }}">Powiązane</a></li>
     {% endif %}
+    {% include "admin/wzbogacanie/przyciski.html" %}
     {% if original.pk %}
         <li><a
                 {% if original.autorzy.count > 25 %}

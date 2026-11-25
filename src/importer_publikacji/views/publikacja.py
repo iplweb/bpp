@@ -402,6 +402,12 @@ def _create_publication(session, user=None):
     ``user`` — kto prowadzi import (autor wpisu w historii zmian rekordu,
     FD#441); domyślnie twórca sesji.
     """
+    # FD#517: sesja dodająca autorów do istniejącego rekordu nigdy nie
+    # tworzy nowego (np. ręcznie wpisany adres kroku „Utwórz”).
+    from ..wzbogacanie.dodawanie_autorow import odmow_tworzenia_rekordu
+
+    odmow_tworzenia_rekordu(session)
+
     # Twardy guard afiliacji — przed jakimkolwiek zapisem do bazy (transakcja
     # atomowa i tak by wycofała, ale tu odmawiamy zanim cokolwiek powstanie).
     waliduj_afiliacje_sesji(session)

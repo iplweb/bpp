@@ -236,7 +236,19 @@ def test_fetch_success_article(mock_get_client, mock_save):
     assert pub.publisher == "Wydawnictwo Testowe"
     assert pub.url == "https://example.com/pub/123"
     assert pub.license_url == "https://creativecommons.org/licenses/by/4.0/"
-    assert pub.extra == {"pbn_uid": SAMPLE_PBN_UID}
+    assert pub.extra == {
+        "pbn_uid": SAMPLE_PBN_UID,
+        # FD#517: słowa kluczowe także w podziale na języki.
+        "slowa_kluczowe_wg_jezyka": {
+            "pl": ["nauka", "testowanie"],
+            "en": ["science", "testing"],
+        },
+        # …i wszystkie streszczenia z kodami języków.
+        "streszczenia_wg_jezyka": {
+            "pl": "To jest abstrakt po polsku.",
+            "en": "This is an abstract.",
+        },
+    }
 
     mock_client.get_publication_by_id.assert_called_once_with(SAMPLE_PBN_UID)
 

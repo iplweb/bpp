@@ -976,6 +976,13 @@ class AuthorsConfirmView(ImporterPermissionMixin, View):
                 )
             return _render_authors_step(request, session, error=error)
 
+        # FD#517: sesja dodająca autorów do istniejącego rekordu kończy się
+        # tutaj — nie przechodzi do punktacji ani tworzenia rekordu.
+        from ..wzbogacanie import dodawanie_autorow
+
+        if dodawanie_autorow.jest_sesja_wzbogacania(session):
+            return dodawanie_autorow.potwierdz(request, session, _render_authors_step)
+
         session.status = ImportSession.Status.AUTHORS_MATCHED
         session.modified_by = request.user
         session.save()

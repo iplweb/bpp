@@ -1,0 +1,11 @@
+{# FD#517: przyciski „Wzbogać z CrossRef / PBN” w nagłówku formularza rekordu. #}
+{# CrossRef wymaga numeru DOI, PBN — wskazanego odpowiednika w PBN. #}
+{% load admin_urls %}
+{% if original.pk and has_change_permission %}
+    {% if original.doi %}
+        <li><a href="{% url opts|admin_urlname:'wzbogac' original.pk|admin_urlquote 'crossref' %}" title="Porównaj rekord z danymi CrossRef i przenieś wybrane pola">🧩 Wzbogać z CrossRef</a></li>
+    {% endif %}
+    {% if original.pbn_uid_id %}
+        <li><a href="{% url opts|admin_urlname:'wzbogac' original.pk|admin_urlquote 'pbn' %}" title="Porównaj rekord z danymi PBN (także z wcześniejszą wersją) i przenieś wybrane pola">🧩 Wzbogać z PBN</a></li>
+    {% endif %}
+{% endif %}

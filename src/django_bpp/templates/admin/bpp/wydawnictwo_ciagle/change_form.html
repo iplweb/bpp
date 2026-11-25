@@ -14,6 +14,7 @@
         {% endwith %}
         <li><a target="_blank" href="/admin/pbn_api/publication/{{ original.pbn_uid_id }}/change">Kopia PBN</a></li>
     {% endif %}
+    {% include "admin/wzbogacanie/przyciski.html" %}
     {% if original.pk %}
         <li><a
                 {% if original.autorzy.count > 25 %}

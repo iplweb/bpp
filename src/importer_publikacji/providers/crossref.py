@@ -43,63 +43,71 @@ class CrossRefProvider(DataProvider):
         if data is None:
             return None
 
-        title = data.get("title", [])
-        if isinstance(title, list):
-            title = ". ".join(title) if title else ""
+        return publikacja_z_danych_crossref(data)
 
-        # Redaktorzy (CrossRef ``editor``) idą do kroku „Autorzy" z rolą
-        # „redaktor" — ale tylko dla książek/monografii; w rozdziale
-        # ``editor`` to redaktorzy książki nadrzędnej (FD#619).
-        authors = dolacz_redaktorow(
-            _parse_persons(data.get("author", [])),
-            _parse_persons(data.get("editor", [])),
-            data.get("type"),
-        )
 
-        container_title = data.get("container-title", [])
-        source_title = container_title[0] if container_title else None
+def publikacja_z_danych_crossref(data: dict) -> FetchedPublication:
+    """Zamień rekord CrossRef (``message``) na dane importera.
 
-        short_container = data.get("short-container-title", [])
-        source_abbr = short_container[0] if short_container else None
+    Wydzielone z ``CrossRefProvider.fetch``: wzbogacanie rekordu (FD#517)
+    konwertuje dane już pobrane, bez ponownego pytania CrossRef."""
+    title = data.get("title", [])
+    if isinstance(title, list):
+        title = ". ".join(title) if title else ""
 
-        issn, e_issn = _extract_issn(data)
-        isbn, e_isbn = _extract_isbn(data)
+    # Redaktorzy (CrossRef ``editor``) idą do kroku „Autorzy" z rolą
+    # „redaktor" — ale tylko dla książek/monografii; w rozdziale
+    # ``editor`` to redaktorzy książki nadrzędnej (FD#619).
+    authors = dolacz_redaktorow(
+        _parse_persons(data.get("author", [])),
+        _parse_persons(data.get("editor", [])),
+        data.get("type"),
+    )
 
-        year = data.get("published", {}).get("date-parts", [[None]])[0][0]
+    container_title = data.get("container-title", [])
+    source_title = container_title[0] if container_title else None
 
-        license_url = None
-        for lic in data.get("license", []):
-            url = lic.get("URL")
-            if url:
-                license_url = url
-                break
+    short_container = data.get("short-container-title", [])
+    source_abbr = short_container[0] if short_container else None
 
-        extra = _build_extra(data, title)
+    issn, e_issn = _extract_issn(data)
+    isbn, e_isbn = _extract_isbn(data)
 
-        return FetchedPublication(
-            raw_data=data,
-            title=title,
-            doi=data.get("DOI"),
-            year=year,
-            authors=authors,
-            source_title=source_title,
-            source_abbreviation=source_abbr,
-            issn=issn,
-            e_issn=e_issn,
-            isbn=isbn,
-            e_isbn=e_isbn,
-            publisher=data.get("publisher"),
-            publication_type=data.get("type"),
-            language=data.get("language"),
-            abstract=data.get("abstract"),
-            volume=data.get("volume"),
-            issue=data.get("issue"),
-            pages=data.get("page"),
-            url=(data.get("resource", {}).get("primary", {}).get("URL")),
-            license_url=license_url,
-            keywords=data.get("subject", []),
-            extra=extra,
-        )
+    year = data.get("published", {}).get("date-parts", [[None]])[0][0]
+
+    license_url = None
+    for lic in data.get("license", []):
+        url = lic.get("URL")
+        if url:
+            license_url = url
+            break
+
+    extra = _build_extra(data, title)
+
+    return FetchedPublication(
+        raw_data=data,
+        title=title,
+        doi=data.get("DOI"),
+        year=year,
+        authors=authors,
+        source_title=source_title,
+        source_abbreviation=source_abbr,
+        issn=issn,
+        e_issn=e_issn,
+        isbn=isbn,
+        e_isbn=e_isbn,
+        publisher=data.get("publisher"),
+        publication_type=data.get("type"),
+        language=data.get("language"),
+        abstract=data.get("abstract"),
+        volume=data.get("volume"),
+        issue=data.get("issue"),
+        pages=data.get("page"),
+        url=(data.get("resource", {}).get("primary", {}).get("URL")),
+        license_url=license_url,
+        keywords=data.get("subject", []),
+        extra=extra,
+    )
 
 
 def _parse_persons(persons: list) -> list[dict]:
