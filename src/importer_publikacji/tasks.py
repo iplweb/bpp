@@ -117,6 +117,18 @@ def fetch_session_task(self, session_id, request_user_id):
                 stages=FETCH_STAGES,
             )
 
+        # Import z PBN podaje identyfikatory osób. Dla autorów, których
+        # trzeba będzie utworzyć, dociągamy dane osoby — inaczej nowy autor
+        # nie miałby odpowiednika w PBN (FD#510).
+        from .providers.pbn import pobierz_brakujace_osoby
+
+        pobierz_brakujace_osoby(
+            session.uczelnia,
+            session.authors.filter(matched_autor__isnull=True)
+            .exclude(pbn_uid="")
+            .values_list("pbn_uid", flat=True),
+        )
+
         report_progress(self, "prefill_zgl", stages=FETCH_STAGES)
         from .views.authors import _prefill_dyscypliny_z_zgloszen
         from .zgloszenia import zwiaz_automatycznie
@@ -214,9 +226,15 @@ def _auto_match_type_and_language(session, result):
         session.rodzaj_rekordu = ImportSession.RodzajRekordu.PATENT
 
     mapper = _get_crossref_mapper(result.publication_type)
-    if mapper and mapper.charakter_formalny_bpp_id:
-        session.charakter_formalny = mapper.charakter_formalny_bpp
+    if mapper:
+        # Rodzaj rekordu (ciągłe/zwarte) wynika z samego typu publikacji i NIE
+        # zależy od tego, czy administrator przypisał temu typowi charakter
+        # formalny. Dawniej oba pola szły pod jednym warunkiem, więc książka
+        # (typ ``book`` bez zamapowanego charakteru) zostawała wydawnictwem
+        # ciągłym i krok „Dopasowanie źródła" pytał o czasopismo (FD#624).
         session.jest_wydawnictwem_zwartym = mapper.jest_wydawnictwem_zwartym
+        if mapper.charakter_formalny_bpp_id:
+            session.charakter_formalny = mapper.charakter_formalny_bpp
 
     language_code = result.language
     if not language_code:

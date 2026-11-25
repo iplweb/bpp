@@ -16,6 +16,7 @@ from django_tables2.views import SingleTableView
 from bpp.const import GR_RAPORTY_WYSWIETLANIE
 from bpp.export.tables2 import BezpiecznyTableExport
 from bpp.models import (
+    Autor,
     Charakter_Formalny,
     Jednostka,
     OpcjaWyswietlaniaField,
@@ -276,6 +277,13 @@ class RankingAutorow(RankingAutorowDostepMixin, ExportMixin, SingleTableView):
         # No-op na single-install (guard) — wynik bez zmian.
         if uczelnia is not None and not tylko_jedna_uczelnia():
             qset = qset.filter(autor__aktualna_jednostka__uczelnia=uczelnia)
+
+        # FD#640: autorów spoza uczelni (przypisanych wyłącznie do jednostki
+        # obcej) nie ma w rankingu — ani na stronie, ani w eksporcie; sum
+        # punktów obcego autora nie liczymy. Jeden podzapytaniowy filtr na
+        # cały queryset (bez sprawdzania autor po autorze).
+        if uczelnia is not None:
+            qset = qset.exclude(autor__in=Autor.objects.spoza_uczelni(uczelnia))
 
         return qset
 

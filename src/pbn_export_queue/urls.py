@@ -7,6 +7,7 @@ from .views import (
     PBNExportQueueTableView,
     delete_from_queue,
     prepare_for_resend,
+    przelacz_automaty,
     resend_all_errors,
     resend_all_waiting,
     resend_filtered,
@@ -57,6 +58,11 @@ urlpatterns = [
         "wake-up/",
         wake_up_queue,
         name="export-queue-wake-up",
+    ),
+    path(
+        "automaty/",
+        przelacz_automaty,
+        name="export-queue-automaty",
     ),
     path(
         "resend-filtered/",

@@ -1,0 +1,20 @@
+Importer publikacji: książka nie jest już domyślnie traktowana jak artykuł,
+gdy jej typ nie ma przypisanego charakteru formalnego. Wcześniej import
+książki — np. wpisu BibTeX ``@book`` — na instalacji, w której w mapowaniu
+typów CrossRef na BPP typ ``book`` nie miał wybranego charakteru formalnego,
+zaznaczał w kroku „Weryfikacja danych publikacji” rodzaj rekordu
+„Wydawnictwo ciągłe (artykuł)”. Jeśli redaktor tego nie przełączył, „Krok 3:
+Dopasowanie źródła” żądał pola „Źródło (czasopismo)” zamiast wydawcy. Teraz
+pole „Rodzaj rekordu” jest podpowiadane z samego typu publikacji (dla książki,
+rozdziału, monografii, rozprawy: „Wydawnictwo zwarte (książka/rozdział)”),
+a krok „Dopasowanie źródła” od razu pyta o wydawcę; szary komunikat w kroku
+weryfikacji informuje, że rodzaj rekordu zaznaczono automatycznie, a charakter
+formalny trzeba wybrać ręcznie. Dotyczy wszystkich źródeł danych (BibTeX,
+CrossRef, PBN, DSpace, strony WWW), także importów rozpoczętych przed
+aktualizacją, w których krok weryfikacji nie został jeszcze zatwierdzony.
+Bez zmian: artykuły nadal trafiają na ścieżkę czasopisma; typy z przypisanym
+charakterem formalnym działają jak dotąd; ustawienie „Jest wydawnictwem
+zwartym” w mapowaniu typów ma pierwszeństwo; rodzaj rekordu wybrany przez
+redaktora nie jest nadpisywany; charakter formalny nie jest zgadywany.
+Aby importer wypełniał także charakter formalny, administrator może przypisać
+go typowi ``book`` w mapowaniu typów CrossRef na BPP (FD#624).

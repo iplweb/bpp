@@ -232,6 +232,21 @@ class Zgloszenie_PublikacjiAdmin(
 
         return urls + super_urls
 
+    def changelist_view(self, request, extra_context=None):
+        # FD#640: bez obcej jednostki uczelni nie da się zgłosić autora spoza
+        # uczelni — przypominamy redakcji tam, gdzie obsługuje zgłoszenia.
+        from bpp.models import Uczelnia
+
+        for uczelnia in Uczelnia.objects.filter(obca_jednostka=None).order_by("nazwa"):
+            messages.warning(
+                request,
+                f"Uczelnia „{uczelnia}” nie ma ustawionej obcej jednostki — "
+                "w formularzu zgłaszania prac nie da się zgłosić autora spoza "
+                "uczelni. Ustaw ją ręcznie: Uczelnia → „Obca jednostka”.",
+                fail_silently=True,
+            )
+        return super().changelist_view(request, extra_context=extra_context)
+
     def change_view(self, request, object_id, form_url="", extra_context=None):
         # Udostępnij szablonowi URL importera, by przycisk „Użyj importera"
         # mógł stanąć w pasku akcji nad tabelą (blok object-tools), a nie w

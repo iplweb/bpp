@@ -6,7 +6,10 @@ leży jednak kolejka eksportu z produkcji, a kod ma kilka automatów, które
 wysyłają do PBN bez pytania. Ten moduł trzyma dwie warstwy ochrony:
 
 1. przełącznik ``settings.PBN_WSTRZYMAJ_AUTOMATY`` (:func:`automaty_wstrzymane`)
-   — sprawdzany w automatach; ręczna wysyłka go nie czyta,
+   — sprawdzany w automatach; ręczna wysyłka go nie czyta. Na instancji
+   lokalnej deweloper może automaty świadomie ODBLOKOWAĆ (strona kolejki
+   eksportu albo ``run-site run --pbn-automaty wlacz``) — patrz
+   :func:`ustaw_odblokowanie`,
 2. :func:`wstrzymaj_kolejke` — zamyka wpisy kolejki przyniesione z produkcji
    (wołane przez komendę ``pbn_bezpiecznik_lokalnej_kopii``).
 
@@ -20,6 +23,8 @@ jawnego „wyślij ten rekord"):
 - ``operacje.zakolejkuj_wycofanie`` / ``zakolejkuj_wysylke`` — kosz
   i przywrócenie z kosza.
 """
+
+from dataclasses import dataclass
 
 from django.conf import settings
 from django.db import connection
@@ -40,9 +45,76 @@ KOMUNIKAT_WSTRZYMANIA = (
 )
 
 
-def automaty_wstrzymane() -> bool:
-    """Czy automaty wysyłające do PBN mają na tej instancji milczeć."""
+#: Klucz constance z decyzją „odblokuj automaty". Zdefiniowany wyłącznie
+#: w ``settings/local.py`` — na produkcji nie istnieje.
+KLUCZ_ODBLOKOWANIA = "PBN_AUTOMATY_ODBLOKOWANE_LOKALNIE"
+
+
+class PrzelacznikNiedostepny(Exception):
+    """Automatów nie da się przełączać na tej instancji (produkcja, instancja
+    nielokalna albo wstrzymanie wyłączone zmienną środowiskową)."""
+
+
+@dataclass(frozen=True)
+class StanAutomatow:
+    #: Czy na tej instancji w ogóle działa wstrzymywanie (False = produkcja
+    #: albo ``DJANGO_BPP_PBN_WSTRZYMAJ_AUTOMATY=0``).
+    wstrzymywanie_wlaczone: bool
+    wstrzymane: bool
+    #: Czy stan można zmienić przełącznikiem (instancja lokalna).
+    przelaczalne: bool
+
+
+def _wstrzymywanie_wlaczone() -> bool:
     return bool(getattr(settings, "PBN_WSTRZYMAJ_AUTOMATY", False))
+
+
+def przelacznik_dostepny(dodatkowe_lokalne_hosty=()) -> bool:
+    """Przełącznik istnieje tylko tam, gdzie działa wstrzymywanie, jest klucz
+    constance (ustawienia lokalne) i instancja przechodzi te same kryteria
+    lokalności co komenda bezpiecznika."""
+    return (
+        _wstrzymywanie_wlaczone()
+        and KLUCZ_ODBLOKOWANIA in getattr(settings, "CONSTANCE_CONFIG", {})
+        and not powody_nielokalnosci(dodatkowe_lokalne_hosty)
+    )
+
+
+def automaty_wstrzymane() -> bool:
+    """Czy automaty wysyłające do PBN mają na tej instancji milczeć.
+
+    Produkcja (``PBN_WSTRZYMAJ_AUTOMATY = False``): zawsze ``False``, bez
+    czytania czegokolwiek z bazy — przełącznik nie ma tam żadnego wpływu.
+    Instancja lokalna: wstrzymane, chyba że deweloper je odblokował. Stan
+    odblokowania leży w bazie (constance), bo pytają o niego osobne procesy
+    — web i worker Celery.
+    """
+    if not _wstrzymywanie_wlaczone():
+        return False
+    if not przelacznik_dostepny():
+        return True
+    from constance import config
+
+    return not getattr(config, KLUCZ_ODBLOKOWANIA)
+
+
+def stan_automatow() -> StanAutomatow:
+    return StanAutomatow(
+        wstrzymywanie_wlaczone=_wstrzymywanie_wlaczone(),
+        wstrzymane=automaty_wstrzymane(),
+        przelaczalne=przelacznik_dostepny(),
+    )
+
+
+def ustaw_odblokowanie(odblokowane: bool, dodatkowe_lokalne_hosty=()) -> None:
+    """Odblokowuje (``True``) albo wstrzymuje (``False``) automaty lokalnie."""
+    if not przelacznik_dostepny(dodatkowe_lokalne_hosty):
+        raise PrzelacznikNiedostepny(
+            "Automatów wysyłki do PBN nie da się przełączać na tej instancji."
+        )
+    from constance import config
+
+    setattr(config, KLUCZ_ODBLOKOWANIA, bool(odblokowane))
 
 
 def host_bazy() -> str:

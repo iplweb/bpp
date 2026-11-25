@@ -18,6 +18,7 @@ from django.db.models.aggregates import Max, Min
 from bpp.models import Uczelnia
 from bpp.models.cache import Rekord
 from bpp.util import formdefaults_html_after, formdefaults_html_before, year_last_month
+from bpp.util.autor_spoza_uczelni import sprawdz_autora_raportu
 
 from . import sortowanie as sortowanie_raportu
 from .models import DefinicjaRaportu
@@ -111,8 +112,22 @@ class BaseRaportForm(forms.Form):
                     }
                 )
 
+    def clean_obiekt(self):
+        obiekt = self.cleaned_data["obiekt"]
+        if self.POZIOM == DefinicjaRaportu.POZIOM_AUTOR:
+            # FD#640: raportu (sum punktów/metryk) dla autora spoza uczelni
+            # nie przygotowujemy.
+            sprawdz_autora_raportu(obiekt, self._uczelnia_requestu)
+        return obiekt
+
     def __init__(self, *args, request=None, **kwargs):
         super().__init__(*args, **kwargs)
+
+        # FD#640: uczelnia oglądającego do odrzucenia autora spoza uczelni
+        # (``clean_obiekt``); bez requestu nikt nie jest „spoza uczelni”.
+        self._uczelnia_requestu = (
+            Uczelnia.objects.get_for_request(request) if request is not None else None
+        )
 
         # FD#528: „Od roku"/„Do roku" mają w deklaracji wywoływalny ``initial``.
         # django-formdefaults nie umie go zapisać (nie-JSON) i przy KAŻDYM

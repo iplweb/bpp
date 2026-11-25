@@ -54,12 +54,13 @@ class Command(BaseCommand):
             help="Lokalny login, któremu zapisać token (domyślnie taki sam).",
         )
         parser.add_argument(
-            "--uczelnia", default=None, help="Skrót lokalnej uczelni (gdy kilka)."
-        )
-        parser.add_argument(
-            "--uczelnia-zdalna",
+            "--uczelnia",
             default=None,
-            help="Skrót uczelni na serwerze (gdy kilka).",
+            help=(
+                "Skrót uczelni — przenieś tylko tę jedną. Domyślnie wszystkie "
+                "uczelnie, parowane po skrócie (instalacja z kilkoma "
+                "uczelniami ma osobną aplikację PBN dla każdej)."
+            ),
         )
         parser.add_argument("--remote-deploy-path", default="~/bpp-deploy")
         parser.add_argument("--remote-compose-service", default="appserver")
@@ -86,7 +87,6 @@ class Command(BaseCommand):
             self.stdout.write(
                 kzs.zdalne_polecenie(
                     login,
-                    o["uczelnia_zdalna"],
                     o["remote_deploy_path"],
                     o["remote_compose_service"],
                 )
@@ -114,12 +114,11 @@ class Command(BaseCommand):
                 dane = kzs.pobierz_z_serwera(
                     host,
                     login=login,
-                    skrot=o["uczelnia_zdalna"],
                     remote_deploy_path=o["remote_deploy_path"],
                     remote_compose_service=o["remote_compose_service"],
                 )
             raport = kzs.zastosuj(
-                dane, skrot_lokalny=o["uczelnia"], login_lokalny=o["user_lokalny"]
+                dane, skrot=o["uczelnia"], login_lokalny=o["user_lokalny"]
             )
         except kzs.BladPrzenoszenia as e:
             raise CommandError(str(e)) from e

@@ -13,8 +13,10 @@ ręcznej wysyłki rekordu — to właśnie deweloper chce testować.
 from django.core.management.base import BaseCommand, CommandError
 
 from pbn_export_queue.bezpiecznik import (
-    automaty_wstrzymane,
+    PrzelacznikNiedostepny,
     powody_nielokalnosci,
+    stan_automatow,
+    ustaw_odblokowanie,
     wstrzymaj_kolejke,
 )
 
@@ -45,7 +47,21 @@ class Command(BaseCommand):
             ),
         )
 
-    def handle(self, *args, potwierdzenie=False, lokalny_host_bazy=(), **kw):
+        parser.add_argument(
+            "--automaty",
+            choices=("wstrzymaj", "wlacz"),
+            default=None,
+            help=(
+                "Ustaw przełącznik automatów wysyłki do PBN: `wstrzymaj` "
+                "(stan domyślny) albo `wlacz` (świadome testowanie wysyłki "
+                "z kolejki). Bez tej opcji przełącznik zostaje, jak był. "
+                "Kolejka z kopii bazy jest zamykana zawsze."
+            ),
+        )
+
+    def handle(
+        self, *args, potwierdzenie=False, lokalny_host_bazy=(), automaty=None, **kw
+    ):
         powody = powody_nielokalnosci(lokalny_host_bazy)
         if powody:
             raise CommandError(
@@ -68,20 +84,33 @@ class Command(BaseCommand):
             "(zostają w historii kolejki; wysyłkę można ponowić ręcznie)."
         )
 
-        if automaty_wstrzymane():
+        if automaty is not None:
+            try:
+                ustaw_odblokowanie(automaty == "wlacz", lokalny_host_bazy)
+            except PrzelacznikNiedostepny as e:
+                # Np. DJANGO_BPP_PBN_WSTRZYMAJ_AUTOMATY=0 — stan raportujemy
+                # niżej, komenda nie udaje, że coś przełączyła.
+                self.stdout.write(self.style.WARNING(f"UWAGA: {e}"))
+
+        stan = stan_automatow()
+        if stan.wstrzymane:
             self.stdout.write(
-                "Automaty wysyłki do PBN: wstrzymane "
-                "(PBN_WSTRZYMAJ_AUTOMATY) — ponowienie po zalogowaniu, "
-                "watchdog kolejki, łańcuch „następny z kolejki”, "
-                "kosz/przywrócenie."
+                "Automaty wysyłki do PBN: WSTRZYMANE — ponowienie po "
+                "zalogowaniu, watchdog kolejki, łańcuch „następny z kolejki”, "
+                "kosz/przywrócenie. Odblokowanie: strona kolejki eksportu PBN "
+                "albo `run-site run --pbn-automaty wlacz`."
             )
         else:
+            powod = (
+                "odblokowane przełącznikiem"
+                if stan.wstrzymywanie_wlaczone
+                else "DJANGO_BPP_PBN_WSTRZYMAJ_AUTOMATY=0"
+            )
             self.stdout.write(
                 self.style.WARNING(
-                    "UWAGA: automaty wysyłki do PBN NIE są wstrzymane "
-                    "(DJANGO_BPP_PBN_WSTRZYMAJ_AUTOMATY=0). Nowe wpisy kolejki "
-                    "będą wysyłane samoczynnie, a kosz wycofa oświadczenia "
-                    "w PBN."
+                    f"UWAGA: automaty wysyłki do PBN są WŁĄCZONE ({powod}). "
+                    "Nowe wpisy kolejki będą wysyłane samoczynnie, a kosz "
+                    "wycofa oświadczenia w PBN."
                 )
             )
         self.stdout.write(

@@ -6,7 +6,7 @@ import sys
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.mixins import LoginRequiredMixin
-from django.http import HttpResponseRedirect, JsonResponse
+from django.http import Http404, HttpResponseRedirect, JsonResponse
 from django.shortcuts import get_object_or_404
 from django.urls import reverse_lazy
 from django.views import View
@@ -518,4 +518,33 @@ def resend_filtered(request):
         msg += " (limit 100 rekordow)"
 
     messages.success(request, msg)
+    return HttpResponseRedirect(reverse_lazy("pbn_export_queue:export-queue-list"))
+
+
+@login_required
+@require_POST
+def przelacz_automaty(request):
+    """Lokalna instancja: wstrzymaj/odblokuj automaty wysyłki do PBN.
+
+    Na produkcji (i każdej instancji, która nie jest lokalna) przełącznik
+    nie istnieje — widok odpowiada 404 i niczego nie zmienia.
+    """
+    from pbn_export_queue import bezpiecznik
+
+    if not bezpiecznik.przelacznik_dostepny():
+        raise Http404("Przełącznik automatów PBN nie istnieje na tej instancji.")
+    if not _check_permission(request.user):
+        messages.error(request, "Brak uprawnień do wykonania tej operacji.")
+        return HttpResponseRedirect(reverse_lazy("pbn_export_queue:export-queue-list"))
+
+    odblokuj = request.POST.get("stan") == "wlacz"
+    bezpiecznik.ustaw_odblokowanie(odblokuj)
+    if odblokuj:
+        messages.warning(
+            request,
+            "Automatyczna wysyłka do PBN jest WŁĄCZONA: kolejka, watchdog "
+            "i kosz działają jak na produkcji i wysyłają do prawdziwego PBN.",
+        )
+    else:
+        messages.success(request, "Automatyczna wysyłka do PBN jest wstrzymana.")
     return HttpResponseRedirect(reverse_lazy("pbn_export_queue:export-queue-list"))
