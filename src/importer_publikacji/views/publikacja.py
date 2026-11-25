@@ -10,7 +10,6 @@ from decimal import Decimal
 
 from django.core.exceptions import ValidationError
 from django.db import transaction
-from django.db.models import Q
 
 from bpp import const
 from bpp.models import (
@@ -48,45 +47,13 @@ def _build_abstracts_list(result):
 def _resolve_jezyk(language_code):
     """Znajdź obiekt Jezyk po kodzie języka z CrossRef albo z autodetekcji.
 
-    Szukamy w dwóch kolumnach, w tej kolejności:
-
-    1. ``skrot_crossref`` — jawne mapowanie, ustawiane przez redakcję.
-       Samo w sobie NIE wystarcza: wypełnia je tylko migracja ``0410``
-       i tylko dla polskiego, a enum ``Jezyk.SKROT_CROSSREF`` ogranicza listę
-       wyboru w adminie do {en, es, pl}. Na czystej instalacji ``en`` nie
-       trafiało więc na nic i pole „Język" zostawało puste (a fallback
-       z FD#389, pomyślany dla de/fr/ru/uk, był w praktyce nieosiągalny).
-    2. ``kod_bcp47`` — kuratorskie kody ISO, wypełniane fixture''em
-       ``jezyk.json`` i migracją ``0480`` (pl, en, de, fr, es, ru, it).
-       Dzięki nim autodetekcja działa na danych referencyjnych BPP, bez
-       ręcznego uzupełniania słownika języków.
-
-    Region jest pomijany po obu stronach (``en-GB`` ↔ ``en``) — porównujemy
-    podstawowy podtag BCP 47, bo i CrossRef, i ``langdetect`` potrafią
-    zwrócić kod z regionem.
+    Cała logika (``skrot_crossref``, potem ``kod_bcp47``, region pomijany,
+    widoczne języki pierwsze) mieszka w ``Jezyk.dla_kodu`` — tej samej
+    funkcji używa ``Komparator.porownaj_language`` (FD#513).
     """
-    if not language_code:
-        return None
     from bpp.models import Jezyk
 
-    jezyk = Jezyk.objects.filter(skrot_crossref=language_code).first()
-    if jezyk is not None:
-        return jezyk
-
-    podtag = str(language_code).split("-")[0].strip().lower()
-    if not podtag:
-        return None
-
-    # Widoczne języki mają pierwszeństwo: pole ``jezyk`` publikacji ma
-    # ``limit_choices_to={"widoczny": True}``, więc ukryty rekord i tak nie
-    # przeszedłby walidacji formularza. ``pk`` domyka porządek deterministycznie.
-    return (
-        Jezyk.objects.filter(
-            Q(kod_bcp47__iexact=podtag) | Q(kod_bcp47__istartswith=f"{podtag}-")
-        )
-        .order_by("-widoczny", "pk")
-        .first()
-    )
+    return Jezyk.dla_kodu(language_code)
 
 
 def _create_streszczenia(session, record):

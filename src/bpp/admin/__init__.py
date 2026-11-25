@@ -3,7 +3,8 @@ from django.contrib import admin, messages
 from django.contrib.admin.sites import AlreadyRegistered
 from django.contrib.auth.forms import AdminUserCreationForm
 from django.contrib.auth.models import Permission
-from django.db.models import Q
+from django.db.models import F, Func, IntegerField, OuterRef, Q, Subquery, Value
+from django.db.models.functions import Coalesce
 from multiseek.models import SearchForm
 
 from bpp.models import Rodzaj_Prawa_Patentowego, Zewnetrzna_Baza_Danych
@@ -47,6 +48,11 @@ from .core import (
 )
 from .dyscyplina_naukowa import Dyscyplina_NaukowaAdmin  # noqa
 from .jednostka import JednostkaAdmin  # NOQA
+from .jezyk_kody import (
+    PUBLIKACJE_Z_JEZYKIEM,
+    pola_jezyka,
+    uzupelnij_kody_crossref,
+)
 from .kierunek_studiow import Kierunek_StudiowAdmin  # noqa
 from .konferencja import KonferencjaAdmin  # noqa
 from .nieuzywane import UkryjNieuzywaneMixin
@@ -69,6 +75,55 @@ from .wydawnictwo_zwarte import (  # noqa
 from .wydawnictwo_zwarte_autor import Wydawnictwo_Zwarte_Autor_Admin  # noqa
 
 
+class KodCrossRefFilter(admin.SimpleListFilter):
+    """Czy język da się dopasować do publikacji pobieranej z CrossRef —
+    czyli czy ma „Skrót CrossRef” albo DWULITEROWY „Kod języka wg BCP 47”
+    (CrossRef podaje kody dwuliterowe; sam kod trzyliterowy nie wystarcza).
+    """
+
+    title = "dwuliterowy kod dla CrossRef"
+    parameter_name = "kod_crossref"
+
+    _JEST = (Q(skrot_crossref__isnull=False) & ~Q(skrot_crossref="")) | Q(
+        kod_bcp47__regex=r"^[A-Za-z]{2}(-|$)"
+    )
+
+    def lookups(self, request, model_admin):
+        return [("tak", "jest"), ("nie", "brak")]
+
+    def queryset(self, request, queryset):
+        if self.value() == "tak":
+            return queryset.filter(self._JEST)
+        if self.value() == "nie":
+            return queryset.exclude(self._JEST)
+        return queryset
+
+
+def _liczba_publikacji_w_jezyku():
+    """Wyrażenie: ile publikacji wskazuje na język którymkolwiek polem
+    („Język”, „Język alternatywny”, „Język oryginalny”). Publikacja liczy się
+    raz, nawet gdy wskazuje na ten sam język kilkoma polami. Rekordy w koszu
+    też są liczone — po przywróceniu nadal trzymają język."""
+    suma = Value(0)
+    for model in PUBLIKACJE_Z_JEZYKIEM:
+        pola = pola_jezyka(model)
+        if not pola:
+            continue
+        warunek = Q()
+        for pole in pola:
+            warunek |= Q(**{pole: OuterRef("pk")})
+        podzapytanie = (
+            model._base_manager.order_by()
+            .filter(warunek)
+            .annotate(_ile=Func(F("pk"), function="COUNT"))
+            .values("_ile")
+        )
+        suma = suma + Coalesce(
+            Subquery(podzapytanie, output_field=IntegerField()), Value(0)
+        )
+    return suma
+
+
 class JezykAdmin(UkryjNieuzywaneMixin, RestrictDeletionToAdministracjaGroupAdmin):
     list_display = [
         "nazwa",
@@ -77,9 +132,25 @@ class JezykAdmin(UkryjNieuzywaneMixin, RestrictDeletionToAdministracjaGroupAdmin
         "skrot_crossref",
         "kod_bcp47",
         "widoczny",
+        "liczba_publikacji",
     ]
-    list_filter = ["widoczny"]
+    list_filter = ["widoczny", KodCrossRefFilter]
     search_fields = ["nazwa", "skrot", "pbn_uid__pk", "skrot_crossref", "kod_bcp47"]
+    akcje_bez_zaznaczania = (
+        *UkryjNieuzywaneMixin.akcje_bez_zaznaczania,
+        uzupelnij_kody_crossref,
+    )
+
+    def get_queryset(self, request):
+        return (
+            super()
+            .get_queryset(request)
+            .annotate(_liczba_publikacji=_liczba_publikacji_w_jezyku())
+        )
+
+    @admin.display(description="Liczba publikacji", ordering="_liczba_publikacji")
+    def liczba_publikacji(self, obj):
+        return obj._liczba_publikacji
 
 
 class Funkcja_AutoraAdmin(RestrictDeletionToAdministracjaGroupAdmin):

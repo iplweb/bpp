@@ -100,6 +100,10 @@ from .helpers.mixins import (
     OptionalPBNSaveMixin,
     RestrictDeletionWhenPBNUIDSetMixin,
 )
+from .helpers.ukryte_slowniki import (
+    FormularzZUkrytymiSlownikami,
+    ZachowajUkrytaPozycjeSlownikaMixin,
+)
 from .helpers.wersje import HistoriaWersjiMixin
 from .xlsx_export import resources
 from .xlsx_export.mixins import EksportDanychZFormatowanieMixin, ExportActionsMixin
@@ -141,7 +145,10 @@ class CleanDOIWWWPublicWWWMixin:
 
 
 class Wydawnictwo_CiagleForm(
-    OpenAccessDataUdostepnieniaFormMixin, CleanDOIWWWPublicWWWMixin, forms.ModelForm
+    ZachowajUkrytaPozycjeSlownikaMixin,
+    OpenAccessDataUdostepnieniaFormMixin,
+    CleanDOIWWWPublicWWWMixin,
+    forms.ModelForm,
 ):
     zrodlo = forms.ModelChoiceField(
         queryset=Zrodlo.objects.all(),
@@ -267,6 +274,7 @@ class Wydawnictwo_Ciagle_Zewnetrzna_Baza_DanychForm(forms.ModelForm):
 
 class Wydawnictwo_Ciagle_TytulInline(admin.StackedInline):
     model = Wydawnictwo_Ciagle_Tytul
+    form = FormularzZUkrytymiSlownikami
     extra = 0
     fields = ["jezyk", "kod_jezyka_pbn", "tytul"]
 
@@ -275,6 +283,7 @@ class Wydawnictwo_Ciagle_StreszczenieInline(
     KorzystaZCrossRefAPIStreszczenieInlineMixin, admin.StackedInline
 ):
     model = Wydawnictwo_Ciagle_Streszczenie
+    form = FormularzZUkrytymiSlownikami
     extra = 0
     fields = ["jezyk_streszczenia", "streszczenie"]
 

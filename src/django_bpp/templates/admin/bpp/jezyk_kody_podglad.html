@@ -1,0 +1,82 @@
+{% extends "admin/base_site.html" %}
+{% load i18n admin_urls %}
+
+{# Strona pośrednia akcji "Uzupełnij kody CrossRef z PBN" (FD#513): #}
+{# podgląd zmian kodów języków przed zapisaniem. #}
+
+{% block bodyclass %}grp-delete-confirmation{% endblock %}
+{% block content-class %}{% endblock %}
+
+{% block breadcrumbs %}
+  <ul class="grp-horizontal-list">
+    <li><a href="{% url 'admin:index' %}">{% trans "Home" %}</a></li>
+    <li><a href="{% url 'admin:app_list' app_label=opts.app_label %}">{{ opts.app_config.verbose_name }}</a></li>
+    <li><a href="{% url opts|admin_urlname:'changelist' %}">{{ opts.verbose_name_plural|capfirst }}</a></li>
+    <li>{{ title }}</li>
+  </ul>
+{% endblock %}
+
+{% block content %}
+<div class="g-d-c">
+  <form method="post" novalidate>{% csrf_token %}
+    <fieldset class="module grp-module">
+      {% if zmiany %}
+        <h2>🌐 Uzupełnić kody języków? ({{ zmiany|length }})</h2>
+        <div class="grp-row">
+          <p class="grp-description">CrossRef opisuje język publikacji kodem dwuliterowym (np. „uk”, „cs”). Kod pochodzi z języka PBN powiązanego z językiem BPP, a gdy go brak — z polskiej nazwy języka. Kody wpisane ręcznie nie są zmieniane. Nic nie zostanie zapisane, dopóki nie zatwierdzisz.</p>
+        </div>
+      {% else %}
+        <h2>Nie ma nic do uzupełnienia</h2>
+        <div class="grp-row">
+          <p class="grp-description">Wszystkie języki, dla których znany jest kod dwuliterowy, mają już uzupełnione kody.</p>
+        </div>
+      {% endif %}
+    </fieldset>
+
+    {% if zmiany %}
+      <div class="grp-module">
+        <h2>Zmiany: {{ zmiany|length }}</h2>
+        <table class="grp-table" style="width: 100%">
+          <thead>
+            <tr><th>Język</th><th>Skrót</th><th>Kod języka wg BCP 47</th><th>Skrót CrossRef</th></tr>
+          </thead>
+          <tbody>
+            {% for jezyk, p, znacznik in zmiany %}
+              <tr>
+                <td>{{ jezyk.nazwa }}<input type="hidden" name="{{ pole_zmiany }}" value="{{ znacznik }}"></td>
+                <td>{{ jezyk.skrot }}</td>
+                <td>{% if p.kod_bcp47 %}{{ jezyk.kod_bcp47|default:"(pusty)" }} → <strong>{{ p.kod_bcp47 }}</strong>{% else %}{{ jezyk.kod_bcp47|default:"—" }}{% endif %}</td>
+                <td>{% if p.skrot_crossref %}(pusty) → <strong>{{ p.skrot_crossref }}</strong>{% elif p.kolizja %}bez zmian — kolizja, patrz niżej{% else %}{{ jezyk.skrot_crossref|default:"—" }}{% endif %}</td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    {% endif %}
+
+    {% if kolizje %}
+      <div class="grp-module">
+        <h2>⚠️ Skrót CrossRef nie zostanie nadany — ten sam kod pasuje do kilku języków: {{ kolizje|length }}</h2>
+        <div class="grp-row">
+          <p class="grp-description">Skrót CrossRef musi być unikalny. Publikacje z CrossRef nadal trafią do jednego z tych języków po polu „Kod języka wg BCP 47” (pierwszeństwo ma język widoczny). Aby wskazać właściwy język na stałe, wpisz mu skrót CrossRef ręcznie albo ukryj zbędny duplikat.</p>
+        </div>
+        {% for jezyk, p in kolizje %}
+          <div class="grp-row">{{ jezyk.nazwa }} ({{ jezyk.skrot }}) — kod „{{ p.kod }}”</div>
+        {% endfor %}
+      </div>
+    {% endif %}
+
+    <div class="grp-module grp-submit-row grp-fixed-footer">
+      <input type="hidden" name="action" value="{{ akcja }}">
+      <input type="hidden" name="potwierdzam" value="1">
+      <input type="hidden" name="index" value="0">
+      <ul>
+        <li class="grp-float-left"><a href="{% url opts|admin_urlname:'changelist' %}" class="grp-button grp-cancel-link">{% if zmiany %}{% trans "Cancel" %}{% else %}Wróć do listy{% endif %}</a></li>
+        {% if zmiany %}
+          <li><input type="submit" value="🌐 Tak, uzupełnij kody ({{ zmiany|length }})" class="grp-button grp-default" /></li>
+        {% endif %}
+      </ul>
+    </div>
+  </form>
+</div>
+{% endblock %}

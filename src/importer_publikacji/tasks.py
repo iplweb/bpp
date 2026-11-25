@@ -213,7 +213,6 @@ def _auto_match_type_and_language(session, result):
     """Mapowanie typu publikacji + języka. Zachowuje logikę z
     FetchView.post (wizard.py:184-201).
     """
-    from crossref_bpp.core import Komparator
 
     from .views.helpers import _detect_language, _get_crossref_mapper
     from .views.publikacja import _resolve_jezyk
@@ -240,20 +239,12 @@ def _auto_match_type_and_language(session, result):
     if not language_code:
         language_code = _detect_language(result.title, result.abstract)
     if language_code:
-        lang_result = Komparator.porownaj_language(language_code)
-        if lang_result.rekord_po_stronie_bpp:
-            session.jezyk = lang_result.rekord_po_stronie_bpp
-        else:
-            # Komparator akceptuje tylko kody z enuma Jezyk.SKROT_CROSSREF
-            # ({en, es, pl}). Dla pozostałych kodów (de, fr, ru, uk…),
-            # wykrytych przez langdetect lub zwróconych przez źródło,
-            # dopasuj bezpośrednio po skrot_crossref — tak samo jak robi
-            # to ścieżka języka streszczeń (_resolve_jezyk). Dzięki temu
-            # autodetekcja przypisuje język, gdy instalacja ma pasujący
-            # rekord Jezyk, zamiast cicho zostawiać pole puste (FD#389).
-            jezyk = _resolve_jezyk(language_code)
-            if jezyk:
-                session.jezyk = jezyk
+        # Kod ze źródła albo z langdetect (także de, fr, ru, uk…) —
+        # dopasowanie po „Skrócie CrossRef”, potem po „Kodzie BCP 47”
+        # (``Jezyk.dla_kodu``; FD#389, FD#513).
+        jezyk = _resolve_jezyk(language_code)
+        if jezyk:
+            session.jezyk = jezyk
 
 
 @shared_task(bind=True)

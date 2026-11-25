@@ -2,10 +2,12 @@
 Małe klasy pomocnicze dla całego systemu
 """
 
+from django.core.validators import RegexValidator
 from django.db import models
-from django.db.models import CASCADE
+from django.db.models import CASCADE, Q
 
 from bpp import const
+from bpp.kody_jezykow import WZORZEC_KODU, podtag_podstawowy
 from bpp.models.abstract import ModelZNazwa, NazwaISkrot
 
 from .charakter_formalny import *  # noqa
@@ -58,18 +60,23 @@ class Typ_Odpowiedzialnosci(NazwaISkrot):
 
 
 class Jezyk(NazwaISkrot):
-    class SKROT_CROSSREF(models.TextChoices):
-        en = "en", "en - angielski"
-        es = "es", "es - hiszpański"
-        pl = "pl", "pl - polski"
-
     skrot_crossref = models.CharField(
         max_length=10,
         verbose_name="Skrót nazwy języka wg API CrossRef",
-        choices=SKROT_CROSSREF.choices,
         blank=True,
         null=True,
         unique=True,
+        validators=[
+            RegexValidator(
+                WZORZEC_KODU,
+                "Podaj kod języka małymi literami, np. „en”, „de”, „uk” "
+                "(ISO 639-1), ewentualnie z regionem, np. „en-GB”.",
+            )
+        ],
+        help_text="Dwuliterowy kod (ISO 639-1), pod jakim CrossRef opisuje "
+        "publikacje w tym języku, np. „en”, „de”, „uk”. Gdy puste, język "
+        "publikacji z CrossRef jest dopasowywany po polu „Kod języka wg "
+        "BCP 47”.",
     )
 
     pbn_uid = models.ForeignKey(
@@ -100,6 +107,58 @@ class Jezyk(NazwaISkrot):
             return self.skrot_dla_pbn
 
         return self.skrot
+
+    @classmethod
+    def dla_kodu(cls, kod):
+        """Język słownika dla kodu języka z CrossRef (albo z autodetekcji).
+
+        Kolejność: „Skrót CrossRef” (jawna decyzja redakcji), potem „Kod
+        języka wg BCP 47”, na końcu język PBN powiązany z językiem BPP
+        (jego kod dwu- albo trzyliterowy) — żeby język dociągnięty z PBN po
+        aktualizacji działał bez ręcznego uzupełniania kodów. Region jest
+        pomijany po obu stronach (``en-GB`` ↔ ``en``). Widoczne języki mają
+        pierwszeństwo przed ukrytymi niezależnie od pola (ukrytego nie ma
+        na liście wyboru nowego rekordu); przy remisie niższe ``pk`` — żeby
+        wynik był deterministyczny. Brak → ``None``.
+
+        Zwrócony język MOŻE być ukryty (``widoczny=False``) — kod wołający
+        decyduje, co wtedy zrobić.
+        """
+        if not kod:
+            return None
+        kod = str(kod).strip()
+        podtag = podtag_podstawowy(kod)
+        if not podtag:
+            return None
+
+        warunki = (
+            Q(skrot_crossref=kod) | Q(skrot_crossref__iexact=podtag),
+            Q(kod_bcp47__iexact=podtag) | Q(kod_bcp47__istartswith=f"{podtag}-"),
+            Q(pbn_uid__language__contains={"639-1": podtag})
+            | Q(pbn_uid__language__contains={"639-2": podtag})
+            | Q(pbn_uid_id=podtag),
+        )
+        # Najpierw WIDOCZNE po wszystkich polach, dopiero potem ukryte:
+        # ukryty język ze skrótem CrossRef nie może przesłonić widocznego
+        # z tym samym kodem BCP 47.
+        for widoczny in (True, False):
+            for warunek in warunki:
+                jezyk = (
+                    cls.objects.filter(warunek, widoczny=widoczny)
+                    .order_by("pk")
+                    .first()
+                )
+                if jezyk is not None:
+                    return jezyk
+        return None
+
+    def komunikat_ukryty(self):
+        """Wyjaśnienie dla redaktora, gdy źródło wskazuje na ukryty język."""
+        return (
+            f"Źródło podaje język „{self.nazwa}”, ale jest on ukryty na listach "
+            f"wyboru. Wybierz inny język albo pokaż ten: Dane systemowe → "
+            f"Języki → zaznacz „{self.nazwa}” → akcja „Pokaż zaznaczone”."
+        )
 
 
 class Typ_KBN(NazwaISkrot):

@@ -851,7 +851,7 @@ bpp.jezyk:
   praca_habilitacyjna              -> bpp.praca_habilitacyjna?
   rekord                           -> bpp.rekord?
   skrot                            str
-  skrot_crossref                   str?  "Skrót nazwy języka wg API CrossRef"  choices: en - angielski | es - hiszpański | pl - polski
+  skrot_crossref                   str?  "Skrót nazwy języka wg API CrossRef" — Dwuliterowy kod (ISO 639-1), pod jakim CrossRef opisuje publikacje w tym języku, np. „en”, „de”, „uk”. Gdy puste, język publikacji z CrossRef jest dopasowywany po polu „Kod języka wg BCP 47”.
   widoczny                         bool
   wydawnictwo_ciagle               -> bpp.wydawnictwo_ciagle?
   wydawnictwo_ciagle_streszczenie  -> bpp.wydawnictwo_ciagle_streszczenie?

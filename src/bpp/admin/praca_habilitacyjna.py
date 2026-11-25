@@ -43,6 +43,7 @@ from .helpers.mixins import (
     DomyslnyStatusKorektyMixin,
     Wycinaj_W_z_InformacjiMixin,
 )
+from .helpers.ukryte_slowniki import ZachowajUkrytaPozycjeSlownikaMixin
 from .praca_doktorska import Praca_Doktorska_Habilitacyjna_Admin_Base
 
 #
@@ -102,7 +103,7 @@ class Publikacja_Habilitacyjna_Inline(admin.TabularInline):
     sortable_field_name = "kolejnosc"
 
 
-class Praca_HabilitacyjnaForm(forms.ModelForm):
+class Praca_HabilitacyjnaForm(ZachowajUkrytaPozycjeSlownikaMixin, forms.ModelForm):
     autor = forms.ModelChoiceField(
         queryset=Autor.objects.all(),
         widget=autocomplete.ModelSelect2(url="bpp:autor-autocomplete"),

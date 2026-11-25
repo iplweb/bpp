@@ -84,7 +84,13 @@ def _zapisz_logentry(user_id, model, obiekty, komentarz):
 
 
 def zmien_hurtowo_z_historia(
-    request, queryset, zmiany, komentarz, select_related=(), pola_repr=None
+    request,
+    queryset,
+    zmiany,
+    komentarz,
+    select_related=(),
+    pola_repr=None,
+    warunek_pod_blokada=None,
 ):
     """Ustaw ``zmiany`` (pole → wartość) w rekordach ``queryset`` jednym
     ``UPDATE`` i zostaw po tym ślad w „Historii” każdego zmienionego rekordu.
@@ -107,6 +113,10 @@ def zmien_hurtowo_z_historia(
     * pola ``auto_now`` (``ostatnio_zmieniony``), które ``update()`` pomija,
       dostają bieżący czas — synchronizacja przyrostowa przez API
       (``?ostatnio_zmieniony_after=``) widzi zmianę.
+
+    ``warunek_pod_blokada`` — funkcja ``queryset → queryset`` zawężająca
+    zmianę do rekordów spełniających warunek sprawdzany pod blokadą wierszy,
+    w tej samej transakcji co ``UPDATE`` (patrz komentarz w kodzie).
 
     Liczba zapytań nie zależy od liczby rekordów (poza partiami INSERT
     ``LogEntry`` po ``PARTIA_LOGENTRY``). ``select_related`` — relacje
@@ -136,6 +146,27 @@ def zmien_hurtowo_z_historia(
 
     wersjonowany = reversion.is_registered(model)
     with transaction.atomic():
+        if warunek_pod_blokada is not None:
+            # Warunek, który musi być prawdziwy W CHWILI zmiany (np. „pozycja
+            # słownika jest nieużywana”). Blokujemy wiersze (``FOR UPDATE``)
+            # i sprawdzamy warunek już pod blokadą: wstawienie rekordu
+            # wskazującego na zablokowany wiersz czeka na nasz COMMIT
+            # (klucz obcy bierze ``FOR KEY SHARE``), więc między
+            # sprawdzeniem a ``UPDATE`` nic nie może zacząć go używać.
+            zablokowane = list(
+                model._default_manager.select_for_update()
+                .filter(pk__in=pks)
+                .order_by("pk")
+                .values_list("pk", flat=True)
+            )
+            pks = list(
+                warunek_pod_blokada(model._default_manager.filter(pk__in=zablokowane))
+                .exclude(**zmiany)
+                .order_by()
+                .values_list("pk", flat=True)
+            )
+            if not pks:
+                return 0
         follow = ()
         if wersjonowany:
             # Stan sprzed zmiany dla rekordów bez historii — żeby dało się

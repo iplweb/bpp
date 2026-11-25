@@ -2,6 +2,8 @@
 GET ``numer_zgloszenia`` czyli wypełniać dane wstępne wg zawartości zgłoszenia
 o danym numerze ID."""
 
+from django.contrib import messages
+
 from bpp import const
 from crossref_bpp.admin.helpers import convert_crossref_to_changeform_initial_data
 from crossref_bpp.core import Komparator
@@ -76,9 +78,23 @@ class UzupelniajWstepneDanePoCrossRefAPIMixin(
         z = self.get_crossref_api_data(request)
         if z is not None:
             ostrzez_o_zduplikowanych_zrodlach_crossref(request, z)
+            self._ostrzez_o_nierozpoznanym_jezyku(request, z)
             return convert_crossref_to_changeform_initial_data(z)
 
         return super().get_changeform_initial_data(request)
+
+    def _ostrzez_o_nierozpoznanym_jezyku(self, request, z):
+        """Gdy CrossRef podaje język, którego nie da się wstawić w pole
+        „Język” (brak kodu w słowniku albo język ukryty) — powiedz dlaczego,
+        zamiast zostawiać puste pole bez wyjaśnienia."""
+        kod = z.get("language")
+        if not kod:
+            return
+        wynik = Komparator.porownaj_language(kod)
+        if wynik.rekord_po_stronie_bpp is None:
+            messages.warning(
+                request, f"Pole „Język” nie zostało wypełnione: {wynik.opis}"
+            )
 
     def get_formset_kwargs(self, request, obj, inline, prefix):
         initial = []

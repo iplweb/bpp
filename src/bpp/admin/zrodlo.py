@@ -24,6 +24,7 @@ from .filters import (
 )
 from .helpers.fieldsets import ADNOTACJE_FIELDSET, MODEL_PUNKTOWANY_Z_KWARTYLAMI_BAZA
 from .helpers.mixins import BppSoftDeleteAdminMixin, ZapiszZAdnotacjaMixin
+from .helpers.ukryte_slowniki import ZachowajUkrytaPozycjeSlownikaMixin
 from .helpers.wersje import HistoriaWersjiMixin
 from .helpers.widgets import CHARMAP_SINGLE_LINE, COMMA_DECIMAL_FIELD_OVERRIDE
 
@@ -84,7 +85,7 @@ class Dyscyplina_ZrodlaInline(admin.TabularInline):
         ]
 
 
-class ZrodloForm(forms.ModelForm):
+class ZrodloForm(ZachowajUkrytaPozycjeSlownikaMixin, forms.ModelForm):
     pbn_uid = forms.ModelChoiceField(
         label="Odpowiednik w PBN",
         required=False,

@@ -188,10 +188,17 @@ def _verify_context(request, session, form=None):
             sort_keys=True,
         )
 
+    # Źródło wskazało język, który jest ukryty: nie ma go na liście wyboru,
+    # więc pole byłoby puste bez wyjaśnienia (FD#513).
+    ukryty_jezyk = None
+    if not is_patent and session.jezyk_id and not session.jezyk.widoczny:
+        ukryty_jezyk = session.jezyk
+
     return {
         "session": session,
         "form": form,
         "is_patent": is_patent,
+        "ukryty_jezyk": ukryty_jezyk,
         "existing": existing,
         "auto_charakter": (
             mapper.charakter_formalny_bpp

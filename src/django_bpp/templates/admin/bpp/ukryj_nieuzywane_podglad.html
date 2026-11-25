@@ -1,0 +1,75 @@
+{% extends "admin/base_site.html" %}
+{% load i18n admin_urls %}
+
+{# Strona pośrednia akcji "Ukryj nieużywane" i "Ukryj wszystkie nieużywane" #}
+{# w słownikach (FD#513): podgląd tego, co zostanie ukryte, przed zmianą. #}
+{# Markup Grappelli jak w soft_delete_powod.html. #}
+
+{% block bodyclass %}grp-delete-confirmation{% endblock %}
+{% block content-class %}{% endblock %}
+
+{% block breadcrumbs %}
+  <ul class="grp-horizontal-list">
+    <li><a href="{% url 'admin:index' %}">{% trans "Home" %}</a></li>
+    <li><a href="{% url 'admin:app_list' app_label=opts.app_label %}">{{ opts.app_config.verbose_name }}</a></li>
+    <li><a href="{% url opts|admin_urlname:'changelist' %}">{{ opts.verbose_name_plural|capfirst }}</a></li>
+    <li>{{ title }}</li>
+  </ul>
+{% endblock %}
+
+{% block content %}
+<div class="g-d-c">
+  <form method="post" novalidate>{% csrf_token %}
+    <fieldset class="module grp-module">
+      {% if do_ukrycia %}
+        <h2>🙈 Ukryć nieużywane pozycje słownika „{{ opts.verbose_name_plural }}”? ({{ do_ukrycia|length }})</h2>
+        <div class="grp-row">
+          <p class="grp-description">Ukryte pozycje znikną z list wyboru przy redagowaniu rekordów, ale zostaną w bazie. Operacja jest odwracalna: na liście słownika wybierz filtr pokazujący ukryte pozycje, zaznacz je i użyj akcji „Pokaż zaznaczone”. Nic nie zostanie zmienione, dopóki nie zatwierdzisz.</p>
+        </div>
+      {% else %}
+        <h2>Nie ma nic do ukrycia</h2>
+        <div class="grp-row">
+          <p class="grp-description">Wszystkie nieużywane pozycje są już ukryte albo każda z wybranych pozycji jest używana w rekordach.</p>
+        </div>
+      {% endif %}
+    </fieldset>
+
+    {% if do_ukrycia %}
+      <div class="grp-module">
+        <h2>Zostaną ukryte — nie wskazuje na nie żaden rekord: {{ do_ukrycia|length }}</h2>
+        {% for obj in do_ukrycia %}
+          <div class="grp-row">{{ obj }}</div>
+        {% endfor %}
+      </div>
+    {% endif %}
+
+    {% if pominiete %}
+      <div class="grp-module">
+        <h2>Pozostaną widoczne — są używane w rekordach: {{ pominiete|length }}</h2>
+        {% for obj in pominiete %}
+          <div class="grp-row">{{ obj }}</div>
+        {% endfor %}
+      </div>
+    {% endif %}
+
+    <div class="grp-module grp-submit-row grp-fixed-footer">
+      {% for pk in wybrane_pk %}
+        <input type="hidden" name="{{ action_checkbox_name }}" value="{{ pk }}">
+      {% endfor %}
+      {% for obj in do_ukrycia %}
+        <input type="hidden" name="{{ pole_pk_z_podgladu }}" value="{{ obj.pk }}">
+      {% endfor %}
+      <input type="hidden" name="action" value="{{ akcja }}">
+      <input type="hidden" name="{{ pole_potwierdzenia }}" value="1">
+      <input type="hidden" name="index" value="0">
+      <input type="hidden" name="select_across" value="{{ select_across }}">
+      <ul>
+        <li class="grp-float-left"><a href="{% url opts|admin_urlname:'changelist' %}" class="grp-button grp-cancel-link">{% if do_ukrycia %}{% trans "Cancel" %}{% else %}Wróć do listy{% endif %}</a></li>
+        {% if do_ukrycia %}
+          <li><input type="submit" value="🙈 Tak, ukryj {{ do_ukrycia|length }}" class="grp-button grp-default" /></li>
+        {% endif %}
+      </ul>
+    </div>
+  </form>
+</div>
+{% endblock %}

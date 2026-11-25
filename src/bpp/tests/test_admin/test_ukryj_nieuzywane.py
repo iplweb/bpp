@@ -80,6 +80,8 @@ def test_akcja_ukrywa_tylko_nieuzywane_jezyki(admin_client):
         {
             "action": "ukryj_nieuzywane",
             "_selected_action": [uzywany.pk, wolny.pk],
+            "potwierdzam": "1",
+            "pk_z_podgladu": [uzywany.pk, wolny.pk],
         },
         follow=True,
     )
@@ -90,7 +92,7 @@ def test_akcja_ukrywa_tylko_nieuzywane_jezyki(admin_client):
     assert uzywany.widoczny is True
     assert wolny.widoczny is False
     tresc = [str(m) for m in res.context["messages"]]
-    assert any("Ukryto 1" in t and "Pominięto 1" in t for t in tresc), tresc
+    assert any("Ukryto 1" in t for t in tresc), tresc
     assert LogEntry.objects.filter(
         object_id=str(wolny.pk),
         action_flag=CHANGE,
@@ -109,6 +111,8 @@ def test_akcja_ustawia_ukryty_dla_charakteru_formalnego(admin_client):
         {
             "action": "ukryj_nieuzywane",
             "_selected_action": [uzywany.pk, wolny.pk],
+            "potwierdzam": "1",
+            "pk_z_podgladu": [uzywany.pk, wolny.pk],
         },
     )
 
@@ -126,7 +130,12 @@ def test_akcja_ustawia_ukryty_dla_charakteru_formalnego(admin_client):
 def test_changelist_z_filtrem_nieuzywane_dziala(admin_client, nazwa):
     res = admin_client.get(reverse(f"admin:{nazwa}_changelist"), {"uzywane": "nie"})
     assert res.status_code == 200
-    for akcja in (b"ukryj_nieuzywane", b"ukryj_zaznaczone", b"pokaz_zaznaczone"):
+    for akcja in (
+        b"ukryj_wszystkie_nieuzywane",
+        b"ukryj_nieuzywane",
+        b"ukryj_zaznaczone",
+        b"pokaz_zaznaczone",
+    ):
         assert b'value="' + akcja + b'"' in res.content
     # Usuwanie dalej tylko dla grupy „administracja”.
     assert b'value="delete_selected"' not in res.content

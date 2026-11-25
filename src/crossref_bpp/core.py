@@ -740,25 +740,22 @@ class Komparator:
 
     @classmethod
     def porownaj_language(cls, wartosc):
-        if wartosc not in Jezyk.SKROT_CROSSREF.values:
+        jezyk = Jezyk.dla_kodu(wartosc)
+        if jezyk is not None and not jezyk.widoczny:
+            # Ukrytego języka nie ma na liście wyboru nowego rekordu — pole
+            # zostałoby puste bez wyjaśnienia (FD#513).
+            return WynikPorownania(StatusPorownania.BLAD, jezyk.komunikat_ukryty())
+        if jezyk is not None:
             return WynikPorownania(
-                StatusPorownania.BLAD,
-                f'w systemie BPP nie zdefiniowano wartosci dla typu jezyka "{wartosc}",'
-                f" prosimy o zgłoszenie tej sytuacji autorowi programu. ",
+                StatusPorownania.DOKLADNE, "określony jezyk", rekordy=[jezyk]
             )
-
-        try:
-            c = Jezyk.objects.get(skrot_crossref=wartosc)
-            return WynikPorownania(
-                StatusPorownania.DOKLADNE, "określony jezyk", rekordy=[c]
-            )
-        except Jezyk.DoesNotExist:
-            return WynikPorownania(
-                StatusPorownania.BLAD,
-                f'w systemie BPP nie zdefiniowano wartosci dla typu jezyka "{wartosc}",'
-                f" wejdz w Dane Systemowe -> Języki i wybierz typ charakteru crossref "
-                f"dla któregoś z języków. ",
-            )
+        return WynikPorownania(
+            StatusPorownania.BLAD,
+            f'w systemie BPP żaden język nie ma kodu "{wartosc}" — wejdź '
+            f"w Dane systemowe → Języki i wpisz ten kod w polu „Kod języka wg "
+            f"BCP 47” (albo „Skrót nazwy języka wg API CrossRef”) właściwego "
+            f"języka. ",
+        )
 
     @classmethod
     def utworz_dane_porownania(cls, json_data):
