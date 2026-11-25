@@ -171,6 +171,10 @@ REDAKTOR_MENU = [
         "Rozbieżności dyscyplin źródeł",
         "/admin/rozbieznosci_dyscyplin/rozbieznoscizrodelview/",
     ),
+    (
+        "Pobieranie odpowiedników z PBN",
+        "/admin/pbn_integrator/pobieranieodpowiednikowpbn/",
+    ),
     ("Zgłoszenia publikacji", ZGLOSZENIA_PUBLIKACJI_URL),
     ("Importer publikacji", "/importer_publikacji/"),
 ]

@@ -33,6 +33,9 @@ from pbn_integrator.utils.dopasowanie_autorow import (
 #: Ilu najwyżej kandydatów pokazujemy redaktorowi.
 MAX_KANDYDATOW = 20
 
+#: Opis dowodu „ten sam ORCID” — taki kandydat jest zawsze na górze listy.
+DOWOD_ORCID = "zgodny ORCID"
+
 STATUS_PEWNY = "pewny"
 STATUS_DO_WYBORU = "do_wyboru"
 STATUS_BRAK = "brak"
@@ -122,7 +125,7 @@ def _powody(autor, propozycja, osoby_instytucji):
     if orcid:
         po_orcid = szukaj_po_orcid(orcid, osoby_instytucji)
         for pk in po_orcid.kandydaci or filter(None, [po_orcid.scientist_id]):
-            dodaj(pk, "zgodny ORCID")
+            dodaj(pk, DOWOD_ORCID)
     if autor.pk:
         glosy = dowody_z_publikacji([autor]).get(autor.pk, {})
         for pk, liczba in glosy.items():
@@ -149,8 +152,9 @@ def _opis_kandydata(osoba, dowody, oficjalny):
 
 
 def _kandydaci(autor, propozycja, osoby_instytucji):
-    """Lista kandydatów: najpierw osoby z profilu instytucji, potem reszta;
-    w obu grupach najpierw ci, za którymi stoi mocniejszy dowód."""
+    """Lista kandydatów: na górze osoba ze zgodnym ORCID, potem osoby
+    z profilu instytucji, potem reszta; w grupach najpierw ci, za którymi
+    stoi mocniejszy dowód."""
     powody = _powody(autor, propozycja, osoby_instytucji)
     osoby = Scientist.objects.in_bulk(list(powody))
     zajeci = _zajeci(list(powody), autor)
@@ -164,7 +168,13 @@ def _kandydaci(autor, propozycja, osoby_instytucji):
         oficjalny = pk in osoby_instytucji.identyfikatory
         kandydaci.append(
             (
-                (pk != pewny, not oficjalny, -len(dowody), str(osoba)),
+                (
+                    pk != pewny,
+                    DOWOD_ORCID not in dowody,
+                    not oficjalny,
+                    -len(dowody),
+                    str(osoba),
+                ),
                 {
                     "id": pk,
                     "etykieta": str(osoba),

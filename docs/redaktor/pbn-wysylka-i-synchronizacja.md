@@ -254,8 +254,8 @@ do PBN nic nie jest wysyłane.
 
 - Po zleceniu zobaczysz komunikat z odnośnikiem **„zobacz postęp
   i raport”**. Strona odświeża się sama; po zakończeniu dostaniesz
-  powiadomienie. Wszystkie swoje zlecenia znajdziesz w module redagowania
-  w **PBN Integrator → Pobieranie odpowiedników z PBN**.
+  powiadomienie. Wszystkie swoje zlecenia znajdziesz w module redagowania,
+  w menu **Wprowadzanie danych → Pobieranie odpowiedników z PBN**.
 - Jednym zleceniem można objąć najwyżej **500 prac** bez odpowiednika —
   przy większej liczbie zawęź listę filtrami (np. rokiem) i powtórz.
 - Prace, które mają już odpowiednik, są pomijane.

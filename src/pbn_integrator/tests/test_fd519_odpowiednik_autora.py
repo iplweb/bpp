@@ -87,8 +87,10 @@ def test_orcid_i_profil_instytucji_wskazuja_rozne_osoby(uczelnia):
     wynik = szukaj_odpowiednika_autora(_autor(orcid=ORCID), uczelnia=uczelnia)
 
     assert wynik.status == STATUS_DO_WYBORU
-    assert [k["id"] for k in wynik.kandydaci] == [OSOBA_2, OSOBA_1]
-    assert "zgodny ORCID" in wynik.kandydaci[1]["opis"]
+    # Zgodny ORCID zawsze na górze, dopiero potem osoby z profilu instytucji.
+    assert [k["id"] for k in wynik.kandydaci] == [OSOBA_1, OSOBA_2]
+    assert "zgodny ORCID" in wynik.kandydaci[0]["opis"]
+    assert [k["oficjalny"] for k in wynik.kandydaci] == [False, True]
 
 
 @pytest.mark.django_db

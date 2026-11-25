@@ -116,9 +116,9 @@ Wynik pojawia się pod przyciskiem:
   **Zapisz autora**, żeby zachować odpowiednik;
 - 👉 **kilku kandydatów albo wskazanie niepewne** (np. samo imię
   i nazwisko) — BPP pokazuje listę z przyciskami **„Wybierz”**. Na
-  początku listy, z gwiazdką ⭐, są osoby z **profilu instytucji w PBN**
-  (pracownicy uczelni znani PBN), dopiero po nich pozostałe osoby o tym
-  nazwisku. Przy każdej widać, co za nią przemawia (zgodny ORCID, liczba
+  samej górze jest osoba ze **zgodnym ORCID** (jeśli taka jest), po niej,
+  z gwiazdką ⭐, osoby z **profilu instytucji w PBN** (pracownicy uczelni
+  znani PBN), a na końcu pozostałe osoby o tym nazwisku. Przy każdej widać, co za nią przemawia (zgodny ORCID, liczba
   wspólnych prac, ORCID zapisany w PBN);
 - ⚠️ **„już przypisany do: …”** — ta osoba PBN jest odpowiednikiem innego
   autora w BPP. To zwykle zdublowany autor: zamiast wybierać, scal autorów
@@ -137,8 +137,8 @@ z PBN (w tle)”**. Zadanie działa w tle i ustawia odpowiednik **tylko**
 przy wskazaniach jednoznacznych (każde z wpisem w historii autora);
 pozostałych autorów wymienia w raporcie z powodem: do ręcznego wyboru,
 możliwy duplikat autora, nie znaleziono. Raport i postęp: odnośnik
-w komunikacie po zleceniu albo **PBN Integrator → Pobieranie odpowiedników
-z PBN**. Jednym zleceniem można objąć najwyżej 500 autorów bez
+w komunikacie po zleceniu albo menu **Wprowadzanie danych → Pobieranie
+odpowiedników z PBN**. Jednym zleceniem można objąć najwyżej 500 autorów bez
 odpowiednika.
 
 ## Wyróżnione publikacje autora

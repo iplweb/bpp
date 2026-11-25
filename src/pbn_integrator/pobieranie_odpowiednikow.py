@@ -299,7 +299,7 @@ def _powiadom(zlecenie):
 
     liczby = {klucz: len(wpisy) for klucz, _, _, wpisy in podsumowanie(zlecenie)}
     gdzie = (
-        "Raport: moduł redagowania → PBN Integrator → „Pobieranie "
+        "Raport: moduł redagowania → Wprowadzanie danych → „Pobieranie "
         f"odpowiedników z PBN” (zlecenie nr {zlecenie.pk})."
     )
     if zlecenie.blad:
