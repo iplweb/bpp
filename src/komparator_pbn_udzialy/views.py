@@ -56,6 +56,29 @@ def filtr_uczelni(request):
     return Q(oswiadczenie_instytucji__institutionId_id=uczelnia.pbn_uid_id)
 
 
+def brak_identyfikatora_pbn(request):
+    """Instalacja wielouczelniana, a bieżąca uczelnia nie ma „Odpowiednika
+    w PBN” (albo nie da się jej ustalić): nie wiadomo, które oświadczenia jej
+    dotyczą. Widoki pokazują wtedy komunikat zamiast pustej listy."""
+    if Uczelnia.objects.count() <= 1:
+        return False
+    uczelnia = Uczelnia.objects.get_for_request(request)
+    return uczelnia is None or uczelnia.pbn_uid_id is None
+
+
+class BezIdentyfikatoraPBNMixin:
+    """Zamiast widoku — strona z komunikatem, gdy ``brak_identyfikatora_pbn``."""
+
+    def dispatch(self, request, *args, **kwargs):
+        if request.user.is_authenticated and brak_identyfikatora_pbn(request):
+            return render(
+                request,
+                "komparator_pbn_udzialy/brak_identyfikatora_pbn.html",
+                {"biezaca_uczelnia": Uczelnia.objects.get_for_request(request)},
+            )
+        return super().dispatch(request, *args, **kwargs)
+
+
 def _autorzy_bpp(search):
     """``Q`` dla rozbieżności dyscyplin: autor BPP (nazwisko albo imiona)
     powiązania autor–praca, którego dotyczy rozbieżność. Powiązanie jest
@@ -91,7 +114,7 @@ def filtruj_lata(queryset, rok_min, rok_max):
     return queryset
 
 
-class ProblemyPBNListView(GroupRequiredMixin, View):
+class ProblemyPBNListView(GroupRequiredMixin, BezIdentyfikatoraPBNMixin, View):
     """Widok listy wszystkich problemów PBN - rozbieżności i brakujących autorów."""
 
     group_required = GR_WPROWADZANIE_DANYCH
@@ -320,7 +343,9 @@ class ProblemyPBNListView(GroupRequiredMixin, View):
         }
 
 
-class RozbieznoscDyscyplinPBNDetailView(GroupRequiredMixin, DetailView):
+class RozbieznoscDyscyplinPBNDetailView(
+    GroupRequiredMixin, BezIdentyfikatoraPBNMixin, DetailView
+):
     """Widok szczegółowy rozbieżności."""
 
     group_required = GR_WPROWADZANIE_DANYCH
@@ -458,7 +483,7 @@ class TaskStatusAPIView(View):
             return JsonResponse({"status": "ERROR", "message": str(e)}, status=500)
 
 
-class BrakAutoraDetailView(GroupRequiredMixin, DetailView):
+class BrakAutoraDetailView(GroupRequiredMixin, BezIdentyfikatoraPBNMixin, DetailView):
     """Widok szczegółowy brakującego autora."""
 
     group_required = GR_WPROWADZANIE_DANYCH

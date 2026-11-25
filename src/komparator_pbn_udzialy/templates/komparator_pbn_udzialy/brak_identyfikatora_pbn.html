@@ -1,0 +1,38 @@
+{% extends "base.html" %}
+
+{% block title %}Problemy PBN{% endblock %}
+
+{% block breadcrumbs %}
+    <li><a href="/">Strona główna</a></li>
+    <li class="active">Problemy PBN</li>
+{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="large-12 columns">
+        <h2>Problemy PBN</h2>
+        <div class="callout alert" id="brak-identyfikatora-pbn">
+            {% if biezaca_uczelnia %}
+                <h4>Uczelnia „{{ biezaca_uczelnia.nazwa }}” nie ma ustawionego identyfikatora PBN</h4>
+                <p>
+                    Ta instalacja BPP obsługuje więcej niż jedną uczelnię, a dane pobrane z PBN są dla nich wspólne.
+                    Bez identyfikatora PBN uczelni nie da się ustalić, które oświadczenia jej dotyczą,
+                    dlatego lista problemów nie jest pokazywana.
+                </p>
+                <p>
+                    Administrator ustawia identyfikator w module redagowania: <strong>Uczelnia</strong> →
+                    pole <strong>„Odpowiednik w PBN”</strong>.
+                </p>
+            {% else %}
+                <h4>Nie udało się ustalić uczelni dla tego adresu</h4>
+                <p>
+                    Ta instalacja BPP obsługuje więcej niż jedną uczelnię, a adres strony nie jest przypisany
+                    do żadnej z nich. Bez tego nie da się ustalić, które oświadczenia z PBN pokazać,
+                    dlatego lista problemów nie jest pokazywana. Wejdź na stronę pod adresem swojej uczelni
+                    albo zgłoś to administratorowi.
+                </p>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}

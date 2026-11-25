@@ -110,18 +110,57 @@ def test_wielouczelniana_lista_statystyki_i_szczegoly_tylko_swojej_uczelni(
     assert szczegoly(cudza_rozb, u1) == 404
 
 
-def test_wielouczelniana_bez_identyfikatora_pbn_nie_pokazuje_cudzych(
+def test_wielouczelniana_bez_identyfikatora_pbn_komunikat_zamiast_listy(
     client_with_group, uczelnia1, uczelnia2, instytucje, settings
 ):
-    """Uczelnia bez ustawionego identyfikatora PBN nie dostaje oświadczeń
-    innych uczelni (nie wiadomo, które są jej)."""
+    """Uczelnia bez „Odpowiednika w PBN” nie dostaje listy (nie wiadomo, które
+    oświadczenia są jej) — zamiast pustej tabeli i zer w kafelkach widzi
+    komunikat, gdzie to ustawić. To samo na stronach szczegółów."""
     settings.ALLOWED_HOSTS = ["*"]
+    host = {"HTTP_HOST": "uczelnia1.localhost"}
+    cudzy = _brak(instytucje[1], "Cudza praca")
+    cudza = _rozbieznosc(instytucje[1], "Obcowski")
+    adresy = [
+        URL,
+        URL + "?search=praca",
+        reverse("komparator_pbn_udzialy:missing_autor_detail", args=[cudzy.pk]),
+        reverse("komparator_pbn_udzialy:detail", args=[cudza.pk]),
+    ]
+
+    for adres in adresy:
+        response = client_with_group.get(adres, **host)
+        tresc = response.content.decode()
+
+        assert response.status_code == 200, adres
+        assert "nie ma ustawionego identyfikatora PBN" in tresc
+        assert "Uczelnia Pierwsza" in tresc
+        assert "Odpowiednik w PBN" in tresc
+        assert "Cudza praca" not in tresc and "Obcowski" not in tresc
+        assert "Statystyki" not in tresc
+        assert "problemy" not in (response.context or {})
+
+
+def test_wielouczelniana_adres_bez_uczelni_komunikat(
+    client_with_group, uczelnia1, uczelnia2, instytucje, settings
+):
+    """Adres nieprzypisany do żadnej uczelni: też komunikat, nie cudze dane."""
+    settings.ALLOWED_HOSTS = ["*"]
+    settings.SITE_ID = None
     _brak(instytucje[1], "Cudza praca")
 
-    response = client_with_group.get(URL, HTTP_HOST="uczelnia1.localhost")
+    tresc = client_with_group.get(URL, HTTP_HOST="inny.localhost").content.decode()
 
-    assert _obiekty(response) == set()
-    assert response.context["total_count"] == 0
+    assert "Nie udało się ustalić uczelni" in tresc
+    assert "Cudza praca" not in tresc
+
+
+def test_komunikat_tylko_dla_uprawnionych(client, uczelnia1, uczelnia2, settings):
+    """Strażnik: komunikat nie zastępuje kontroli dostępu."""
+    settings.ALLOWED_HOSTS = ["*"]
+
+    response = client.get(URL, HTTP_HOST="uczelnia1.localhost")
+
+    assert response.status_code in (302, 403)
 
 
 @pytest.mark.parametrize("z_identyfikatorem", [True, False])
