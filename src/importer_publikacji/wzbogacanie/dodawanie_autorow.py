@@ -165,8 +165,9 @@ def _waliduj(session, rekord):
 
 def _sprawdz_dostep(request, rekord):
     """Przy potwierdzaniu jeszcze raz to samo, co sprawdza widok „Wzbogać
-    z …”: rekord w zakresie uczelni użytkownika, prawo zmiany, nie w koszu
-    (od otwarcia kroku „Autorzy” mogło się to zmienić)."""
+    z …” — reguła formularza rekordu: queryset admina tego typu publikacji,
+    prawo zmiany, nie w koszu (od otwarcia kroku „Autorzy” mogło się to
+    zmienić)."""
     from django.contrib import admin
 
     model_admin = admin.site._registry.get(type(rekord))
@@ -179,10 +180,6 @@ def _sprawdz_dostep(request, rekord):
         raise ValidationError(
             "Rekord jest w koszu — przywróć go z kosza, zanim dodasz autorów."
         )
-    from .zakres import w_zakresie_uczelni
-
-    if not w_zakresie_uczelni(request, widziany):
-        raise ValidationError("Ten rekord nie należy do Twojej uczelni.")
 
 
 def dodaj_autorow_do_rekordu(session, user, request=None):

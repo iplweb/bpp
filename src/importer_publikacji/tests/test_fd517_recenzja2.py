@@ -53,7 +53,13 @@ def rekord(wydawnictwo_ciagle, crossref):
     return w
 
 
-# --- 1. Zakres uczelni (instalacja wielouczelniana) -------------------------
+# --- 1. Dostęp jak w formularzu rekordu (instalacja wielouczelniana) --------
+#
+# Decyzja właściciela produktu: rekord może należeć do wielu uczelni,
+# a wspólny dostęp redaktorów jest zamierzony — formularz publikacji celowo
+# nie zawęża rekordów do uczelni. „Wzbogać…” nie może być szczelniejsze:
+# kto może otworzyć i zmienić rekord w module redagowania, ten może go
+# wzbogacić.
 
 
 @pytest.fixture
@@ -77,27 +83,30 @@ def rekord_uczelni_b(rekord, jednostka_b):
     return rekord
 
 
-def test_redaktor_uczelni_a_nie_wzbogaca_pracy_uczelni_b(
+def test_redaktor_uczelni_a_moze_wzbogacic_prace_uczelni_b(
     client, redaktor, rekord_uczelni_b
 ):
+    """Ta sama reguła co w formularzu rekordu: redaktor z prawem zmiany
+    otwiera formularz pracy uczelni B — więc może ją też wzbogacić."""
     r = rekord_uczelni_b
+    formularz = reverse("admin:bpp_wydawnictwo_ciagle_change", args=(r.pk,))
+    assert client.get(formularz).status_code == 200
     wybor = _w(r)["strony"].wartosc_wyboru
 
-    assert client.get(_url(r)).status_code == 404
-    assert client.get(_url(r, "pbn")).status_code == 404
-    assert client.post(_url(r), {"zrodlo_id": ZID, "pole": [wybor]}).status_code == 404
-    assert client.post(_url(r), {"odswiez": "1"}).status_code == 404
-    assert client.post(_url(r, nazwa="wzbogac_autorzy")).status_code == 404
+    assert client.get(_url(r)).status_code == 200
+    res = client.post(_url(r), {"zrodlo_id": ZID, "pole": [wybor]})
+
+    assert res.status_code == 302
     r.refresh_from_db()
-    assert r.strony == "1-2"
-    assert not ImportSession.objects.exists()
+    assert r.strony == "100-110"
+    # Start sesji dodawania autorów też jest dozwolony.
+    assert client.post(_url(r, nazwa="wzbogac_autorzy")).status_code == 302
+    assert ImportSession.objects.count() == 1
 
 
-def test_sesja_autorow_nie_dopisze_do_pracy_uczelni_b(
+def test_redaktor_uczelni_a_dopisuje_autora_do_pracy_uczelni_b(
     client, redaktor, rekord_uczelni_b, uczelnia, jednostka
 ):
-    """Sesja otwarta, gdy praca była jeszcze „niczyja”; przy potwierdzaniu
-    należy już wyłącznie do uczelni B."""
     from importer_publikacji.models import ImportedAuthor
 
     sesja = dodawanie_autorow.utworz_sesje(
@@ -120,21 +129,33 @@ def test_sesja_autorow_nie_dopisze_do_pracy_uczelni_b(
         HTTP_HX_REQUEST="true",
     )
 
-    assert "nie należy do Twojej uczelni" in res.content.decode()
-    assert rekord_uczelni_b.autorzy_set.count() == 1
+    assert res["HX-Redirect"] == "/"
+    assert rekord_uczelni_b.autorzy_set.count() == 2
 
 
-def test_praca_wlasnej_uczelni_i_praca_bez_autorow_sa_dostepne(
-    client, redaktor, rekord, jednostka, uczelnia2
+def test_konto_bez_prawa_zmiany_nie_wzbogaca_zadnej_pracy(
+    client, uczelnia, rekord, rekord_uczelni_b
 ):
-    # Bez autorów — nie należy jeszcze do nikogo.
-    assert client.get(_url(rekord)).status_code == 200
-    rekord.dodaj_autora(baker.make(Autor, imiona="Jan", nazwisko="Swój"), jednostka)
-    assert client.get(_url(rekord)).status_code == 200
+    """Konto personelu bez uprawnienia zmiany wydawnictw: formularz rekordu
+    go nie wpuszcza — „Wzbogać…” też nie (podgląd, zapis, odświeżanie,
+    sesja autorów)."""
+    user = baker.make("bpp.BppUser", is_staff=True, is_active=True)
+    client.force_login(user)
+    formularz = reverse("admin:bpp_wydawnictwo_ciagle_change", args=(rekord.pk,))
+    assert client.get(formularz).status_code == 403
+    wybor = _w(rekord)["strony"].wartosc_wyboru
 
-
-def test_superuzytkownik_widzi_prace_kazdej_uczelni(admin_client, rekord_uczelni_b):
-    assert admin_client.get(_url(rekord_uczelni_b)).status_code == 200
+    assert client.get(_url(rekord)).status_code == 403
+    assert client.get(_url(rekord, "pbn")).status_code == 403
+    assert (
+        client.post(_url(rekord), {"zrodlo_id": ZID, "pole": [wybor]}).status_code
+        == 403
+    )
+    assert client.post(_url(rekord), {"odswiez": "1"}).status_code == 403
+    assert client.post(_url(rekord, nazwa="wzbogac_autorzy")).status_code == 403
+    rekord.refresh_from_db()
+    assert rekord.strony == "1-2"
+    assert not ImportSession.objects.exists()
 
 
 # --- 2. Zmiana DOI między podglądem a zatwierdzeniem ------------------------

@@ -11,7 +11,9 @@ prawy górny róg, obok „Historia”).
 - „Wzbogać z PBN” jest widoczny, gdy rekord ma wskazany **„Odpowiednik
   w PBN”**.
 
-Przyciski wymagają uprawnienia do zmiany rekordu. Są osobną funkcją —
+Przyciski wymagają uprawnienia do zmiany rekordu — wzbogacić rekord może
+każdy, kto może go otworzyć i zmienić w formularzu modułu redagowania
+(także w instalacji z kilkoma uczelniami). Są osobną funkcją —
 przyciski „Pobierz po DOI” / „Pobierz po ISBN” przy polu „Odpowiednik
 w PBN” działają jak dotąd.
 
@@ -186,6 +188,5 @@ PBN nie podaje, kto utworzył daną wersję — na liście jest tylko data.
 | „Uczelnia nie ma skonfigurowanego dostępu do PBN.” | Odświeżanie z PBN wymaga danych dostępowych PBN w ustawieniach uczelni; porównanie z lokalną kopią działa bez nich. |
 | „Nie przeniesiono, bo rekord albo dane w źródle zmieniły się od podglądu…” | Otwórz porównanie jeszcze raz i zaznacz pola ponownie. |
 | „Nic nie zmieniono: od otwarcia porównania zmienił się numer DOI / odpowiednik w PBN…” | Ktoś w międzyczasie zmienił DOI albo odpowiednik w PBN rekordu — porównanie dotyczyło innej publikacji. Otwórz je jeszcze raz. |
-| Strona „nie znaleziono” (404) w instalacji z kilkoma uczelniami | Praca należy wyłącznie do innej uczelni (żaden autor nie jest w jednostce Twojej uczelni) — wzbogacać ją mogą redaktorzy tamtej uczelni. |
 | „Nie ma już takiej wersji tej publikacji w PBN…” | Wybierz inną wersję z listy. |
 | „Tego języka / tej licencji nie ma w słowniku…” | Dopisz pozycję w słowniku BPP albo ustaw pole ręcznie w rekordzie. |

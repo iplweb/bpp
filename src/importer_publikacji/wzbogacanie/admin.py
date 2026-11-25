@@ -15,7 +15,6 @@ from . import zrodla
 from .autorzy import porownaj_autorow
 from .blokada import zablokuj_rekord
 from .pola import porownaj, zastosuj
-from .zakres import w_zakresie_uczelni
 
 
 def komentarz_historii(dane, przeniesione):
@@ -88,17 +87,20 @@ class WzbogacanieRekorduAdminMixin:
         return HttpResponseRedirect(self._wzbogac_url(obj, zrodlo, wersja=wersja))
 
     def _wzbogacany_rekord(self, request, object_id, zrodlo):
+        """Rekord do wzbogacenia — reguła dostępu jak w formularzu rekordu:
+        ten sam queryset admina (``get_object``) i ``has_change_permission``.
+        Kto może otworzyć i zmienić rekord w module redagowania, ten może go
+        wzbogacić; w instalacji wielouczelnianej wspólny dostęp redaktorów
+        do publikacji jest zamierzony, więc nie ma tu zawężenia do uczelni."""
         if zrodlo not in zrodla.NAZWY_ZRODEL:
             raise Http404("Nieznane źródło danych.")
         obj = self.get_object(request, unquote(object_id))
         if obj is None:
-            raise Http404("Brak takiego rekordu w zakresie Twojej uczelni.")
+            raise Http404("Nie ma takiego rekordu.")
         if not self.has_change_permission(request, obj):
             raise PermissionDenied
         if getattr(obj, "deleted_at", None) is not None:
             raise Http404("Rekord jest w koszu — najpierw przywróć go z kosza.")
-        if not w_zakresie_uczelni(request, obj):
-            raise Http404("Brak takiego rekordu w zakresie Twojej uczelni.")
         return obj
 
     @staticmethod
