@@ -1,0 +1,1 @@
+Zgłoszenia błędów wysyłane do GlitchTipa nie zawierają już danych osobowych: adresy e-mail, adresy IP, numery PESEL, numery kont bankowych i kart oraz tokeny są zamazywane także w treści komunikatów i w zmiennych lokalnych tracebacku, które dalej trafiają do zgłoszenia i ułatwiają diagnozę.

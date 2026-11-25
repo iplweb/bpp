@@ -374,6 +374,7 @@ dependencies = [
     { name = "requests-oauthlib" },
     { name = "rjsmin" },
     { name = "rollbar" },
+    { name = "sentry-relay" },
     { name = "sentry-sdk", extra = ["celery", "django"] },
     { name = "simplejson" },
     { name = "sqlparse" },
@@ -569,6 +570,7 @@ requires-dist = [
     { name = "requests-oauthlib", specifier = "==2.0.0" },
     { name = "rjsmin", specifier = ">=1.3.0" },
     { name = "rollbar", specifier = ">=1.5.0" },
+    { name = "sentry-relay", specifier = ">=0.10.2,<0.11" },
     { name = "sentry-sdk", extras = ["celery", "django"], specifier = ">=2.75.0" },
     { name = "simplejson", specifier = ">=4.3.0,<5" },
     { name = "sqlparse", specifier = ">=0.6.1" },
@@ -3514,6 +3516,18 @@ wheels = [
 ]
 
 [[package]]
+name = "milksnake"
+version = "0.1.6"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "cffi" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/37/9c/100deced3999e748500dda3027e2a19b0074199ba27cdc5a6988d22919b8/milksnake-0.1.6.tar.gz", hash = "sha256:0198f8932b4e136c29c0d0d490ff1bac03f82c3a7b2ee6f666e3683b64314fd9", size = 10483, upload-time = "2023-10-12T11:34:39.781Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/6d/5b/1688cbd7244f039a2c1a762e246f04f7fc3eff07932776ac9944da3ea208/milksnake-0.1.6-py2.py3-none-any.whl", hash = "sha256:31e3eafaf2a48e177bb4b2dacef2c7ae8c5b2147a19c6d626209b819490e6f1d", size = 11136, upload-time = "2023-10-12T11:34:37.927Z" },
+]
+
+[[package]]
 name = "minify-html"
 version = "0.18.1"
 source = { registry = "https://pypi.org/simple" }
@@ -5564,6 +5578,21 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/1c/03/e834bcd866f2f8a49a85eaff47340affa3bfa391ee9912a952a1faa68c7b/secretstorage-3.5.0.tar.gz", hash = "sha256:f04b8e4689cbce351744d5537bf6b1329c6fc68f91fa666f60a380edddcd11be", size = 19884, upload-time = "2025-11-23T19:02:53.191Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/b7/46/f5af3402b579fd5e11573ce652019a67074317e18c1935cc0b4ba9b35552/secretstorage-3.5.0-py3-none-any.whl", hash = "sha256:0ce65888c0725fcb2c5bc0fdb8e5438eece02c523557ea40ce0703c266248137", size = 15554, upload-time = "2025-11-23T19:02:51.545Z" },
+]
+
+[[package]]
+name = "sentry-relay"
+version = "0.10.2"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "milksnake" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/49/39/28af9a78ee9dac13442d220be04b0b7dfafe16734024d15529299a99a4fb/sentry_relay-0.10.2.tar.gz", hash = "sha256:468dab40992b98a339518c58f6a4be3d01b3b3dfe3d2cc279706132d5f2b48f2", size = 8171169, upload-time = "2026-11-09T12:33:07.005Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/a3/b7/6a399a672fd5acea957bc135be2a0023b024cf038676918d318dcaba3c19/sentry_relay-0.10.2-py2.py3-none-macosx_13_0_x86_64.whl", hash = "sha256:068b5bcf5e500feac951630cf949e07456faf2914494ca562435ce6d5a8f58b9", size = 7349798, upload-time = "2026-11-09T12:33:01.371Z" },
+    { url = "https://files.pythonhosted.org/packages/45/f9/6e9832d008444c40e0465146b1a1ec5d2fa50dbaa7cd96d73719dc2e654b/sentry_relay-0.10.2-py2.py3-none-macosx_14_0_arm64.whl", hash = "sha256:a5ee2e0e32a711b1bc308d40c9b227d603ff10d619ac8c6196367a17c57a6bd7", size = 6662867, upload-time = "2026-11-09T12:33:02.929Z" },
+    { url = "https://files.pythonhosted.org/packages/c0/e4/3da97cfa37967b55b62494603625664ba0197a703610188693be6d7f1f99/sentry_relay-0.10.2-py2.py3-none-manylinux_2_28_aarch64.whl", hash = "sha256:002679c89ce15c5fac03c9e056b4f19c3185233575ce20cc0de3913f00fa3782", size = 6759291, upload-time = "2026-11-09T12:33:04.186Z" },
+    { url = "https://files.pythonhosted.org/packages/c9/f2/c98d9ad8638369828314c856543a641472d447e7af473861d4f8f370b79c/sentry_relay-0.10.2-py2.py3-none-manylinux_2_28_x86_64.whl", hash = "sha256:3cc5f42495e714c34a5495d49f57006f62ea82c25ac4c0264fd4b8702826be29", size = 7495115, upload-time = "2026-11-09T12:33:05.463Z" },
 ]
 
 [[package]]
