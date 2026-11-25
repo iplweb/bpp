@@ -657,6 +657,21 @@ class Autor(
             return True
         return bool(uczelnia.pokazuj_siec_powiazan)
 
+    def jest_spoza_uczelni(self, uczelnia):
+        """Czy autor jest spoza ``uczelnia`` — definicja
+        w ``AutorQuerySet.spoza_uczelni``. Gdy uczelni nie da się ustalić
+        (``None``, np. pusta baza), zwraca ``False``: bez punktu odniesienia
+        nikogo nie traktujemy jako obcego i strona autora działa jak dawniej.
+        """
+        if uczelnia is None:
+            return False
+        return (
+            type(self)
+            .global_objects.filter(pk=self.pk)
+            .spoza_uczelni(uczelnia)
+            .exists()
+        )
+
     KOMUNIKAT_STRONA_AUTORA = (
         "Aby schować stronę autora, najpierw wyłącz pokazywanie autora "
         "w wyszukiwaniu i w indeksie autorów."
