@@ -172,19 +172,39 @@ def pobierz_brakujace_osoby(uczelnia, identyfikatory) -> int:
     return pobrane
 
 
-def _extract_keywords(obj: dict) -> list[str]:
-    """Spłaszcz wielojęzyczny słownik keywords do listy."""
+def _rozbij_slowa_kluczowe(wartosc) -> list[str]:
+    """Słowa kluczowe jednego języka jako lista.
+
+    PBN podaje je listą albo — często — jednym ciągiem „a, b, c” / „a; b; c”
+    (także jako jednoelementową listę). Dzielimy tak samo jak import z PBN
+    (``pbn_integrator.importer.helpers.pbn_keywords_to_slowa_kluczowe``),
+    zachowując kolejność."""
+    if isinstance(wartosc, list):
+        if len(wartosc) != 1:
+            return [s.strip() for s in wartosc if isinstance(s, str) and s.strip()]
+        wartosc = wartosc[0]
+    if not isinstance(wartosc, str):
+        return []
+    separator = "," if "," in wartosc else ";"
+    return [s.strip() for s in wartosc.split(separator) if s.strip()]
+
+
+def _slowa_kluczowe_wg_jezyka(obj: dict) -> dict[str, list[str]]:
+    """Słowa kluczowe z PBN w podziale na języki (``pol``, ``eng``…)."""
     keywords_dict = obj.get("keywords")
     if not keywords_dict or not isinstance(keywords_dict, dict):
-        return []
+        return {}
+    wynik = {}
+    for jezyk, wartosc in keywords_dict.items():
+        slowa = _rozbij_slowa_kluczowe(wartosc)
+        if slowa:
+            wynik[jezyk] = slowa
+    return wynik
 
-    result = []
-    for lang_keywords in keywords_dict.values():
-        if isinstance(lang_keywords, list):
-            result.extend(lang_keywords)
-        elif isinstance(lang_keywords, str):
-            result.append(lang_keywords)
-    return result
+
+def _extract_keywords(obj: dict) -> list[str]:
+    """Spłaszcz wielojęzyczny słownik keywords do listy."""
+    return [s for slowa in _slowa_kluczowe_wg_jezyka(obj).values() for s in slowa]
 
 
 def _extract_abstract(obj: dict) -> str | None:
@@ -290,7 +310,8 @@ def publikacja_z_obiektu_wersji(data: dict, obj: dict, uid: str) -> FetchedPubli
             PBN_TYPE_MAP.get(obj.get("type", "")),
         ),
         source_title=journal.get("title"),
-        issn=_extract_issn(journal.get("issn")),
+        # ISSN bywa też wprost w obiekcie publikacji (książki w serii).
+        issn=_extract_issn(obj.get("issn") or journal.get("issn")),
         e_issn=_extract_issn(journal.get("eissn")),
         isbn=_extract_isbn(obj),
         publisher=journal.get("publisher"),
@@ -303,7 +324,11 @@ def publikacja_z_obiektu_wersji(data: dict, obj: dict, uid: str) -> FetchedPubli
         url=obj.get("publicUri"),
         license_url=_extract_license_url(obj),
         keywords=_extract_keywords(obj),
-        extra={"pbn_uid": uid},
+        extra={
+            "pbn_uid": uid,
+            # BPP trzyma słowa polskie i angielskie w osobnych polach.
+            "slowa_kluczowe_wg_jezyka": _slowa_kluczowe_wg_jezyka(obj),
+        },
     )
 
 

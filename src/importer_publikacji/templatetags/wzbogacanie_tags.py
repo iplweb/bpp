@@ -16,4 +16,5 @@ def wzbogacany_rekord(session):
     return {
         "rekord": rekord_sesji(session),
         "powrot": session.matched_data[KLUCZ].get("powrot") or "",
+        "porzuc": session.matched_data[KLUCZ].get("porzuc") or "",
     }

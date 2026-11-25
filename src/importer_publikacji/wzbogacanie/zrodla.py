@@ -15,8 +15,8 @@ from pbn_api.exceptions import (
 )
 
 from ..providers import FetchedPublication
-from ..providers.crossref import CrossRefProvider
-from ..providers.pbn import _get_pbn_client, publikacja_z_obiektu_wersji
+from ..providers.crossref import publikacja_z_danych_crossref
+from ..providers.pbn import publikacja_z_obiektu_wersji
 
 logger = logging.getLogger(__name__)
 
@@ -69,6 +69,8 @@ class DaneZrodla:
     #: Powód, dla którego nie ma czego porównywać (tekst dla redaktora).
     blad: str = ""
     ostrzezenia: list[str] = field(default_factory=list)
+    #: Skąd i z kiedy są pokazywane dane („pobrane z CrossRef 12.03.2024…”).
+    stan_danych: str = ""
     #: Tylko PBN: wszystkie wersje (od najnowszej) i ta, którą pokazujemy.
     wersje: list[WersjaPBN] = field(default_factory=list)
     wersja: WersjaPBN | None = None
@@ -83,23 +85,63 @@ class DaneZrodla:
         return self.wersja is not None and not self.wersja.biezaca
 
 
+#: Limit czasu (łączenie, odpowiedź) zapytań wysyłanych w trakcie obsługi
+#: strony: jedno zapytanie, bez ponowień — żeby niedostępne źródło nie
+#: zawiesiło widoku.
+LIMIT_CZASU_PBN = (5, 20)
+LIMIT_CZASU_CROSSREF = 15
+
+
+def _kiedy(data):
+    return f"{timezone.localtime(data):%d.%m.%Y, %H:%M}"
+
+
+def odswiez_z_crossref(rekord) -> str:
+    """Pobierz dane DOI rekordu z CrossRef (jedno zapytanie z krótkim limitem
+    czasu) i zapisz w pamięci podręcznej. Zwraca komunikat błędu albo ``""``.
+    Przy błędzie poprzednio pobrane dane zostają."""
+    from crossref_bpp.models import CrossrefAPICache
+    from crossref_bpp.monkey_patches import PatchedWorks
+    from import_common.normalization import normalize_doi
+
+    doi = normalize_doi(rekord.doi or "")
+    if not doi:
+        return "Rekord nie ma numeru DOI."
+    works = PatchedWorks()
+    works.timeout = LIMIT_CZASU_CROSSREF
+    try:
+        data = works.doi(doi)
+    except (requests.RequestException, ValueError) as e:
+        logger.warning("CrossRef: błąd pobierania DOI %s: %s", doi, e)
+        return "Nie udało się pobrać danych z CrossRef — spróbuj za chwilę."
+    if data is None:
+        return f"CrossRef nie ma danych dla DOI {doi}."
+    CrossrefAPICache.objects.update_or_create(doi=doi, defaults={"data": data})
+    return ""
+
+
 def pobierz_z_crossref(rekord) -> DaneZrodla:
+    """Dane CrossRef dla DOI rekordu — z pamięci podręcznej BPP; pierwszy
+    raz (brak danych) pobierane jednym zapytaniem z krótkim limitem czasu."""
+    from crossref_bpp.models import CrossrefAPICache
+    from import_common.normalization import normalize_doi
+
     dane = DaneZrodla(CROSSREF)
-    doi = (rekord.doi or "").strip()
+    doi = normalize_doi(rekord.doi or "")
     if not doi:
         dane.blad = (
             "Rekord nie ma numeru DOI — CrossRef wyszukuje publikacje po DOI. "
             "Uzupełnij pole „DOI” i spróbuj ponownie."
         )
         return dane
-    try:
-        dane.publikacja = CrossRefProvider().fetch(doi)
-    except requests.RequestException as e:
-        logger.warning("CrossRef: błąd pobierania DOI %s: %s", doi, e)
-        dane.blad = f"Nie udało się połączyć z CrossRef ({e}). Spróbuj za chwilę."
-        return dane
-    if dane.publikacja is None:
-        dane.blad = f"CrossRef nie ma danych dla DOI {doi}."
+    wpis = CrossrefAPICache.objects.filter(doi=doi).first()
+    if wpis is None:
+        dane.blad = odswiez_z_crossref(rekord)
+        if dane.blad:
+            return dane
+        wpis = CrossrefAPICache.objects.get(doi=doi)
+    dane.stan_danych = f"Dane pobrane z CrossRef {_kiedy(wpis.ostatnio_zmodyfikowany)}."
+    dane.publikacja = publikacja_z_danych_crossref(wpis.data)
     return dane
 
 
@@ -152,41 +194,63 @@ def wersje_pbn(pbn_publication, uczelnia) -> list[WersjaPBN]:
     return wersje
 
 
-def _odswiez_kopie_pbn(pbn_publication, uczelnia, dane):
-    """Pobierz publikację z PBN (tylko odczyt) i zapisz w lokalnej kopii.
-    Gdy się nie uda — zostaje lokalna kopia i ostrzeżenie dla redaktora."""
+def _klient_pbn_bez_ponowien(uczelnia):
+    """Klient PBN (tylko odczyt, credentiale aplikacji uczelni) na czas
+    obsługi strony: krótki limit czasu i JEDNO zapytanie. Zwykły transport
+    ponawia błędy połączenia kilkanaście razy z przerwami — w zadaniach w tle
+    to zaleta, ale widok wisiałby przez minuty."""
+    from pbn_client.transport import RequestsTransport
+
+    from pbn_api.client import PBNClient
+    from pbn_api.reporting import bpp_reporter
+
+    if not uczelnia or not all([uczelnia.pbn_app_name, uczelnia.pbn_app_token]):
+        raise ValueError("Brak konfiguracji PBN")
+
+    class TransportBezPonowien(RequestsTransport):
+        def _make_get_request_with_retry(self, url, headers, max_retries=1):
+            return requests.get(
+                self.base_url + url, headers=headers, timeout=self.timeout
+            )
+
+    return PBNClient(
+        TransportBezPonowien(
+            uczelnia.pbn_app_name,
+            uczelnia.pbn_app_token,
+            uczelnia.pbn_api_root,
+            timeout=LIMIT_CZASU_PBN,
+            reporter=bpp_reporter,
+        )
+    )
+
+
+def odswiez_z_pbn(rekord, uczelnia) -> str:
+    """Pobierz odpowiednik rekordu z PBN (sam odczyt, jedno zapytanie
+    z krótkim limitem czasu) i zapisz w lokalnej kopii. Zwraca komunikat
+    błędu albo ``""``. Przy błędzie lokalna kopia zostaje bez zmian."""
     from pbn_api.models import Publication
     from pbn_integrator.utils.mongodb_ops import zapisz_mongodb
 
-    kopia = (
-        "Pokazuję dane z lokalnej kopii PBN z "
-        f"{timezone.localtime(pbn_publication.last_updated_on):%d.%m.%Y, %H:%M}."
-    )
+    if not rekord.pbn_uid_id:
+        return "Rekord nie ma odpowiednika w PBN."
     try:
-        client = _get_pbn_client(uczelnia)
+        client = _klient_pbn_bez_ponowien(uczelnia)
     except ValueError:
-        dane.ostrzezenia.append(
-            f"Uczelnia nie ma skonfigurowanego dostępu do PBN. {kopia}"
-        )
-        return pbn_publication
+        return "Uczelnia nie ma skonfigurowanego dostępu do PBN."
     try:
-        odpowiedz = client.get_publication_by_id(pbn_publication.pk)
+        odpowiedz = client.get_publication_by_id(rekord.pbn_uid_id)
     except (
         HttpException,
         PraceSerwisoweException,
         AccessDeniedException,
         requests.RequestException,
     ) as e:
-        logger.warning("PBN: nie pobrano publikacji %s: %s", pbn_publication.pk, e)
-        dane.ostrzezenia.append(
-            f"Nie udało się pobrać aktualnych danych z PBN. {kopia}"
-        )
-        return pbn_publication
+        logger.warning("PBN: nie pobrano publikacji %s: %s", rekord.pbn_uid_id, e)
+        return "Nie udało się pobrać aktualnych danych z PBN — spróbuj za chwilę."
     if not odpowiedz:
-        dane.ostrzezenia.append(f"PBN nie zwrócił danych tej publikacji. {kopia}")
-        return pbn_publication
+        return "PBN nie zwrócił danych tej publikacji."
     zapisz_mongodb(odpowiedz, Publication)
-    return Publication.objects.get(pk=pbn_publication.pk)
+    return ""
 
 
 def _wybierz_wersje(wersje, identyfikator):
@@ -219,20 +283,24 @@ def _ostrzezenia_o_wersjach(wersje):
     return []
 
 
-def pobierz_z_pbn(rekord, uczelnia, wersja=None, odswiez=True) -> DaneZrodla:
-    """Dane odpowiednika rekordu w PBN, w wersji ``wersja`` (identyfikator
-    wersji) albo domyślnej. ``odswiez=False`` — bez łączenia z PBN, z samej
-    lokalnej kopii (przy zatwierdzaniu: stosujemy to, co było na podglądzie)."""
+def pobierz_z_pbn(rekord, uczelnia, wersja=None) -> DaneZrodla:
+    """Dane odpowiednika rekordu w PBN z LOKALNEJ kopii, w wersji ``wersja``
+    (identyfikator wersji) albo domyślnej. Nie łączy się z PBN — lokalną
+    kopię odświeża ``odswiez_z_pbn`` (przycisk „Odśwież z PBN”)."""
+    from pbn_api.models import Publication
+
     dane = DaneZrodla(PBN)
-    pbn_publication = getattr(rekord, "pbn_uid", None)
-    if pbn_publication is None:
+    if not rekord.pbn_uid_id:
         dane.blad = (
             "Rekord nie ma odpowiednika w PBN. Wskaż go w polu „Odpowiednik "
             "w PBN” i zapisz rekord, a potem spróbuj ponownie."
         )
         return dane
-    if odswiez:
-        pbn_publication = _odswiez_kopie_pbn(pbn_publication, uczelnia, dane)
+    # Świeży odczyt: kopia mogła być przed chwilą odświeżona.
+    pbn_publication = Publication.objects.get(pk=rekord.pbn_uid_id)
+    dane.stan_danych = (
+        f"Dane z lokalnej kopii PBN z {_kiedy(pbn_publication.last_updated_on)}."
+    )
 
     dane.wersje = wersje_pbn(pbn_publication, uczelnia)
     if not dane.wersje:

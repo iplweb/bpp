@@ -60,17 +60,40 @@ Zmieniają się **tylko zaznaczone pola** — reszta rekordu zostaje bez zmian.
 Samo otwarcie porównania niczego w rekordzie nie zmienia. Po zatwierdzeniu
 wracasz do porównania i widzisz stan po zmianie.
 
-- **Słowa kluczowe**: przeniesienie zastępuje słowa kluczowe rekordu tymi
-  ze źródła.
+- **Słowa kluczowe**: przeniesienie **dopisuje brakujące** słowa; słowa
+  wpisane w rekordzie ręcznie zostają. Dane z PBN są porównywane osobno dla
+  pola „Słowa kluczowe” i „Słowa kluczowe -- język angielski” — angielskie
+  słowa z PBN trafiają do pola angielskiego. CrossRef nie dzieli słów na
+  języki, więc są porównywane ze wszystkimi słowami rekordu, a brakujące
+  trafiają do pola „Słowa kluczowe”. Słowa dłuższego niż 100 znaków (w polu
+  angielskim: 255) nie da się przenieść — zwykle to kilka słów sklejonych
+  w źródle w jedno; wpisz je ręcznie.
 - **Streszczenie**: przeniesienie **dodaje** streszczenie ze źródła jako
   kolejne; streszczenia już wpisane w rekordzie zostają.
 - **Adres WWW** trafia do pola „Adres WWW (płatny dostęp)”. Adresu
   w serwisie doi.org nie da się przenieść — numer DOI ma swoje pole.
 - Wartości, której BPP nie przyjmie (np. za długiej), nie da się zaznaczyć;
   przy polu jest wyjaśnienie.
-- Jeżeli dane w źródle zmieniły się między otwarciem porównania
-  a zatwierdzeniem, takie pole nie jest przenoszone — pojawia się komunikat
-  i trzeba sprawdzić porównanie jeszcze raz.
+- Jeżeli między otwarciem porównania a zatwierdzeniem zmieniły się dane
+  w źródle **albo sam rekord** (np. pole poprawił w tym czasie inny
+  redaktor), takie pole nie jest przenoszone — pojawia się komunikat
+  i trzeba sprawdzić porównanie jeszcze raz. Cudza poprawka nie zostanie
+  po cichu nadpisana.
+
+## Z kiedy są dane i jak je odświeżyć {#odswiezanie}
+
+Otwarcie porównania **nie łączy się** za każdym razem ze źródłem — nad
+tabelą widać, z kiedy są pokazywane dane, i przycisk odświeżenia:
+
+- **CrossRef**: „Dane pobrane z CrossRef (data)”. BPP pamięta odpowiedź
+  CrossRef do 14 dni; pierwsze otwarcie dla danego DOI pobiera dane od
+  razu. **„🔄 Odśwież z CrossRef”** pobiera je ponownie.
+- **PBN**: „Dane z lokalnej kopii PBN z (data)” — kopii pobieranej przy
+  synchronizacji z PBN. **„🔄 Odśwież z PBN”** pobiera aktualny stan tej
+  jednej publikacji (wszystkie wersje) i zapisuje go w lokalnej kopii.
+
+Odświeżenie to jedno krótkie zapytanie. Gdy źródło nie odpowiada, zostają
+dane pobrane wcześniej, a na górze strony jest o tym komunikat.
 
 Każde przeniesienie zostawia wpis w [historii rekordu](wydawnictwa.md#historia-zmian)
 (przycisk „Historia”): kto, kiedy i które pola, np. „Wzbogacono z CrossRef:
@@ -101,7 +124,8 @@ osoby dodaje się w kroku „Autorzy” [importera publikacji](importer-publikac
    z listy przyciskiem „Usuń”.
 3. Kliknij **„Dodaj autorów do rekordu”**. Wracasz do porównania.
 
-Dodani autorzy trafiają **na koniec listy autorów** rekordu — kolejność
+„Wróć do porównania bez dodawania” na górze kroku „Autorzy” porzuca
+dodawanie (niczego nie zapisuje). Dodani autorzy trafiają **na koniec listy autorów** rekordu — kolejność
 popraw w formularzu rekordu. W historii rekordu zostaje wpis „Dodano
 autorów z CrossRef (kreator importera publikacji): …”. Osoby, która już
 jest na liście autorów rekordu, nie da się dodać drugi raz.
@@ -132,11 +156,11 @@ wersja: wybierz tę wersję, zaznacz pola i zatwierdź. Wpis w historii
 rekordu ma wtedy postać „Odtworzono z PBN, wersja z dnia 10.01.2023, 11:00:
 pola Tytuł oryginalny”.
 
-Otwarcie porównania pobiera aktualne dane publikacji z PBN (sam odczyt)
-i odświeża jej lokalną kopię w BPP. Gdy PBN nie odpowiada albo uczelnia nie
-ma skonfigurowanego dostępu, porównanie korzysta z lokalnej kopii — na
-górze strony jest o tym informacja z datą kopii. **Do PBN nic nie jest
-wysyłane** — ani przy porównaniu, ani przy przenoszeniu pól. Zmieniony
+Porównanie korzysta z lokalnej kopii danych PBN; przycisk „🔄 Odśwież
+z PBN” pobiera aktualne dane tej publikacji (sam odczyt — zob.
+[wyżej](#odswiezanie)). Jeśli spodziewasz się nowej wersji w PBN, a nie ma
+jej na liście — odśwież. **Do PBN nic nie jest wysyłane** — ani przy
+porównaniu, ani przy odświeżaniu, ani przy przenoszeniu pól. Zmieniony
 rekord wysyłasz do PBN tak jak zwykle (zob.
 [PBN: wysyłanie prac](pbn-wysylka-i-synchronizacja.md)).
 
@@ -149,6 +173,8 @@ PBN nie podaje, kto utworzył daną wersję — na liście jest tylko data.
 | „Rekord nie ma numeru DOI…” | Uzupełnij pole „DOI” w rekordzie i zapisz go. |
 | „CrossRef nie ma danych dla DOI …” | Sprawdź numer DOI; nie każdy DOI jest zarejestrowany w CrossRef (np. DataCite). |
 | „Rekord nie ma odpowiednika w PBN…” | Wskaż „Odpowiednik w PBN” w rekordzie i zapisz go. |
-| „Nie udało się pobrać aktualnych danych z PBN…” | Porównanie pokazuje lokalną kopię; spróbuj ponownie później. |
+| „Nie udało się pobrać aktualnych danych z PBN…” / „…z CrossRef…” | Porównanie pokazuje dane pobrane wcześniej; spróbuj odświeżyć później. |
+| „Uczelnia nie ma skonfigurowanego dostępu do PBN.” | Odświeżanie z PBN wymaga danych dostępowych PBN w ustawieniach uczelni; porównanie z lokalną kopią działa bez nich. |
+| „Nie przeniesiono, bo rekord albo dane w źródle zmieniły się od podglądu…” | Otwórz porównanie jeszcze raz i zaznacz pola ponownie. |
 | „Nie ma już takiej wersji tej publikacji w PBN…” | Wybierz inną wersję z listy. |
 | „Tego języka / tej licencji nie ma w słowniku…” | Dopisz pozycję w słowniku BPP albo ustaw pole ręcznie w rekordzie. |

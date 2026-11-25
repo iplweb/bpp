@@ -89,9 +89,12 @@ def rekord(wydawnictwo_ciagle, publikacja_pbn, uczelnia):
 
 @pytest.fixture
 def bez_dostepu_do_pbn(mocker):
-    """Uczelnia bez konfiguracji PBN — widok pracuje na lokalnej kopii."""
+    """Każda próba połączenia z PBN wywraca test — widoki mają pracować na
+    lokalnej kopii (odświeża ją tylko przycisk „Odśwież z PBN”)."""
     return mocker.patch.object(
-        zrodla, "_get_pbn_client", side_effect=ValueError("Brak konfiguracji PBN")
+        zrodla,
+        "_klient_pbn_bez_ponowien",
+        side_effect=AssertionError("widok nie może łączyć się z PBN"),
     )
 
 
@@ -124,7 +127,7 @@ def test_lista_wersji_od_najnowszej_z_oznaczeniami(rekord, uczelnia, publikacja_
 
 
 def test_domyslnie_najnowsza_gdy_profil_nie_wskazuje_wersji(rekord, uczelnia):
-    dane = zrodla.pobierz_z_pbn(rekord, uczelnia, odswiez=False)
+    dane = zrodla.pobierz_z_pbn(rekord, uczelnia)
 
     assert dane.wersja.identyfikator == HASH_3
     assert not dane.wczesniejsza_wersja
@@ -137,7 +140,7 @@ def test_domyslnie_przypieta_i_ostrzezenie_o_rozbieznosci(
 ):
     _przypnij(uczelnia, publikacja_pbn, HASH_2)
 
-    dane = zrodla.pobierz_z_pbn(rekord, uczelnia, odswiez=False)
+    dane = zrodla.pobierz_z_pbn(rekord, uczelnia)
 
     assert dane.wersja.identyfikator == HASH_2
     assert len(dane.ostrzezenia) == 1
@@ -146,7 +149,7 @@ def test_domyslnie_przypieta_i_ostrzezenie_o_rozbieznosci(
 
 
 def test_porownanie_z_wczesniejsza_wersja(rekord, uczelnia):
-    dane = zrodla.pobierz_z_pbn(rekord, uczelnia, wersja=HASH_1, odswiez=False)
+    dane = zrodla.pobierz_z_pbn(rekord, uczelnia, wersja=HASH_1)
 
     assert dane.wczesniejsza_wersja
     w = {x.klucz: x for x in porownaj(rekord, dane.publikacja)}
@@ -157,7 +160,7 @@ def test_porownanie_z_wczesniejsza_wersja(rekord, uczelnia):
 
 
 def test_nieznana_wersja(rekord, uczelnia):
-    dane = zrodla.pobierz_z_pbn(rekord, uczelnia, wersja="nie-ma", odswiez=False)
+    dane = zrodla.pobierz_z_pbn(rekord, uczelnia, wersja="nie-ma")
 
     assert dane.publikacja is None
     assert "Nie ma już takiej wersji" in dane.blad
@@ -174,8 +177,10 @@ def test_widok_pokazuje_liste_wersji(admin_client, rekord, bez_dostepu_do_pbn):
         assert data in tresc
     assert f"wersja={HASH_1}" in tresc
     assert "najnowsza w PBN" in tresc
-    # Bez dostępu do PBN redaktor wie, że patrzy na lokalną kopię.
-    assert "Pokazuję dane z lokalnej kopii PBN" in tresc
+    # Podgląd nie łączy się z PBN: pokazuje lokalną kopię, z datą
+    # i przyciskiem odświeżenia.
+    assert "Dane z lokalnej kopii PBN z" in tresc
+    assert "Odśwież z PBN" in tresc
     # Rekord odpowiada najnowszej wersji.
     assert "Wszystko się zgadza" in tresc
 
@@ -183,7 +188,7 @@ def test_widok_pokazuje_liste_wersji(admin_client, rekord, bez_dostepu_do_pbn):
 def test_widok_odtwarza_pola_ze_starszej_wersji_i_zapisuje_historie(
     admin_client, admin_user, rekord, uczelnia, bez_dostepu_do_pbn
 ):
-    dane = zrodla.pobierz_z_pbn(rekord, uczelnia, wersja=HASH_1, odswiez=False)
+    dane = zrodla.pobierz_z_pbn(rekord, uczelnia, wersja=HASH_1)
     w = {x.klucz: x for x in porownaj(rekord, dane.publikacja)}
 
     res = admin_client.post(
@@ -215,7 +220,7 @@ def test_wzbogacenie_z_najnowszej_wersji_ma_opis_wzbogacono(
 ):
     rekord.nr_zeszytu = ""
     rekord.save()
-    dane = zrodla.pobierz_z_pbn(rekord, None, odswiez=False)
+    dane = zrodla.pobierz_z_pbn(rekord, None)
     w = {x.klucz: x for x in porownaj(rekord, dane.publikacja)}
     assert w["nr_zeszytu"].status == BRAK_W_BPP
 
@@ -230,56 +235,240 @@ def test_wzbogacenie_z_najnowszej_wersji_ma_opis_wzbogacono(
     )
 
 
-def test_podglad_odswieza_lokalna_kopie_tylko_odczytem(
+def _klient_pbn(mocker, **konfiguracja):
+    client = MagicMock(spec=["get_publication_by_id"])
+    client.get_publication_by_id.configure_mock(**konfiguracja)
+    mocker.patch.object(zrodla, "_klient_pbn_bez_ponowien", return_value=client)
+    return client
+
+
+def test_odswiez_z_pbn_pobiera_nowe_wersje_tylko_odczytem(
     admin_client, rekord, publikacja_pbn, mocker
 ):
-    """Otwarcie podglądu pobiera publikację z PBN (jedyne dozwolone
-    wywołanie) i zapisuje nowe wersje w lokalnej kopii; do PBN nic nie
-    jest wysyłane."""
+    """„Odśwież z PBN” pobiera publikację z PBN (jedyne dozwolone wywołanie)
+    i zapisuje nowe wersje w lokalnej kopii; do PBN nic nie jest wysyłane.
+    Samo otwarcie podglądu z PBN się nie łączy."""
     nowa = _wersja("44444444-4444-4444-8444-444444444444", "2024-09-09T08:00:00+00:00")
-    client = MagicMock(spec=["get_publication_by_id"])
-    client.get_publication_by_id.return_value = {
-        "mongoId": UID,
-        "status": "ACTIVE",
-        "verificationLevel": "VERIFIED",
-        "verified": True,
-        "versions": [*copy.deepcopy(WERSJE), nowa],
-    }
-    mocker.patch.object(zrodla, "_get_pbn_client", return_value=client)
+    client = _klient_pbn(
+        mocker,
+        return_value={
+            "mongoId": UID,
+            "status": "ACTIVE",
+            "verificationLevel": "VERIFIED",
+            "verified": True,
+            "versions": [*copy.deepcopy(WERSJE), nowa],
+        },
+    )
 
-    res = admin_client.get(_url(rekord))
+    assert "09.09.2024" not in admin_client.get(_url(rekord)).content.decode()
+    client.get_publication_by_id.assert_not_called()
+
+    res = admin_client.post(_url(rekord), {"odswiez": "1"}, follow=True)
 
     client.get_publication_by_id.assert_called_once_with(UID)
-    assert "09.09.2024" in res.content.decode()
+    tresc = res.content.decode()
+    assert "Pobrano aktualne dane z PBN" in tresc
+    assert "09.09.2024" in tresc
     publikacja_pbn.refresh_from_db()
     assert len(publikacja_pbn.versions) == 4
 
 
-def test_zatwierdzenie_nie_laczy_sie_z_pbn(admin_client, rekord, uczelnia, mocker):
+def test_zatwierdzenie_nie_laczy_sie_z_pbn(
+    admin_client, rekord, uczelnia, bez_dostepu_do_pbn
+):
     """Zatwierdzamy to, co było na podglądzie — z lokalnej kopii."""
-    pbn = mocker.patch.object(zrodla, "_get_pbn_client")
-    dane = zrodla.pobierz_z_pbn(rekord, uczelnia, wersja=HASH_1, odswiez=False)
+    dane = zrodla.pobierz_z_pbn(rekord, uczelnia, wersja=HASH_1)
     w = {x.klucz: x for x in porownaj(rekord, dane.publikacja)}
 
     admin_client.post(
         _url(rekord), {"wersja": HASH_1, "pole": [w["tom"].wartosc_wyboru]}
     )
 
-    pbn.assert_not_called()
+    bez_dostepu_do_pbn.assert_not_called()
     rekord.refresh_from_db()
     assert rekord.tom == "7"
 
 
-def test_blad_pbn_nie_wywraca_podgladu(admin_client, rekord, mocker):
+def test_blad_pbn_przy_odswiezaniu_zostawia_lokalna_kopie(
+    admin_client, rekord, publikacja_pbn, mocker
+):
     from pbn_api.exceptions import HttpException
 
-    client = MagicMock(spec=["get_publication_by_id"])
-    client.get_publication_by_id.side_effect = HttpException(500, "/x", "awaria")
-    mocker.patch.object(zrodla, "_get_pbn_client", return_value=client)
+    _klient_pbn(mocker, side_effect=HttpException(500, "/x", "awaria"))
 
-    res = admin_client.get(_url(rekord))
+    res = admin_client.post(_url(rekord), {"odswiez": "1"}, follow=True)
 
     assert res.status_code == 200
     tresc = res.content.decode()
     assert "Nie udało się pobrać aktualnych danych z PBN" in tresc
+    assert "Pokazuję dane pobrane wcześniej" in tresc
     assert "Wersje tej publikacji w PBN" in tresc
+    publikacja_pbn.refresh_from_db()
+    assert len(publikacja_pbn.versions) == 3
+
+
+def test_niedostepny_pbn_nie_wiesza_widoku(admin_client, rekord, uczelnia, mocker):
+    """Zwykły transport PBN ponawia błędy połączenia kilkanaście razy
+    z przerwami (minuty). Podgląd nie łączy się z PBN wcale, a „Odśwież
+    z PBN” wysyła JEDNO zapytanie z krótkim limitem czasu."""
+    import requests
+
+    uczelnia.pbn_app_name = "aplikacja"
+    uczelnia.pbn_app_token = "token"
+    uczelnia.pbn_api_root = "https://pbn.example"
+    uczelnia.save()
+    get = mocker.patch.object(
+        zrodla.requests, "get", side_effect=requests.ConnectTimeout("brak sieci")
+    )
+    czekanie = mocker.patch("time.sleep")
+
+    res = admin_client.get(_url(rekord))
+
+    assert res.status_code == 200
+    assert "Wersje tej publikacji w PBN" in res.content.decode()
+    get.assert_not_called()
+
+    res = admin_client.post(_url(rekord), {"odswiez": "1"}, follow=True)
+
+    assert res.status_code == 200
+    assert "Nie udało się pobrać aktualnych danych z PBN" in res.content.decode()
+    assert get.call_count == 1
+    assert get.call_args.kwargs["timeout"] == zrodla.LIMIT_CZASU_PBN
+    czekanie.assert_not_called()
+
+
+def test_odswiez_bez_konfiguracji_pbn(admin_client, rekord):
+    res = admin_client.post(_url(rekord), {"odswiez": "1"}, follow=True)
+
+    assert "Uczelnia nie ma skonfigurowanego dostępu do PBN" in res.content.decode()
+
+
+# --- Słowa kluczowe z PBN: osobno polskie i angielskie ----------------------
+
+
+def _z_slowami(publikacja_pbn, slowa):
+    wersje = copy.deepcopy(WERSJE)
+    wersje[-1]["object"]["keywords"] = slowa
+    publikacja_pbn.versions = wersje
+    publikacja_pbn.save()
+
+
+def _slowa(rekord, uczelnia):
+    dane = zrodla.pobierz_z_pbn(rekord, uczelnia)
+    return {
+        x.klucz: x
+        for x in porownaj(rekord, dane.publikacja)
+        if x.klucz.startswith("slowa")
+    }
+
+
+def test_slowa_kluczowe_zgodne_gdy_kazdy_jezyk_w_swoim_polu(
+    rekord, uczelnia, publikacja_pbn
+):
+    """PBN podaje słowa polskie i angielskie razem; BPP trzyma angielskie
+    w osobnym polu — poprawny rekord jest „zgodny”."""
+    _z_slowami(publikacja_pbn, {"pol": ["chemia", "Kryształy"], "eng": ["crystals"]})
+    rekord.slowa_kluczowe.set(["kryształy", "chemia"])
+    rekord.slowa_kluczowe_eng = ["Crystals"]
+    rekord.save()
+
+    w = _slowa(rekord, uczelnia)
+
+    assert w["slowa_kluczowe"].status == ZGODNE
+    assert w["slowa_kluczowe_eng"].status == ZGODNE
+
+
+def test_przeniesienie_slow_dopisuje_brakujace_w_polu_swojego_jezyka(
+    admin_client, rekord, uczelnia, publikacja_pbn
+):
+    _z_slowami(publikacja_pbn, {"pol": ["chemia", "kryształy"], "eng": ["crystals"]})
+    rekord.slowa_kluczowe.set(["chemia", "dopisane ręcznie"])
+    rekord.slowa_kluczowe_eng = ["manual"]
+    rekord.save()
+    w = _slowa(rekord, uczelnia)
+    assert w["slowa_kluczowe"].status == ROZNE
+    assert w["slowa_kluczowe_eng"].status == ROZNE
+    assert "kryształy" in w["slowa_kluczowe"].zmiana
+    assert "chemia" not in w["slowa_kluczowe"].zmiana
+
+    admin_client.post(
+        _url(rekord),
+        {
+            "pole": [
+                w["slowa_kluczowe"].wartosc_wyboru,
+                w["slowa_kluczowe_eng"].wartosc_wyboru,
+            ]
+        },
+    )
+
+    rekord.refresh_from_db()
+    # Angielskie nie trafiają do pola języka głównego, a słowa dopisane
+    # ręcznie zostają.
+    assert sorted(rekord.slowa_kluczowe.names()) == [
+        "chemia",
+        "dopisane ręcznie",
+        "kryształy",
+    ]
+    assert rekord.slowa_kluczowe_eng == ["manual", "crystals"]
+    # Rekord ma teraz wszystko ze źródła (i własne słowa) — nie ma czego
+    # przenosić.
+    po = _slowa(rekord, uczelnia)
+    assert not po["slowa_kluczowe"].mozna_przeniesc
+    assert not po["slowa_kluczowe_eng"].mozna_przeniesc
+
+
+def test_slowa_podane_jednym_ciagiem_sa_dzielone(rekord, uczelnia, publikacja_pbn):
+    """PBN często podaje wszystkie słowa jednym ciągiem — dzielimy jak
+    import z PBN."""
+    _z_slowami(publikacja_pbn, {"pol": ["chemia; kryształy ;sól"], "eng": "a, b"})
+
+    w = _slowa(rekord, uczelnia)
+
+    assert w["slowa_kluczowe"].zrodlo == "chemia, kryształy, sól"
+    assert w["slowa_kluczowe_eng"].zrodlo == "a, b"
+    assert w["slowa_kluczowe"].mozna_przeniesc
+
+
+def test_za_dlugie_slowo_kluczowe_nie_jest_przenoszone(
+    admin_client, rekord, uczelnia, publikacja_pbn
+):
+    """Słowo dłuższe niż 100 znaków nie mieści się w BPP — pole nie daje się
+    zaznaczyć, a wymuszone zatwierdzenie niczego nie zapisuje (bez błędu 500)."""
+    _z_slowami(publikacja_pbn, {"pol": ["bardzo długie słowo kluczowe " * 6]})
+    w = _slowa(rekord, uczelnia)["slowa_kluczowe"]
+    assert not w.mozna_przeniesc
+    assert "najwyżej 100 znaków" in w.uwaga
+
+    res = admin_client.post(_url(rekord), {"pole": [w.wartosc_wyboru]}, follow=True)
+
+    assert res.status_code == 200
+    assert not rekord.slowa_kluczowe.exists()
+
+
+def test_e_issn_z_bpp_podany_w_pbn_jako_issn_nie_jest_brakiem(rekord, uczelnia):
+    """PBN podaje jeden numer (jako ISSN), BPP ma go w polu e-ISSN — żadne
+    z dwóch pól nie jest wtedy „różne” ani „brakujące”."""
+    rekord.issn = ""
+    rekord.e_issn = "1234-5678"
+    rekord.save()
+    dane = zrodla.pobierz_z_pbn(rekord, uczelnia)
+
+    w = {x.klucz: x for x in porownaj(rekord, dane.publikacja)}
+
+    assert w["issn"].status == ZGODNE
+    assert w["e_issn"].status == ZGODNE
+    assert "ISSN" in w["e_issn"].uwaga
+
+
+def test_issn_z_obiektu_publikacji_pbn():
+    """ISSN bywa w PBN wprost przy publikacji (książka w serii), nie przy
+    czasopiśmie."""
+    from importer_publikacji.providers.pbn import publikacja_z_obiektu_wersji
+
+    obiekt = {"title": "Książka", "type": "BOOK", "issn": "1111-2222"}
+
+    assert publikacja_z_obiektu_wersji({}, obiekt, UID).issn == "1111-2222"
+    obiekt["journal"] = {"issn": "3333-4444"}
+    assert publikacja_z_obiektu_wersji({}, obiekt, UID).issn == "1111-2222"
+    del obiekt["issn"]
+    assert publikacja_z_obiektu_wersji({}, obiekt, UID).issn == "3333-4444"

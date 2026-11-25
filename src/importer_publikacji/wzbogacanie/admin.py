@@ -13,6 +13,7 @@ from bpp.wersjonowanie import zmiana_rekordu
 
 from . import zrodla
 from .autorzy import porownaj_autorow
+from .blokada import zablokuj_rekord
 from .pola import porownaj, zastosuj
 
 
@@ -58,17 +59,32 @@ class WzbogacanieRekorduAdminMixin:
         parametry = {k: v for k, v in parametry.items() if v}
         return f"{url}?{urlencode(parametry)}" if parametry else url
 
-    def _pobierz_dane_zrodla(self, request, obj, zrodlo, wersja, odswiez):
+    def _pobierz_dane_zrodla(self, request, obj, zrodlo, wersja):
+        """Dane źródła bez łączenia z siecią przy każdym wyświetleniu:
+        PBN z lokalnej kopii, CrossRef z pamięci podręcznej BPP."""
         from bpp.models import Uczelnia
 
         if zrodlo == zrodla.CROSSREF:
             return zrodla.pobierz_z_crossref(obj)
         return zrodla.pobierz_z_pbn(
-            obj,
-            Uczelnia.objects.get_for_request(request),
-            wersja=wersja,
-            odswiez=odswiez,
+            obj, Uczelnia.objects.get_for_request(request), wersja=wersja
         )
+
+    def _wzbogac_odswiez(self, request, obj, zrodlo, wersja):
+        """„Odśwież z CrossRef / PBN”: jedno zapytanie do źródła z krótkim
+        limitem czasu; przy błędzie zostają dane pobrane wcześniej."""
+        from bpp.models import Uczelnia
+
+        if zrodlo == zrodla.CROSSREF:
+            blad = zrodla.odswiez_z_crossref(obj)
+        else:
+            blad = zrodla.odswiez_z_pbn(obj, Uczelnia.objects.get_for_request(request))
+        nazwa = zrodla.NAZWY_ZRODEL[zrodlo]
+        if blad:
+            messages.error(request, f"{blad} Pokazuję dane pobrane wcześniej.")
+        else:
+            messages.success(request, f"Pobrano aktualne dane z {nazwa}.")
+        return HttpResponseRedirect(self._wzbogac_url(obj, zrodlo, wersja=wersja))
 
     def _wzbogacany_rekord(self, request, object_id, zrodlo):
         if zrodlo not in zrodla.NAZWY_ZRODEL:
@@ -108,7 +124,13 @@ class WzbogacanieRekorduAdminMixin:
             raise PermissionDenied
         wersja = request.POST.get("wersja") or ""
         powrot = self._wzbogac_url(obj, zrodlo, wersja=wersja)
-        dane = self._pobierz_dane_zrodla(request, obj, zrodlo, wersja, odswiez=False)
+        if "porzuc" in request.POST:
+            # „Wróć do porównania bez dodawania” z kroku „Autorzy”.
+            dodawanie_autorow.usun_sesje(
+                obj, request.user, pk=request.POST.get("porzuc")
+            )
+            return HttpResponseRedirect(powrot)
+        dane = self._pobierz_dane_zrodla(request, obj, zrodlo, wersja)
         if dane.publikacja is None:
             messages.error(request, dane.blad)
             return HttpResponseRedirect(powrot)
@@ -133,6 +155,7 @@ class WzbogacanieRekorduAdminMixin:
             (obj.doi if zrodlo == zrodla.CROSSREF else obj.pbn_uid_id) or "",
             osoby,
             powrot,
+            porzuc=request.path,
         )
         return HttpResponseRedirect(
             reverse("importer_publikacji:authors", kwargs={"session_id": session.pk})
@@ -142,16 +165,17 @@ class WzbogacanieRekorduAdminMixin:
         obj = self._wzbogacany_rekord(request, object_id, zrodlo)
 
         wersja = request.POST.get("wersja") or request.GET.get("wersja") or ""
+        if request.method == "POST" and "odswiez" in request.POST:
+            return self._wzbogac_odswiez(request, obj, zrodlo, wersja)
         if request.method == "POST":
             return self._wzbogac_zastosuj(request, obj, zrodlo, wersja)
 
-        dane = self._pobierz_dane_zrodla(request, obj, zrodlo, wersja, odswiez=True)
+        dane = self._pobierz_dane_zrodla(request, obj, zrodlo, wersja)
         return self._wzbogac_pokaz(request, obj, dane)
 
     def _wzbogac_zastosuj(self, request, obj, zrodlo, wersja):
-        # Bez ponownego łączenia z PBN: stosujemy dane, które były na
-        # podglądzie (lokalna kopia PBN; CrossRef ma własną pamięć podręczną).
-        dane = self._pobierz_dane_zrodla(request, obj, zrodlo, wersja, odswiez=False)
+        # Bez łączenia ze źródłem: stosujemy dane, które były na podglądzie.
+        dane = self._pobierz_dane_zrodla(request, obj, zrodlo, wersja)
         powrot = HttpResponseRedirect(self._wzbogac_url(obj, zrodlo, wersja=wersja))
         if dane.publikacja is None:
             messages.error(request, dane.blad)
@@ -163,16 +187,21 @@ class WzbogacanieRekorduAdminMixin:
             )
             return powrot
 
-        wiersze = porownaj(obj, dane.publikacja)
-        with (
-            transaction.atomic(),
-            zmiana_rekordu(request.user, obj, "") as zmiana,
-        ):
-            przeniesione, pominiete = zastosuj(obj, wiersze, wybrane)
-            if przeniesione:
-                zmiana.komentarz = komentarz_historii(dane, przeniesione)
-            else:
-                zmiana.pomin = True
+        with transaction.atomic():
+            # Blokada wiersza rekordu jako pierwsze zapytanie transakcji —
+            # ta sama kolejność blokad co przy zapisie formularza rekordu
+            # (``BlokujRekordPrzedZapisemMixin``, Rollbar #5363) — i odczyt
+            # stanu rekordu JUŻ pod blokadą: porównanie liczone jest z tym,
+            # co naprawdę jest w bazie, a nie z tym, co było przy otwarciu.
+            zablokuj_rekord(obj)
+            obj = self.get_object(request, str(obj.pk))
+            with zmiana_rekordu(request.user, obj, "") as zmiana:
+                wiersze = porownaj(obj, dane.publikacja)
+                przeniesione, pominiete = zastosuj(obj, wiersze, wybrane)
+                if przeniesione:
+                    zmiana.komentarz = komentarz_historii(dane, przeniesione)
+                else:
+                    zmiana.pomin = True
 
         if przeniesione:
             messages.success(
@@ -181,8 +210,9 @@ class WzbogacanieRekorduAdminMixin:
         if pominiete:
             messages.warning(
                 request,
-                "Nie przeniesiono (dane w źródle albo w rekordzie zmieniły się od "
-                "podglądu — sprawdź porównanie ponownie): "
+                "Nie przeniesiono, bo rekord albo dane w źródle zmieniły się od "
+                "podglądu (np. rekord poprawił w międzyczasie inny redaktor) — "
+                "sprawdź porównanie jeszcze raz: "
                 + ", ".join(dict.fromkeys(w.etykieta for w in pominiete))
                 + ".",
             )

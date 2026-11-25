@@ -414,16 +414,114 @@ def test_autorzy_podglad_niczego_nie_zmienia(admin_client, rekord, crossref, jed
 
 
 def test_crossref_niedostepny_daje_czytelny_komunikat(admin_client, rekord, mocker):
+    """Brak danych w pamięci podręcznej: jedno zapytanie do CrossRef
+    z krótkim limitem czasu; błąd połączenia to komunikat, nie awaria."""
     import requests
 
-    mocker.patch.object(
-        zrodla.CrossRefProvider, "fetch", side_effect=requests.ConnectionError("x")
-    )
+    from crossref_bpp.monkey_patches import PatchedWorks
+
+    limity = []
+
+    def doi(self, doi, **kw):
+        limity.append(self.timeout)
+        raise requests.ConnectTimeout("brak sieci")
+
+    mocker.patch.object(PatchedWorks, "doi", doi)
 
     res = admin_client.get(_url(rekord))
 
     assert res.status_code == 200
-    assert "Nie udało się połączyć z CrossRef" in res.content.decode()
+    assert "Nie udało się pobrać danych z CrossRef" in res.content.decode()
+    assert limity == [zrodla.LIMIT_CZASU_CROSSREF]
+
+
+def test_podglad_crossref_pokazuje_date_danych_i_nie_pyta_crossref(
+    admin_client, rekord, crossref, mocker
+):
+    from crossref_bpp.monkey_patches import PatchedWorks
+
+    siec = mocker.patch.object(PatchedWorks, "doi")
+
+    tresc = admin_client.get(_url(rekord)).content.decode()
+
+    assert "Dane pobrane z CrossRef" in tresc
+    assert "Odśwież z CrossRef" in tresc
+    siec.assert_not_called()
+
+
+def test_odswiez_z_crossref(admin_client, rekord, crossref, mocker):
+    from crossref_bpp.monkey_patches import PatchedWorks
+
+    mocker.patch.object(PatchedWorks, "doi", return_value={**crossref, "page": "7-9"})
+
+    res = admin_client.post(_url(rekord), {"odswiez": "1"}, follow=True)
+
+    assert "Pobrano aktualne dane z CrossRef" in res.content.decode()
+    assert CrossrefAPICache.objects.get(doi=DOI).data["page"] == "7-9"
+    assert _po_kluczu(_wiersze(rekord))["strony"].zrodlo == "7-9"
+
+
+def test_nieudane_odswiezenie_crossref_zostawia_poprzednie_dane(
+    admin_client, rekord, crossref, mocker
+):
+    import requests
+
+    from crossref_bpp.monkey_patches import PatchedWorks
+
+    mocker.patch.object(PatchedWorks, "doi", side_effect=requests.ConnectionError("x"))
+
+    res = admin_client.post(_url(rekord), {"odswiez": "1"}, follow=True)
+
+    tresc = res.content.decode()
+    assert "Nie udało się pobrać danych z CrossRef" in tresc
+    assert "Pokazuję dane pobrane wcześniej" in tresc
+    assert CrossrefAPICache.objects.get(doi=DOI).data["page"] == "100-110"
+
+
+def test_rekord_zmieniony_od_podgladu_nie_jest_nadpisywany(
+    admin_client, rekord, crossref
+):
+    """Inny redaktor poprawił pole między podglądem a zatwierdzeniem — jego
+    zmiana nie jest po cichu nadpisywana."""
+    wybor = _po_kluczu(_wiersze(rekord))["strony"].wartosc_wyboru
+    Wydawnictwo_Ciagle.objects.filter(pk=rekord.pk).update(strony="100-112")
+
+    res = admin_client.post(_url(rekord), {"pole": [wybor]}, follow=True)
+
+    rekord.refresh_from_db()
+    assert rekord.strony == "100-112"
+    assert "zmieniły się od podglądu" in res.content.decode()
+    assert not LogEntry.objects.filter(object_id=str(rekord.pk)).exists()
+
+
+def test_powtorzone_pole_w_formularzu_nie_dubluje_streszczenia(
+    admin_client, rekord, crossref
+):
+    crossref["abstract"] = "Jedno streszczenie."
+    CrossrefAPICache.objects.filter(doi=DOI).update(data=crossref)
+    wybor = _po_kluczu(_wiersze(rekord))["streszczenie-0"].wartosc_wyboru
+
+    admin_client.post(_url(rekord), {"pole": [wybor, wybor, wybor]})
+
+    assert rekord.streszczenia.count() == 1
+
+
+def test_slowa_kluczowe_crossref_dopisuja_brakujace(rekord, crossref):
+    """CrossRef nie dzieli słów na języki: porównanie ze wszystkimi słowami
+    rekordu, przeniesienie dopisuje brakujące i nie usuwa wpisanych ręcznie."""
+    crossref["subject"] = ["Computer Science", "Crystals"]
+    CrossrefAPICache.objects.filter(doi=DOI).update(data=crossref)
+    rekord.slowa_kluczowe.set(["ręczne"])
+    rekord.slowa_kluczowe_eng = ["crystals"]
+    rekord.save()
+    w = _po_kluczu(_wiersze(rekord))
+    assert w["slowa_kluczowe"].status == ROZNE
+
+    zastosuj(rekord, w.values(), [w["slowa_kluczowe"].wartosc_wyboru])
+
+    rekord.refresh_from_db()
+    assert sorted(rekord.slowa_kluczowe.names()) == ["Computer Science", "ręczne"]
+    assert rekord.slowa_kluczowe_eng == ["crystals"]
 
 
 # --- Dodawanie brakujących autorów przez krok „Autorzy” importera -----------
@@ -620,3 +718,103 @@ def test_dodawanie_autorow_wymaga_uprawnien_importera(client, rekord, crossref):
     tresc = client.get(_url(rekord)).content.decode()
     assert "w importerze</button>" not in tresc
     assert "wymaga uprawnień do importera publikacji" in tresc
+
+
+def test_ponowne_klikniecie_nie_mnozy_sesji(admin_client, sesja_autorow, rekord):
+    from importer_publikacji.models import ImportSession
+
+    admin_client.post(_url_autorzy(rekord))
+    admin_client.post(_url_autorzy(rekord))
+
+    assert ImportSession.objects.count() == 1
+    assert ImportSession.objects.get().pk != sesja_autorow.pk
+
+
+def test_powrot_bez_dodawania_usuwa_sesje(admin_client, sesja_autorow, rekord):
+    from importer_publikacji.models import ImportSession
+
+    url = reverse(
+        "importer_publikacji:authors", kwargs={"session_id": sesja_autorow.pk}
+    )
+    assert f'name="porzuc" value="{sesja_autorow.pk}"' in (
+        admin_client.get(url).content.decode()
+    )
+
+    res = admin_client.post(_url_autorzy(rekord), {"porzuc": sesja_autorow.pk})
+
+    assert res.status_code == 302
+    assert res.url == _url(rekord)
+    assert not ImportSession.objects.exists()
+    assert rekord.autorzy_set.count() == 1
+
+
+def test_porzucenie_nie_usuwa_zwyklej_sesji_importu(
+    admin_client, admin_user, rekord, crossref, uczelnia
+):
+    from importer_publikacji.models import ImportSession
+
+    zwykla = baker.make(
+        ImportSession,
+        created_by=admin_user,
+        uczelnia=uczelnia,
+        status=ImportSession.Status.SOURCE_MATCHED,
+        normalized_data={},
+        raw_data={},
+        matched_data={},
+    )
+
+    admin_client.post(_url_autorzy(rekord), {"porzuc": zwykla.pk})
+
+    assert ImportSession.objects.filter(pk=zwykla.pk).exists()
+
+
+def _dopasuj_nowaka(sesja, jednostka):
+    from importer_publikacji.models import ImportedAuthor
+
+    nowak = baker.make(Autor, imiona="Anna", nazwisko="Nowak")
+    sesja.authors.update(
+        matched_autor=nowak,
+        matched_jednostka=jednostka,
+        match_status=ImportedAuthor.MatchStatus.MANUAL,
+    )
+    return reverse(
+        "importer_publikacji:authors-confirm", kwargs={"session_id": sesja.pk}
+    )
+
+
+def test_potwierdzenie_sprawdza_ponownie_prawo_zmiany_rekordu(
+    admin_client, sesja_autorow, rekord, jednostka, mocker
+):
+    """Uprawnienia mogły się zmienić od otwarcia kroku „Autorzy” — przy
+    potwierdzaniu prawo zmiany rekordu jest sprawdzane jeszcze raz."""
+    from django.contrib import admin
+
+    potwierdz = _dopasuj_nowaka(sesja_autorow, jednostka)
+    mocker.patch.object(
+        type(admin.site._registry[Wydawnictwo_Ciagle]),
+        "has_change_permission",
+        return_value=False,
+    )
+
+    res = admin_client.post(potwierdz, HTTP_HX_REQUEST="true")
+
+    assert "Nie masz uprawnień do zmiany tego rekordu" in res.content.decode()
+    assert rekord.autorzy_set.count() == 1
+
+
+def test_potwierdzenie_odmawia_dla_rekordu_w_koszu(
+    admin_client, sesja_autorow, rekord, jednostka
+):
+    potwierdz = _dopasuj_nowaka(sesja_autorow, jednostka)
+    rekord.delete()
+
+    res = admin_client.post(potwierdz, HTTP_HX_REQUEST="true")
+
+    tresc = res.content.decode()
+    assert "już nie istnieje" in tresc or "Rekord jest w koszu" in tresc
+    assert (
+        not type(rekord)
+        ._base_manager.get(pk=rekord.pk)
+        .autorzy_set.filter(autor__nazwisko="Nowak")
+        .exists()
+    )

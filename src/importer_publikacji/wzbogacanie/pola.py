@@ -7,16 +7,15 @@ pól. Słowniki (język, licencja) dopasowują te same funkcje co przy imporcie.
 """
 
 import hashlib
-import re
 from collections.abc import Callable
 from dataclasses import dataclass
 
 from django.core.exceptions import FieldDoesNotExist, ValidationError
-from django.utils.html import format_html, strip_tags
+from django.utils.html import format_html
 
 from bpp.admin.helpers.porownanie_wersji import diff_slow
 from bpp.models import nie_zawiera_adresu_doi_org
-from import_common.normalization import normalize_doi, normalize_isbn
+from import_common import porownanie_pol as reguly
 
 ZGODNE = "zgodne"
 ROZNE = "rozne"
@@ -67,48 +66,16 @@ class Wiersz:
 
     @property
     def token(self):
-        """Skrót wartości ze źródła — zatwierdzenie przenosi dokładnie to, co
-        redaktor widział na podglądzie (dane źródła mogły się zmienić)."""
+        """Skrót obu wartości z podglądu — zatwierdzenie przenosi dokładnie
+        to, co redaktor widział: jeśli w międzyczasie zmieniły się dane
+        w źródle ALBO rekord (inny redaktor), pole jest pomijane."""
         return hashlib.sha1(
-            self.zrodlo.encode("utf-8"), usedforsecurity=False
+            f"{self.zrodlo}\x00{self.bpp}".encode(), usedforsecurity=False
         ).hexdigest()[:12]
 
     @property
     def wartosc_wyboru(self):
         return f"{self.klucz}:{self.token}"
-
-
-def _spacje(wartosc):
-    return re.sub(r"\s+", " ", str(wartosc or "")).strip()
-
-
-def _tekst(wartosc):
-    """Tekst do porównania: bez znaczników HTML i nadmiarowych odstępów."""
-    return _spacje(strip_tags(str(wartosc or "")))
-
-
-def _strony(wartosc):
-    return re.sub(r"\s*[-–—]\s*", "-", _spacje(wartosc))
-
-
-def _doi(wartosc):
-    return normalize_doi(str(wartosc or "")) or ""
-
-
-def _numer(wartosc):
-    """ISSN/ISBN bez kresek, kropek i odstępów."""
-    return (normalize_isbn(str(wartosc or "")) or "").upper()
-
-
-def _adres(wartosc):
-    return _spacje(wartosc).rstrip("/")
-
-
-def _rok(wartosc):
-    try:
-        return str(int(wartosc))
-    except (TypeError, ValueError):
-        return ""
 
 
 def _etykieta(pole):
@@ -149,9 +116,10 @@ def _wiersz_prosty(
     nazwa,
     wartosc,
     *,
-    normalizuj=_tekst,
-    do_zapisu=_spacje,
+    normalizuj=reguly.tekst,
+    do_zapisu=reguly.odstepy,
     alternatywa=None,
+    wartosc_alternatywy=None,
     walidatory=(),
     pomin_gdy_brak_w_zrodle=False,
 ):
@@ -171,15 +139,20 @@ def _wiersz_prosty(
         klucz=nazwa,
         etykieta=_etykieta(pole),
         status=ZGODNE,
-        zrodlo=_spacje(wartosc) or PUSTE,
-        bpp=_spacje(obecna) or PUSTE,
+        zrodlo=reguly.odstepy(wartosc) or PUSTE,
+        bpp=reguly.odstepy(obecna) or PUSTE,
     )
+    pole_alt = _pole(rekord, alternatywa) if alternatywa else None
     if not z:
+        # Wartość z BPP źródło podaje w polu bliźniaczym (np. e-ISSN z BPP
+        # to w źródle ISSN) — to nie jest brak.
+        if pole_alt is not None and normalizuj(wartosc_alternatywy) == b:
+            wiersz.uwaga = f"W źródle ta wartość jest w polu „{_etykieta(pole_alt)}”."
+            return wiersz
         wiersz.status = BRAK_W_ZRODLE
         return wiersz
     if z == b:
         return wiersz
-    pole_alt = _pole(rekord, alternatywa) if alternatywa else None
     if pole_alt is not None and normalizuj(getattr(rekord, alternatywa)) == z:
         wiersz.uwaga = f"W BPP ta wartość jest w polu „{_etykieta(pole_alt)}”."
         return wiersz
@@ -256,43 +229,152 @@ def _znajdz_licencje(adres):
     return Komparator.porownaj_license({"URL": adres}).rekord_po_stronie_bpp
 
 
+#: Limit długości jednego słowa kluczowego (``taggit.Tag.name``).
+MAKSYMALNA_DLUGOSC_SLOWA = 100
+#: Limit długości słowa w polu „Słowa kluczowe -- język angielski”.
+MAKSYMALNA_DLUGOSC_SLOWA_ENG = 255
+
+
 def _slowa(lista):
-    return {_spacje(s).casefold() for s in lista if _spacje(s)}
+    return {reguly.odstepy(s).casefold() for s in lista if reguly.odstepy(s)}
 
 
-def _wiersz_slow_kluczowych(rekord, slowa):
-    if not hasattr(rekord, "slowa_kluczowe"):
-        return None
-    slowa = [_spacje(s) for s in slowa or [] if _spacje(s)]
-    obecne = sorted(rekord.slowa_kluczowe.names(), key=str.casefold)
-    if not slowa and not obecne:
+def _czyste(slowa):
+    """Słowa bez pustych i powtórzeń (bez względu na wielkość liter)."""
+    wynik, widziane = [], set()
+    for slowo in slowa or []:
+        slowo = reguly.odstepy(slowo)
+        if slowo and slowo.casefold() not in widziane:
+            widziane.add(slowo.casefold())
+            wynik.append(slowo)
+    return wynik
+
+
+def _wiersz_slow(klucz, etykieta, ze_zrodla, obecne, limit, dopisz):
+    """Wiersz porównania zbioru słów kluczowych.
+
+    Zgodne = te same słowa (kolejność i wielkość liter bez znaczenia).
+    Przeniesienie DOPISUJE brakujące słowa (``dopisz(rekord, brakujace)``)
+    — słów wpisanych tylko w BPP nie usuwa."""
+    ze_zrodla = _czyste(ze_zrodla)
+    obecne = sorted(_czyste(obecne), key=str.casefold)
+    if not ze_zrodla and not obecne:
         return None
     wiersz = Wiersz(
-        klucz="slowa_kluczowe",
-        etykieta="Słowa kluczowe",
+        klucz=klucz,
+        etykieta=etykieta,
         status=ZGODNE,
-        zrodlo=", ".join(slowa) or PUSTE,
+        zrodlo=", ".join(ze_zrodla) or PUSTE,
         bpp=", ".join(obecne) or PUSTE,
-        po_zapisie=True,
     )
-    if not slowa:
+    if not ze_zrodla:
         wiersz.status = BRAK_W_ZRODLE
         return wiersz
-    if _slowa(slowa) == _slowa(obecne):
+    if _slowa(ze_zrodla) == _slowa(obecne):
         return wiersz
     wiersz.status = ROZNE if obecne else BRAK_W_BPP
-    wiersz.zmiana = _zmiana(wiersz.status, wiersz.bpp, wiersz.zrodlo)
-    if wiersz.status == ROZNE:
-        wiersz.uwaga = "Przeniesienie zastąpi słowa kluczowe rekordu tymi ze źródła."
+    brakujace = [x for x in ze_zrodla if x.casefold() not in _slowa(obecne)]
+    if not brakujace:
+        wiersz.uwaga = (
+            "Rekord ma wszystkie słowa ze źródła i dodatkowe własne — nie ma "
+            "czego przenosić."
+        )
+        return wiersz
+    wiersz.zmiana = format_html("<ins>{}</ins>", ", ".join(brakujace))
+    za_dlugie = [x for x in brakujace if len(x) > limit]
+    if za_dlugie:
+        wiersz.uwaga = (
+            f"Tych słów nie da się zapisać w BPP — słowo kluczowe może mieć "
+            f"najwyżej {limit} znaków, a w źródle jest dłuższe (zwykle kilka "
+            "słów sklejonych w jedno). Wpisz je ręcznie w formularzu rekordu."
+        )
+        return wiersz
+    if obecne:
+        wiersz.uwaga = (
+            "Przeniesienie dopisze brakujące słowa; słowa wpisane w BPP zostaną."
+        )
 
-    def zastosuj(r, slowa=slowa):
-        r.slowa_kluczowe.set(slowa)
+    def zastosuj(r, brakujace=brakujace):
+        dopisz(r, brakujace)
 
     wiersz.zastosuj = zastosuj
     return wiersz
 
 
-def _wiersze_streszczen(rekord, publikacja):
+def _tagi(rekord):
+    # ``.all()``, nie ``.names()`` — korzysta z ``prefetch_related``
+    # (komparator porównuje tysiące prac).
+    return [tag.name for tag in rekord.slowa_kluczowe.all()]
+
+
+def _dopisz_tagi(rekord, slowa):
+    rekord.slowa_kluczowe.add(*slowa)
+
+
+def _dopisz_slowa_eng(rekord, slowa):
+    rekord.slowa_kluczowe_eng = [*(rekord.slowa_kluczowe_eng or []), *slowa]
+
+
+def _wiersze_slow_kluczowych(rekord, publikacja):
+    """Słowa kluczowe. Rekord trzyma je w dwóch polach: „Słowa kluczowe”
+    (język główny) i „Słowa kluczowe -- język angielski”.
+
+    Źródło z podziałem na języki (PBN): angielskie porównujemy i zapisujemy
+    w polu angielskim, pozostałe w głównym — tak samo jak import z PBN.
+    Źródło bez podziału (CrossRef): jedna lista porównywana ze wszystkimi
+    słowami rekordu; brakujące trafiają do pola głównego."""
+    if not hasattr(rekord, "slowa_kluczowe"):
+        return
+    ma_eng = hasattr(rekord, "slowa_kluczowe_eng")
+    eng = list(rekord.slowa_kluczowe_eng or []) if ma_eng else []
+    wg_jezyka = publikacja.extra.get("slowa_kluczowe_wg_jezyka")
+    if wg_jezyka is None or not ma_eng:
+        wiersz = _wiersz_slow(
+            "slowa_kluczowe",
+            "Słowa kluczowe",
+            publikacja.keywords,
+            [*_tagi(rekord), *eng],
+            MAKSYMALNA_DLUGOSC_SLOWA,
+            _dopisz_tagi,
+        )
+        if wiersz is not None:
+            wiersz.po_zapisie = True
+            yield wiersz
+        return
+    angielskie = [
+        s for kod, slowa in wg_jezyka.items() if _angielski(kod) for s in slowa
+    ]
+    pozostale = [
+        s for kod, slowa in wg_jezyka.items() if not _angielski(kod) for s in slowa
+    ]
+    wiersz = _wiersz_slow(
+        "slowa_kluczowe",
+        "Słowa kluczowe",
+        pozostale,
+        _tagi(rekord),
+        MAKSYMALNA_DLUGOSC_SLOWA,
+        _dopisz_tagi,
+    )
+    if wiersz is not None:
+        wiersz.po_zapisie = True
+        yield wiersz
+    wiersz = _wiersz_slow(
+        "slowa_kluczowe_eng",
+        "Słowa kluczowe (język angielski)",
+        angielskie,
+        eng,
+        MAKSYMALNA_DLUGOSC_SLOWA_ENG,
+        _dopisz_slowa_eng,
+    )
+    if wiersz is not None:
+        yield wiersz
+
+
+def _angielski(kod_jezyka):
+    return str(kod_jezyka or "").lower() in ("eng", "en")
+
+
+def _wiersze_streszczen(rekord, publikacja, znajdz_jezyk):
     """Po wierszu na każde streszczenie ze źródła, którego rekord nie ma.
     Przeniesienie DODAJE streszczenie — istniejących nie rusza."""
     from ..views.helpers import _detect_language
@@ -301,11 +383,11 @@ def _wiersze_streszczen(rekord, publikacja):
     if not hasattr(rekord, "streszczenia"):
         return
     obecne = [s.streszczenie for s in rekord.streszczenia.all()]
-    obecne_norm = {_tekst(s) for s in obecne if _tekst(s)}
+    obecne_norm = {reguly.tekst(s) for s in obecne if reguly.tekst(s)}
     ze_zrodla = [
-        (_spacje(a.get("text")), a.get("language"))
+        (reguly.odstepy(a.get("text")), a.get("language"))
         for a in _build_abstracts_list(publikacja)
-        if _tekst(a.get("text"))
+        if reguly.tekst(a.get("text"))
     ]
     if not ze_zrodla:
         if obecne_norm:
@@ -313,7 +395,7 @@ def _wiersze_streszczen(rekord, publikacja):
                 klucz="streszczenie",
                 etykieta="Streszczenie",
                 status=BRAK_W_ZRODLE,
-                bpp=_spacje(obecne[0]),
+                bpp=reguly.odstepy(obecne[0]),
             )
         return
     for nr, (tekst, kod_jezyka) in enumerate(ze_zrodla):
@@ -325,9 +407,9 @@ def _wiersze_streszczen(rekord, publikacja):
             bpp=tekst,
             po_zapisie=True,
         )
-        if _tekst(tekst) not in obecne_norm:
+        if reguly.tekst(tekst) not in obecne_norm:
             wiersz.status = ROZNE if obecne_norm else BRAK_W_BPP
-            wiersz.bpp = _spacje(obecne[0]) if obecne else PUSTE
+            wiersz.bpp = reguly.odstepy(obecne[0]) if obecne else PUSTE
             wiersz.zmiana = _zmiana(wiersz.status, wiersz.bpp, tekst)
             if obecne_norm:
                 wiersz.uwaga = (
@@ -335,63 +417,116 @@ def _wiersze_streszczen(rekord, publikacja):
                 )
 
             def zastosuj(r, tekst=tekst, kod_jezyka=kod_jezyka):
-                jezyk = _znajdz_jezyk(kod_jezyka or _detect_language(tekst))
+                jezyk = znajdz_jezyk(kod_jezyka or _detect_language(tekst))
                 r.streszczenia.create(streszczenie=tekst, jezyk_streszczenia=jezyk)
 
             wiersz.zastosuj = zastosuj
         yield wiersz
 
 
-def porownaj(rekord, publikacja) -> list[Wiersz]:
-    """Wiersze porównania rekordu BPP z danymi ze źródła (``publikacja``)."""
-    p = publikacja
-    kandydaci = [
-        _wiersz_prosty(rekord, "tytul_oryginalny", p.title),
-        _wiersz_prosty(
+def _prosty(nazwa, wartosc, blizniacze=None, **opcje):
+    """``blizniacze`` — wartość ze źródła dla pola ``alternatywa``."""
+
+    def wiersz(rekord, p, _jezyk):
+        return _wiersz_prosty(
             rekord,
-            "tytul",
-            p.extra.get("original_title"),
-            pomin_gdy_brak_w_zrodle=True,
-        ),
-        _wiersz_prosty(rekord, "rok", p.year, normalizuj=_rok, do_zapisu=int),
-        _wiersz_prosty(rekord, "doi", p.doi, normalizuj=_doi, do_zapisu=_doi),
-        _wiersz_prosty(rekord, "tom", p.volume),
-        _wiersz_prosty(rekord, "nr_zeszytu", p.issue),
-        _wiersz_prosty(rekord, "strony", p.pages, normalizuj=_strony),
-        _wiersz_prosty(rekord, "issn", p.issn, normalizuj=_numer, alternatywa="e_issn"),
-        _wiersz_prosty(
-            rekord, "e_issn", p.e_issn, normalizuj=_numer, alternatywa="issn"
-        ),
-        _wiersz_prosty(rekord, "isbn", p.isbn, normalizuj=_numer, alternatywa="e_isbn"),
-        _wiersz_prosty(
-            rekord, "e_isbn", p.e_isbn, normalizuj=_numer, alternatywa="isbn"
-        ),
-        _wiersz_prosty(
-            rekord,
-            "www",
-            p.url,
-            normalizuj=_adres,
-            alternatywa="public_www",
-            walidatory=(nie_zawiera_adresu_doi_org,),
-        ),
-        _wiersz_slownikowy(
-            rekord,
-            "jezyk",
-            p.language,
-            _znajdz_jezyk,
-            "Tego języka nie ma w słowniku języków BPP (Dane systemowe → Języki).",
-        ),
-        _wiersz_slownikowy(
-            rekord,
-            "openaccess_licencja",
-            p.license_url,
-            _znajdz_licencje,
-            "Tej licencji nie ma w słowniku licencji otwartego dostępu BPP.",
-        ),
-        _wiersz_slow_kluczowych(rekord, p.keywords),
-        *_wiersze_streszczen(rekord, p),
-    ]
-    return [w for w in kandydaci if w is not None]
+            nazwa,
+            wartosc(p),
+            wartosc_alternatywy=blizniacze(p) if blizniacze else None,
+            **opcje,
+        )
+
+    return wiersz
+
+
+#: Pola porównania w kolejności wyświetlania: nazwa → funkcja
+#: ``(rekord, publikacja, znajdz_jezyk)`` zwracająca wiersz, listę wierszy
+#: albo ``None`` (pole nie dotyczy rekordu / puste po obu stronach).
+POLA = {
+    "tytul_oryginalny": _prosty("tytul_oryginalny", lambda p: p.title),
+    "tytul": _prosty(
+        "tytul",
+        lambda p: p.extra.get("original_title"),
+        pomin_gdy_brak_w_zrodle=True,
+    ),
+    "rok": _prosty("rok", lambda p: p.year, normalizuj=reguly.rok, do_zapisu=int),
+    "doi": _prosty("doi", lambda p: p.doi, normalizuj=reguly.doi, do_zapisu=reguly.doi),
+    "tom": _prosty("tom", lambda p: p.volume),
+    "nr_zeszytu": _prosty("nr_zeszytu", lambda p: p.issue),
+    "strony": _prosty("strony", lambda p: p.pages, normalizuj=reguly.strony),
+    "issn": _prosty(
+        "issn",
+        lambda p: p.issn,
+        blizniacze=lambda p: p.e_issn,
+        normalizuj=reguly.numer,
+        alternatywa="e_issn",
+    ),
+    "e_issn": _prosty(
+        "e_issn",
+        lambda p: p.e_issn,
+        blizniacze=lambda p: p.issn,
+        normalizuj=reguly.numer,
+        alternatywa="issn",
+    ),
+    "isbn": _prosty(
+        "isbn",
+        lambda p: p.isbn,
+        blizniacze=lambda p: p.e_isbn,
+        normalizuj=reguly.numer,
+        alternatywa="e_isbn",
+    ),
+    "e_isbn": _prosty(
+        "e_isbn",
+        lambda p: p.e_isbn,
+        blizniacze=lambda p: p.isbn,
+        normalizuj=reguly.numer,
+        alternatywa="isbn",
+    ),
+    "www": _prosty(
+        "www",
+        lambda p: p.url,
+        normalizuj=reguly.adres,
+        alternatywa="public_www",
+        walidatory=(nie_zawiera_adresu_doi_org,),
+    ),
+    "jezyk": lambda rekord, p, jezyk: _wiersz_slownikowy(
+        rekord,
+        "jezyk",
+        p.language,
+        jezyk,
+        "Tego języka nie ma w słowniku języków BPP (Dane systemowe → Języki).",
+    ),
+    "openaccess_licencja": lambda rekord, p, _jezyk: _wiersz_slownikowy(
+        rekord,
+        "openaccess_licencja",
+        p.license_url,
+        _znajdz_licencje,
+        "Tej licencji nie ma w słowniku licencji otwartego dostępu BPP.",
+    ),
+    "slowa_kluczowe": lambda rekord, p, _jezyk: list(
+        _wiersze_slow_kluczowych(rekord, p)
+    ),
+    "streszczenie": lambda rekord, p, jezyk: list(
+        _wiersze_streszczen(rekord, p, jezyk)
+    ),
+}
+
+
+def porownaj(rekord, publikacja, pola=None, znajdz_jezyk=None) -> list[Wiersz]:
+    """Wiersze porównania rekordu BPP z danymi ze źródła (``publikacja``).
+
+    ``pola`` — nazwy z ``POLA`` (domyślnie wszystkie); liczone są tylko one.
+    ``znajdz_jezyk`` — funkcja „kod języka → język BPP”; wołający, który
+    porównuje wiele rekordów naraz, podaje wersję z pamięcią podręczną."""
+    znajdz_jezyk = znajdz_jezyk or _znajdz_jezyk
+    wiersze = []
+    for nazwa in pola if pola is not None else POLA:
+        wynik = POLA[nazwa](rekord, publikacja, znajdz_jezyk)
+        if isinstance(wynik, list):
+            wiersze.extend(wynik)
+        elif wynik is not None:
+            wiersze.append(wynik)
+    return wiersze
 
 
 def zastosuj(rekord, wiersze, wybrane):
@@ -404,11 +539,15 @@ def zastosuj(rekord, wiersze, wybrane):
     """
     po_kluczu = {w.klucz: w for w in wiersze}
     przeniesione, pominiete = [], []
+    obsluzone = set()
     for wybor in wybrane:
         klucz, _, token = str(wybor).partition(":")
         wiersz = po_kluczu.get(klucz)
-        if wiersz is None:
+        # Każde pole najwyżej raz — powtórzona wartość w formularzu nie może
+        # np. dodać tego samego streszczenia dwa razy.
+        if wiersz is None or klucz in obsluzone:
             continue
+        obsluzone.add(klucz)
         if not wiersz.mozna_przeniesc or wiersz.token != token:
             pominiete.append(wiersz)
             continue
