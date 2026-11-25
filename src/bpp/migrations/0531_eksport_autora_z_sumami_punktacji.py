@@ -6,7 +6,7 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('bpp', '0529_motyw_zapisany'),
+        ('bpp', '0530_uczelnia_pbn_wysylaj_bez_identyfikatora_autora'),
     ]
 
     operations = [
