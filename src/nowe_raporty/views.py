@@ -8,7 +8,7 @@ from django.shortcuts import get_object_or_404
 from django.template.context import RequestContext
 from django.template.response import TemplateResponse
 from django.urls import reverse
-from django.utils.functional import cached_property
+from django.utils.functional import SimpleLazyObject, cached_property
 from django.utils.http import content_disposition_header, urlencode
 from django.views.generic import FormView, TemplateView
 from django.views.generic.detail import DetailView
@@ -25,6 +25,7 @@ from bpp.views.mixins import UczelniaSettingRequiredMixin
 from .docx_export import as_docx
 from .forms import form_class_dla
 from .models import DefinicjaRaportu
+from .powrot import z_powrotem
 from .poziomy import POZIOMY
 from .query_backends import BladZapytaniaZrodlaDanych
 from .sortowanie import pola_dla
@@ -123,6 +124,49 @@ class GenerujRaportBase(DetailView):
         """URL do formularza raportu (breadcrumb). Generyczny widok nadpisuje."""
         return reverse(self.form_link)
 
+    def adres_powrotu(self):
+        """Adres bieżącego raportu (z parametrami formularza, bez eksportu)."""
+        params = self.request.GET.copy()
+        # Powrót ma pokazać raport na ekranie, a nie pobrać plik.
+        params.pop("_export", None)
+        if params:
+            return f"{self.request.path}?{params.urlencode()}"
+        return self.request.path
+
+    def zrodla_danych_do_edycji(self, report):
+        """Sekcje raportu z odnośnikami „edytuj źródło danych” (FD#448).
+
+        Tylko dla osób, które i tak mogą zmieniać źródła danych w module
+        redagowania. Odnośnik niesie adres raportu w parametrze ``powrot``
+        — po zapisaniu redaktor wraca do tego samego raportu.
+        """
+        user = self.request.user
+        if report is None or not (
+            user.is_staff and user.has_perm("flexible_reports.change_datasource")
+        ):
+            return []
+
+        powrot = self.adres_powrotu()
+        elementy = (
+            report.reportelement_set.filter(datasource__isnull=False)
+            .select_related("datasource")
+            .order_by("position")
+        )
+        return [
+            {
+                "sekcja": element.title,
+                "zrodlo": element.datasource,
+                "url": z_powrotem(
+                    reverse(
+                        "admin:flexible_reports_datasource_change",
+                        args=[element.datasource_id],
+                    ),
+                    powrot,
+                ),
+            }
+            for element in elementy
+        ]
+
     def get_context_data(self, **kwargs):
         report = self.get_report()
 
@@ -167,6 +211,11 @@ class GenerujRaportBase(DetailView):
                 report.set_order_by(*pola_sortowania)
 
         kwargs["report"] = report
+        # Leniwie: lista jest potrzebna tylko stronie HTML, eksport DOCX/XLSX
+        # nie płaci za nią zapytaniem.
+        kwargs["zrodla_danych"] = SimpleLazyObject(
+            lambda: self.zrodla_danych_do_edycji(report)
+        )
         kwargs["od_roku"] = self.kwargs["od_roku"]
         kwargs["do_roku"] = self.kwargs["do_roku"]
         kwargs["title"] = self.title
