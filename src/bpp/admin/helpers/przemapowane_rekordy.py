@@ -56,7 +56,8 @@ def przemapowane_publikacje_html(pozycje):
         ),
     )
 
-    do_linku = [pk for pk in pks if pk in istniejace]
+    # Posortowane: kolejność w logu bywa dowolna (widok ``Rekord``).
+    do_linku = sorted(pk for pk in pks if pk in istniejace)
     if not do_linku or len(do_linku) > MAX_REKORDOW_W_LINKU:
         return lista
 
