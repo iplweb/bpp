@@ -73,12 +73,19 @@ z innymi rekordami, pola właściwe tylko patentom:
 | „Rodzaj prawa” | słownik: patent, wzór użytkowy, wzór przemysłowy… |
 | „Typ patentu” | `polski` albo `zagraniczny` — klasyfikacja niezależna od rodzaju prawa |
 | „Kraj” | kraj udzielenia prawa; pojawia się w formularzu po wybraniu typu `zagraniczny` |
+| „Pierwszeństwo z polskiego patentu o nr zgłoszenia” | numer zgłoszenia polskiego patentu, z którego patent zagraniczny wywodzi pierwszeństwo (np. `P.123456`); pojawia się w formularzu po wybraniu typu `zagraniczny` |
 | „Wydzial” | jednostka uczelni, z którą patent jest powiązany (m.in. do raportów) |
 | „Uprawnieni” | podmioty uprawnione z patentu, także spoza uczelni — wpisane tak, jak mają się pojawić w opisie |
 | „Strony” | zakres stron w publikatorze |
 
-Wszystkie pola patentowe są opcjonalne. „Kraj” można wypełnić wyłącznie
-przy typie `zagraniczny` — w innym wypadku formularz zgłosi błąd przy tym polu.
+Wszystkie pola patentowe są opcjonalne. „Kraj” oraz „Pierwszeństwo
+z polskiego patentu o nr zgłoszenia” można wypełnić wyłącznie przy typie
+`zagraniczny` — w innym wypadku formularz zgłosi błąd przy wypełnionym polu.
+
+Numer w polu „Pierwszeństwo z polskiego patentu o nr zgłoszenia” wpisuje się
+ręcznie, także wtedy, gdy polski patent jest w bazie — pole nie tworzy
+odnośnika do jego rekordu, a numer nie musi być taki sam jak w polu „Numer
+zgłoszenia”.
 
 ### Opis bibliograficzny patentu
 
@@ -89,8 +96,9 @@ Opis bibliograficzny patentu składa się z pól w takiej kolejności:
 3. „Uprawnieni”,
 4. twórcy,
 5. „Informacje”, „Szczegóły”, „Uwagi” — jak w pozostałych rekordach,
-6. „Strony” (z przedrostkiem `s.`), „Numer zgłoszenia”, „Data zgłoszenia”,
-   „Data decyzji”, „Data opublikowania”,
+6. „Strony” (z przedrostkiem `s.`), „Numer zgłoszenia”, „Pierwszeństwo
+   z polskiego patentu o nr zgłoszenia”, „Data zgłoszenia”, „Data decyzji”,
+   „Data opublikowania”,
 7. adres WWW, poprzedzony słowami `Opublikowano w:` (jeśli wypełniono
    zarówno „Adres WWW (płatny dostęp)”, jak i „Adres WWW (wolny dostęp)”,
    w opisie jest ten drugi).
@@ -102,6 +110,13 @@ Przykład:
 > JAN NOWAK. W: WUP 06/25. Nr zgłoszenia: P.654321, Data zgłoszenia:
 > 14.06.2022, Data decyzji: 13.11.2024, Data opublikowania: 10.02.2025.
 > Opublikowano w: https://example.com/wup06_2025.pdf
+
+Przykład patentu zagranicznego (z pierwszeństwem z polskiego zgłoszenia):
+
+> CA1234567. **Method of obtaining a chemical compound.** Uniwersytet X,
+> Warszawa, PL. [AUT.] ANNA KOWALSKA. Pierwszeństwo z polskiego patentu
+> o nr zgłoszenia: P.654321, Data zgłoszenia: 14.06.2022, Data
+> opublikowania: 19.09.2023. Opublikowano w: https://example.com/CA1234567
 
 Pole niewypełnione nie zostawia w opisie żadnego śladu — ani etykiety, ani
 przecinka. Patent, w którym nie wypełniono żadnego z pól patentowych ani

@@ -290,6 +290,10 @@ def _patent_note(patent) -> str | None:
     for attr_name, label in (
         ("numer_zgloszenia", "Numer zgłoszenia"),
         ("numer_prawa_wylacznego", "Numer prawa wyłącznego"),
+        (
+            "pierwszenstwo_nr_zgloszenia",
+            "Pierwszeństwo z polskiego patentu o nr zgłoszenia",
+        ),
         ("data_zgloszenia", "Data zgłoszenia"),
         ("data_decyzji", "Data decyzji"),
         ("data_opublikowania", "Data opublikowania"),
