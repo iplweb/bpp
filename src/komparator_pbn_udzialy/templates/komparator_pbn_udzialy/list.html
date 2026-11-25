@@ -17,7 +17,7 @@
 
         <!-- Statystyki -->
         <div class="panel">
-            <h4>Statystyki</h4>
+            <h4>Statystyki{% if rok_min or rok_max %} — publikacje z lat {{ rok_min|default:"…" }}–{{ rok_max|default:"…" }}{% endif %}</h4>
 
             <!-- Rozbieżności dyscyplin -->
             <h5>Rozbieżności dyscyplin ({{ rozbieznosci_total }})</h5>
@@ -128,6 +128,8 @@
 
         <!-- Tabela problemów -->
         {% if problemy %}
+        <p>Znaleziono: <strong>{{ paginator.count }}</strong>{% if is_paginated %} (strona {{ page_obj.number }} z {{ paginator.num_pages }}){% endif %}</p>
+        {% include "pagination/pagination_with_anchor.html" %}
         <table class="table">
             <thead>
                 <tr>
@@ -192,6 +194,7 @@
                 {% endfor %}
             </tbody>
         </table>
+        {% include "pagination/pagination_with_anchor.html" %}
 
         {% else %}
         <div class="alert-box info">

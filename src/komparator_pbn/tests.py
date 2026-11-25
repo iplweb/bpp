@@ -11,7 +11,6 @@ from bpp.models import (
     Wydawnictwo_Ciagle,
     Wydawnictwo_Zwarte,
 )
-from komparator_pbn.views import EVALUATION_END_YEAR, EVALUATION_START_YEAR
 from pbn_api.models import Publication
 
 User = get_user_model()
@@ -19,6 +18,8 @@ User = get_user_model()
 # Strona komparatora w okresie 2022–2025 (okres w adresie URL). Bez okresu
 # w adresie widok liczy dla okresu domyślnego (wg bieżącego roku).
 URL_MAIN_2022_2025 = "/komparator_pbn/2022-2025/"
+EVALUATION_START_YEAR = 2022
+EVALUATION_END_YEAR = 2025
 
 
 @pytest.fixture

@@ -1,0 +1,48 @@
+{% load humanize %}
+{# Postęp przeliczania (HTMX, wzorem pbn_komparator_zrodel/_progress.html). #}
+
+{% if not task_ready %}
+    <div class="callout warning">
+        <h4><span class="fi-loop"></span> Zadanie w trakcie wykonywania</h4>
+
+        {% if info %}
+            <div class="progress large" role="progressbar"
+                 aria-valuenow="{{ info.progress|default:0 }}"
+                 aria-valuemin="0" aria-valuemax="100">
+                <div class="progress-meter"
+                     style="width: {{ info.progress|default:0 }}%">
+                    <p class="progress-meter-text">{{ info.progress|default:0 }}%</p>
+                </div>
+            </div>
+
+            <p><strong>Postęp:</strong>
+                {{ info.current|default:0|intcomma }} / {{ info.total|default:0|intcomma }} prac
+            </p>
+        {% else %}
+            <p>Oczekiwanie na rozpoczęcie…</p>
+        {% endif %}
+
+        <p><em>Status odświeża się automatycznie co 5 sekund.</em></p>
+    </div>
+
+{% elif porzucone %}
+    <div class="callout alert">
+        <h4><span class="fi-x"></span> Przeliczanie zostało przerwane</h4>
+        <p>
+            Zadanie od kilku minut nie zgłasza postępu (np. po restarcie serwera).
+            Wróć do listy i uruchom przeliczanie ponownie — dotychczasowe wyniki zostały zachowane.
+        </p>
+    </div>
+
+{% elif error %}
+    <div class="callout alert">
+        <h4><span class="fi-x"></span> Wystąpił błąd</h4>
+        <pre>{{ error }}</pre>
+    </div>
+
+{% else %}
+    <div class="callout success">
+        <h4><span class="fi-check"></span> Zadanie zakończone pomyślnie!</h4>
+        <p>Przekierowywanie...</p>
+    </div>
+{% endif %}

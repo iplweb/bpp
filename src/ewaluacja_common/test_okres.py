@@ -239,3 +239,157 @@ def test_okres_z_adresu_wygrywa_z_sesja(admin_client):
     session.save()
     resp = admin_client.get("/ewaluacja_metryki/2026-2030/")
     assert str(resp.context["okres_ewaluacji"]) == "2026–2030"
+
+
+def _link_paska(html, slug):
+    """Adres (``href``) linku paska okresu prowadzącego do okresu ``slug``."""
+    import html as html_lib
+    import re
+
+    pasek = html[html.index('class="pasek-okresu"') :]
+    pasek = pasek[: pasek.index("</nav>")]
+    for adres in re.findall(r'<a href="([^"]*)"', pasek):
+        if f"/{slug}/" in adres:
+            return html_lib.unescape(adres)
+    raise AssertionError(f"brak linku paska do okresu {slug}")
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize(
+    "adres,lata,reszta",
+    [
+        (
+            "/komparator-zrodel-pbn/2022-2025/",
+            {"rok_od": "2023", "rok_do": "2024"},
+            {"search": "Acta", "tylko_rozbieznosci": "on"},
+        ),
+        (
+            "/komparator-pbn-udzialy/2022-2025/",
+            {"rok_min": "2023", "rok_max": "2024"},
+            {"search": "Kowalski", "filter": "bpp_empty"},
+        ),
+        (
+            "/komparator-publikacji-pbn/2022-2025/",
+            {"year_min": "2023", "year_max": "2024"},
+            {"q": "energia", "type": "ciagle", "fields": "title"},
+        ),
+    ],
+)
+def test_pasek_gubi_recznie_wpisane_lata_reszta_parametrow_zostaje(
+    admin_client, adres, lata, reszta
+):
+    """FD#514: przełączenie okresu na pasku nie niesie ręcznie wpisanych lat
+    (inaczej pasek pokazywałby inny okres niż dane); inne filtry zostają."""
+    from django.http import QueryDict
+
+    html = admin_client.get(adres, {**lata, **reszta}).content.decode()
+
+    link = _link_paska(html, "2026-2030")
+    sciezka, _, zapytanie = link.partition("?")
+    assert sciezka == adres.replace("2022-2025", "2026-2030")
+    assert QueryDict(zapytanie).dict() == reszta
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize(
+    "adres,lata,klucze",
+    [
+        (
+            "/komparator-zrodel-pbn/2022-2025/",
+            {"rok_od": "2023", "rok_do": "2024", "search": "x"},
+            ("rok_od", "rok_do"),
+        ),
+        (
+            "/komparator-pbn-udzialy/2022-2025/",
+            {"rok_min": "2023", "rok_max": "2024", "search": "x"},
+            ("rok_min", "rok_max"),
+        ),
+        (
+            "/komparator-publikacji-pbn/2022-2025/",
+            {"year_min": "2023", "year_max": "2024", "q": "x"},
+            ("year_min", "year_max"),
+        ),
+    ],
+)
+def test_po_przelaczeniu_okresu_komparator_pokazuje_lata_nowego_okresu(
+    admin_client, adres, lata, klucze
+):
+    """Klik w drugi okres na pasku: pola „Rok od/do” = lata nowego okresu."""
+    html = admin_client.get(adres, lata).content.decode()
+
+    resp = admin_client.get(_link_paska(html, "2026-2030"))
+
+    assert resp.status_code == 200
+    assert [int(resp.context[k]) for k in klucze] == [2026, 2030]
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize(
+    "adres",
+    [
+        "/ewaluacja_liczba_n/2022-2025/?rok_od=2023&rok_min=1&year_min=2&sort=x",
+        "/ewaluacja_metryki/2022-2025/?widok=tabela&rok_od=2023&sort=-nazwisko",
+        "/komparator_pbn/2022-2025/?rok_od=2023&x=1",
+    ],
+)
+def test_pasek_na_pozostalych_stronach_nie_rusza_parametrow(
+    admin_client, uczelnia, adres
+):
+    """Strażnik: na stronach ewaluacji i w komparatorze PBN (bez pól zakresu
+    lat) pasek przenosi pozostałe parametry bez zmian, co do znaku."""
+    html = admin_client.get(adres).content.decode()
+
+    assert _link_paska(html, "2026-2030") == adres.replace("2022-2025", "2026-2030")
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize(
+    "adres,zostaje",
+    [
+        (
+            "/ewaluacja_liczba_n/2022-2025/?rok=2023&dyscyplina=5&page=3",
+            {"dyscyplina": "5"},
+        ),
+        (
+            "/ewaluacja_metryki/2022-2025/?page=2&widok=tabela&sort=-nazwisko",
+            {"widok": "tabela", "sort": "-nazwisko"},
+        ),
+        ("/komparator_pbn/2022-2025/?page=4", {}),
+        (
+            "/komparator-pbn-udzialy/2022-2025/?page=2&search=x&rok_min=2023",
+            {"search": "x"},
+        ),
+        (
+            "/komparator-zrodel-pbn/2022-2025/?page=2&sort=-rok&rok_od=2023",
+            {"sort": "-rok"},
+        ),
+    ],
+)
+def test_pasek_gubi_numer_strony_i_pojedynczy_rok(
+    admin_client, uczelnia, adres, zostaje
+):
+    """FD#514: przełączenie okresu wraca na pierwszą stronę i kasuje
+    pojedynczy rok (zostałby rok spoza nowego okresu); reszta zostaje."""
+    from django.http import QueryDict
+
+    html = admin_client.get(adres).content.decode()
+
+    link = _link_paska(html, "2026-2030")
+    sciezka, _, zapytanie = link.partition("?")
+    assert sciezka == adres.partition("?")[0].replace("2022-2025", "2026-2030")
+    assert QueryDict(zapytanie).dict() == zostaje
+
+
+@pytest.mark.django_db
+def test_przekierowanie_na_adres_z_okresem_zachowuje_lata(admin_client):
+    """Strażnik: link z ręcznym zakresem lat bez okresu w adresie (np.
+    z komparatora PBN do „Problemów PBN”) nie gubi lat przy przekierowaniu."""
+    resp = admin_client.get(
+        "/komparator-pbn-udzialy/?rok_min=2023&rok_max=2024",
+        HTTP_SEC_FETCH_MODE="navigate",
+    )
+
+    slug = okres_domyslny().slug
+    assert resp["Location"] == (
+        f"/komparator-pbn-udzialy/{slug}/?rok_min=2023&rok_max=2024"
+    )

@@ -1,0 +1,39 @@
+{% extends "base.html" %}
+
+{% block title %}Przeliczanie - Komparator publikacji PBN - {{ block.super }}{% endblock %}
+
+{% block breadcrumbs %}
+    {{ block.super }}
+    <li><a href="{% url 'komparator_pbn:main' %}">Komparator PBN</a></li>
+    <li><a href="{% url 'komparator_publikacji_pbn:comparison_list' %}">Komparator publikacji</a></li>
+    <li class="current">Przeliczanie</li>
+{% endblock %}
+
+{% block content %}
+    <div class="row">
+        <div class="large-12 columns">
+            <h1><span class="fi-loop"></span> Przeliczanie porównania</h1>
+
+            <div class="callout primary">
+                <p>
+                    BPP porównuje w tle wszystkie prace powiązane z PBN z lokalną kopią danych PBN
+                    (nic nie jest wysyłane do PBN). Strona odświeża się automatycznie co 5 sekund,
+                    a po zakończeniu wrócisz do listy różnic.
+                </p>
+            </div>
+
+            <div id="progress-container"
+                 hx-get="{% url 'komparator_publikacji_pbn:task_status' task_id %}"
+                 hx-trigger="every 5s"
+                 hx-swap="innerHTML">
+                {% include "komparator_publikacji_pbn/_progress.html" %}
+            </div>
+
+            <div class="button-group" style="margin-top: 1rem;">
+                <a href="{% url 'komparator_publikacji_pbn:comparison_list' %}" class="button secondary">
+                    <span class="fi-arrow-left"></span> Powrót (zadanie będzie kontynuowane w tle)
+                </a>
+            </div>
+        </div>
+    </div>
+{% endblock %}

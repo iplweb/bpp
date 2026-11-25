@@ -1,0 +1,19 @@
+Komparator publikacji PBN porównuje teraz wszystkie prace powiązane z PBN,
+a nie — jak dotąd — tylko pierwszych 100 wydawnictw ciągłych i 100 zwartych
+z wybranych lat. Porównanie liczy się w tle po kliknięciu „Przelicz
+porównanie”: strona postępu pokazuje pasek z liczbą porównanych prac, a po
+zakończeniu wraca do listy. Lista pokazuje gotowe wyniki z informacją „Stan
+na …” (data ostatniego przeliczenia), jest stronicowana po 20 prac i otwiera
+się szybko także przy dużej bazie; filtry (lata, typ publikacji, wyszukiwana
+fraza, wybór porównywanych pól) oraz „Eksportuj do XLSX” obejmują wszystkie
+prace z wybranego zakresu lat. Do zakończenia przeliczania widać poprzednie
+wyniki. Przeliczenie korzysta wyłącznie z lokalnej kopii danych pobranych
+z PBN — niczego do PBN nie wysyła — i wymaga aktualnych danych (strona
+„Pobieranie z PBN”). Zaznaczenie pola „Słowa kluczowe” nie kończy się już
+błędem serwera.
+Prace, których dane w PBN mają nietypową postać, nie przerywają przeliczania:
+pozostałe pola i prace są porównywane, a nad listą pojawia się informacja
+„Nie udało się porównać: N” z przykładem. Naraz działa jedno przeliczanie;
+jeśli zostanie przerwane (np. przez restart serwera), po kilku minutach bez
+postępu strona pokazuje „Ostatnie przeliczanie zostało przerwane” i przycisk
+„Przelicz porównanie” wraca — dotychczasowe wyniki zostają.
