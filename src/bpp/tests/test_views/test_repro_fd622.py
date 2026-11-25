@@ -11,15 +11,19 @@ rok), a lokalnie szukał po dokładnym ISBN-ie i roku — więc nie znajdował n
 Od FD#515 osobne adresy „Pobierz po ISBN" / „Pobierz po DOI" nie istnieją —
 te same zachowania pilnowane są na jednym widoku przycisku „Pobierz z PBN"
 (``api_get_pbn_by_identifiers``). Różnica względem pierwotnych asercji:
-rekord znaleziony po samym ISBN-ie przy innym tytule nie trafia do pola
-automatycznie (brak ``id``), tylko na listę kandydatów do wyboru.
+rekord trafia do pola automatycznie (``id``) tylko wtedy, gdy jego rodzaj
+w PBN zgadza się z rodzajem rekordu w formularzu i (poza pojedynczym
+trafieniem po DOI) zgadza się tytuł; w pozostałych przypadkach jest na
+liście kandydatów do wyboru.
 """
 
 import json
 
 import pytest
 from django.urls import reverse
+from model_bakery import baker
 
+from bpp.const import CHARAKTER_OGOLNY_KSIAZKA
 from bpp.views.api.pbn_odpowiednik import (
     BRAK,
     DO_WYBORU,
@@ -89,10 +93,11 @@ def rozdzial_w_bpp(wydawnictwo_zwarte):
     return wydawnictwo_zwarte
 
 
-def _post(rf, pole, user, uczelnia, t, rok="2021", tytul=""):
+def _post(rf, pole, user, uczelnia, t, rok="2021", tytul="", **inne):
     """Żądanie przycisku „Pobierz z PBN" z jednym wypełnionym polem
-    identyfikatora (``isbn`` albo ``doi``)."""
-    req = rf.post("/", data={pole: t, "rok": rok, "tytul_oryginalny": tytul})
+    identyfikatora (``isbn`` albo ``doi``). ``inne`` — pozostałe pola
+    formularza (np. wskazane wydawnictwo nadrzędne = rozdział)."""
+    req = rf.post("/", data={pole: t, "rok": rok, "tytul_oryginalny": tytul, **inne})
     req.user = user
     req._uczelnia = uczelnia
     return json.loads(PobierzOdpowiednikPublikacjiView.as_view()(req).content)
@@ -143,7 +148,19 @@ def test_fd622_bez_automatycznego_wiazania(
     fake = FakePBNSearch(_ksiazka_json(), "isbn", ISBN)
     _podepnij_pbn(mocker, pbn_client, fake, _ksiazka_json())
 
-    res = _post(rf, "isbn", admin_user, pbn_uczelnia, ISBN, "2020", tytul=TYTUL_KSIAZKI)
+    ksiazka = baker.make(
+        "bpp.Charakter_Formalny", charakter_ogolny=CHARAKTER_OGOLNY_KSIAZKA
+    )
+    res = _post(
+        rf,
+        "isbn",
+        admin_user,
+        pbn_uczelnia,
+        ISBN,
+        "2020",
+        tytul=TYTUL_KSIAZKI,
+        charakter_formalny=ksiazka.pk,
+    )
 
     assert res["status"] == PEWNY, res
     assert res.get("id") == UID_KSIAZKI, res
@@ -236,6 +253,7 @@ def test_fd622_doi_lokalnie_bez_wzgledu_na_wielkosc_liter(
         admin_user,
         pbn_uczelnia,
         "https://doi.org/" + DOI_ROZDZIALU.lower(),
+        wydawnictwo_nadrzedne="1",
     )
 
     search.assert_not_called()
@@ -258,6 +276,7 @@ def test_fd622_doi_w_pbn_w_oryginalnej_wielkosci_liter(
         pbn_uczelnia,
         "https://doi.org/" + DOI_ROZDZIALU,
         rok="2022",
+        wydawnictwo_nadrzedne="1",
     )
 
     assert res.get("id") == UID_ROZDZIALU, res

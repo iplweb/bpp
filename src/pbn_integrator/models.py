@@ -98,6 +98,8 @@ class PobieranieOdpowiednikowPBN(models.Model):
     rozpoczeto = models.DateTimeField("Rozpoczęto", null=True, blank=True)
     zakonczono = models.DateTimeField("Zakończono", null=True, blank=True)
     przetworzono = models.PositiveIntegerField("Przetworzono", default=0)
+    #: Ostatni zapis postępu — po nim poznajemy zlecenie przerwane.
+    aktywnosc = models.DateTimeField("Ostatnia aktywność", auto_now=True)
 
     #: Lista słowników: pk, rekord, grupa, opis, pbn_uid.
     wyniki = models.JSONField(default=list)
@@ -125,9 +127,26 @@ class PobieranieOdpowiednikowPBN(models.Model):
         return min(100, int(100 * self.przetworzono / len(self.identyfikatory)))
 
     @property
+    def przerwane(self):
+        """Niezakończone i bez postępu od dłuższego czasu — np. worker
+        został zrestartowany w trakcie. Takie zlecenie można ponowić."""
+        from datetime import timedelta
+
+        from django.utils import timezone
+
+        from .pobieranie_odpowiednikow import PRZERWANE_PO_MINUTACH
+
+        if self.zakonczono or self.aktywnosc is None:
+            return False
+        granica = timezone.now() - timedelta(minutes=PRZERWANE_PO_MINUTACH)
+        return self.aktywnosc < granica
+
+    @property
     def stan(self):
         if self.zakonczono:
             return "zakończono z błędem" if self.blad else "zakończono"
+        if self.przerwane:
+            return "przerwane"
         if self.rozpoczeto:
             return "w toku"
         return "czeka w kolejce"

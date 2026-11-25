@@ -109,9 +109,11 @@ def test_pobierz_z_pbn_po_isbn_jedna_praca(
     )
     pbn_client.transport.return_values[f"/api/v1/publications/id/{UID_REKORDU}"] = pub1
 
-    res = PobierzOdpowiednikPublikacjiView.as_view()(req)
+    res = json.loads(PobierzOdpowiednikPublikacjiView.as_view()(req).content)
 
-    assert json.loads(res.content)["id"] == UID_REKORDU
+    # Rekord znaleziony; formularz nie podaje rodzaju rekordu, więc trafia
+    # na listę do wyboru zamiast od razu do pola (FD#515).
+    assert [k["id"] for k in res["kandydaci"]] == [UID_REKORDU]
 
 
 @pytest.mark.django_db

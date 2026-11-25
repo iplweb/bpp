@@ -11,6 +11,7 @@ from django.contrib.admin.models import CHANGE, LogEntry
 from django.contrib.contenttypes.models import ContentType
 from django.urls import reverse
 from messages_extends.models import Message
+from model_bakery import baker
 
 from bpp.models import Wydawnictwo_Ciagle, Wydawnictwo_Zwarte
 from pbn_api.models import Publication
@@ -26,9 +27,11 @@ UID_3 = "6accb7c13d7d997e0c94d2a3"
 
 def _publikacja_pbn(uid, **obiekt):
     obiekt.setdefault("year", 2024)
+    obiekt.setdefault("type", "ARTICLE")
+    status = obiekt.pop("status", "ACTIVE")
     return Publication.objects.create(
         mongoId=uid,
-        status="ACTIVE",
+        status=status,
         verificationLevel="x",
         verified=True,
         versions=[{"current": True, "object": obiekt}],
@@ -43,6 +46,10 @@ def _zlecenie(user, obiekty, rodzaj="publikacje", uczelnia=None):
         content_type=ContentType.objects.get_for_model(type(obiekty[0])),
         identyfikatory=[o.pk for o in obiekty],
     )
+
+
+def _charakter(ogolny):
+    return baker.make("bpp.Charakter_Formalny", charakter_ogolny=ogolny)
 
 
 def _grupy(zlecenie):
@@ -76,7 +83,7 @@ def zwarte_maker(
 def prace(wydawnictwo_ciagle_maker, zwarte_maker, db):
     """Komplet przypadków z raportu."""
     _publikacja_pbn(UID_1, title="Praca z DOI", doi="10.5555/fd516.a")
-    _publikacja_pbn(UID_2, title="Cała książka", isbn="9780128195178")
+    _publikacja_pbn(UID_2, title="Cała książka", isbn="9780128195178", type="BOOK")
     _publikacja_pbn(UID_3, title="Zajęta", doi="10.5555/fd516.zajeta")
     return {
         "po_doi": wydawnictwo_ciagle_maker(
@@ -137,12 +144,20 @@ def test_isbn_ksiazki_nie_jest_przypisywany_rozdzialowi(
     zwarte_maker, admin_user, uczelnia
 ):
     """Niejednoznaczne zostają nietknięte — trafiają do ręcznego wyboru."""
-    _publikacja_pbn(UID_2, title="Cała książka", isbn="9780128195178")
+    _publikacja_pbn(UID_2, title="Cała książka", isbn="9780128195178", type="BOOK")
     rozdzial = zwarte_maker(
-        tytul_oryginalny="Rozdział pierwszy", isbn="978-0-12-819517-8", doi=None, www=""
+        tytul_oryginalny="Rozdział pierwszy",
+        isbn="978-0-12-819517-8",
+        doi=None,
+        www="",
+        charakter_formalny=_charakter("roz"),
     )
     ksiazka = zwarte_maker(
-        tytul_oryginalny="Cała książka", isbn="978-0-12-819517-8", doi=None, www=""
+        tytul_oryginalny="Cała książka",
+        isbn="978-0-12-819517-8",
+        doi=None,
+        www="",
+        charakter_formalny=_charakter("ksi"),
     )
     zlecenie = _zlecenie(admin_user, [rozdzial, ksiazka], uczelnia=uczelnia)
 
@@ -323,3 +338,160 @@ def test_strona_postepu_odswieza_sie_a_cudzego_raportu_nie_widac(
     assert staff_client.get(url, follow=True).status_code != 200 or (
         "Praca z DOI" not in staff_client.get(url, follow=True).content.decode()
     )
+
+
+# --- recenzja PR 1184 ---------------------------------------------------------
+
+
+@pytest.mark.django_db
+def test_rozdzial_z_doi_ksiazki_zostaje_do_recznego_wyboru(
+    zwarte_maker, admin_user, uczelnia
+):
+    """Akcja grupowa nie zapisuje rozdziałowi PBN UID książki tylko dlatego,
+    że ma wpisany jej DOI — nawet przy tym samym tytule."""
+    _publikacja_pbn(UID_1, title="Tom zbiorowy", doi="10.5555/ksiazka", type="BOOK")
+    rozdzial = zwarte_maker(
+        tytul_oryginalny="Tom zbiorowy",
+        doi="10.5555/ksiazka",
+        www="",
+        charakter_formalny=_charakter("roz"),
+    )
+
+    zlecenie = po.wykonaj(_zlecenie(admin_user, [rozdzial], uczelnia=uczelnia))
+
+    assert _grupy(zlecenie)[rozdzial.pk] == po.G_DO_WYBORU
+    rozdzial.refresh_from_db()
+    assert rozdzial.pbn_uid_id is None
+
+
+@pytest.mark.django_db
+def test_rekord_usuniety_w_pbn_nie_jest_ustawiany(
+    wydawnictwo_ciagle_maker, admin_user, uczelnia
+):
+    _publikacja_pbn(UID_1, title="Usunięta", doi="10.5555/usunieta", status="DELETED")
+    praca = wydawnictwo_ciagle_maker(
+        tytul_oryginalny="Usunięta", doi="10.5555/usunieta", www=""
+    )
+
+    zlecenie = po.wykonaj(_zlecenie(admin_user, [praca], uczelnia=uczelnia))
+
+    assert _grupy(zlecenie)[praca.pk] == po.G_NIE_ZNALEZIONO
+    praca.refresh_from_db()
+    assert praca.pbn_uid_id is None
+
+
+@pytest.mark.django_db
+def test_rekord_usuniety_w_pbn_tuz_przed_zapisem_nie_jest_ustawiany(
+    wydawnictwo_ciagle_maker, admin_user
+):
+    pub = _publikacja_pbn(UID_1, title="A", doi="10.5555/a")
+    praca = wydawnictwo_ciagle_maker(tytul_oryginalny="A", doi="10.5555/a")
+    Publication.objects.filter(pk=pub.pk).update(status="DELETED")
+
+    wpis = po._ustaw_odpowiednik_publikacji(praca, UID_1, "DOI 10.5555/a", admin_user)
+
+    assert wpis["grupa"] == po.G_DO_WYBORU
+    praca.refresh_from_db()
+    assert praca.pbn_uid_id is None
+
+
+@pytest.mark.django_db
+def test_rekord_zmieniony_w_trakcie_nie_dostaje_odpowiednika_po_starym_doi(
+    wydawnictwo_ciagle_maker, admin_user
+):
+    """Redaktor poprawił DOI, zanim zadanie doszło do zapisu — odpowiednik
+    znaleziony po starym DOI nie może zostać zapisany."""
+    _publikacja_pbn(UID_1, title="A", doi="10.5555/stary")
+    praca = wydawnictwo_ciagle_maker(tytul_oryginalny="A", doi="10.5555/stary")
+    Wydawnictwo_Ciagle.objects.filter(pk=praca.pk).update(doi="10.5555/nowy")
+
+    wpis = po._ustaw_odpowiednik_publikacji(
+        praca, UID_1, "DOI 10.5555/stary", admin_user
+    )
+
+    assert wpis["grupa"] == po.G_DO_WYBORU
+    assert "zmieniono w trakcie" in wpis["opis"]
+    praca.refresh_from_db()
+    assert praca.pbn_uid_id is None
+
+
+@pytest.mark.django_db
+def test_uid_zajety_przez_rekord_innego_typu_nie_jest_przypisywany(
+    wydawnictwo_ciagle_maker, zwarte_maker, admin_user
+):
+    """Unikalność PBN UID działa osobno w każdej tabeli — zajętość
+    sprawdzamy we wszystkich, pod blokadą wiersza rekordu PBN."""
+    _publikacja_pbn(UID_1, title="A", doi="10.5555/a")
+    zwarte_maker(tytul_oryginalny="A", pbn_uid_id=UID_1)
+    praca = wydawnictwo_ciagle_maker(tytul_oryginalny="A", doi="10.5555/a")
+
+    wpis = po._ustaw_odpowiednik_publikacji(praca, UID_1, "DOI 10.5555/a", admin_user)
+
+    assert wpis["grupa"] == po.G_ZAJETY
+    praca.refresh_from_db()
+    assert praca.pbn_uid_id is None
+
+
+@pytest.mark.django_db
+def test_przejecie_zlecenia_jest_atomowe(prace, admin_user, uczelnia):
+    zlecenie = _zlecenie(admin_user, [prace["po_doi"]], uczelnia=uczelnia)
+
+    assert po.przejmij(zlecenie.pk) is not None
+    assert po.przejmij(zlecenie.pk) is None
+
+
+@pytest.mark.django_db
+def test_przerwane_zlecenie_mozna_ponowic_z_zachowaniem_wynikow(
+    prace, admin_client, admin_user, uczelnia, django_capture_on_commit_callbacks
+):
+    """Worker padł w połowie: zlecenie nie wisi „w toku” na zawsze, a po
+    ponowieniu raport sprzed przerwania zostaje."""
+    from datetime import timedelta
+
+    from django.utils import timezone
+
+    zlecenie = _zlecenie(
+        admin_user, [prace["nie_znaleziono"], prace["po_doi"]], uczelnia=uczelnia
+    )
+    stary_wpis = po._wpis(
+        prace["nie_znaleziono"], po.G_NIE_ZNALEZIONO, "sprzed przerwy"
+    )
+    dawno = timezone.now() - timedelta(minutes=po.PRZERWANE_PO_MINUTACH + 1)
+    PobieranieOdpowiednikowPBN.objects.filter(pk=zlecenie.pk).update(
+        rozpoczeto=dawno, aktywnosc=dawno, przetworzono=1, wyniki=[stary_wpis]
+    )
+    url = reverse(
+        "admin:pbn_integrator_pobieranieodpowiednikowpbn_change", args=(zlecenie.pk,)
+    )
+
+    html = admin_client.get(url).content.decode()
+    assert "Zlecenie zostało przerwane" in html
+    assert 'http-equiv="refresh"' not in html
+
+    with django_capture_on_commit_callbacks(execute=True):
+        admin_client.post(url, {"_ponow": "1"})
+
+    zlecenie.refresh_from_db()
+    assert zlecenie.zakonczono is not None and not zlecenie.blad, zlecenie.blad
+    assert zlecenie.wyniki[0] == stary_wpis
+    assert _grupy(zlecenie)[prace["po_doi"].pk] == po.G_USTAWIONO
+    assert len(zlecenie.wyniki) == 2
+
+
+@pytest.mark.django_db
+def test_zlecenia_w_toku_nie_da_sie_ponowic(
+    prace, admin_client, admin_user, uczelnia, mocker
+):
+    zlecenie = _zlecenie(admin_user, [prace["po_doi"]], uczelnia=uczelnia)
+    po.przejmij(zlecenie.pk)
+    delay = mocker.patch.object(pobierz_odpowiedniki_z_pbn, "delay")
+    url = reverse(
+        "admin:pbn_integrator_pobieranieodpowiednikowpbn_change", args=(zlecenie.pk,)
+    )
+
+    odp = admin_client.post(url, {"_ponow": "1"}, follow=True)
+
+    assert "nie można teraz ponowić" in odp.content.decode()
+    delay.assert_not_called()
+    zlecenie.refresh_from_db()
+    assert zlecenie.rozpoczeto is not None and zlecenie.zakonczono is None

@@ -71,9 +71,25 @@ class PobieranieOdpowiednikowPBNAdmin(admin.ModelAdmin):
         return obj.stan
 
     def changeform_view(self, request, object_id=None, form_url="", extra_context=None):
-        from .pobieranie_odpowiednikow import podsumowanie
+        from django.contrib import messages
+        from django.http import HttpResponseRedirect
+
+        from .pobieranie_odpowiednikow import podsumowanie, ponow
 
         zlecenie = self.get_object(request, object_id) if object_id else None
+        if zlecenie is not None and request.method == "POST":
+            # Jedyna dozwolona zmiana: ponowienie przerwanego zlecenia.
+            if "_ponow" in request.POST and ponow(zlecenie):
+                self.message_user(
+                    request, "Zlecenie wróciło do kolejki.", messages.SUCCESS
+                )
+            else:
+                self.message_user(
+                    request,
+                    "Tego zlecenia nie można teraz ponowić — nie jest przerwane.",
+                    messages.WARNING,
+                )
+            return HttpResponseRedirect(request.path)
         extra_context = dict(extra_context or {})
         if zlecenie is not None:
             model = zlecenie.content_type.model_class()

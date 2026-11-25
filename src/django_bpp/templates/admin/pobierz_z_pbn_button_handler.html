@@ -1,6 +1,7 @@
 {# Jeden przycisk „Pobierz z PBN” przy polu „Odpowiednik w PBN” (FD#515). #}
 {# Parametry include: url — adres widoku, pola — nazwy pól formularza #}
-{# (oddzielone spacjami), które przeglądarka wysyła do wyszukania. #}
+{# (oddzielone spacjami), które przeglądarka wysyła do wyszukania, #}
+{# model — „ciagle” dla wydawnictw ciągłych (rodzaj rekordu: artykuł). #}
 <script type="text/javascript">
     (function ($) {
         $(document).ready(function () {
@@ -83,7 +84,10 @@
             }
 
             przycisk.click(function () {
-                var dane = {pk: "{{ original.pk|default_if_none:''|escapejs }}"};
+                var dane = {
+                    pk: "{{ original.pk|default_if_none:''|escapejs }}",
+                    model: "{{ model|default:''|escapejs }}"
+                };
                 $.each(pola, function (_, nazwa) {
                     var el = $("#id_" + nazwa);
                     if (el.length) {
@@ -98,6 +102,9 @@
                     type: "POST",
                     url: "{{ url|escapejs }}",
                     data: dane,
+                    // Serwer czeka na PBN najwyżej kilkadziesiąt sekund;
+                    // przycisk nie może zostać „Szukam…” na zawsze.
+                    timeout: 90000,
                     error: function (request, status, error) {
                         przycisk.val(NAPIS).prop("disabled", false);
                         pokaz("❌", "Nie udało się połączyć z serwerem (" +

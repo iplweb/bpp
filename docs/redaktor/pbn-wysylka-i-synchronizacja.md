@@ -216,19 +216,32 @@ Wynik pojawia się **pod przyciskiem** (bez wyskakujących okienek):
 | Co widzisz | Co to znaczy |
 |---|---|
 | ✅ „Znaleziono po: DOI … Wstawiono: …” | rekord wskazany jednoznacznie — jest już w polu **Odpowiednik w PBN**. **Zapisz pracę**, żeby go zachować |
-| 👉 lista rekordów z przyciskami **„Wybierz”** | BPP coś znalazło, ale nie ma pewności (kilka rekordów albo inny tytuł niż w formularzu) — wybierz właściwy; przy każdym jest tytuł, rok i rodzaj w PBN |
+| 👉 lista rekordów z przyciskami **„Wybierz”** | BPP coś znalazło, ale nie ma pewności (kilka rekordów, inny tytuł albo inny rodzaj niż w formularzu) — wybierz właściwy; przy każdym jest tytuł, rok i rodzaj w PBN. Lista ma najwyżej 10 pozycji: najpierw rekordy o zgodnym tytule, potem z rokiem z formularza |
 | ℹ️ „Nie udało się znaleźć odpowiednika w PBN (sprawdzono: …)” | pod żadnym z wymienionych identyfikatorów PBN tej pracy nie zna |
 | ℹ️ „Uzupełnij DOI, adres WWW lub ISBN…” | formularz nie ma żadnego identyfikatora, po którym da się szukać |
 
-BPP wstawia rekord bez pytania tylko wtedy, gdy **DOI** wskazuje dokładnie
-jeden rekord albo gdy rekord znaleziony po **adresie WWW / ISBN** ma **ten
-sam tytuł** co praca w formularzu. Przycisk niczego nie zapisuje — zmiana
+BPP wstawia rekord bez pytania tylko wtedy, gdy nie ma żadnej wątpliwości:
+
+- **rodzaj rekordu się zgadza** — artykuł w BPP z artykułem w PBN, książka
+  z książką, rozdział z rozdziałem. Rodzaj pracy BPP bierze z formularza
+  (wydawnictwo ciągłe to artykuł; w zwartym decyduje **Charakter formalny**
+  i to, czy wskazano **Wydawnictwo nadrzędne**), **oraz**
+- **DOI** wskazuje dokładnie jeden rekord albo rekord znaleziony po
+  **adresie WWW / ISBN** ma **ten sam tytuł** co praca w formularzu.
+
+W każdym innym przypadku — także gdy rodzaju nie da się ustalić (np. nowe
+wydawnictwo zwarte bez wybranego charakteru formalnego) — rekord trafia na
+listę do wyboru. Rekordy **usunięte w PBN** są pomijane. Przycisk niczego
+nie zapisuje — zmiana
 trafia do bazy dopiero, gdy zapiszesz pracę. Gdy praca **ma już**
 odpowiednik w PBN, przycisku nie ma (wraca po wyczyszczeniu pola).
 
 Jeśli pod wynikiem jest dopisek o logowaniu do PBN — BPP przeszukało tylko
 dane już pobrane; zaloguj się do PBN (menu **PBN → autoryzuj**) i kliknij
-jeszcze raz, żeby sprawdzić także serwer PBN.
+jeszcze raz, żeby sprawdzić także serwer PBN. Dopisek **„Serwer PBN nie
+odpowiada”** znaczy to samo z innego powodu: BPP czeka na PBN najwyżej
+kilkadziesiąt sekund i pokazuje wynik z danych już pobranych — spróbuj
+ponownie później.
 
 Ten sam przycisk jest w formularzu **autora** (patrz
 [Autorzy](autorzy.md#pobierz-z-pbn)), **źródła** (szuka po ISSN, E-ISSN
@@ -238,8 +251,9 @@ pobranych do BPP, a pozycje z wykazu ministerialnego pokazuje pierwsze (⭐).
 !!! warning "Rozdział i książka mają ten sam ISBN"
 
     Rozdział nosi ISBN książki, więc po samym ISBN BPP znajdzie zwykle
-    **książkę**. Dlatego przy innym tytule rekord nie jest wstawiany sam,
-    tylko trafia na listę do wyboru. Nie wybieraj rekordu `BOOK` jako
+    **książkę** — podobnie, gdy rozdziałowi wpisano DOI książki albo
+    zatytułowano go jak cały tom. Dlatego rekord `BOOK` nigdy nie jest
+    wstawiany rozdziałowi sam, tylko trafia na listę do wyboru. Nie wybieraj rekordu `BOOK` jako
     odpowiednika rozdziału. Rozdział wprowadź z **wydawnictwem nadrzędnym**
     (książką), książce ustaw odpowiednik w PBN, a rozdział wyślij do PBN —
     albo, jeśli rozdział już jest w PBN, wybierz rekord `CHAPTER`.
@@ -265,11 +279,16 @@ Raport dzieli prace na grupy:
 | Grupa | Co się stało |
 |---|---|
 | ✅ Znaleziono i ustawiono odpowiednik | praca dostała odpowiednik (w raporcie: po czym); w **Historii** pracy jest wpis „PBN UID ustawiony automatycznie (grupowo) po: …” |
-| 👉 Do ręcznego wyboru | kilku kandydatów albo dopasowanie niepewne (np. ISBN książki przy rozdziale) — **niczego nie ustawiono**; otwórz pracę z raportu i wybierz przyciskiem „Pobierz z PBN” |
+| 👉 Do ręcznego wyboru | kilku kandydatów albo dopasowanie niepewne (inny tytuł, inny albo nieustalony rodzaj rekordu — np. ISBN lub DOI książki przy rozdziale; praca zmieniona w trakcie wyszukiwania) — **niczego nie ustawiono**; otwórz pracę z raportu i wybierz przyciskiem „Pobierz z PBN” |
 | ⚠️ Odpowiednik przypisany do innego rekordu | znaleziony rekord PBN ma już inna praca w BPP (także w koszu) — to zwykle duplikat; niczego nie ustawiono |
 | ❌ Nie znaleziono odpowiednika | PBN nie zna pracy pod sprawdzonymi identyfikatorami |
 | ✏️ Brak danych do wyszukania | praca nie ma DOI, adresu WWW ani ISBN — uzupełnij |
 | 🔌 Błąd połączenia z PBN | serwer PBN nie odpowiedział — zleć akcję ponownie dla tych prac |
+
+Gdy zadanie zostanie przerwane (np. restart serwera) i przez 15 minut nie ma
+postępu, strona zlecenia pokaże **„Zlecenie zostało przerwane”** i przycisk
+**„🔁 Ponów zlecenie”** — dotychczasowy raport zostaje, zadanie dokończy
+pozostałe prace.
 
 Żeby BPP mogło pytać serwer PBN, musisz być **zalogowany do PBN** (menu
 **PBN → autoryzuj**) w chwili zlecania. Bez tego zadanie przeszuka tylko

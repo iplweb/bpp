@@ -279,3 +279,179 @@ def test_akcja_dla_autorow_ustawia_tylko_pewne(
     nieznany.refresh_from_db()
     assert z_orcid.pbn_uid_id == OSOBA_1
     assert nieznany.pbn_uid_id is None
+
+
+# --- recenzja PR 1184 ---------------------------------------------------------
+
+
+def _json_osoby(pk, orcid=ORCID):
+    return {
+        "mongoId": pk,
+        "status": "ACTIVE",
+        "verificationLevel": "x",
+        "verified": True,
+        "versions": [
+            {
+                "current": True,
+                "object": {"lastName": "Kowalski", "name": "Jan", "orcid": orcid},
+            }
+        ],
+    }
+
+
+@pytest.mark.django_db
+def test_dwa_profile_pbn_z_tym_samym_orcid_to_wybor_nie_automat(uczelnia):
+    """Serwer PBN zwraca DWA profile dla ORCID nieznanego lokalnie. Oba
+    trafiają do kopii i do oceny — zapisanie tylko pierwszego sprawiłoby,
+    że wyglądałby na jedyny, czyli pewny."""
+    klient = KlientTylkoOrcid([_json_osoby(OSOBA_1), _json_osoby(OSOBA_2)])
+
+    wynik = szukaj_odpowiednika_autora(
+        _autor(orcid=ORCID), uczelnia=uczelnia, klient=lambda: klient
+    )
+
+    assert Scientist.objects.filter(pk__in=[OSOBA_1, OSOBA_2]).count() == 2
+    assert wynik.status == STATUS_DO_WYBORU
+    assert {k["id"] for k in wynik.kandydaci} == {OSOBA_1, OSOBA_2}
+
+
+@pytest.mark.django_db
+def test_inny_orcid_kandydata_wyklucza_automat(
+    uczelnia, jednostka, wydawnictwo_ciagle_maker
+):
+    """ORCID autora jest PBN nieznany, a imiennik potwierdzony nazwiskiem
+    i publikacją ma INNY ORCID — dwa różne niepuste ORCID to nie ta sama
+    osoba; nigdy automatycznie (także w komendzie z FD#510)."""
+    from pbn_api.models import Publication
+    from pbn_integrator.utils.dopasowanie_autorow import (
+        PEWNE,
+        SPRZECZNE,
+        zbadaj_autorow,
+    )
+
+    _osoba(OSOBA_1, "Kowalski", "Jan", orcid="0000-0001-2345-6789", z_instytucji=True)
+    autor = _autor(orcid=ORCID)
+    publikacja = baker.make(
+        Publication,
+        mongoId="5e709189878c28a04737dcaa",
+        versions=[
+            {
+                "current": True,
+                "object": {
+                    "title": "Praca",
+                    "authors": {OSOBA_1: {"lastName": "Kowalski", "name": "Jan"}},
+                    "orderList": {"AUTHOR": [OSOBA_1]},
+                },
+            }
+        ],
+    )
+    praca = wydawnictwo_ciagle_maker(tytul_oryginalny="Praca", pbn_uid=publikacja)
+    praca.dodaj_autora(autor, jednostka)
+
+    # Strażnik: bez sprzecznego ORCID ten sam dowód JEST pewny.
+    bez_orcid = _autor(orcid=None)
+    praca.dodaj_autora(bez_orcid, jednostka)
+    assert zbadaj_autorow([bez_orcid], uczelnia=uczelnia)[0].poziom != SPRZECZNE
+
+    propozycja = zbadaj_autorow([autor], uczelnia=uczelnia)[0]
+    wynik = szukaj_odpowiednika_autora(autor, uczelnia=uczelnia)
+
+    assert propozycja.poziom == SPRZECZNE
+    assert propozycja.poziom != PEWNE and not propozycja.do_zapisu
+    assert "różni się od ORCID" in "; ".join(propozycja.uwagi)
+    assert wynik.status == STATUS_DO_WYBORU
+
+
+@pytest.fixture
+def wydawnictwo_ciagle_maker(
+    db, jezyki, charaktery_formalne, typy_kbn, statusy_korekt, typy_odpowiedzialnosci
+):
+    def maker(**kw):
+        return baker.make("bpp.Wydawnictwo_Ciagle", **kw)
+
+    return maker
+
+
+class KlientNiedostepny:
+    def __init__(self):
+        self.proby = 0
+
+    def get_person_by_orcid(self, orcid):
+        import requests
+
+        self.proby += 1
+        raise requests.ConnectionError("PBN nie odpowiada")
+
+
+@pytest.mark.django_db
+def test_niedostepny_pbn_w_formularzu_autora_daje_kandydatow_z_kopii(uczelnia):
+    """Przycisk nie kończy się „nieznanym błędem”: przy niedostępnym PBN
+    redaktor dostaje kandydatów z lokalnej kopii i uwagę."""
+    from bpp.views.api.pbn_odpowiednik import KOMUNIKAT_NIEDOSTEPNY, SerwerPBN
+
+    _osoba(OSOBA_1, "Kowalski", "Jan", z_instytucji=True)
+    klient = KlientNiedostepny()
+
+    wynik = szukaj_odpowiednika_autora(
+        _autor(orcid=ORCID),
+        uczelnia=uczelnia,
+        klient=SerwerPBN(lambda: klient, lagodnie=True),
+    )
+
+    assert klient.proby == 1
+    assert wynik.status == STATUS_DO_WYBORU
+    assert [k["id"] for k in wynik.kandydaci] == [OSOBA_1]
+    assert wynik.uwaga == KOMUNIKAT_NIEDOSTEPNY
+
+
+@pytest.mark.django_db
+def test_niedostepny_pbn_w_akcji_grupowej_autorow_nie_wiesza_zlecenia(
+    admin_user, uczelnia, mocker
+):
+    """Po serii błędów połączenia zadanie przestaje pytać serwer i kończy
+    na lokalnej kopii — nie ponawia w nieskończoność."""
+    from django.contrib.contenttypes.models import ContentType
+
+    from pbn_integrator import pobieranie_odpowiednikow as po
+
+    klient = KlientNiedostepny()
+    mocker.patch("bpp.models.Uczelnia.pbn_client", return_value=klient)
+    autorzy = [
+        _autor(nazwisko=f"Nieznany{i}", orcid=f"0000-0002-0000-000{i}")
+        for i in range(8)
+    ]
+    zlecenie = PobieranieOdpowiednikowPBN.objects.create(
+        zlecil=admin_user,
+        uczelnia=uczelnia,
+        rodzaj="autorzy",
+        content_type=ContentType.objects.get_for_model(Autor),
+        identyfikatory=[a.pk for a in autorzy],
+    )
+
+    po.wykonaj(zlecenie)
+
+    assert klient.proby == po.MAKS_BLEDOW_Z_RZEDU
+    assert zlecenie.zakonczono is not None and not zlecenie.blad, zlecenie.blad
+    assert len(zlecenie.wyniki) == 8
+
+
+@pytest.mark.django_db
+def test_widok_autora_trzyma_sie_zakresu_panelu(admin_client, uczelnia, mocker):
+    """Autor, którego konto nie może otworzyć w panelu redagowania (inna
+    uczelnia), nie jest też dostępny przez przycisk."""
+    from django.contrib import admin
+
+    _osoba(OSOBA_1, "Kowalski", "Jan", z_instytucji=True)
+    autor = _autor()
+    mocker.patch.object(
+        type(admin.site._registry[Autor]),
+        "get_queryset",
+        return_value=Autor.objects.none(),
+    )
+
+    odp = admin_client.post(
+        reverse("bpp:api_pobierz_z_pbn_autora"),
+        data={"pk": autor.pk, "imiona": "Jan", "nazwisko": "Kowalski"},
+    )
+
+    assert odp.status_code == 403

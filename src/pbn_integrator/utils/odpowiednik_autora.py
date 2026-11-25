@@ -52,21 +52,27 @@ class OdpowiednikAutora:
 
 
 def pobierz_osobe_po_orcid(klient, orcid):
-    """Zapytaj serwer PBN o osobę z danym ORCID i zapisz ją w lokalnej
-    kopii. Zwraca ``Scientist`` albo ``None``, gdy PBN takiej osoby nie zna."""
+    """Zapytaj serwer PBN o osoby z danym ORCID i zapisz WSZYSTKIE
+    w lokalnej kopii. Zwraca listę ``Scientist`` (pustą, gdy PBN takiej
+    osoby nie zna).
+
+    Wszystkie, nie tylko pierwszą: kilka profili z jednym ORCID to
+    niejednoznaczność, którą dopasowanie musi zobaczyć — po zapisaniu
+    jednego uznałoby go za pewny.
+    """
     from pbn_integrator.utils import zapisz_mongodb
 
     try:
         osoby = klient.get_person_by_orcid(orcid)
     except HttpException as e:
         if e.status_code == 404:
-            return None  # PBN nie zna tego ORCID — to nie błąd
+            return []  # PBN nie zna tego ORCID — to nie błąd
         raise
     if not osoby:
-        return None
+        return []
     if isinstance(osoby, dict):
         osoby = [osoby]
-    return zapisz_mongodb(osoby[0], Scientist)
+    return [zapisz_mongodb(osoba, Scientist) for osoba in osoby]
 
 
 def uzupelnij_kopie_po_orcid(autor, osoby_instytucji, serwer):
@@ -74,10 +80,10 @@ def uzupelnij_kopie_po_orcid(autor, osoby_instytucji, serwer):
     spróbuj pobrać osobę z serwera PBN. ``serwer`` — ``SerwerPBN``."""
     orcid = normalize_orcid(autor.orcid)
     if not orcid or serwer is None:
-        return None
+        return []
     if szukaj_po_orcid(orcid, osoby_instytucji).status != BRAK:
-        return None
-    return serwer.wykonaj(lambda klient: pobierz_osobe_po_orcid(klient, orcid))
+        return []
+    return serwer.wykonaj(lambda klient: pobierz_osobe_po_orcid(klient, orcid), [])
 
 
 def _imienniki(autor):

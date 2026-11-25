@@ -31,6 +31,20 @@ def rozwin_ekstra_informacje_playwright(admin_page: Page):
             expect(parent).not_to_have_class(re.compile(r"\bgrp-closed\b"))
 
 
+def potwierdz_odpowiednik_po_doi(admin_page: Page, wydawnictwo):
+    """Wydawnictwo ciągłe to artykuł — rekord PBN typu ARTICLE znaleziony po
+    DOI trafia do pola od razu, a komunikat pojawia się przy przycisku (bez
+    alert()). W nowym wydawnictwie zwartym rodzaj rekordu (książka /
+    rozdział) nie jest jeszcze ustalony, więc BPP niczego nie wstawia samo —
+    redaktor wybiera rekord z listy."""
+    komunikat = admin_page.locator("#id_pobierz_z_pbn_komunikat")
+    if wydawnictwo == "wydawnictwo_ciagle":
+        expect(komunikat).to_contain_text("Znaleziono po: DOI")
+    else:
+        expect(komunikat).to_contain_text("wybierz właściwy")
+        admin_page.locator(".pobierz-z-pbn-wybierz").first.click()
+
+
 @pytest.mark.serial
 @pytest.mark.django_db(transaction=True)
 @pytest.mark.parametrize("wydawnictwo", ["wydawnictwo_ciagle", "wydawnictwo_zwarte"])
@@ -55,7 +69,12 @@ def test_change_form_get_pbn_by_doi_via_api_nie_ma_w_api_jest_w_bazie(
             versions=[
                 {
                     "current": True,
-                    "object": {"year": ROK, "doi": DOI, "title": "Ten tego"},
+                    "object": {
+                        "year": ROK,
+                        "doi": DOI,
+                        "title": "Ten tego",
+                        "type": "ARTICLE",
+                    },
                 }
             ],
         )
@@ -73,11 +92,7 @@ def test_change_form_get_pbn_by_doi_via_api_nie_ma_w_api_jest_w_bazie(
         admin_page.wait_for_selector("#id_pobierz_z_pbn", state="visible")
         admin_page.locator("#id_pobierz_z_pbn").click()
 
-        # DOI wskazuje jeden rekord — trafia do pola od razu, a komunikat
-        # pojawia się przy przycisku (bez alert()).
-        expect(admin_page.locator("#id_pobierz_z_pbn_komunikat")).to_contain_text(
-            "Znaleziono po: DOI"
-        )
+        potwierdz_odpowiednik_po_doi(admin_page, wydawnictwo)
         # Verify pbn_uid field was populated with the local database record
         expect(admin_page.locator("#id_pbn_uid")).to_have_value(UID_REKORDU)
         expect(admin_page.locator("#id_pobierz_z_pbn")).to_be_hidden()
@@ -101,6 +116,7 @@ def test_change_form_get_pbn_by_doi_via_api_jest_w_api(
 
     # Setup mock PBN API responses
     pub1 = pbn_publication_json(ROK, mongoId=UID_REKORDU, doi=DOI)
+    pub1["versions"][0]["object"]["type"] = "ARTICLE"
     pbn_serwer.expect_request(PBN_SEARCH_PUBLICATIONS_URL).respond_with_json(
         pbn_pageable_json([pub1])
     )
@@ -118,11 +134,7 @@ def test_change_form_get_pbn_by_doi_via_api_jest_w_api(
     admin_page.wait_for_selector("#id_pobierz_z_pbn", state="visible")
     admin_page.locator("#id_pobierz_z_pbn").click()
 
-    # DOI wskazuje jeden rekord — trafia do pola od razu, a komunikat
-    # pojawia się przy przycisku (bez alert()).
-    expect(admin_page.locator("#id_pobierz_z_pbn_komunikat")).to_contain_text(
-        "Znaleziono po: DOI"
-    )
+    potwierdz_odpowiednik_po_doi(admin_page, wydawnictwo)
     # Verify pbn_uid field was populated with the API result
     expect(admin_page.locator("#id_pbn_uid")).to_have_value(UID_REKORDU)
     expect(admin_page.locator("#id_pobierz_z_pbn")).to_be_hidden()

@@ -4,7 +4,7 @@
 
 {% block extrahead %}
     {{ block.super }}
-    {% if zlecenie and not zlecenie.zakonczono %}
+    {% if zlecenie and not zlecenie.zakonczono and not zlecenie.przerwane %}
         {# Dopóki zadanie pracuje w tle, strona odświeża się sama. #}
         <meta http-equiv="refresh" content="5">
     {% endif %}
@@ -12,7 +12,19 @@
 
 {% block content %}
     <div id="grp-content-container" class="pobieranie-odpowiednikow">
-        {% if not zlecenie.zakonczono %}
+        {% if zlecenie.przerwane %}
+            <p id="pobieranie-stan">
+                ⚠️ <strong>Zlecenie zostało przerwane</strong> — od dłuższego
+                czasu nie ma postępu (przetworzono {{ zlecenie.przetworzono }}
+                z {{ zlecenie.liczba_rekordow }}), najpewniej po restarcie
+                serwera. Możesz je ponowić: dotychczasowy raport zostaje,
+                zadanie dokończy pozostałe rekordy.
+            </p>
+            <form method="post">
+                {% csrf_token %}
+                <input type="submit" name="_ponow" value="🔁 Ponów zlecenie">
+            </form>
+        {% elif not zlecenie.zakonczono %}
             <p id="pobieranie-stan">
                 ⏳ <strong>{{ zlecenie.stan|capfirst }}</strong> —
                 przetworzono {{ zlecenie.przetworzono }}

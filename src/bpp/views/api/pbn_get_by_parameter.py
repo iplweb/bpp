@@ -32,6 +32,7 @@ import operator
 
 import isbnlib
 from django.db.models import Q
+from pbn_client.const import DELETED
 
 from bpp.models.cache import Rekord
 from bpp.util.isbn import (
@@ -84,6 +85,22 @@ def formy_doi(txt) -> list[str]:
     return [f for f in dict.fromkeys(formy) if f]
 
 
+#: Ile rekordów najwyżej bierzemy z lokalnej kopii dla jednego identyfikatora.
+LIMIT_LOKALNY = 500
+
+
+def bez_usunietych(uidy) -> list[str]:
+    """``uidy`` (z zachowaniem kolejności) bez rekordów oznaczonych w PBN
+    jako usunięte i bez takich, których nie ma w lokalnej kopii."""
+    uidy = list(uidy)
+    zywe = set(
+        Publication.objects.filter(pk__in=uidy)
+        .exclude(status=DELETED)
+        .values_list("pk", flat=True)
+    )
+    return [uid for uid in uidy if uid in zywe]
+
+
 class SzukaczPBN:
     """Strategia szukania rekordów PBN po jednym rodzaju identyfikatora."""
 
@@ -106,20 +123,25 @@ class SzukaczPBN:
         raise NotImplementedError
 
     def szukaj_lokalnie(self, value) -> list[str]:
-        """UID-y PBN znalezione bez odpytywania serwera PBN."""
+        """UID-y PBN znalezione bez odpytywania serwera PBN — PEŁNY wynik
+        (do ``LIMIT_LOKALNY``), w stałej kolejności, bez rekordów usuniętych
+        w PBN. Listę do pokazania obcina dopiero wołający: zawężenie po
+        tytule musi widzieć wszystko (książka z kilkudziesięcioma
+        rozdziałami o tym samym ISBN)."""
         uidy = list(
-            Publication.objects.filter(self.warunek_lokalny(value)).values_list(
-                "pk", flat=True
-            )[: MAX_KANDYDATOW * 2]
+            Publication.objects.filter(self.warunek_lokalny(value))
+            .order_by("pk")
+            .values_list("pk", flat=True)[:LIMIT_LOKALNY]
         )
         # Rekordy BPP, które mają już odpowiednik w PBN — np. książka
         # powiązana w BPP, której ISBN nosi też wprowadzany rozdział.
         uidy += list(
             self.rekordy_bpp(value)
             .exclude(pbn_uid_id=None)
-            .values_list("pbn_uid_id", flat=True)[: MAX_KANDYDATOW * 2]
+            .order_by("pbn_uid_id")
+            .values_list("pbn_uid_id", flat=True)[:LIMIT_LOKALNY]
         )
-        return list(dict.fromkeys(uidy))
+        return bez_usunietych(dict.fromkeys(uidy))
 
     def szukaj_w_pbn(self, client, value) -> list[str]:
         """UID-y z API PBN. Formy identyfikatora próbujemy po kolei i kończymy

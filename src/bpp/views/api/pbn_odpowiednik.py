@@ -18,9 +18,11 @@ w pole formularza; zapis następuje dopiero, gdy redaktor zapisze rekord.
 import logging
 import re
 import sys
+import time
 from dataclasses import dataclass, field
 from types import SimpleNamespace
 
+import requests
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.core.exceptions import ImproperlyConfigured, PermissionDenied
 from django.db.models.functions import Lower
@@ -33,9 +35,11 @@ from bpp.views.api.pbn_get_by_parameter import (
     MAX_KANDYDATOW,
     SzukaczDOI,
     SzukaczISBN,
+    bez_usunietych,
 )
 from bpp.zglaszanie_bledow import capture_exception
 from pbn_api.exceptions import (
+    AccessDeniedException,
     HttpException,
     NeedsPBNAuthorisationException,
     PraceSerwisoweException,
@@ -65,6 +69,34 @@ KOMUNIKAT_AUTORYZACJA = (
 
 #: Wyjątki oznaczające „nie da się odpytać serwera PBN w imieniu użytkownika”.
 BRAK_AUTORYZACJI = (WillNotExportError, NeedsPBNAuthorisationException)
+
+#: Błędy połączenia z serwerem PBN (serwer leży, przekroczony czas, 5xx…).
+BLEDY_POLACZENIA = (
+    HttpException,
+    PraceSerwisoweException,
+    AccessDeniedException,
+    requests.RequestException,
+)
+
+KOMUNIKAT_NIEDOSTEPNY = (
+    "Serwer PBN nie odpowiada — sprawdzono tylko lokalną kopię danych z PBN. "
+    "Spróbuj ponownie za chwilę."
+)
+
+#: Czas oczekiwania (połączenie, odpowiedź) na serwer PBN, w sekundach. Dużo
+#: krótszy niż domyślny klienta PBN — redaktor czeka przy formularzu.
+TIMEOUT_PBN = (5, 20)
+
+#: Łączny limit czasu jednego wyszukiwania na serwerze PBN (zapytanie
+#: i dociąganie szczegółów znalezionych rekordów), w sekundach.
+LIMIT_LACZNY_PBN = 45
+
+#: Rodzaj rekordu BPP → dopuszczalne rodzaje rekordu w PBN.
+ZGODNE_RODZAJE = {
+    "ARTICLE": {"ARTICLE"},
+    "BOOK": {"BOOK", "EDITED_BOOK"},
+    "CHAPTER": {"CHAPTER"},
+}
 
 _NIE_ALNUM = re.compile(r"[\W_]+")
 
@@ -161,14 +193,59 @@ class Odpowiednik:
         )
 
 
-def _zawez_po_tytule(uidy, tytul):
-    """UID-y rekordów PBN o tytule zgodnym z ``tytul`` (bez wielkości liter
-    i znaków przestankowych)."""
+def rodzaj_rekordu(charakter_ogolny="", ma_nadrzedne=False, model=None):
+    """Rodzaj rekordu BPP w kategoriach PBN (``ARTICLE`` / ``BOOK`` /
+    ``CHAPTER``) albo ``""``, gdy nie da się go ustalić."""
+    from bpp import const
+
+    if ma_nadrzedne or charakter_ogolny == const.CHARAKTER_OGOLNY_ROZDZIAL:
+        return "CHAPTER"
+    if charakter_ogolny == const.CHARAKTER_OGOLNY_KSIAZKA:
+        return "BOOK"
+    if charakter_ogolny == const.CHARAKTER_OGOLNY_ARTYKUL or model == "ciagle":
+        return "ARTICLE"
+    return ""
+
+
+def _zgodnosc_rodzaju(rodzaj, publikacja):
+    """``True``/``False``, gdy rodzaje da się porównać; ``None``, gdy
+    któregoś nie znamy."""
+    typ = publikacja.type()
+    if not rodzaj or not typ or rodzaj not in ZGODNE_RODZAJE:
+        return None
+    return typ in ZGODNE_RODZAJE[rodzaj]
+
+
+def _pewne_i_reszta(szukacz, uidy, tytul, rodzaj):
+    """Podziel ``uidy`` na rekordy, które wolno przypisać bez pytania,
+    i pozostałe (kandydatów do wyboru).
+
+    Pewny jest wyłącznie rekord, którego rodzaj w PBN POTWIERDZA rodzaj
+    rekordu BPP (książka / rozdział / artykuł) i który dodatkowo ma zgodny
+    tytuł — albo został znaleziony po DOI jako jedyny (tytuły w PBN bywają
+    zapisane inaczej). Rodzaj sprzeczny albo nieustalony po którejkolwiek
+    stronie = do ręcznego wyboru: rozdział dziedziczy ISBN książki, bywa
+    zatytułowany jak tom i zdarza mu się mieć wpisany DOI książki.
+    """
+    publikacje = Publication.objects.in_bulk(uidy)
+    uidy = [uid for uid in uidy if uid in publikacje]
     wzorzec = _norm_tytul(tytul)
-    if not wzorzec:
-        return []
-    tytuly = dict(Publication.objects.filter(pk__in=uidy).values_list("pk", "title"))
-    return [uid for uid in uidy if _norm_tytul(tytuly.get(uid)) == wzorzec]
+    pewne = []
+    zgodne_tytulem = []
+    for uid in uidy:
+        zgodny_tytul = bool(wzorzec) and _norm_tytul(publikacje[uid].title) == wzorzec
+        if zgodny_tytul:
+            zgodne_tytulem.append(uid)
+        if _zgodnosc_rodzaju(rodzaj, publikacje[uid]) is not True:
+            # Rodzaj sprzeczny ALBO nieustalony — bez potwierdzonej
+            # zgodności nie ma automatu.
+            continue
+        if zgodny_tytul or (szukacz is SZUKACZ_DOI and len(uidy) == 1):
+            pewne.append(uid)
+    # Na liście do wyboru najpierw rekordy o zgodnym tytule.
+    reszta = [u for u in zgodne_tytulem if u not in pewne]
+    reszta += [u for u in uidy if u not in pewne and u not in reszta]
+    return pewne, reszta
 
 
 def _inne_zapisy(szukacz, wartosc):
@@ -180,19 +257,60 @@ def _inne_zapisy(szukacz, wartosc):
     return f" (także: {', '.join(inne)})" if inne else ""
 
 
+def _bez_ponowien(klient, timeout):
+    """Ustaw TEMU klientowi krótki czas oczekiwania i jedną próbę GET.
+
+    Domyślny transport ponawia GET 15 razy z przerwami 1–5 s przy czasie
+    oczekiwania (30, 120) — przy niedostępnym PBN to minuty. Zmiana dotyczy
+    wyłącznie tego obiektu klienta (tworzonego na jedno żądanie/zlecenie),
+    nie globalnego zachowania klienta PBN w innych modułach.
+    """
+    transport = getattr(klient, "transport", None)
+    if transport is None or not hasattr(transport, "_make_get_request_with_retry"):
+        return  # atrapa transportu w testach
+    transport.timeout = timeout
+
+    def jedna_proba(url, headers, max_retries=1):
+        termin = getattr(transport, "termin_bpp", None)
+        if termin is not None and time.monotonic() > termin:
+            # Łączny limit jednego wyszukiwania (wyszukanie + dociąganie
+            # szczegółów kilku rekordów) — nie zaczynamy kolejnego żądania.
+            raise requests.Timeout("Przekroczono łączny limit czasu zapytań do PBN")
+        return requests.get(
+            transport.base_url + url, headers=headers, timeout=transport.timeout
+        )
+
+    transport._make_get_request_with_retry = jedna_proba
+
+
 class SerwerPBN:
     """Leniwy dostęp do serwera PBN w imieniu użytkownika.
 
     Klient powstaje dopiero przy pierwszym zapytaniu (trafienie lokalne nie
-    wymaga ani konfiguracji, ani tokena). Po odmowie autoryzacji obiekt
-    milknie — kolejne zapytania nie idą już w sieć, a ``powod`` mówi
-    dlaczego. Akcja grupowa używa jednego obiektu dla wszystkich rekordów.
+    wymaga ani konfiguracji, ani tokena) i dostaje krótki czas oczekiwania
+    bez pętli ponowień. Po odmowie autoryzacji obiekt milknie — kolejne
+    zapytania nie idą już w sieć, a ``powod`` mówi dlaczego.
+
+    ``lagodnie=True`` (przycisk w formularzu): błąd połączenia też wycisza
+    serwer — wynik powstaje z lokalnej kopii, z uwagą dla redaktora.
+    ``lagodnie=False`` (akcja grupowa): błąd połączenia jest propagowany,
+    żeby trafił do raportu przy konkretnym rekordzie.
     """
 
-    def __init__(self, fabryka=None):
+    def __init__(
+        self,
+        fabryka=None,
+        *,
+        lagodnie=False,
+        timeout=TIMEOUT_PBN,
+        limit_laczny=LIMIT_LACZNY_PBN,
+    ):
         self._fabryka = fabryka
         self._klient = None
         self._ustalony = False
+        self._lagodnie = lagodnie
+        self._timeout = timeout
+        self._limit_laczny = limit_laczny
         self.powod = ""
 
     def klient(self):
@@ -205,7 +323,15 @@ class SerwerPBN:
                     # Brak tokena użytkownika albo nieskonfigurowana
                     # integracja — zostaje lokalna kopia danych.
                     self.powod = KOMUNIKAT_AUTORYZACJA
+                else:
+                    _bez_ponowien(self._klient, self._timeout)
         return self._klient
+
+    def wylacz(self, powod=KOMUNIKAT_NIEDOSTEPNY):
+        """Przestań odpytywać serwer PBN (zostaje lokalna kopia)."""
+        self._ustalony = True
+        self._klient = None
+        self.powod = powod
 
     def wykonaj(self, funkcja, domyslnie=None):
         """Wywołaj ``funkcja(klient)``; bez klienta albo po odmowie
@@ -213,12 +339,20 @@ class SerwerPBN:
         klient = self.klient()
         if klient is None:
             return domyslnie
+        transport = getattr(klient, "transport", None)
+        if transport is not None:
+            transport.termin_bpp = time.monotonic() + self._limit_laczny
         try:
             return funkcja(klient)
         except BRAK_AUTORYZACJI:
             # Token użytkownika wygasł — zostaje lokalna kopia danych.
-            self._klient = None
-            self.powod = KOMUNIKAT_AUTORYZACJA
+            self.wylacz(KOMUNIKAT_AUTORYZACJA)
+            return domyslnie
+        except BLEDY_POLACZENIA as e:
+            if not self._lagodnie:
+                raise
+            logger.warning("Serwer PBN niedostępny: %r", e)
+            self.wylacz()
             return domyslnie
 
 
@@ -226,13 +360,22 @@ def _szukaj_na_serwerze(serwer, szukacz, wartosc):
     def funkcja(klient):
         uidy = szukacz.szukaj_w_pbn(klient, wartosc)
         szukacz.zapewnij_lokalnie(klient, uidy)
-        return uidy
+        # Rekord usunięty w PBN nie może zostać odpowiednikiem.
+        return bez_usunietych(uidy)
 
     return serwer.wykonaj(funkcja, [])
 
 
 def znajdz_odpowiednik_publikacji(
-    *, doi="", www="", public_www="", isbn="", e_isbn="", tytul="", klient=None
+    *,
+    doi="",
+    www="",
+    public_www="",
+    isbn="",
+    e_isbn="",
+    tytul="",
+    rodzaj="",
+    klient=None,
 ) -> Odpowiednik:
     """Znajdź w PBN odpowiednik publikacji, próbując kolejno jej
     identyfikatorów: DOI → adres WWW → publiczny adres WWW → ISBN → e-ISBN.
@@ -243,12 +386,15 @@ def znajdz_odpowiednik_publikacji(
     pozwala). ``klient`` to bezargumentowa funkcja zwracająca klienta PBN
     albo gotowy ``SerwerPBN``; ``None`` = tylko lokalnie.
 
-    Wynik jest ``PEWNY`` tylko wtedy, gdy:
+    Wynik jest ``PEWNY`` tylko wtedy, gdy dokładnie jeden znaleziony rekord
+    ma rodzaj w PBN zgodny z ``rodzaj`` rekordu BPP (``ARTICLE`` / ``BOOK``
+    / ``CHAPTER``) ORAZ:
 
-    * DOI wskazuje dokładnie jeden rekord, albo
-    * adres WWW / ISBN wskazuje rekord o tym samym tytule (ISBN książki
-      noszą też jej rozdziały, a adres WWW bywa wspólny dla kilku prac —
-      sam identyfikator to za mało, żeby wiązać bez pytania).
+    * ma ten sam tytuł, albo
+    * został znaleziony po DOI jako jedyny.
+
+    Bez potwierdzonej zgodności rodzaju (sprzeczny albo nieznany) wynik
+    jest zawsze ``DO_WYBORU``. Rekordy usunięte w PBN są pomijane.
 
     W pozostałych przypadkach znalezione rekordy wracają jako ``DO_WYBORU``.
     Funkcja niczego nie wiąże.
@@ -274,24 +420,23 @@ def znajdz_odpowiednik_publikacji(
         opis = f"{szukacz.nazwa_identyfikatora} {wartosc}"
         wynik.sprawdzono.append(opis + _inne_zapisy(szukacz, wartosc))
 
-        uidy = szukacz.szukaj_lokalnie(wartosc) or _szukaj_na_serwerze(
-            serwer, szukacz, wartosc
-        )
+        # Lokalnie bierzemy PEŁNY wynik i dopiero na nim zawężamy po tytule.
+        uidy = szukacz.szukaj_lokalnie(wartosc)
+        pewne, reszta = _pewne_i_reszta(szukacz, uidy, tytul, rodzaj)
+        if not pewne and (not uidy or _norm_tytul(tytul)):
+            # Lokalnie nic albo nic o tym tytule (np. w kopii są tylko
+            # rozdziały, a szukamy książki) — dopytaj serwer PBN.
+            uidy = list(
+                dict.fromkeys(uidy + _szukaj_na_serwerze(serwer, szukacz, wartosc))
+            )
+            pewne, reszta = _pewne_i_reszta(szukacz, uidy, tytul, rodzaj)
         wynik.bez_serwera = serwer.powod
-        if not uidy:
-            continue
-
-        uidy = uidy[:MAX_KANDYDATOW]
-        if szukacz is SZUKACZ_DOI and len(uidy) == 1:
-            pewne = uidy
-        else:
-            pewne = _zawez_po_tytule(uidy, tytul)
         if len(pewne) == 1:
             wynik.status, wynik.uidy, wynik.po_czym = PEWNY, pewne, opis
             return wynik
-        if do_wyboru is None:
-            # Zgodne tytułem na początek listy.
-            do_wyboru = (pewne + [u for u in uidy if u not in pewne], opis)
+        if (pewne or reszta) and do_wyboru is None:
+            # Zgodne tytułem na początek; obcinamy dopiero listę do pokazania.
+            do_wyboru = ((pewne + reszta)[:MAX_KANDYDATOW], opis)
 
     if do_wyboru is not None:
         wynik.status = DO_WYBORU
@@ -308,8 +453,16 @@ class PobierzZPBNBase(LoginRequiredMixin, View):
     """Wspólna obsługa żądania przycisku „Pobierz z PBN”: uprawnienia,
     klient PBN i zamiana błędów PBN na czytelny komunikat."""
 
+    #: Uprawnienia, z których co najmniej jedno musi mieć użytkownik —
+    #: te same, których panel redagowania wymaga do zmiany rekordu.
+    wymagane_uprawnienia = ()
+
     def dispatch(self, request, *args, **kwargs):
-        if request.user.is_authenticated and not request.user.is_staff:
+        if request.user.is_authenticated and not (
+            request.user.is_active
+            and request.user.is_staff
+            and any(request.user.has_perm(u) for u in self.wymagane_uprawnienia)
+        ):
             raise PermissionDenied
         return super().dispatch(request, *args, **kwargs)
 
@@ -320,13 +473,15 @@ class PobierzZPBNBase(LoginRequiredMixin, View):
         return Uczelnia.objects.get_for_request(self.request)
 
     def klient(self):
-        """Fabryka klienta PBN zalogowanego użytkownika (leniwa — lokalne
-        trafienie nie wymaga ani konfiguracji, ani tokena)."""
+        """Dostęp do serwera PBN w imieniu zalogowanego użytkownika: leniwy
+        (lokalne trafienie nie wymaga ani konfiguracji, ani tokena), z krótkim
+        czasem oczekiwania; niedostępny PBN nie jest błędem — wynik powstaje
+        z lokalnej kopii, z uwagą."""
         uczelnia = self.uczelnia()
         if uczelnia is None:
-            return None
+            return SerwerPBN(None)
         token = getattr(self.request.user, "pbn_token", "")
-        return lambda: uczelnia.pbn_client(token)
+        return SerwerPBN(lambda: uczelnia.pbn_client(token), lagodnie=True)
 
     def szukaj(self) -> dict:
         raise NotImplementedError
@@ -334,6 +489,8 @@ class PobierzZPBNBase(LoginRequiredMixin, View):
     def post(self, request, *args, **kw):
         try:
             return JsonResponse(self.szukaj())
+        except PermissionDenied:
+            raise
         except PraceSerwisoweException:
             return JsonResponse({"error": KOMUNIKAT_PRACE_SERWISOWE})
         except NeedsPBNAuthorisationException:
@@ -378,6 +535,31 @@ def _odpowiedz(status, komunikat, kandydaci, uwaga=""):
 class PobierzOdpowiednikPublikacjiView(PobierzZPBNBase):
     """Odpowiednik wydawnictwa ciągłego / zwartego."""
 
+    wymagane_uprawnienia = (
+        "bpp.change_wydawnictwo_ciagle",
+        "bpp.change_wydawnictwo_zwarte",
+    )
+
+    def rodzaj(self):
+        """Rodzaj rekordu z formularza: po charakterze formalnym i po tym,
+        czy wskazano wydawnictwo nadrzędne."""
+        from bpp.models import Charakter_Formalny
+
+        charakter = self.pole("charakter_formalny")
+        ogolny = ""
+        if charakter.isdigit():
+            ogolny = (
+                Charakter_Formalny.objects.filter(pk=int(charakter))
+                .values_list("charakter_ogolny", flat=True)
+                .first()
+                or ""
+            )
+        return rodzaj_rekordu(
+            ogolny,
+            bool(self.pole("wydawnictwo_nadrzedne")),
+            model=self.pole("model") or None,
+        )
+
     def szukaj(self):
         wynik = znajdz_odpowiednik_publikacji(
             doi=self.pole("doi"),
@@ -386,6 +568,7 @@ class PobierzOdpowiednikPublikacjiView(PobierzZPBNBase):
             isbn=self.pole("isbn"),
             e_isbn=self.pole("e_isbn"),
             tytul=self.pole("tytul_oryginalny"),
+            rodzaj=self.rodzaj(),
             klient=self.klient(),
         )
         publikacje = Publication.objects.in_bulk(wynik.uidy)
@@ -421,15 +604,32 @@ class PobierzOdpowiednikAutoraView(PobierzZPBNBase):
     """Odpowiednik autora (FD#519): po ORCID, a gdy go brak — po imieniu
     i nazwisku oraz po autorach prac powiązanych z PBN."""
 
+    wymagane_uprawnienia = ("bpp.change_autor",)
+
+    def autor(self):
+        """Autor z formularza — z TEGO SAMEGO zbioru, który panel
+        redagowania pokazuje temu użytkownikowi (zakres uczelni w instalacji
+        wielouczelnianej). Autor spoza zakresu = odmowa: widok ujawniałby
+        kandydatów i liczbę jego prac."""
+        from django.contrib import admin
+
+        pk = self.pole("pk")
+        if not pk.isdigit():
+            return Autor()
+        autor = (
+            admin.site._registry[Autor]
+            .get_queryset(self.request)
+            .filter(pk=int(pk))
+            .first()
+        )
+        if autor is None:
+            raise PermissionDenied
+        return autor
+
     def szukaj(self):
         from pbn_integrator.utils.odpowiednik_autora import szukaj_odpowiednika_autora
 
-        autor = None
-        pk = self.pole("pk")
-        if pk.isdigit():
-            autor = Autor.objects.filter(pk=int(pk)).first()
-        if autor is None:
-            autor = Autor()
+        autor = self.autor()
         # Wartości z formularza — redaktor mógł właśnie wpisać ORCID.
         autor.imiona = self.pole("imiona")
         autor.nazwisko = self.pole("nazwisko")
@@ -493,6 +693,7 @@ class _LokalnySlownikView(PobierzZPBNBase):
 class PobierzOdpowiednikZrodlaView(_LokalnySlownikView):
     """Odpowiednik źródła: po ISSN, e-ISSN albo dokładnej nazwie."""
 
+    wymagane_uprawnienia = ("bpp.change_zrodlo",)
     komunikat_puste = (
         "Uzupełnij ISSN, e-ISSN albo nazwę, żeby wyszukać odpowiednik źródła w PBN."
     )
@@ -517,6 +718,7 @@ class PobierzOdpowiednikZrodlaView(_LokalnySlownikView):
 class PobierzOdpowiednikWydawcyView(_LokalnySlownikView):
     """Odpowiednik wydawcy: po dokładnej nazwie (bez wielkości liter)."""
 
+    wymagane_uprawnienia = ("bpp.change_wydawca",)
     komunikat_puste = "Uzupełnij nazwę, żeby wyszukać odpowiednik wydawcy w PBN."
 
     def kandydaci(self):
@@ -541,5 +743,6 @@ __all__ = [
     "PobierzOdpowiednikWydawcyView",
     "PobierzOdpowiednikZrodlaView",
     "SerwerPBN",
+    "rodzaj_rekordu",
     "znajdz_odpowiednik_publikacji",
 ]

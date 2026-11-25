@@ -425,6 +425,21 @@ def _ocen_autora(autor, osoby_instytucji, glosy, pewne_od_prac):
     return propozycja
 
 
+def _odrzuc_sprzeczne_orcid(propozycje, orcidy):
+    """Autor i wskazana osoba PBN mają RÓŻNE, niepuste ORCID — to nie może
+    być ta sama osoba, choćby nazwisko i publikacje się zgadzały. Nigdy
+    automatycznie."""
+    for propozycja in propozycje:
+        orcid_autora = normalize_orcid(propozycja.autor.orcid)
+        orcid_osoby = orcidy.get(propozycja.scientist_id)
+        if orcid_autora and orcid_osoby and orcid_autora != orcid_osoby:
+            propozycja.poziom = SPRZECZNE
+            propozycja.uwagi.append(
+                f"ORCID autora ({orcid_autora}) różni się od ORCID wskazanej "
+                f"osoby PBN ({orcid_osoby})"
+            )
+
+
 def _zastosuj_bezpieczniki(propozycje):
     """Zdejmij „pewne” tam, gdzie zapis byłby błędem: osoba PBN nieznana
     lokalnie albo skasowana, już przypięta do innego autora BPP, albo
@@ -432,8 +447,14 @@ def _zastosuj_bezpieczniki(propozycje):
     from bpp.models import Autor
 
     proponowane = [p.scientist_id for p in propozycje if p.scientist_id]
-    stany = dict(
-        Scientist.objects.filter(pk__in=proponowane).values_list("pk", "status")
+    osoby = list(
+        Scientist.objects.filter(pk__in=proponowane).values_list(
+            "pk", "status", "orcid"
+        )
+    )
+    stany = {pk: status for pk, status, _ in osoby}
+    _odrzuc_sprzeczne_orcid(
+        propozycje, {pk: normalize_orcid(orcid) for pk, _, orcid in osoby}
     )
     przypieci = defaultdict(list)
     for pk, pbn_uid, nazwisko, imiona in Autor.objects.filter(
@@ -515,6 +536,14 @@ def zapisz_propozycje(propozycje, uzytkownik=None):
                         "nie zapisano: autor dostał PBN UID w międzyczasie"
                     )
                     continue
+                # Blokada wiersza OSOBY PBN: dwa równoległe zlecenia nie
+                # przypiszą tej samej osoby dwóm autorom (``Autor.pbn_uid``
+                # nie jest unikalny, a blokada autora chroni tylko jego).
+                list(
+                    Scientist.objects.select_for_update()
+                    .filter(pk=propozycja.scientist_id)
+                    .values_list("pk", flat=True)
+                )
                 if (
                     Autor.objects.filter(pbn_uid_id=propozycja.scientist_id)
                     .exclude(pk=autor.pk)

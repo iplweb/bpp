@@ -12,26 +12,24 @@ decyzji człowieka, zostaje nietknięte i trafia do raportu z powodem.
 import logging
 import sys
 import traceback
+from datetime import timedelta
 
-import requests
 from django.apps import apps
 from django.db import IntegrityError, transaction
 from django.utils import timezone
+from pbn_client.const import DELETED
 
 from bpp.views.api.pbn_odpowiednik import (
+    BLEDY_POLACZENIA,
     BRAK,
     DO_WYBORU,
     PUSTE,
     SerwerPBN,
+    rodzaj_rekordu,
     znajdz_odpowiednik_publikacji,
 )
 from bpp.wersjonowanie import zmiana_rekordu
 from bpp.zglaszanie_bledow import capture_exception
-from pbn_api.exceptions import (
-    AccessDeniedException,
-    HttpException,
-    PraceSerwisoweException,
-)
 from pbn_api.models import Publication
 
 logger = logging.getLogger(__name__)
@@ -76,12 +74,14 @@ GRUPY = [
     (G_MIALY, "➖", "Pominięto — rekord ma już odpowiednik"),
 ]
 
-BLEDY_POLACZENIA = (
-    HttpException,
-    PraceSerwisoweException,
-    AccessDeniedException,
-    requests.RequestException,
-)
+#: Po tylu minutach bez zapisanego postępu zlecenie uznajemy za przerwane
+#: (np. restart workera) — można je wtedy ponowić.
+PRZERWANE_PO_MINUTACH = 15
+
+#: Czas oczekiwania na serwer PBN w zadaniu w tle (połączenie, odpowiedź)
+#: i łączny limit jednego wyszukiwania z dociąganiem szczegółów.
+TIMEOUT_PBN_W_TLE = (10, 60)
+LIMIT_LACZNY_W_TLE = 120
 
 
 def _wpis(obj, grupa, opis="", pbn_uid=""):
@@ -125,17 +125,66 @@ def _opis_kandydatow(uidy):
     )
 
 
+#: Pola rekordu, na których opiera się dopasowanie. Zmiana któregokolwiek
+#: w trakcie zlecenia unieważnia znaleziony odpowiednik.
+POLA_DOPASOWANIA = (
+    "doi",
+    "www",
+    "public_www",
+    "isbn",
+    "e_isbn",
+    "tytul_oryginalny",
+    "charakter_formalny_id",
+    "wydawnictwo_nadrzedne_id",
+)
+
+
+def _dane_dopasowania(obj):
+    return tuple(getattr(obj, pole, None) or None for pole in POLA_DOPASOWANIA)
+
+
 def _ustaw_odpowiednik_publikacji(obj, uid, po_czym, uzytkownik):
-    """Zapisz PBN UID z wpisem w historii rekordu. Zwraca wpis raportu."""
-    zajety = _kto_ma_odpowiednik(uid, obj)
-    if zajety:
-        return _wpis(obj, G_ZAJETY, f"po: {po_czym}; ma go już {zajety}", uid)
+    """Zapisz PBN UID z wpisem w historii rekordu. Zwraca wpis raportu.
+
+    Wszystko w jednej transakcji, pod dwiema blokadami:
+
+    * wiersza rekordu PBN — serializuje przypisanie tego samego UID
+      (unikalność ``pbn_uid`` działa osobno w każdej tabeli, więc bez tego
+      ten sam UID mogłyby równocześnie dostać wydawnictwo ciągłe i zwarte),
+    * wiersza rekordu BPP — z ponownym sprawdzeniem, czy nadal nie ma
+      odpowiednika i czy pola użyte do dopasowania się nie zmieniły.
+    """
     model = type(obj)
     try:
         with transaction.atomic():
+            status_pbn = (
+                Publication.objects.select_for_update()
+                .filter(pk=uid)
+                .values_list("status", flat=True)
+                .first()
+            )
+            if status_pbn is None or status_pbn == DELETED:
+                return _wpis(
+                    obj,
+                    G_DO_WYBORU,
+                    f"po: {po_czym}; rekord PBN został w międzyczasie usunięty",
+                    uid,
+                )
+            zajety = _kto_ma_odpowiednik(uid, obj)
+            if zajety:
+                return _wpis(obj, G_ZAJETY, f"po: {po_czym}; ma go już {zajety}", uid)
             swiezy = model.objects.select_for_update().get(pk=obj.pk)
             if swiezy.pbn_uid_id:
                 return _wpis(obj, G_MIALY, "odpowiednik ustawiono w międzyczasie")
+            if _dane_dopasowania(swiezy) != _dane_dopasowania(obj):
+                return _wpis(
+                    obj,
+                    G_DO_WYBORU,
+                    "rekord zmieniono w trakcie wyszukiwania (DOI, adres WWW, "
+                    "ISBN, tytuł albo charakter) — niczego nie zapisano; zleć "
+                    "wyszukiwanie ponownie",
+                    uid,
+                )
             with zmiana_rekordu(
                 uzytkownik,
                 swiezy,
@@ -147,6 +196,16 @@ def _ustaw_odpowiednik_publikacji(obj, uid, po_czym, uzytkownik):
         # Ktoś równolegle przypisał ten sam odpowiednik innemu rekordowi.
         return _wpis(obj, G_ZAJETY, f"po: {po_czym}; przypisany w międzyczasie", uid)
     return _wpis(obj, G_USTAWIONO, f"po: {po_czym}", uid)
+
+
+def _rodzaj(obj):
+    """Rodzaj rekordu BPP w kategoriach PBN (artykuł / książka / rozdział)."""
+    charakter = getattr(obj, "charakter_formalny", None)
+    return rodzaj_rekordu(
+        getattr(charakter, "charakter_ogolny", "") or "",
+        bool(getattr(obj, "wydawnictwo_nadrzedne_id", None)),
+        model="ciagle" if obj._meta.model_name == "wydawnictwo_ciagle" else None,
+    )
 
 
 def przetworz_publikacje(obj, serwer, uzytkownik):
@@ -161,6 +220,7 @@ def przetworz_publikacje(obj, serwer, uzytkownik):
         isbn=getattr(obj, "isbn", ""),
         e_isbn=getattr(obj, "e_isbn", ""),
         tytul=obj.tytul_oryginalny,
+        rodzaj=_rodzaj(obj),
         klient=serwer,
     )
     if wynik.status == PUSTE:
@@ -181,11 +241,15 @@ def przetworz_publikacje(obj, serwer, uzytkownik):
 
 def _wykonaj_publikacje(zlecenie, serwer):
     model = zlecenie.content_type.model_class()
-    obiekty = model.objects.in_bulk(zlecenie.identyfikatory)
+    obiekty = model.objects.select_related("charakter_formalny").in_bulk(
+        zlecenie.identyfikatory
+    )
+    # Wznowione zlecenie: rekordy z raportu sprzed przerwania zostają.
+    zrobione = {wpis["pk"] for wpis in zlecenie.wyniki}
     bledy_z_rzedu = 0
     for nr, pk in enumerate(zlecenie.identyfikatory, start=1):
         obj = obiekty.get(pk)
-        if obj is not None:
+        if obj is not None and pk not in zrobione:
             try:
                 zlecenie.wyniki.append(
                     przetworz_publikacje(obj, serwer, zlecenie.zlecil)
@@ -196,11 +260,10 @@ def _wykonaj_publikacje(zlecenie, serwer):
                 zlecenie.wyniki.append(_wpis(obj, G_BLAD, str(e)[:300]))
                 bledy_z_rzedu += 1
                 if bledy_z_rzedu >= MAKS_BLEDOW_Z_RZEDU:
-                    serwer = SerwerPBN(None)
-                    serwer.powod = "serwer PBN nie odpowiada"
+                    serwer.wylacz()
         zlecenie.przetworzono = nr
         if nr % ZAPIS_POSTEPU_CO == 0:
-            zlecenie.save(update_fields=["przetworzono", "wyniki"])
+            zlecenie.save(update_fields=["przetworzono", "wyniki", "aktywnosc"])
 
 
 def _wpis_autora(propozycja):
@@ -260,10 +323,10 @@ def _wykonaj_autorow(zlecenie, serwer):
             bledy[autor.pk] = str(e)[:300]
             bledy_z_rzedu += 1
             if bledy_z_rzedu >= MAKS_BLEDOW_Z_RZEDU:
-                serwer = SerwerPBN(None)
+                serwer.wylacz()
         zlecenie.przetworzono = len(autorzy) - len(do_zbadania) + nr // 2
         if nr % ZAPIS_POSTEPU_CO == 0:
-            zlecenie.save(update_fields=["przetworzono"])
+            zlecenie.save(update_fields=["przetworzono", "aktywnosc"])
 
     propozycje = zbadaj_autorow(
         do_zbadania, uczelnia=zlecenie.uczelnia, osoby_instytucji=osoby_instytucji
@@ -316,18 +379,61 @@ def _powiadom(zlecenie):
     )
 
 
-def wykonaj(zlecenie):
-    """Wykonaj zlecenie. Wołać POZA transakcją (postęp ma być widoczny)."""
+def przejmij(pk):
+    """Atomowo oznacz zlecenie jako rozpoczęte. Zwraca zlecenie albo
+    ``None``, gdy ktoś inny już je wykonuje/wykonał (zadanie doręczone
+    drugi raz)."""
     from pbn_integrator.models import PobieranieOdpowiednikowPBN
 
-    zlecenie.rozpoczeto = timezone.now()
-    zlecenie.wyniki = []
-    zlecenie.save(update_fields=["rozpoczeto", "wyniki"])
+    teraz = timezone.now()
+    przejete = PobieranieOdpowiednikowPBN.objects.filter(
+        pk=pk, rozpoczeto__isnull=True
+    ).update(rozpoczeto=teraz, aktywnosc=teraz)
+    if not przejete:
+        return None
+    return PobieranieOdpowiednikowPBN.objects.get(pk=pk)
+
+
+def ponow(zlecenie):
+    """Przywróć PRZERWANE zlecenie do kolejki. Atomowo — dwa kliknięcia
+    nie uruchomią go dwa razy. Zwraca ``True``, gdy zlecono ponowienie.
+
+    Dotychczasowy raport zostaje: wznowione zadanie pomija rekordy, które
+    już w nim są, i dopisuje pozostałe."""
+    from pbn_integrator.models import PobieranieOdpowiednikowPBN
+    from pbn_integrator.tasks import pobierz_odpowiedniki_z_pbn
+
+    granica = timezone.now() - timedelta(minutes=PRZERWANE_PO_MINUTACH)
+    cofniete = PobieranieOdpowiednikowPBN.objects.filter(
+        pk=zlecenie.pk, zakonczono__isnull=True, aktywnosc__lt=granica
+    ).update(rozpoczeto=None, aktywnosc=timezone.now())
+    if not cofniete:
+        return False
+    transaction.on_commit(lambda: pobierz_odpowiedniki_z_pbn.delay(zlecenie.pk))
+    return True
+
+
+def wykonaj(zlecenie):
+    """Wykonaj PRZEJĘTE zlecenie (``przejmij``). Wołać POZA transakcją
+    (postęp ma być widoczny)."""
+    from pbn_integrator.models import PobieranieOdpowiednikowPBN
+
+    if zlecenie.rozpoczeto is None:
+        zlecenie.rozpoczeto = timezone.now()
+    if zlecenie.rodzaj == PobieranieOdpowiednikowPBN.Rodzaj.AUTORZY:
+        # Autorzy są oceniani razem (jedna osoba PBN nie może trafić do
+        # dwóch autorów), więc ich raport powstaje w całości na końcu —
+        # po wznowieniu liczymy go od nowa. Zapisane już odpowiedniki
+        # zostają: ci autorzy trafią do „mają już odpowiednik”.
+        zlecenie.wyniki = []
+    zlecenie.save(update_fields=["rozpoczeto", "wyniki", "aktywnosc"])
 
     uczelnia = zlecenie.uczelnia
     token = getattr(zlecenie.zlecil, "pbn_token", "")
     serwer = SerwerPBN(
-        (lambda: uczelnia.pbn_client(token)) if uczelnia is not None else None
+        (lambda: uczelnia.pbn_client(token)) if uczelnia is not None else None,
+        timeout=TIMEOUT_PBN_W_TLE,
+        limit_laczny=LIMIT_LACZNY_W_TLE,
     )
     try:
         if zlecenie.rodzaj == PobieranieOdpowiednikowPBN.Rodzaj.AUTORZY:

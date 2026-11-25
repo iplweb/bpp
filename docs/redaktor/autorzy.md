@@ -126,6 +126,11 @@ Wynik pojawia się pod przyciskiem:
 - ℹ️ **nie znaleziono** — PBN nie zna takiej osoby pod tym ORCID ani
   imieniem i nazwiskiem.
 
+BPP nie wstawia też nikogo samo, gdy pod ORCID autora PBN ma **kilka
+profili** albo gdy wskazana osoba ma w PBN **inny ORCID** niż autor.
+Przy niedostępnym serwerze PBN zobaczysz kandydatów z danych już
+pobranych i dopisek „Serwer PBN nie odpowiada”.
+
 Samo imię i nazwisko nigdy nie wystarcza do wstawienia odpowiednika bez
 pytania — osoby o tym samym nazwisku to częsty przypadek, a błędne
 powiązanie skierowałoby oświadczenia do innej osoby.

@@ -36,9 +36,11 @@ TYTUL = "Wpływ testów na jakość oprogramowania"
 def _publikacja(uid=UID_1, **obiekt):
     obiekt.setdefault("title", TYTUL)
     obiekt.setdefault("year", 2024)
+    obiekt.setdefault("type", "ARTICLE")
+    status = obiekt.pop("status", "ACTIVE")
     return Publication.objects.create(
         mongoId=uid,
-        status="ACTIVE",
+        status=status,
         verificationLevel="x",
         verified=True,
         versions=[{"current": True, "object": obiekt}],
@@ -52,7 +54,9 @@ def _publikacja(uid=UID_1, **obiekt):
 def test_po_doi_lokalnie_bez_wzgledu_na_wielkosc_liter():
     _publikacja(doi=DOI)
 
-    wynik = znajdz_odpowiednik_publikacji(doi=DOI.lower(), tytul="zupełnie inny")
+    wynik = znajdz_odpowiednik_publikacji(
+        doi=DOI.lower(), tytul="zupełnie inny", rodzaj="ARTICLE"
+    )
 
     assert wynik.status == PEWNY
     assert wynik.uid == UID_1
@@ -74,7 +78,9 @@ def test_praca_bez_doi_z_adresem_www_zgodnym_z_pbn(adres):
     z PBN, dostaje odpowiednik."""
     _publikacja(publicUri=WWW)
 
-    wynik = znajdz_odpowiednik_publikacji(www=adres, tytul=TYTUL.upper() + "!")
+    wynik = znajdz_odpowiednik_publikacji(
+        www=adres, tytul=TYTUL.upper() + "!", rodzaj="ARTICLE"
+    )
 
     assert wynik.status == PEWNY, wynik
     assert wynik.uid == UID_1
@@ -86,7 +92,10 @@ def test_publiczny_adres_www_tez_jest_sprawdzany():
     _publikacja(publicUri=WWW)
 
     wynik = znajdz_odpowiednik_publikacji(
-        www="https://inny.example.org/a/1", public_www=WWW, tytul=TYTUL
+        www="https://inny.example.org/a/1",
+        public_www=WWW,
+        tytul=TYTUL,
+        rodzaj="ARTICLE",
     )
 
     assert wynik.status == PEWNY
@@ -122,8 +131,12 @@ def test_isbn_ksiazki_i_rozdzialu_wybiera_rekord_o_tym_samym_tytule():
     _publikacja(UID_1, isbn=ISBN, title="Cała książka", type="BOOK")
     _publikacja(UID_2, title=TYTUL, type="CHAPTER", book={"isbn": ISBN})
 
-    rozdzial = znajdz_odpowiednik_publikacji(isbn="978-0-12-819517-8", tytul=TYTUL)
-    nieznany = znajdz_odpowiednik_publikacji(isbn=ISBN, tytul="Inny rozdział")
+    rozdzial = znajdz_odpowiednik_publikacji(
+        isbn="978-0-12-819517-8", tytul=TYTUL, rodzaj="CHAPTER"
+    )
+    nieznany = znajdz_odpowiednik_publikacji(
+        isbn=ISBN, tytul="Inny rozdział", rodzaj="CHAPTER"
+    )
 
     assert (rozdzial.status, rozdzial.uid) == (PEWNY, UID_2)
     assert nieznany.status == DO_WYBORU
@@ -132,10 +145,10 @@ def test_isbn_ksiazki_i_rozdzialu_wybiera_rekord_o_tym_samym_tytule():
 
 @pytest.mark.django_db
 def test_e_isbn_jest_sprawdzany_gdy_isbn_nie_dal_wyniku():
-    _publikacja(isbn=ISBN)
+    _publikacja(isbn=ISBN, type="BOOK")
 
     wynik = znajdz_odpowiednik_publikacji(
-        isbn="9788374307338", e_isbn=ISBN, tytul=TYTUL
+        isbn="9788374307338", e_isbn=ISBN, tytul=TYTUL, rodzaj="BOOK"
     )
 
     assert wynik.status == PEWNY
@@ -148,7 +161,9 @@ def test_kolejny_identyfikator_rozstrzyga_niejednoznaczny_wczesniejszy():
     _publikacja(UID_1, doi=DOI, title="Wersja pierwsza")
     _publikacja(UID_2, doi=DOI, publicUri=WWW)
 
-    wynik = znajdz_odpowiednik_publikacji(doi=DOI, www=WWW, tytul=TYTUL)
+    wynik = znajdz_odpowiednik_publikacji(
+        doi=DOI, www=WWW, tytul=TYTUL, rodzaj="ARTICLE"
+    )
 
     assert (wynik.status, wynik.uid) == (PEWNY, UID_2)
 
@@ -191,7 +206,9 @@ def test_doi_szukany_na_serwerze_pbn_gdy_brak_w_kopii(mocker, pbn_uczelnia, pbn_
     mocker.patch.object(pbn_client, "search_publications", side_effect=szukaj)
     pbn_client.transport.return_values[f"/api/v1/publications/id/{UID_1}"] = rekord
 
-    wynik = znajdz_odpowiednik_publikacji(doi=DOI, klient=lambda: pbn_client)
+    wynik = znajdz_odpowiednik_publikacji(
+        doi=DOI, rodzaj="ARTICLE", klient=lambda: pbn_client
+    )
 
     assert (wynik.status, wynik.uid) == (PEWNY, UID_1)
     assert zapytania and "doi" in zapytania[0]
@@ -206,7 +223,8 @@ def test_lokalne_trafienie_nie_dotyka_serwera_pbn():
     def klient():
         raise AssertionError("nie powinno być zapytania do serwera PBN")
 
-    assert znajdz_odpowiednik_publikacji(doi=DOI, klient=klient).status == PEWNY
+    wynik = znajdz_odpowiednik_publikacji(doi=DOI, rodzaj="ARTICLE", klient=klient)
+    assert wynik.status == PEWNY
 
 
 # --- widoki ------------------------------------------------------------------
@@ -227,6 +245,7 @@ def test_widok_publikacji_zwraca_pewny_odpowiednik(admin_client, uczelnia):
         "api_get_pbn_by_identifiers",
         www=WWW,
         tytul_oryginalny=TYTUL,
+        model="ciagle",
     )
 
     assert res["status"] == PEWNY
@@ -241,7 +260,7 @@ def test_widok_publikacji_niczego_nie_wiaze(admin_client, uczelnia, wydawnictwo_
     wydawnictwo_ciagle.doi = DOI
     wydawnictwo_ciagle.save()
 
-    res = _post(admin_client, "api_get_pbn_by_identifiers", doi=DOI)
+    res = _post(admin_client, "api_get_pbn_by_identifiers", doi=DOI, model="ciagle")
 
     assert res["id"] == UID_1
     wydawnictwo_ciagle.refresh_from_db()
@@ -281,6 +300,28 @@ def test_widoki_tylko_dla_zalogowanych_redaktorow(client, normal_django_user):
     assert client.post(url, data={"doi": DOI}).status_code == 302
     client.force_login(normal_django_user)
     assert client.post(url, data={"doi": DOI}).status_code == 403
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize(
+    "widok",
+    [
+        "api_get_pbn_by_identifiers",
+        "api_pobierz_z_pbn_autora",
+        "api_pobierz_z_pbn_zrodla",
+        "api_pobierz_z_pbn_wydawcy",
+    ],
+)
+def test_widoki_wymagaja_uprawnienia_do_zmiany_rekordu(client, staff_user, widok):
+    """Sam dostęp do panelu (``is_staff``) nie wystarcza — potrzebne jest
+    to samo uprawnienie, którego panel wymaga do zmiany danego rekordu."""
+    staff_user.user_permissions.clear()
+    staff_user.groups.clear()
+    client.force_login(staff_user)
+
+    odp = client.post(reverse(f"bpp:{widok}"), data={"doi": DOI, "nazwa": "x"})
+
+    assert odp.status_code == 403
 
 
 @pytest.mark.django_db
@@ -353,3 +394,170 @@ def test_formularz_ma_jeden_przycisk_pobierz_z_pbn(admin_client, model, endpoint
     # Reguła widoczności i komunikaty przy przycisku zamiast alert().
     assert "przycisk.hide()" in html
     assert "id_pobierz_z_pbn_komunikat" in html
+
+
+# --- recenzja PR 1184: automat tylko przy dowodzie bez sprzeczności ----------
+
+
+@pytest.mark.django_db
+def test_rozdzial_z_doi_ksiazki_nie_dostaje_rekordu_ksiazki():
+    """Rozdział ma w BPP wpisany DOI książki, a w kopii PBN jest tylko
+    książka — pojedyncze trafienie po DOI nie może być „pewne”."""
+    _publikacja(doi=DOI, title="Cała książka", type="BOOK")
+
+    wynik = znajdz_odpowiednik_publikacji(doi=DOI, tytul=TYTUL, rodzaj="CHAPTER")
+
+    assert wynik.status == DO_WYBORU
+    assert wynik.uidy == [UID_1]
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize("identyfikator", ["doi", "isbn"])
+def test_rozdzial_zatytulowany_jak_tom_nie_dostaje_rekordu_ksiazki(identyfikator):
+    """Ten sam tytuł i ten sam ISBN/DOI, ale w PBN to KSIĄŻKA, a w BPP
+    rozdział — zgodny tytuł nie wystarcza."""
+    _publikacja(doi=DOI, isbn=ISBN, type="BOOK")
+
+    wynik = znajdz_odpowiednik_publikacji(
+        **{identyfikator: DOI if identyfikator == "doi" else ISBN},
+        tytul=TYTUL,
+        rodzaj="CHAPTER",
+    )
+
+    assert wynik.status == DO_WYBORU
+    assert wynik.uid is None
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize("rodzaj, typ_pbn", [("", "ARTICLE"), ("ARTICLE", None)])
+def test_nieustalony_rodzaj_po_ktorejkolwiek_stronie_to_reczny_wybor(rodzaj, typ_pbn):
+    obiekt = {"doi": DOI}
+    if typ_pbn is None:
+        obiekt["type"] = ""
+    _publikacja(**obiekt)
+
+    wynik = znajdz_odpowiednik_publikacji(doi=DOI, tytul=TYTUL, rodzaj=rodzaj)
+
+    assert wynik.status == DO_WYBORU
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize("pole", ["doi", "isbn", "www"])
+def test_rekord_usuniety_w_pbn_nie_jest_kandydatem(pole):
+    _publikacja(doi=DOI, isbn=ISBN, publicUri=WWW, status="DELETED")
+
+    wynik = znajdz_odpowiednik_publikacji(
+        **{pole: {"doi": DOI, "isbn": ISBN, "www": WWW}[pole]},
+        tytul=TYTUL,
+        rodzaj="ARTICLE",
+    )
+
+    assert wynik.status == BRAK
+    assert wynik.uidy == []
+
+
+@pytest.mark.django_db
+def test_rekord_usuniety_w_pbn_pobrany_z_serwera_jest_odrzucany(
+    mocker, pbn_uczelnia, pbn_client
+):
+    rekord = pbn_general_json(
+        {"type": "ARTICLE", "title": TYTUL, "year": 2024, "doi": DOI},
+        mongoId=UID_1,
+        status="DELETED",
+    )
+    mocker.patch.object(
+        pbn_client, "search_publications", return_value=[{"mongoId": UID_1}]
+    )
+    pbn_client.transport.return_values[f"/api/v1/publications/id/{UID_1}"] = rekord
+
+    wynik = znajdz_odpowiednik_publikacji(
+        doi=DOI, tytul=TYTUL, rodzaj="ARTICLE", klient=lambda: pbn_client
+    )
+
+    assert wynik.status == BRAK
+
+
+@pytest.mark.django_db
+def test_wiecej_niz_10_trafien_nie_gubi_rekordu_o_zgodnym_tytule():
+    """Książka z 25 rozdziałami o tym samym ISBN: właściwy rozdział musi
+    zostać znaleziony, choć lista do pokazania ma najwyżej 10 pozycji."""
+    for i in range(25):
+        _publikacja(
+            f"6accb7c13d7d997e0c94{i:04d}",
+            title=f"Rozdział {i}",
+            type="CHAPTER",
+            book={"isbn": ISBN},
+        )
+    # Właściwy rekord ma klucz sortujący się NA KOŃCU.
+    _publikacja("ffffb7c13d7d997e0c94ffff", type="CHAPTER", book={"isbn": ISBN})
+
+    pewny = znajdz_odpowiednik_publikacji(isbn=ISBN, tytul=TYTUL, rodzaj="CHAPTER")
+    lista = znajdz_odpowiednik_publikacji(isbn=ISBN, tytul=TYTUL, rodzaj="")
+
+    assert (pewny.status, pewny.uid) == (PEWNY, "ffffb7c13d7d997e0c94ffff")
+    # Bez automatu rekord o zgodnym tytule jest pierwszy na obciętej liście.
+    assert lista.status == DO_WYBORU
+    assert len(lista.uidy) == 10
+    assert lista.uidy[0] == "ffffb7c13d7d997e0c94ffff"
+
+
+@pytest.mark.django_db
+def test_lokalne_rozdzialy_nie_zaslaniaja_ksiazki_na_serwerze(
+    mocker, pbn_uczelnia, pbn_client
+):
+    """W kopii są tylko rozdziały z ISBN-em książki; szukamy książki —
+    brak zgodnego tytułu lokalnie oznacza pytanie do serwera PBN."""
+    _publikacja(UID_2, title="Rozdział", type="CHAPTER", book={"isbn": ISBN})
+    ksiazka = pbn_general_json(
+        {"type": "BOOK", "title": TYTUL, "year": 2024, "isbn": ISBN}, mongoId=UID_1
+    )
+    szukaj = mocker.patch.object(
+        pbn_client, "search_publications", return_value=[{"mongoId": UID_1}]
+    )
+    pbn_client.transport.return_values[f"/api/v1/publications/id/{UID_1}"] = ksiazka
+
+    wynik = znajdz_odpowiednik_publikacji(
+        isbn=ISBN, tytul=TYTUL, rodzaj="BOOK", klient=lambda: pbn_client
+    )
+
+    szukaj.assert_called()
+    assert (wynik.status, wynik.uid) == (PEWNY, UID_1)
+
+
+@pytest.mark.django_db
+def test_niedostepny_pbn_jedna_proba_i_wynik_z_lokalnej_kopii(
+    mocker, admin_client, admin_user, uczelnia
+):
+    """Przycisk nie wisi minutami: jedna próba z krótkim czasem oczekiwania,
+    bez pętli ponowień, a redaktor dostaje wynik z kopii i uwagę."""
+    import requests
+
+    from bpp.views.api.pbn_odpowiednik import KOMUNIKAT_NIEDOSTEPNY, TIMEOUT_PBN
+
+    uczelnia.pbn_app_name = "x"
+    uczelnia.pbn_app_token = "y"
+    uczelnia.pbn_api_root = "https://pbn.invalid"
+    type(uczelnia).objects.filter(pk=uczelnia.pk).update(
+        pbn_app_name="x", pbn_app_token="y", pbn_api_root="https://pbn.invalid"
+    )
+    admin_user.pbn_token = "tok"
+    admin_user.save()
+    proby = []
+
+    def padnij(*a, **kw):
+        proby.append(kw.get("timeout"))
+        raise requests.ConnectionError("down")
+
+    mocker.patch("requests.get", side_effect=padnij)
+    mocker.patch("requests.post", side_effect=padnij)
+    sen = mocker.patch("pbn_client.transport.time.sleep")
+    zgloszenie = mocker.patch("bpp.views.api.pbn_odpowiednik.capture_exception")
+
+    res = _post(admin_client, "api_get_pbn_by_identifiers", doi=DOI, model="ciagle")
+
+    assert len(proby) == 1, proby
+    assert proby[0] == TIMEOUT_PBN
+    sen.assert_not_called()
+    zgloszenie.assert_not_called()
+    assert res["status"] == BRAK
+    assert res["uwaga"] == KOMUNIKAT_NIEDOSTEPNY
