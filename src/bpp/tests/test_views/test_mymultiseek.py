@@ -441,13 +441,13 @@ def test_export_dane_csv_ma_zrodlo_i_typ_mnisw(
     header = text.splitlines()[0]
     cols = header.split(",")
     assert cols[2] == "zrodlo"
-    assert cols[8] == "typ_mnisw_mein"
+    assert cols[8] == "typ_mnisw"
     assert cols[6] == "bpp_id"  # BPP ID nadal przed typ_rekordu (kol. 8)
     assert cols[7] == "typ_rekordu"
 
     rows = list(csv.DictReader(io.StringIO(text)))
     assert rows[0]["zrodlo"] == multiseek_export_rekord.zrodlo.nazwa
-    assert rows[0]["typ_mnisw_mein"] == multiseek_export_rekord.typ_kbn.nazwa
+    assert rows[0]["typ_mnisw"] == multiseek_export_rekord.typ_kbn.nazwa
 
 
 @pytest.mark.django_db
@@ -489,7 +489,7 @@ def test_export_dane_xlsx_ma_zrodlo_i_typ_mnisw(
     ws = wb.active
     headers = [c.value for c in ws[1]]
     assert headers[2] == "Źródło"
-    assert headers[8] == "Typ MNiSW/MEiN"
+    assert headers[8] == "Typ MNiSW"
     assert headers[6] == "BPP ID"
     assert headers[7] == "Typ rekordu"
 
@@ -801,7 +801,7 @@ def test_multiseek_export_html_tabela(logged_in_client, multiseek_export_rekord)
     assert response.status_code == 200
     content = response.content.decode("utf-8")
     assert "<table" in content
-    assert "Typ MNiSW/MEiN" in content
+    assert "Typ MNiSW" in content
 
 
 @pytest.mark.django_db

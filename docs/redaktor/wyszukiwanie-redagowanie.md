@@ -80,7 +80,7 @@ otrzymujesz wynik wyszukiwania:
 ![Wynik zapytania DjangoQL rok = 2022 or rok = 2024](../images/redaktor/wyszukiwanie-redagowanie/07-djangoql-wynik.png)
 
 Spróbujmy czegoś trudniejszego: wyszukajmy prace o charakterze formalnym
-„KSP” lub „AC”, które mają co najmniej 100 punktów MNiSW/MEiN. Podczas
+„KSP” lub „AC”, które mają co najmniej 100 punktów MNiSW. Podczas
 pisania zapytania system podpowiada nazwy pól:
 
 ![Podpowiedzi nazw pól podczas pisania zapytania DjangoQL](../images/redaktor/wyszukiwanie-redagowanie/08-djangoql-podpowiedzi.png)
@@ -315,7 +315,7 @@ Dla modelu **rekord** dostępne są:
   i linkami "Zobacz" / "Edytuj",
 - **lista** — numerowana lista opisów bibliograficznych,
 - **tabela** — tabela z sumami (impact factor, liczba cytowań, punkty
-  KBN, punktacja wewnętrzna),
+  MNiSW, punktacja wewnętrzna),
 - **punktacja z wewnętrzną** / **punktacja sumaryczna** — warianty
   tabeli z innym zestawem kolumn punktowych,
 - **BibTeX** — lista opisów jako brama do eksportu pliku `.bib`,

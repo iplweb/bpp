@@ -26,6 +26,7 @@ from bpp.views.admin import (
 from bpp.views.formdefaults import BppSystemFormDefaultsView, BppUserFormDefaultsView
 from bpp.views.global_nav import global_nav_redir
 from bpp.views.mymultiseek import (
+    BppMultiseekFormPage,
     BppMultiseekSaveForm,
     MultiseekToDjangoQLView,
     MyMultiseekExport,
@@ -399,6 +400,16 @@ urlpatterns = (
             r"^multiseek/save_form/$",
             BppMultiseekSaveForm.as_view(registry=settings.MULTISEEK_REGISTRY),
             name="bpp-multiseek-save-form",
+        ),
+        # Strona formularza: wariant BPP (dawne etykiety pól w sesji, FD#527)
+        # — PRZED include("multiseek.urls"), które ma tę samą ścieżkę.
+        url(
+            r"^multiseek/$",
+            BppMultiseekFormPage.as_view(
+                registry=settings.MULTISEEK_REGISTRY,
+                template_name="multiseek/index.html",
+            ),
+            name="bpp-multiseek-index",
         ),
         url(
             r"^multiseek/",

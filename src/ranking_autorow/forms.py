@@ -130,7 +130,7 @@ class RankingAutorowForm(forms.Form):
     )
 
     typ_kbn = forms.ModelMultipleChoiceField(
-        label="Ogranicz do typu MNiSW/MEiN:",
+        label="Ogranicz do typu MNiSW:",
         queryset=Typ_KBN.objects.filter(wliczaj_do_rankingu=True).order_by("nazwa"),
         required=False,
         widget=forms.CheckboxSelectMultiple(attrs={"class": "typ-kbn-checkboxes"}),
@@ -224,7 +224,7 @@ class RankingAutorowForm(forms.Form):
                         <div class="collapsible-section">
                             <a href="#" class="collapsible-trigger" data-target="typ-kbn-section">
                                 <span class="fi-plus"></span> <span class="fi-minus hidden"></span>
-                                Filtry typu MNiSW/MEiN (opcjonalne)
+                                Filtry typu MNiSW (opcjonalne)
                             </a>
                             <div id="typ-kbn-section" class="collapsible-content">
                 """

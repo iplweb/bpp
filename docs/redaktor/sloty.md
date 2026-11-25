@@ -118,7 +118,7 @@ Gdy system aktualizuje już istniejącego pracownika:
 - obliczenia dokonywane są wewnętrznie z precyzją zmiennoprzecinkową, następnie
   prezentowane są zaokrąglone z dokładnością do 4 miejsc po przecinku,
 - w poniższych wzorach matematycznych litery oznaczają:
-  - PK: punkty MNiSW/MEiN, wcześniej zwane *punkty KBN*
+  - PK: punkty MNiSW, wcześniej zwane *punkty KBN*
   - k: liczba autorów/redaktorów dla rekordu z danej dyscypliny, którzy mają w powiązaniu rekordu
     z autorem wybraną daną dyscyplinę oraz zaznaczone pole *Afiliuje* na *tak*,
   - m: liczba wszystkich autorów rekordu.
@@ -231,11 +231,11 @@ Tak jak w progu 2, slot wynika z punktów podniesionych do minimum 10%: np. 20 p
 ## Wydawnictwa ciągłe
 
 1.  Charakter formalny rekordu nie ma znaczenia
-2.  Dla zakresu lat 2017-2018, punkty MNiSW/MEiN muszą wynosić odpowoednio:
+2.  Dla zakresu lat 2017-2018, punkty MNiSW muszą wynosić odpowoednio:
     - powyżej 30 dla progu 1. algorytmu
     - 20 lub 25 dla progu 2. algorytmu
     - poniżej 20 i powyżej zera dla progu 3. algorytmu
-3.  Dla zakresu lat 2019-2021, punkty MNiSW/MEiN muszą wynosić odpowiednio:
+3.  Dla zakresu lat 2019-2021, punkty MNiSW muszą wynosić odpowiednio:
     - 200, 140, 100 dla progu 1. algorytmu
     - 70 lub 40 dla progu 2. algorytmu
     - mniejsze lub równe jak 20 ale powyżej zera dla progu 3. algorytmu
@@ -250,39 +250,39 @@ Tak jak w progu 2, slot wynika z punktów podniesionych do minimum 10%: np. 20 p
     wszystkie powiązane osoby będą miały typ "redaktor", taki rekord będzie traktowany jako redakcja,
     jeżeli "autor" - to autorstwo i tak dalej.
 3.  Charakter dla slotów = refereat:
-    - punkty MNiSW/MEiN = 15 oraz powiązanie z zewnętrzną bazą danych - nazwa bazy danych
+    - punkty MNiSW = 15 oraz powiązanie z zewnętrzną bazą danych - nazwa bazy danych
       dowolna, skrót nazwy bazy danych równy "WOS". Powiązanie z zewnętrzną baza danych
       można dodać dla każdego rekordu, korzystając z formularza na końcu strony edycji
       rekordu - próg 3. algorytmu,
-    - punkty MNiSW/MEiN 200, 140, 100 - próg 1. algorytmu,
-    - punkty MNiSW/MEiN 70, 40 - próg 2. algorytmu,
-    - punkty MNiSW/MEiN równe 20:
+    - punkty MNiSW 200, 140, 100 - próg 1. algorytmu,
+    - punkty MNiSW 70, 40 - próg 2. algorytmu,
+    - punkty MNiSW równe 20:
       - gdy wydawca na dany rok ma poziom równy 1: próg 2. algorytmu
       - gdy wydawca nieokreślony lub inny poziom: próg 3. algorytmu
-    - punkty MNiSW/MEiN równe 50 i poziom wydawcy równe 2: próg 1. algorytmu
-    - punkty MNiSW/MEiN równe 5: próg 3. algorytmu
+    - punkty MNiSW równe 50 i poziom wydawcy równe 2: próg 1. algorytmu
+    - punkty MNiSW równe 5: próg 3. algorytmu
 4.  Charakter dla slotów = książka lub rozdział:
     - poziom wydawcy równy 2 oraz:
 
-      - autorstwo + książka + punkty MNiSW/MEiN = (200 lub 100), lub
-      - redakcja + książka + punkty MNiSW/MEiN = (100 lub 50), lub
-      - rozdział + punkty MNiSW/MEiN = (50 lub 25)
+      - autorstwo + książka + punkty MNiSW = (200 lub 100), lub
+      - redakcja + książka + punkty MNiSW = (100 lub 50), lub
+      - rozdział + punkty MNiSW = (50 lub 25)
 
       ... da w rezultacie próg 1. algorytmu
 
     - poziom wydawcy równy 1 oraz:
 
-      - autorstwo + książka + punkty MNiSW/MEiN = (80 lub 40 lub 100), lub
-      - redakcja + książka + punkty MNiSW/MEiN = (20 lub 10), lub
-      - rozdział + punkty MNiSW/MEiN = (20 lub 10)
+      - autorstwo + książka + punkty MNiSW = (80 lub 40 lub 100), lub
+      - redakcja + książka + punkty MNiSW = (20 lub 10), lub
+      - rozdział + punkty MNiSW = (20 lub 10)
 
       ... da w rezultacie próg 2. algorytmu
 
     - poziom wydawcy inny lub bez określenia wydawcy oraz:
 
-      - książka + autorstwo + punkty MNiSW/MEiN = (20 lub 10), lub
-      - książka + redakcja + punkty MNiSW/MEiN = (5 lub 2.5), lub
-      - rozdział + punkty MNiSW/MEiN = (5 lub 2.5)
+      - książka + autorstwo + punkty MNiSW = (20 lub 10), lub
+      - książka + redakcja + punkty MNiSW = (5 lub 2.5), lub
+      - rozdział + punkty MNiSW = (5 lub 2.5)
 
       ... da w rezultacie próg 3. algorytmu.
 

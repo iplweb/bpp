@@ -218,7 +218,7 @@ bpp.patent:
   public_www                                   str  "Adres WWW (wolny dostęp)"
   punktacja_snip                               float
   punktacja_wewnetrzna                         float  "Punktacja wewnętrzna"
-  punkty_kbn                                   float  "punkty MNiSW/MEiN"
+  punkty_kbn                                   float  "punkty MNiSW"
   recenzowana                                  bool
   restored_at                                  datetime?
   rodzaj_prawa                                 -> bpp.rodzaj_prawa_patentowego?  match nazwa
@@ -328,7 +328,7 @@ bpp.praca_doktorska:
   pubmed_id                                    int?
   punktacja_snip                               float
   punktacja_wewnetrzna                         float  "Punktacja wewnętrzna"
-  punkty_kbn                                   float  "punkty MNiSW/MEiN"
+  punkty_kbn                                   float  "punkty MNiSW"
   recenzowana                                  bool
   redakcja                                     str
   restored_at                                  datetime?
@@ -344,7 +344,7 @@ bpp.praca_doktorska:
   tekst_przed_pierwszym_autorem                str?
   tom                                          str
   transaction_id                               str?
-  typ_kbn                                      -> bpp.typ_kbn  match nazwa  "typ MNiSW/MEiN"
+  typ_kbn                                      -> bpp.typ_kbn  match nazwa  "typ MNiSW"
   tytul                                        str  "Tytuł"
   tytul_oryginalny                             str  "Tytuł oryginalny"
   tytul_oryginalny_sort                        str
@@ -394,7 +394,7 @@ bpp.praca_habilitacyjna:
   pubmed_id                                    int?
   punktacja_snip                               float
   punktacja_wewnetrzna                         float  "Punktacja wewnętrzna"
-  punkty_kbn                                   float  "punkty MNiSW/MEiN"
+  punkty_kbn                                   float  "punkty MNiSW"
   recenzowana                                  bool
   redakcja                                     str
   restored_at                                  datetime?
@@ -410,7 +410,7 @@ bpp.praca_habilitacyjna:
   tekst_przed_pierwszym_autorem                str?
   tom                                          str
   transaction_id                               str?
-  typ_kbn                                      -> bpp.typ_kbn  match nazwa  "typ MNiSW/MEiN"
+  typ_kbn                                      -> bpp.typ_kbn  match nazwa  "typ MNiSW"
   tytul                                        str  "Tytuł"
   tytul_oryginalny                             str  "Tytuł oryginalny"
   tytul_oryginalny_sort                        str
@@ -489,7 +489,7 @@ bpp.wydawnictwo_ciagle:
   pubmed_id                                    int?
   punktacja_snip                               float
   punktacja_wewnetrzna                         float  "Punktacja wewnętrzna"
-  punkty_kbn                                   float  "punkty MNiSW/MEiN"
+  punkty_kbn                                   float  "punkty MNiSW"
   recenzowana                                  bool
   restored_at                                  datetime?
   rok                                          int
@@ -505,7 +505,7 @@ bpp.wydawnictwo_ciagle:
   tekst_przed_pierwszym_autorem                str?
   tom                                          str
   transaction_id                               str?
-  typ_kbn                                      -> bpp.typ_kbn  match nazwa  "typ MNiSW/MEiN"
+  typ_kbn                                      -> bpp.typ_kbn  match nazwa  "typ MNiSW"
   tytul                                        str  "Tytuł"
   tytul_oryginalny                             str  "Tytuł oryginalny"
   tytul_oryginalny_sort                        str
@@ -604,7 +604,7 @@ bpp.wydawnictwo_zwarte:
   pubmed_id                                    int?
   punktacja_snip                               float
   punktacja_wewnetrzna                         float  "Punktacja wewnętrzna"
-  punkty_kbn                                   float  "punkty MNiSW/MEiN"
+  punkty_kbn                                   float  "punkty MNiSW"
   recenzowana                                  bool
   redakcja                                     str
   rekord                                       -> bpp.rekord?
@@ -623,7 +623,7 @@ bpp.wydawnictwo_zwarte:
   tekst_przed_pierwszym_autorem                str?
   tom                                          str
   transaction_id                               str?
-  typ_kbn                                      -> bpp.typ_kbn  match nazwa  "typ MNiSW/MEiN"
+  typ_kbn                                      -> bpp.typ_kbn  match nazwa  "typ MNiSW"
   tytul                                        str  "Tytuł"
   tytul_oryginalny                             str  "Tytuł oryginalny"
   tytul_oryginalny_sort                        str
@@ -771,7 +771,7 @@ bpp.rekord:
   public_www                                   str  "Adres WWW (wolny dostęp)"
   punktacja_snip                               float
   punktacja_wewnetrzna                         float  "Punktacja wewnętrzna"
-  punkty_kbn                                   float  "punkty MNiSW/MEiN"
+  punkty_kbn                                   float  "punkty MNiSW"
   recenzowana                                  bool
   rok                                          int
   search_index                                 unknown
@@ -780,7 +780,7 @@ bpp.rekord:
   slug                                         str
   status_korekty                               -> bpp.status_korekty  match nazwa
   szczegoly                                    str  "Szczegóły" — Np. str. 23-45
-  typ_kbn                                      -> bpp.typ_kbn  match nazwa  "typ MNiSW/MEiN"
+  typ_kbn                                      -> bpp.typ_kbn  match nazwa  "typ MNiSW"
   tytul                                        str
   tytul_oryginalny                             str
   tytul_oryginalny_sort                        str
@@ -882,7 +882,7 @@ pbn_api.publication:
 
 bpp.typ_kbn:
   artykul_pbn          bool  "Artykuł w PBN" — Wydawnictwa ciągłe posiadające
-    ten typ MNiSW/MEiN zostaną włączone do eksportu PBN jako artykuły
+    ten typ MNiSW zostaną włączone do eksportu PBN jako artykuły
   charakter_pbn        -> bpp.charakter_pbn?  match help_text
   id                   int
   nazwa                str
@@ -890,7 +890,7 @@ bpp.typ_kbn:
   praca_habilitacyjna  -> bpp.praca_habilitacyjna?
   rekord               -> bpp.rekord?
   skrot                str
-  ukryty               bool  "Ukryj na listach wyboru" — Jeżeli zaznaczone, ten typ MNiSW/MEiN nie będzie
+  ukryty               bool  "Ukryj na listach wyboru" — Jeżeli zaznaczone, ten typ MNiSW nie będzie
         proponowany na listach wyboru przy wprowadzaniu nowych rekordów.
         Istniejące rekordy korzystające z tej wartości pozostają bez zmian.
   wliczaj_do_rankingu  bool

@@ -203,7 +203,7 @@ Kolumny: **Wydawnictwo ciągłe** (tytuł artykułu), **Rok**, **Źródło**
 (czasopismo), **Autor**, **Dyscyplina naukowa** (dyscyplina autora w tym
 artykule), **Punkty MNiSW** (punkty artykułu) i **Charakter formalny**. W panelu **Filtruj**
 są m.in. filtry **rok**, **dyscyplina naukowa**, **Autor pracuje na
-uczelni?**, **punkty MNISW/MEIN** (np. „większe niż 20”) i **charakter
+uczelni?**, **punkty MNiSW** (np. „większe niż 20”) i **charakter
 formalny**.
 
 Ten raport **nie ma akcji** — nic nie poprawia. Kliknij tytuł, a na stronie
