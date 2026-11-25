@@ -36,7 +36,8 @@
     {{ block.super }}
 
     {% include "admin/strona_tom_nr_zeszytu_button_handler.html" %}
-    {% include "admin/get_pbn_by_doi_button_handler.html" %}
+    {% url "bpp:api_get_pbn_by_identifiers" as pobierz_z_pbn_url %}
+    {% include "admin/pobierz_z_pbn_button_handler.html" with url=pobierz_z_pbn_url pola="doi www public_www isbn e_isbn tytul_oryginalny" %}
     {% include "admin/copy_pbn_uid_button_handler.html" %}
     {% include "admin/liczba_arkuszy_wydawniczych.html" %}
     {% include "admin/uzupelnij_rok_wydawnictwo_ciagle_button_handler.html" %}

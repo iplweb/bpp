@@ -1,0 +1,137 @@
+{# Jeden przycisk „Pobierz z PBN” przy polu „Odpowiednik w PBN” (FD#515). #}
+{# Parametry include: url — adres widoku, pola — nazwy pól formularza #}
+{# (oddzielone spacjami), które przeglądarka wysyła do wyszukania. #}
+<script type="text/javascript">
+    (function ($) {
+        $(document).ready(function () {
+            var pole = $("#id_pbn_uid");
+            if (!pole.length) {
+                return;
+            }
+            var NAPIS = "🔎 Pobierz z PBN";
+            var pola = "{{ pola|escapejs }}".split(" ");
+            var przycisk = $("<input type='button' id='id_pobierz_z_pbn' " +
+                "style='margin-left: 5px;'/>").val(NAPIS);
+            var komunikat = $("<div id='id_pobierz_z_pbn_komunikat' " +
+                "role='status' aria-live='polite' " +
+                "style='margin-top: 6px; max-width: 60em;'></div>");
+
+            // Za kontenerem select2, żeby przycisk nie rozdzielał pola
+            // i jego widżetu; komunikaty pod spodem.
+            var kotwica = pole.next(".select2");
+            if (!kotwica.length) {
+                kotwica = pole;
+            }
+            przycisk.insertAfter(kotwica);
+            komunikat.insertAfter(pole.parent().children().last());
+
+            // Reguła widoczności: rekord MA odpowiednik — przycisku nie ma.
+            function odswiezWidocznosc() {
+                var val = pole.val();
+                if (val && String(val).trim() !== "") {
+                    przycisk.hide();
+                } else {
+                    przycisk.show();
+                }
+            }
+
+            odswiezWidocznosc();
+            pole.on("change select2:select select2:unselect select2:clear",
+                odswiezWidocznosc);
+
+            function pokaz(ikona, tekst) {
+                komunikat.empty().append($("<p/>").text(ikona + " " + tekst));
+            }
+
+            function ustaw(kandydat) {
+                pole.find("option").filter(function () {
+                    return this.value === String(kandydat.id);
+                }).remove();
+                pole.append(new Option(kandydat.etykieta, kandydat.id, true, true));
+                pole.trigger("change");
+            }
+
+            function pokazKandydatow(kandydaci) {
+                var lista = $("<ul class='pobierz-z-pbn-kandydaci' " +
+                    "style='margin: 4px 0 0 0; padding: 0; list-style: none;'/>");
+                $.each(kandydaci, function (_, k) {
+                    var li = $("<li style='margin: 3px 0;'/>");
+                    var wybierz = $("<input type='button' value='Wybierz' " +
+                        "class='pobierz-z-pbn-wybierz' style='margin-right: 6px;'/>");
+                    if (k.zajety) {
+                        wybierz.prop("disabled", true);
+                    }
+                    wybierz.click(function () {
+                        ustaw(k);
+                        pokaz("✅", "Wybrano: " + k.etykieta + ". Zapisz rekord, " +
+                            "żeby zachować odpowiednik.");
+                    });
+                    li.append(wybierz);
+                    li.append($("<span/>").text(
+                        (k.oficjalny ? "⭐ " : "") + k.etykieta));
+                    if (k.opis && k.opis !== k.etykieta) {
+                        li.append($("<span style='color: #666;'/>").text(
+                            " — " + k.opis));
+                    }
+                    if (k.zajety) {
+                        li.append($("<span style='color: #a00;'/>").text(
+                            " ⚠️ już przypisany do: " + k.zajety));
+                    }
+                    lista.append(li);
+                });
+                komunikat.append(lista);
+            }
+
+            przycisk.click(function () {
+                var dane = {pk: "{{ original.pk|default_if_none:''|escapejs }}"};
+                $.each(pola, function (_, nazwa) {
+                    var el = $("#id_" + nazwa);
+                    if (el.length) {
+                        dane[nazwa] = el.val();
+                    }
+                });
+
+                przycisk.val("⏳ Szukam…").prop("disabled", true);
+                komunikat.empty();
+
+                $.ajax({
+                    type: "POST",
+                    url: "{{ url|escapejs }}",
+                    data: dane,
+                    error: function (request, status, error) {
+                        przycisk.val(NAPIS).prop("disabled", false);
+                        pokaz("❌", "Nie udało się połączyć z serwerem (" +
+                            status + (error ? ", " + error : "") +
+                            "). Spróbuj ponownie za chwilę.");
+                    },
+                    success: function (data) {
+                        przycisk.val(NAPIS).prop("disabled", false);
+
+                        if (data.error) {
+                            pokaz("❌", data.error);
+                            return;
+                        }
+                        var kandydaci = data.kandydaci || [];
+                        if (data.status === "pewny" && kandydaci.length) {
+                            ustaw(kandydaci[0]);
+                            pokaz("✅", data.komunikat + " Wstawiono: " +
+                                kandydaci[0].etykieta + ". Zapisz rekord, " +
+                                "żeby zachować odpowiednik.");
+                            return;
+                        }
+                        if (data.status === "do_wyboru") {
+                            pokaz("👉", data.komunikat);
+                            pokazKandydatow(kandydaci);
+                        } else {
+                            pokaz("ℹ️", data.komunikat);
+                        }
+                        if (data.uwaga) {
+                            komunikat.append(
+                                $("<p style='color: #666;'/>").text(data.uwaga));
+                        }
+                    }
+                });
+            });
+        });
+    }(django.jQuery));
+</script>

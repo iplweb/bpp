@@ -69,27 +69,18 @@ def test_change_form_get_pbn_by_doi_via_api_nie_ma_w_api_jest_w_bazie(
         admin_page.fill("#id_rok", ROK)
         admin_page.fill("#id_doi", DOI)
 
-        # Verify button exists
-        admin_page.wait_for_selector("#id_doi_pbn_get", state="visible")
+        # FD#515: jeden przycisk, bez wyboru „po czym”.
+        admin_page.wait_for_selector("#id_pobierz_z_pbn", state="visible")
+        admin_page.locator("#id_pobierz_z_pbn").click()
 
-        btn = admin_page.locator("#id_doi_pbn_get")
-        btn.click()
-
-        # Wait for select2 search field and autocomplete results to appear
-        admin_page.wait_for_selector("input.select2-search__field", state="visible")
-        admin_page.wait_for_selector(
-            ".select2-results__option:not(.select2-results__message)",
-            state="visible",
-            timeout=5000,
+        # DOI wskazuje jeden rekord — trafia do pola od razu, a komunikat
+        # pojawia się przy przycisku (bez alert()).
+        expect(admin_page.locator("#id_pobierz_z_pbn_komunikat")).to_contain_text(
+            "Znaleziono po: DOI"
         )
-
-        # Click on the first result to select it
-        admin_page.locator(
-            ".select2-results__option:not(.select2-results__message)"
-        ).first.click()
-
         # Verify pbn_uid field was populated with the local database record
         expect(admin_page.locator("#id_pbn_uid")).to_have_value(UID_REKORDU)
+        expect(admin_page.locator("#id_pobierz_z_pbn")).to_be_hidden()
     finally:
         res.delete()
 
@@ -123,27 +114,18 @@ def test_change_form_get_pbn_by_doi_via_api_jest_w_api(
     admin_page.fill("#id_rok", ROK)
     admin_page.fill("#id_doi", DOI)
 
-    # Verify button exists
-    admin_page.wait_for_selector("#id_doi_pbn_get", state="visible")
+    # FD#515: jeden przycisk, bez wyboru „po czym”.
+    admin_page.wait_for_selector("#id_pobierz_z_pbn", state="visible")
+    admin_page.locator("#id_pobierz_z_pbn").click()
 
-    btn = admin_page.locator("#id_doi_pbn_get")
-    btn.click()
-
-    # Wait for select2 search field and autocomplete results to appear
-    admin_page.wait_for_selector("input.select2-search__field", state="visible")
-    admin_page.wait_for_selector(
-        ".select2-results__option:not(.select2-results__message)",
-        state="visible",
-        timeout=5000,
+    # DOI wskazuje jeden rekord — trafia do pola od razu, a komunikat
+    # pojawia się przy przycisku (bez alert()).
+    expect(admin_page.locator("#id_pobierz_z_pbn_komunikat")).to_contain_text(
+        "Znaleziono po: DOI"
     )
-
-    # Click on the first result to select it
-    admin_page.locator(
-        ".select2-results__option:not(.select2-results__message)"
-    ).first.click()
-
     # Verify pbn_uid field was populated with the API result
     expect(admin_page.locator("#id_pbn_uid")).to_have_value(UID_REKORDU)
+    expect(admin_page.locator("#id_pobierz_z_pbn")).to_be_hidden()
 
 
 @pytest.mark.django_db(transaction=True)
@@ -175,27 +157,19 @@ def test_change_form_get_pbn_by_isbn_or_eisbn_via_api_pub_jest_w_api(
     admin_page.fill("#id_rok", ROK)
     admin_page.fill(f"#id_{field_name}", ISBN)
 
-    # Verify button exists
-    admin_page.wait_for_selector("#id_isbn_pbn_get", state="visible")
+    # FD#515: jeden przycisk, bez wyboru „po czym”.
+    admin_page.wait_for_selector("#id_pobierz_z_pbn", state="visible")
+    admin_page.locator("#id_pobierz_z_pbn").click()
 
-    btn = admin_page.locator("#id_isbn_pbn_get")
-    btn.click()
-
-    # Wait for select2 search field and autocomplete results to appear
-    admin_page.wait_for_selector("input.select2-search__field", state="visible")
-    admin_page.wait_for_selector(
-        ".select2-results__option:not(.select2-results__message)",
-        state="visible",
-        timeout=5000,
+    # Sam ISBN przy innym tytule nie wystarcza do wstawienia bez
+    # pytania — redaktor wybiera rekord z listy przy przycisku.
+    expect(admin_page.locator("#id_pobierz_z_pbn_komunikat")).to_contain_text(
+        "wybierz właściwy"
     )
-
-    # Click on the first result to select it
-    admin_page.locator(
-        ".select2-results__option:not(.select2-results__message)"
-    ).first.click()
-
+    admin_page.locator(".pobierz-z-pbn-wybierz").first.click()
     # Verify pbn_uid field was populated with the API result
     expect(admin_page.locator("#id_pbn_uid")).to_have_value(UID_REKORDU)
+    expect(admin_page.locator("#id_pobierz_z_pbn")).to_be_hidden()
 
 
 @pytest.mark.django_db(transaction=True)
@@ -236,26 +210,18 @@ def test_change_form_get_pbn_by_isbn_or_eisbn_via_api_pub_jest_w_lokalnej_bazie(
         admin_page.fill("#id_rok", ROK)
         admin_page.fill(f"#id_{field_name}", ISBN)
 
-        # Verify button exists
-        admin_page.wait_for_selector("#id_isbn_pbn_get", state="visible")
+        # FD#515: jeden przycisk, bez wyboru „po czym”.
+        admin_page.wait_for_selector("#id_pobierz_z_pbn", state="visible")
+        admin_page.locator("#id_pobierz_z_pbn").click()
 
-        btn = admin_page.locator("#id_isbn_pbn_get")
-        btn.click()
-
-        # Wait for select2 search field and autocomplete results to appear
-        admin_page.wait_for_selector("input.select2-search__field", state="visible")
-        admin_page.wait_for_selector(
-            ".select2-results__option:not(.select2-results__message)",
-            state="visible",
-            timeout=5000,
+        # Sam ISBN przy innym tytule nie wystarcza do wstawienia bez
+        # pytania — redaktor wybiera rekord z listy przy przycisku.
+        expect(admin_page.locator("#id_pobierz_z_pbn_komunikat")).to_contain_text(
+            "wybierz właściwy"
         )
-
-        # Click on the first result to select it
-        admin_page.locator(
-            ".select2-results__option:not(.select2-results__message)"
-        ).first.click()
-
+        admin_page.locator(".pobierz-z-pbn-wybierz").first.click()
         # Verify pbn_uid field was populated with the local database record
         expect(admin_page.locator("#id_pbn_uid")).to_have_value(UID_REKORDU)
+        expect(admin_page.locator("#id_pobierz_z_pbn")).to_be_hidden()
     finally:
         pub.delete()

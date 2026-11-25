@@ -1,0 +1,355 @@
+"""FD#515 — jeden przycisk „Pobierz z PBN” przy polu „Odpowiednik w PBN”.
+
+Redaktor nie wybiera, według czego szukać: system próbuje kolejno DOI,
+adresów WWW i ISBN. Testy bez sieci — serwer PBN zastępuje atrapa.
+"""
+
+import json
+
+import pytest
+from django.urls import reverse
+from django.utils.html import escapejs
+from model_bakery import baker
+
+from bpp.models import Uczelnia
+from bpp.views.api.pbn_odpowiednik import (
+    BRAK,
+    DO_WYBORU,
+    KOMUNIKAT_AUTORYZACJA,
+    PEWNY,
+    PUSTE,
+    PobierzOdpowiednikPublikacjiView,
+    znajdz_odpowiednik_publikacji,
+)
+from fixtures.pbn_api import pbn_general_json
+from pbn_api.exceptions import WillNotExportError
+from pbn_api.models import Journal, Publication, Publisher
+
+UID_1 = "6accb7c13d7d997e0c94d1a1"
+UID_2 = "6accb7c13d7d997e0c94d1a2"
+DOI = "10.5555/FD515.Test"
+WWW = "https://czasopismo.example.org/artykul/42"
+ISBN = "9780128195178"
+TYTUL = "Wpływ testów na jakość oprogramowania"
+
+
+def _publikacja(uid=UID_1, **obiekt):
+    obiekt.setdefault("title", TYTUL)
+    obiekt.setdefault("year", 2024)
+    return Publication.objects.create(
+        mongoId=uid,
+        status="ACTIVE",
+        verificationLevel="x",
+        verified=True,
+        versions=[{"current": True, "object": obiekt}],
+    )
+
+
+# --- wspólna logika ----------------------------------------------------------
+
+
+@pytest.mark.django_db
+def test_po_doi_lokalnie_bez_wzgledu_na_wielkosc_liter():
+    _publikacja(doi=DOI)
+
+    wynik = znajdz_odpowiednik_publikacji(doi=DOI.lower(), tytul="zupełnie inny")
+
+    assert wynik.status == PEWNY
+    assert wynik.uid == UID_1
+    assert wynik.po_czym.startswith("DOI ")
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize(
+    "adres",
+    [
+        WWW,
+        "http://czasopismo.example.org/artykul/42/",
+        "czasopismo.example.org/artykul/42",
+        "HTTPS://Czasopismo.Example.ORG/artykul/42",
+    ],
+)
+def test_praca_bez_doi_z_adresem_www_zgodnym_z_pbn(adres):
+    """Kryterium ze zgłoszenia: praca bez DOI, ale z adresem WWW zgodnym
+    z PBN, dostaje odpowiednik."""
+    _publikacja(publicUri=WWW)
+
+    wynik = znajdz_odpowiednik_publikacji(www=adres, tytul=TYTUL.upper() + "!")
+
+    assert wynik.status == PEWNY, wynik
+    assert wynik.uid == UID_1
+    assert wynik.po_czym.startswith("adres WWW ")
+
+
+@pytest.mark.django_db
+def test_publiczny_adres_www_tez_jest_sprawdzany():
+    _publikacja(publicUri=WWW)
+
+    wynik = znajdz_odpowiednik_publikacji(
+        www="https://inny.example.org/a/1", public_www=WWW, tytul=TYTUL
+    )
+
+    assert wynik.status == PEWNY
+    assert len(wynik.sprawdzono) == 2
+
+
+@pytest.mark.django_db
+def test_adres_www_o_innym_tytule_nie_jest_pewny():
+    """Adres WWW bywa wspólny (książka i jej rozdziały) — przy innym tytule
+    rekord jest tylko propozycją do wyboru."""
+    _publikacja(publicUri=WWW, title="Cała książka")
+
+    wynik = znajdz_odpowiednik_publikacji(www=WWW, tytul=TYTUL)
+
+    assert wynik.status == DO_WYBORU
+    assert wynik.uidy == [UID_1]
+    assert wynik.uid is None
+
+
+@pytest.mark.django_db
+def test_sam_adres_domeny_nie_jest_identyfikatorem():
+    _publikacja(publicUri="https://wydawnictwo.example.org")
+
+    wynik = znajdz_odpowiednik_publikacji(
+        www="https://wydawnictwo.example.org/", tytul=TYTUL
+    )
+
+    assert wynik.status == PUSTE
+
+
+@pytest.mark.django_db
+def test_isbn_ksiazki_i_rozdzialu_wybiera_rekord_o_tym_samym_tytule():
+    _publikacja(UID_1, isbn=ISBN, title="Cała książka", type="BOOK")
+    _publikacja(UID_2, title=TYTUL, type="CHAPTER", book={"isbn": ISBN})
+
+    rozdzial = znajdz_odpowiednik_publikacji(isbn="978-0-12-819517-8", tytul=TYTUL)
+    nieznany = znajdz_odpowiednik_publikacji(isbn=ISBN, tytul="Inny rozdział")
+
+    assert (rozdzial.status, rozdzial.uid) == (PEWNY, UID_2)
+    assert nieznany.status == DO_WYBORU
+    assert set(nieznany.uidy) == {UID_1, UID_2}
+
+
+@pytest.mark.django_db
+def test_e_isbn_jest_sprawdzany_gdy_isbn_nie_dal_wyniku():
+    _publikacja(isbn=ISBN)
+
+    wynik = znajdz_odpowiednik_publikacji(
+        isbn="9788374307338", e_isbn=ISBN, tytul=TYTUL
+    )
+
+    assert wynik.status == PEWNY
+    assert len(wynik.sprawdzono) == 2
+
+
+@pytest.mark.django_db
+def test_kolejny_identyfikator_rozstrzyga_niejednoznaczny_wczesniejszy():
+    """DOI zdublowany w PBN, ale adres WWW wskazuje jeden rekord."""
+    _publikacja(UID_1, doi=DOI, title="Wersja pierwsza")
+    _publikacja(UID_2, doi=DOI, publicUri=WWW)
+
+    wynik = znajdz_odpowiednik_publikacji(doi=DOI, www=WWW, tytul=TYTUL)
+
+    assert (wynik.status, wynik.uid) == (PEWNY, UID_2)
+
+
+@pytest.mark.django_db
+def test_puste_pola_i_brak_wyniku_daja_czytelne_komunikaty():
+    puste = znajdz_odpowiednik_publikacji(tytul=TYTUL)
+    brak = znajdz_odpowiednik_publikacji(doi=DOI, www=WWW, isbn=ISBN)
+
+    assert puste.status == PUSTE
+    assert "Uzupełnij DOI" in puste.komunikat
+    assert brak.status == BRAK
+    assert "Nie udało się znaleźć odpowiednika w PBN" in brak.komunikat
+    for fragment in (DOI, "czasopismo.example.org/artykul/42", ISBN):
+        assert fragment in brak.komunikat
+
+
+@pytest.mark.django_db
+def test_bez_tokena_pbn_szukamy_tylko_lokalnie():
+    def klient():
+        raise WillNotExportError("brak tokena")
+
+    wynik = znajdz_odpowiednik_publikacji(doi=DOI, klient=klient)
+
+    assert wynik.status == BRAK
+    assert wynik.bez_serwera == KOMUNIKAT_AUTORYZACJA
+
+
+@pytest.mark.django_db
+def test_doi_szukany_na_serwerze_pbn_gdy_brak_w_kopii(mocker, pbn_uczelnia, pbn_client):
+    rekord = pbn_general_json(
+        {"type": "ARTICLE", "title": TYTUL, "year": 2024, "doi": DOI}, mongoId=UID_1
+    )
+    zapytania = []
+
+    def szukaj(**kw):
+        zapytania.append(kw)
+        return [{"mongoId": UID_1}] if kw.get("doi") else []
+
+    mocker.patch.object(pbn_client, "search_publications", side_effect=szukaj)
+    pbn_client.transport.return_values[f"/api/v1/publications/id/{UID_1}"] = rekord
+
+    wynik = znajdz_odpowiednik_publikacji(doi=DOI, klient=lambda: pbn_client)
+
+    assert (wynik.status, wynik.uid) == (PEWNY, UID_1)
+    assert zapytania and "doi" in zapytania[0]
+    # Rekord trafił do lokalnej kopii — pole formularza umie go pokazać.
+    assert Publication.objects.filter(pk=UID_1).exists()
+
+
+@pytest.mark.django_db
+def test_lokalne_trafienie_nie_dotyka_serwera_pbn():
+    _publikacja(doi=DOI)
+
+    def klient():
+        raise AssertionError("nie powinno być zapytania do serwera PBN")
+
+    assert znajdz_odpowiednik_publikacji(doi=DOI, klient=klient).status == PEWNY
+
+
+# --- widoki ------------------------------------------------------------------
+
+
+def _post(klient_http, widok, **dane):
+    odp = klient_http.post(reverse(f"bpp:{widok}"), data=dane)
+    assert odp.status_code == 200, odp.status_code
+    return json.loads(odp.content)
+
+
+@pytest.mark.django_db
+def test_widok_publikacji_zwraca_pewny_odpowiednik(admin_client, uczelnia):
+    _publikacja(publicUri=WWW)
+
+    res = _post(
+        admin_client,
+        "api_get_pbn_by_identifiers",
+        www=WWW,
+        tytul_oryginalny=TYTUL,
+    )
+
+    assert res["status"] == PEWNY
+    assert res["id"] == UID_1
+    assert res["kandydaci"][0]["etykieta"]
+    assert "adres WWW" in res["komunikat"]
+
+
+@pytest.mark.django_db
+def test_widok_publikacji_niczego_nie_wiaze(admin_client, uczelnia, wydawnictwo_ciagle):
+    _publikacja(doi=DOI)
+    wydawnictwo_ciagle.doi = DOI
+    wydawnictwo_ciagle.save()
+
+    res = _post(admin_client, "api_get_pbn_by_identifiers", doi=DOI)
+
+    assert res["id"] == UID_1
+    wydawnictwo_ciagle.refresh_from_db()
+    assert wydawnictwo_ciagle.pbn_uid_id is None
+
+
+@pytest.mark.django_db
+def test_widok_publikacji_puste_pola(admin_client, uczelnia):
+    res = _post(admin_client, "api_get_pbn_by_identifiers", tytul_oryginalny=TYTUL)
+
+    assert res["status"] == PUSTE
+    assert "id" not in res
+    assert "Uzupełnij" in res["komunikat"]
+
+
+@pytest.mark.django_db
+def test_widok_bez_tokena_pbn_dopisuje_uwage(rf, admin_user, uczelnia):
+    """Brak autoryzacji w PBN nie jest błędem — jest wynik z lokalnej kopii
+    i podpowiedź, jak przeszukać także serwer PBN."""
+    uczelnia.pbn_client = lambda *a, **kw: (_ for _ in ()).throw(
+        WillNotExportError("brak tokena")
+    )
+    req = rf.post("/", data={"doi": DOI})
+    req.user = admin_user
+    req._uczelnia = uczelnia
+
+    res = json.loads(PobierzOdpowiednikPublikacjiView.as_view()(req).content)
+
+    assert res["status"] == BRAK
+    assert res["uwaga"] == KOMUNIKAT_AUTORYZACJA
+
+
+@pytest.mark.django_db
+def test_widoki_tylko_dla_zalogowanych_redaktorow(client, normal_django_user):
+    url = reverse("bpp:api_get_pbn_by_identifiers")
+
+    assert client.post(url, data={"doi": DOI}).status_code == 302
+    client.force_login(normal_django_user)
+    assert client.post(url, data={"doi": DOI}).status_code == 403
+
+
+@pytest.mark.django_db
+def test_widok_zrodla_po_issn_i_wykaz_ministerialny_pierwszy(admin_client, uczelnia):
+    def journal(uid, **obiekt):
+        return Journal.objects.create(
+            mongoId=uid,
+            status="ACTIVE",
+            verificationLevel="x",
+            verified=True,
+            versions=[{"current": True, "object": obiekt}],
+        )
+
+    journal(UID_1, title="Acta Testologica", issn="1234-5678")
+
+    jeden = _post(admin_client, "api_pobierz_z_pbn_zrodla", issn="1234-5678")
+    assert (jeden["status"], jeden["id"]) == (PEWNY, UID_1)
+
+    journal(UID_2, title="Acta Testologica (druk)", eissn="1234-5678", mniswId=77)
+    kilka = _post(admin_client, "api_pobierz_z_pbn_zrodla", issn="1234-5678")
+    assert kilka["status"] == DO_WYBORU
+    assert [k["id"] for k in kilka["kandydaci"]] == [UID_2, UID_1]
+    assert "id" not in kilka
+
+    assert _post(admin_client, "api_pobierz_z_pbn_zrodla")["status"] == PUSTE
+    assert _post(admin_client, "api_pobierz_z_pbn_zrodla", nazwa="Nic")["status"] == (
+        BRAK
+    )
+
+
+@pytest.mark.django_db
+def test_widok_wydawcy_po_nazwie(admin_client, uczelnia):
+    Publisher.objects.create(
+        mongoId=UID_1,
+        status="ACTIVE",
+        verificationLevel="x",
+        verified=True,
+        versions=[{"current": True, "object": {"publisherName": "Wydawnictwo ABC"}}],
+    )
+
+    res = _post(admin_client, "api_pobierz_z_pbn_wydawcy", nazwa="wydawnictwo abc")
+
+    assert (res["status"], res["id"]) == (PEWNY, UID_1)
+
+
+# --- formularze: jeden przycisk zamiast dwóch --------------------------------
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize(
+    "model, endpoint",
+    [
+        ("wydawnictwo_ciagle", "api_get_pbn_by_identifiers"),
+        ("wydawnictwo_zwarte", "api_get_pbn_by_identifiers"),
+        ("autor", "api_pobierz_z_pbn_autora"),
+        ("zrodlo", "api_pobierz_z_pbn_zrodla"),
+        ("wydawca", "api_pobierz_z_pbn_wydawcy"),
+    ],
+)
+def test_formularz_ma_jeden_przycisk_pobierz_z_pbn(admin_client, model, endpoint):
+    baker.make(Uczelnia)
+
+    html = admin_client.get(reverse(f"admin:bpp_{model}_add")).content.decode()
+
+    assert "id_pobierz_z_pbn" in html
+    assert "Pobierz z PBN" in html
+    assert escapejs(reverse(f"bpp:{endpoint}")) in html
+    assert "Pobierz po DOI" not in html
+    assert "Pobierz po ISBN" not in html
+    # Reguła widoczności i komunikaty przy przycisku zamiast alert().
+    assert "przycisk.hide()" in html
+    assert "id_pobierz_z_pbn_komunikat" in html

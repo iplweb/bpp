@@ -16,5 +16,7 @@
 
 {% block submit_buttons_bottom %}
     {{ block.super }}
+    {% url "bpp:api_pobierz_z_pbn_zrodla" as pobierz_z_pbn_url %}
+    {% include "admin/pobierz_z_pbn_button_handler.html" with url=pobierz_z_pbn_url pola="issn e_issn nazwa" %}
     {% include "admin/copy_pbn_uid_button_handler.html" %}
 {% endblock %}
