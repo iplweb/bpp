@@ -235,6 +235,13 @@ API zwraca dane w formacie JSON. Przykład odpowiedzi dla listy wydawnictw:
 Przykład jest skrócony — rekord zawiera więcej pól. Powiązane obiekty (charakter formalny,
 źródło, autorzy) podawane są jako adresy, pod którymi można pobrać ich dane.
 
+Punkty i typ MNiSW/MEiN występują w rekordach publikacji pod dwiema
+nazwami: dawną (`punkty_kbn`, `typ_kbn`) i nową (`punkty_mnisw`,
+`typ_mnisw`). Wartości są identyczne; dawne klucze zostają, więc istniejące
+integracje nie wymagają zmian. Te same pary nazw działają w zapytaniach
+DjangoQL wysyłanych do `/api/v1/zapytanie/…`. Adres słownika typów to nadal
+`/api/v1/typ_kbn/`.
+
 ### Parametry filtrowania
 
 Większość endpoint'ów obsługuje następujące parametry filtrowania:

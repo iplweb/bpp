@@ -6,7 +6,6 @@ from api_v1.serializers.util import (
     Wydawnictwo_AutorSerializerMixin,
     WydawnictwoSerializerMixin,
 )
-
 from bpp.models import (
     Wydawnictwo_Zwarte,
     Wydawnictwo_Zwarte_Autor,
@@ -98,6 +97,7 @@ class Wydawnictwo_ZwarteSerializer(
             "jezyk_alt",
             "charakter_formalny",
             "typ_kbn",
+            "typ_mnisw",
             #
             "www",
             "dostep_dnia",
@@ -119,6 +119,7 @@ class Wydawnictwo_ZwarteSerializer(
             #
             "impact_factor",
             "punkty_kbn",
+            "punkty_mnisw",
             #
             "informacje",
             "szczegoly",

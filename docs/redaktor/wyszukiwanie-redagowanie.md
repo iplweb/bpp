@@ -96,6 +96,14 @@ Dokończmy zapytanie:
 (charakter_formalny.skrot = "KSP" or charakter_formalny.skrot = "AC") and punkty_kbn >= 100
 ```
 
+!!! note "`punkty_kbn` czy `punkty_mnisw`?"
+    Punkty MNiSW/MEiN i typ MNiSW/MEiN mają w zapytaniach po dwie nazwy:
+    dawną (`punkty_kbn`, `typ_kbn`) i nową (`punkty_mnisw`, `typ_mnisw`).
+    Obie znaczą dokładnie to samo i można je mieszać —
+    `punkty_mnisw >= 100` daje ten sam wynik co `punkty_kbn >= 100`,
+    a `typ_mnisw.skrot = "PO"` ten sam co `typ_kbn.skrot = "PO"`.
+    Zapytania zapisane wcześniej działają bez zmian.
+
 Jak widać na zrzucie ekranu poniżej, zadziałało ono:
 
 ![Wynik złożonego zapytania DjangoQL o charakter formalny i punkty](../images/redaktor/wyszukiwanie-redagowanie/10-djangoql-wynik-zlozony.png)

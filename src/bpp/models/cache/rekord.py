@@ -269,6 +269,9 @@ class RekordBase(
     django_dsl_shortcuts = {
         "charakter": "charakter_formalny__skrot",
         "typ_kbn": "typ_kbn__skrot",
+        # FD#527: nowe nazwy obok dawnych (kolumny w bazie bez zmian).
+        "typ_mnisw": "typ_kbn__skrot",
+        "punkty_mnisw": "punkty_kbn",
         "typ_odpowiedzialnosci": "autorzy__typ_odpowiedzialnosci__skrot",
         "autor": "autorzy__autor_id",
         "jednostka": "autorzy__jednostka__pk",

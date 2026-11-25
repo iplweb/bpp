@@ -17,6 +17,7 @@ True, ``disabled``/``ukryty``… = False). FK do modeli bez pola-etykiety
 pomijane.
 """
 
+import copy
 import re
 
 from django.core.exceptions import FieldDoesNotExist
@@ -24,6 +25,7 @@ from django.db import models
 from django.db.models import Q
 from django.utils.html import strip_tags
 from djangoql.extras import AutocompleteField, ExtrasSchema
+from djangoql.schema import DjangoQLField
 
 from bpp.djangoql_soft_delete import WykluczSkasowaneMixin
 from bpp.models import Charakter_Formalny, Jednostka
@@ -354,7 +356,91 @@ class SekretyWykluczoneSchemaMixin:
         ]
 
 
+#: FD#527: nowe nazwy pól w zapytaniach — ``alias: nazwa pola w modelu``.
+#: KBN nie istnieje od lat, więc w zapytaniach można pisać ``punkty_mnisw``
+#: i ``typ_mnisw``; dawne ``punkty_kbn`` i ``typ_kbn`` działają bez zmian
+#: (zapytania zapisane w bazach instalacji ich używają). Kolumny w bazie
+#: nazywają się po staremu — alias istnieje wyłącznie w języku zapytań.
+ALIASY_POL = {
+    "punkty_mnisw": "punkty_kbn",
+    "typ_mnisw": "typ_kbn",
+}
+
+
+def _bez_aliasu(nazwa):
+    """``punkty_mnisw`` → ``punkty_kbn``; także nazwy pochodne z ``__``
+    (``typ_mnisw__rel``, ``punkty_mnisw__sum``). Inne nazwy bez zmian."""
+    rdzen, separator, reszta = nazwa.partition("__")
+    return ALIASY_POL.get(rdzen, rdzen) + separator + reszta
+
+
+def _z_aliasem(nazwa):
+    """Odwrotność :func:`_bez_aliasu`: nazwa-alias dla pola albo ``None``."""
+    rdzen, separator, reszta = nazwa.partition("__")
+    for alias, pole in ALIASY_POL.items():
+        if rdzen == pole:
+            return alias + separator + reszta
+    return None
+
+
+def _zamien_aliasy_w_drzewie(node):
+    """Podmienia aliasy w nazwach pól całego drzewa zapytania (w miejscu)."""
+    from djangoql.ast import Logical, Name
+
+    if isinstance(node.operator, Logical):
+        _zamien_aliasy_w_drzewie(node.left)
+        _zamien_aliasy_w_drzewie(node.right)
+    elif isinstance(node.left, Name):
+        node.left.parts[:] = [_bez_aliasu(p) for p in node.left.parts]
+
+
+class AliasyPolSchemaMixin:
+    """Aliasy nazw pól w zapytaniach DjangoQL (:data:`ALIASY_POL`).
+
+    Alias jest podmieniany na prawdziwą nazwę pola w drzewie zapytania, zanim
+    schemat cokolwiek z nim zrobi — dalej (walidacja, filtr ORM, adnotacje,
+    odsiewanie kosza) wszystko działa na prawdziwych nazwach. djangoql buduje
+    ścieżkę lookupu ORM wprost z części nazwy, więc podmiana „w locie" samej
+    instancji pola nie wystarczyłaby dla relacji (``typ_mnisw.nazwa``).
+
+    Musi być PIERWSZĄ bazą schematu. ``aliasy_w_podpowiedziach`` decyduje,
+    czy aliasy trafiają na listę pól (podpowiedzi edytora); zapytania
+    z aliasami są przyjmowane niezależnie od tej flagi.
+    """
+
+    aliasy_w_podpowiedziach = True
+
+    def validate(self, node):
+        _zamien_aliasy_w_drzewie(node)
+        return super().validate(node)
+
+    def resolve_name(self, name):
+        # ``djangoql.breakdown`` woła ``build_filter`` z pominięciem
+        # ``validate()`` — stąd podmiana także tutaj.
+        name.parts[:] = [_bez_aliasu(p) for p in name.parts]
+        return super().resolve_name(name)
+
+    def get_fields(self, model):
+        fields = list(super().get_fields(model))
+        if not self.aliasy_w_podpowiedziach:
+            return fields
+        aliasy = []
+        for field in fields:
+            alias = _z_aliasem(_field_name(field))
+            if alias is None:
+                continue
+            if not isinstance(field, DjangoQLField):
+                field = self.get_field_instance(model, field)
+            if field is None:
+                continue
+            kopia = copy.copy(field)
+            kopia.name = alias
+            aliasy.append(kopia)
+        return fields + aliasy
+
+
 class BppQLSchema(
+    AliasyPolSchemaMixin,
     SekretyWykluczoneSchemaMixin,
     WykluczSkasowaneMixin,
     RelPickerSchemaMixin,
@@ -679,6 +765,7 @@ _LLM_HIDDEN_FIELDS_LABELS = {
 
 
 class RekordLLMSchema(
+    AliasyPolSchemaMixin,
     WykluczSkasowaneMixin,
     DeprecatedAndRestrictedFieldsMixin,
     SekretyWykluczoneSchemaMixin,
@@ -699,6 +786,9 @@ class RekordLLMSchema(
 
     include = SEARCH_ALLOWLIST
     hidden_fields_labels = _LLM_HIDDEN_FIELDS_LABELS
+    #: Zapytania z aliasami (``punkty_mnisw``) są przyjmowane, ale opis schematu
+    #: dla LLM wymienia każde pole raz — duplikaty tylko puchłyby w prompcie.
+    aliasy_w_podpowiedziach = False
     fk_options = _build_llm_fk_options()
     #: Twarda lista celów, których nazwy NIGDY nie trafiają do artefaktu —
     #: niezależnie od fk_options i --max-fk-options (wymaga djangoql-iplweb

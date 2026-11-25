@@ -81,7 +81,7 @@ class BaseRaportForm(forms.Form):
     punktacja_wewnetrzna_od = forms.FloatField(required=False, label="od")
     punktacja_wewnetrzna_do = forms.FloatField(required=False, label="do")
     tylko_punktowane = forms.BooleanField(
-        required=False, label="Tylko prace punktowane (pkt MNiSW > 0)"
+        required=False, label="Tylko prace punktowane (pkt MNiSW/MEiN > 0)"
     )
 
     # Nazwy pól przekazywanych w querystringu do widoku generującego. Lista
@@ -237,7 +237,9 @@ class BaseRaportForm(forms.Form):
 
     def _wiersze_zaawansowane(self):
         elementy = [
-            *self._grupa_zakres("Punkty MNiSW", "punkty_mnisw_od", "punkty_mnisw_do"),
+            *self._grupa_zakres(
+                "Punkty MNiSW/MEiN", "punkty_mnisw_od", "punkty_mnisw_do"
+            ),
             *self._grupa_zakres("Impact Factor", "if_od", "if_do"),
         ]
         if "punktacja_wewnetrzna_od" in self.fields:

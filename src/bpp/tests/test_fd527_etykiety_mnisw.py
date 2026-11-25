@@ -144,3 +144,41 @@ def test_fd527_migracja_poprawia_etykiety_kolumn_w_bazie(migracja):
     migracja.wstecz(apps, None)
     seedowa.refresh_from_db()
     assert seedowa.label == "Typ KBN"
+
+
+def test_fd527_jedna_forma_mnisw_mein_w_importerze_i_raportach():
+    from importer_publikacji.forms import PunktacjaForm, VerifyForm
+    from nowe_raporty.forms import BaseRaportForm
+
+    assert VerifyForm.base_fields["typ_kbn"].label == "Typ MNiSW/MEiN"
+    assert PunktacjaForm.base_fields["punkty_kbn"].label == "Punkty MNiSW/MEiN"
+    etykiety = [kolumna["label"] for kolumna in definicje.KOLUMNY]
+    assert "Pkt. MNiSW/MEiN" in etykiety
+    assert "Pkt. MNiSW" not in etykiety
+    etykiety_formularza = [str(p.label) for p in BaseRaportForm.base_fields.values()]
+    assert "Tylko prace punktowane (pkt MNiSW/MEiN > 0)" in etykiety_formularza
+
+
+@pytest.mark.django_db
+def test_fd527_migracja_dopisuje_mein_do_krotkich_etykiet():
+    migracja = importlib.import_module(
+        "nowe_raporty.migrations.0005_fd527_etykiety_mnisw_mein"
+    )
+    seed_default_reports()
+    tabela = Column.objects.filter(parent__label=definicje.TABELA_LABEL).first().parent
+    Column.objects.filter(parent=tabela, label="Pkt. MNiSW/MEiN").update(
+        label="Pkt. MNiSW"
+    )
+    reczna = baker.make(Column, parent=tabela, label="Typ MNiSW")
+    obca = baker.make(Column, parent=tabela, label="Punkty MNiSW autora")
+
+    migracja.naprzod(apps, None)
+
+    etykiety = set(Column.objects.filter(parent=tabela).values_list("label", flat=True))
+    assert "Pkt. MNiSW/MEiN" in etykiety
+    assert "Pkt. MNiSW" not in etykiety
+    reczna.refresh_from_db()
+    obca.refresh_from_db()
+    assert reczna.label == "Typ MNiSW/MEiN"
+    # Strażnik: etykiety niebędące dokładnie krótką formą zostają.
+    assert obca.label == "Punkty MNiSW autora"

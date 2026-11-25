@@ -39,6 +39,17 @@ Warto wiedzieć:
 - Etykiety kolumn w jednej tabeli powinny być różne — dwie kolumny o tej samej
   etykiecie pokażą się w raporcie jako jedna.
 
+## Nazwy pól punktów i typu MNiSW/MEiN w zapytaniach {#nazwy-pol-mnisw}
+
+W zapytaniach źródeł danych (**Raporty** → **Źródła danych**) punkty i typ
+MNiSW/MEiN można zapisać nową nazwą — `punkty_mnisw`, `typ_mnisw` — albo
+dawną: `punkty_kbn`, `typ_kbn`. Obie działają tak samo w obu językach zapytań
+(django-dsl i DjangoQL), np. `punkty_mnisw > 0 AND NOT typ_mnisw = "PW"`.
+Istniejących źródeł danych nie trzeba poprawiać.
+
+W polu **Atrybut** kolumny tabeli nadal wpisuje się nazwę pola z bazy
+(`punkty_kbn`, `typ_kbn`).
+
 ## Klonowanie tabeli {#klonowanie-tabeli}
 
 Żeby przygotować nową tabelę na podstawie istniejącej, nie trzeba przepisywać

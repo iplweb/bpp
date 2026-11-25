@@ -84,7 +84,11 @@ class Wydawnictwo_ResourceBase(resources.ModelResource):
     jezyk_orig = Field(attribute="jezyk_orig__skrot")
     charakter_formalny = Field(attribute="charakter_formalny__nazwa")
     status_korekty = Field(attribute="status_korekty__nazwa")
-    typ_kbn = Field(attribute="typ_kbn__nazwa")
+    # FD#527: nagłówki kolumn w pliku to ``typ_mnisw`` i ``punkty_mnisw``
+    # (dawniej ``typ_kbn`` / ``punkty_kbn``); pola modelu nazywają się po
+    # staremu. Eksport nie jest wczytywany z powrotem do BPP.
+    typ_kbn = Field(attribute="typ_kbn__nazwa", column_name="typ_mnisw")
+    punkty_kbn = Field(attribute="punkty_kbn", column_name="punkty_mnisw")
     openaccess_wersja_tekstu = Field(attribute="openaccess_wersja_tekstu__nazwa")
     openaccess_licencja = Field(attribute="openaccess_licencja__nazwa")
     openaccess_czas_publikacji = Field(attribute="openaccess_czas_publikacji__nazwa")

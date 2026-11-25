@@ -69,7 +69,7 @@ KOLUMNY = [
         footer_template="{{ value }}",
     ),
     dict(
-        label="Pkt. MNiSW",
+        label="Pkt. MNiSW/MEiN",
         position=4,
         sortable=True,
         attr_name="punkty_kbn",
