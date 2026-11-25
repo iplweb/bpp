@@ -12,7 +12,6 @@ from pathlib import Path
 
 from django.contrib.auth import get_user_model
 from django.core.management import BaseCommand, CommandError
-from django.db import transaction
 
 from bpp.models import (
     Autor,
@@ -21,13 +20,12 @@ from bpp.models import (
     Wydawnictwo_Ciagle_Autor,
     Wydawnictwo_Zwarte_Autor,
 )
-from bpp.wersjonowanie import jako_uzytkownik
 from pbn_api.models import Scientist
 from pbn_integrator.utils.dopasowanie_autorow import (
     KOLEJNOSC_POZIOMOW,
+    zapisz_propozycje,
     zbadaj_autorow,
 )
-from pbn_integrator.utils.scientists import _powiaz_autora_z_pbn
 
 NAGLOWKI = [
     "ID autora",
@@ -158,41 +156,6 @@ class Command(BaseCommand):
             autorzy = autorzy[:limit]
         return list(autorzy)
 
-    def _zapisz(self, propozycje, uzytkownik):
-        """Zapisz wskazania „pewne”. Każdy autor w osobnej transakcji,
-        z ponownym sprawdzeniem pod blokadą — PBN UID, który pojawił się
-        w międzyczasie, nigdy nie jest nadpisywany."""
-        with jako_uzytkownik(uzytkownik):
-            for propozycja in propozycje:
-                if not propozycja.do_zapisu:
-                    continue
-                with transaction.atomic():
-                    autor = Autor.objects.select_for_update().get(
-                        pk=propozycja.autor.pk
-                    )
-                    if autor.pbn_uid_id is not None:
-                        propozycja.uwagi.append(
-                            "nie zapisano: autor dostał PBN UID w międzyczasie"
-                        )
-                        continue
-                    if (
-                        Autor.objects.filter(pbn_uid_id=propozycja.scientist_id)
-                        .exclude(pk=autor.pk)
-                        .exists()
-                    ):
-                        propozycja.uwagi.append(
-                            "nie zapisano: osoba PBN została w międzyczasie "
-                            "przypisana do innego autora"
-                        )
-                        continue
-                    _powiaz_autora_z_pbn(
-                        autor,
-                        propozycja.scientist_id,
-                        "dopasowanie autorów bez odpowiednika w PBN: "
-                        + "; ".join(propozycja.zrodla),
-                    )
-                    propozycja.zapisano = True
-
     def _wiersze(self, propozycje):
         osoby = {
             osoba.pk: osoba
@@ -261,7 +224,7 @@ class Command(BaseCommand):
         )
 
         if options["zapisz"]:
-            self._zapisz(propozycje, uzytkownik)
+            zapisz_propozycje(propozycje, uzytkownik)
 
         self._zapisz_raport(sciezka, list(self._wiersze(propozycje)))
 

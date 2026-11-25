@@ -31,6 +31,24 @@ def rozwin_ekstra_informacje_playwright(admin_page: Page):
             expect(parent).not_to_have_class(re.compile(r"\bgrp-closed\b"))
 
 
+def potwierdz_odpowiednik_po_doi(admin_page: Page, wydawnictwo):
+    """Wydawnictwo ciągłe to artykuł — rekord PBN typu ARTICLE znaleziony po
+    DOI trafia do pola od razu, a komunikat pojawia się przy przycisku (bez
+    alert()). W nowym wydawnictwie zwartym rodzaj rekordu (książka /
+    rozdział) nie jest jeszcze ustalony, więc BPP niczego nie wstawia samo —
+    redaktor wybiera rekord z listy."""
+    komunikat = admin_page.locator("#id_pobierz_z_pbn_komunikat")
+    if wydawnictwo == "wydawnictwo_ciagle":
+        expect(komunikat).to_contain_text("Znaleziono po: DOI")
+    else:
+        expect(komunikat).to_contain_text("wybierz właściwy")
+        # Podpowiedź, co zrobić, żeby BPP wstawiło rekord samo.
+        expect(admin_page.locator("#id_pobierz_z_pbn_podpowiedz")).to_contain_text(
+            "Charakter formalny"
+        )
+        admin_page.locator(".pobierz-z-pbn-wybierz").first.click()
+
+
 @pytest.mark.serial
 @pytest.mark.django_db(transaction=True)
 @pytest.mark.parametrize("wydawnictwo", ["wydawnictwo_ciagle", "wydawnictwo_zwarte"])
@@ -55,7 +73,12 @@ def test_change_form_get_pbn_by_doi_via_api_nie_ma_w_api_jest_w_bazie(
             versions=[
                 {
                     "current": True,
-                    "object": {"year": ROK, "doi": DOI, "title": "Ten tego"},
+                    "object": {
+                        "year": ROK,
+                        "doi": DOI,
+                        "title": "Ten tego",
+                        "type": "ARTICLE",
+                    },
                 }
             ],
         )
@@ -69,27 +92,14 @@ def test_change_form_get_pbn_by_doi_via_api_nie_ma_w_api_jest_w_bazie(
         admin_page.fill("#id_rok", ROK)
         admin_page.fill("#id_doi", DOI)
 
-        # Verify button exists
-        admin_page.wait_for_selector("#id_doi_pbn_get", state="visible")
+        # FD#515: jeden przycisk, bez wyboru „po czym”.
+        admin_page.wait_for_selector("#id_pobierz_z_pbn", state="visible")
+        admin_page.locator("#id_pobierz_z_pbn").click()
 
-        btn = admin_page.locator("#id_doi_pbn_get")
-        btn.click()
-
-        # Wait for select2 search field and autocomplete results to appear
-        admin_page.wait_for_selector("input.select2-search__field", state="visible")
-        admin_page.wait_for_selector(
-            ".select2-results__option:not(.select2-results__message)",
-            state="visible",
-            timeout=5000,
-        )
-
-        # Click on the first result to select it
-        admin_page.locator(
-            ".select2-results__option:not(.select2-results__message)"
-        ).first.click()
-
+        potwierdz_odpowiednik_po_doi(admin_page, wydawnictwo)
         # Verify pbn_uid field was populated with the local database record
         expect(admin_page.locator("#id_pbn_uid")).to_have_value(UID_REKORDU)
+        expect(admin_page.locator("#id_pobierz_z_pbn")).to_be_hidden()
     finally:
         res.delete()
 
@@ -110,6 +120,7 @@ def test_change_form_get_pbn_by_doi_via_api_jest_w_api(
 
     # Setup mock PBN API responses
     pub1 = pbn_publication_json(ROK, mongoId=UID_REKORDU, doi=DOI)
+    pub1["versions"][0]["object"]["type"] = "ARTICLE"
     pbn_serwer.expect_request(PBN_SEARCH_PUBLICATIONS_URL).respond_with_json(
         pbn_pageable_json([pub1])
     )
@@ -123,27 +134,14 @@ def test_change_form_get_pbn_by_doi_via_api_jest_w_api(
     admin_page.fill("#id_rok", ROK)
     admin_page.fill("#id_doi", DOI)
 
-    # Verify button exists
-    admin_page.wait_for_selector("#id_doi_pbn_get", state="visible")
+    # FD#515: jeden przycisk, bez wyboru „po czym”.
+    admin_page.wait_for_selector("#id_pobierz_z_pbn", state="visible")
+    admin_page.locator("#id_pobierz_z_pbn").click()
 
-    btn = admin_page.locator("#id_doi_pbn_get")
-    btn.click()
-
-    # Wait for select2 search field and autocomplete results to appear
-    admin_page.wait_for_selector("input.select2-search__field", state="visible")
-    admin_page.wait_for_selector(
-        ".select2-results__option:not(.select2-results__message)",
-        state="visible",
-        timeout=5000,
-    )
-
-    # Click on the first result to select it
-    admin_page.locator(
-        ".select2-results__option:not(.select2-results__message)"
-    ).first.click()
-
+    potwierdz_odpowiednik_po_doi(admin_page, wydawnictwo)
     # Verify pbn_uid field was populated with the API result
     expect(admin_page.locator("#id_pbn_uid")).to_have_value(UID_REKORDU)
+    expect(admin_page.locator("#id_pobierz_z_pbn")).to_be_hidden()
 
 
 @pytest.mark.django_db(transaction=True)
@@ -175,27 +173,19 @@ def test_change_form_get_pbn_by_isbn_or_eisbn_via_api_pub_jest_w_api(
     admin_page.fill("#id_rok", ROK)
     admin_page.fill(f"#id_{field_name}", ISBN)
 
-    # Verify button exists
-    admin_page.wait_for_selector("#id_isbn_pbn_get", state="visible")
+    # FD#515: jeden przycisk, bez wyboru „po czym”.
+    admin_page.wait_for_selector("#id_pobierz_z_pbn", state="visible")
+    admin_page.locator("#id_pobierz_z_pbn").click()
 
-    btn = admin_page.locator("#id_isbn_pbn_get")
-    btn.click()
-
-    # Wait for select2 search field and autocomplete results to appear
-    admin_page.wait_for_selector("input.select2-search__field", state="visible")
-    admin_page.wait_for_selector(
-        ".select2-results__option:not(.select2-results__message)",
-        state="visible",
-        timeout=5000,
+    # Sam ISBN przy innym tytule nie wystarcza do wstawienia bez
+    # pytania — redaktor wybiera rekord z listy przy przycisku.
+    expect(admin_page.locator("#id_pobierz_z_pbn_komunikat")).to_contain_text(
+        "wybierz właściwy"
     )
-
-    # Click on the first result to select it
-    admin_page.locator(
-        ".select2-results__option:not(.select2-results__message)"
-    ).first.click()
-
+    admin_page.locator(".pobierz-z-pbn-wybierz").first.click()
     # Verify pbn_uid field was populated with the API result
     expect(admin_page.locator("#id_pbn_uid")).to_have_value(UID_REKORDU)
+    expect(admin_page.locator("#id_pobierz_z_pbn")).to_be_hidden()
 
 
 @pytest.mark.django_db(transaction=True)
@@ -236,26 +226,18 @@ def test_change_form_get_pbn_by_isbn_or_eisbn_via_api_pub_jest_w_lokalnej_bazie(
         admin_page.fill("#id_rok", ROK)
         admin_page.fill(f"#id_{field_name}", ISBN)
 
-        # Verify button exists
-        admin_page.wait_for_selector("#id_isbn_pbn_get", state="visible")
+        # FD#515: jeden przycisk, bez wyboru „po czym”.
+        admin_page.wait_for_selector("#id_pobierz_z_pbn", state="visible")
+        admin_page.locator("#id_pobierz_z_pbn").click()
 
-        btn = admin_page.locator("#id_isbn_pbn_get")
-        btn.click()
-
-        # Wait for select2 search field and autocomplete results to appear
-        admin_page.wait_for_selector("input.select2-search__field", state="visible")
-        admin_page.wait_for_selector(
-            ".select2-results__option:not(.select2-results__message)",
-            state="visible",
-            timeout=5000,
+        # Sam ISBN przy innym tytule nie wystarcza do wstawienia bez
+        # pytania — redaktor wybiera rekord z listy przy przycisku.
+        expect(admin_page.locator("#id_pobierz_z_pbn_komunikat")).to_contain_text(
+            "wybierz właściwy"
         )
-
-        # Click on the first result to select it
-        admin_page.locator(
-            ".select2-results__option:not(.select2-results__message)"
-        ).first.click()
-
+        admin_page.locator(".pobierz-z-pbn-wybierz").first.click()
         # Verify pbn_uid field was populated with the local database record
         expect(admin_page.locator("#id_pbn_uid")).to_have_value(UID_REKORDU)
+        expect(admin_page.locator("#id_pobierz_z_pbn")).to_be_hidden()
     finally:
         pub.delete()

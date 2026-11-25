@@ -17,7 +17,7 @@ from bpp.views.api import (
     UploadPunktacjaZrodlaView,
     const,
 )
-from bpp.views.api.pbn_get_by_parameter import GetPBNPublicationsByISBN
+from bpp.views.api.pbn_odpowiednik import PobierzOdpowiednikPublikacjiView
 from bpp.views.api.pubmed import GetPubmedIDView, get_data_from_ncbi
 from fixtures.pbn_api import pbn_pageable_json, pbn_publication_json
 
@@ -82,7 +82,7 @@ def test_GetPubmedIDView_post_jeden_rezultat(rf, mocker):
 
 
 @pytest.mark.django_db
-def test_GetPBNPublicationsByISBN_jedna_praca(
+def test_pobierz_z_pbn_po_isbn_jedna_praca(
     rf, pbn_uczelnia, pbn_client, admin_user, wydawnictwo_nadrzedne
 ):
     ROK = 123
@@ -99,7 +99,7 @@ def test_GetPBNPublicationsByISBN_jedna_praca(
     wydawnictwo_nadrzedne.tytul_oryginalny = TYTUL_REKORDU
     wydawnictwo_nadrzedne.save()
 
-    req = rf.post("/", data=dict(t=ISBN, rok="2021"))
+    req = rf.post("/", data=dict(isbn=ISBN, rok="2021", tytul_oryginalny=TYTUL_REKORDU))
     req.user = admin_user
     # Multi-hosted: jawnie ustawiamy uczelnię requestu (NIE ma get_default).
     req._uczelnia = pbn_uczelnia
@@ -109,13 +109,15 @@ def test_GetPBNPublicationsByISBN_jedna_praca(
     )
     pbn_client.transport.return_values[f"/api/v1/publications/id/{UID_REKORDU}"] = pub1
 
-    res = GetPBNPublicationsByISBN(request=req).post(req)
+    res = json.loads(PobierzOdpowiednikPublikacjiView.as_view()(req).content)
 
-    assert json.loads(res.content)["id"] == UID_REKORDU
+    # Rekord znaleziony; formularz nie podaje rodzaju rekordu, więc trafia
+    # na listę do wyboru zamiast od razu do pola (FD#515).
+    assert [k["id"] for k in res["kandydaci"]] == [UID_REKORDU]
 
 
 @pytest.mark.django_db
-def test_GetPBNPublicationsByISBN_wiele_isbn(
+def test_pobierz_z_pbn_po_isbn_wiele_rekordow(
     rf, pbn_uczelnia, pbn_client, admin_user, wydawnictwo_nadrzedne
 ):
     ROK = 123
@@ -135,7 +137,7 @@ def test_GetPBNPublicationsByISBN_wiele_isbn(
     wydawnictwo_nadrzedne.tytul_oryginalny = TYTUL_REKORDU
     wydawnictwo_nadrzedne.save()
 
-    req = rf.post("/", data=dict(t=ISBN, rok="2021"))
+    req = rf.post("/", data=dict(isbn=ISBN, rok="2021", tytul_oryginalny=TYTUL_REKORDU))
     req.user = admin_user
     # Multi-hosted: jawnie ustawiamy uczelnię requestu (NIE ma get_default).
     req._uczelnia = pbn_uczelnia
@@ -146,11 +148,12 @@ def test_GetPBNPublicationsByISBN_wiele_isbn(
     pbn_client.transport.return_values[f"/api/v1/publications/id/{UID_REKORDU}"] = pub1
     pbn_client.transport.return_values[f"/api/v1/publications/id/{UID_REKORDU}2"] = pub2
 
-    res = json.loads(GetPBNPublicationsByISBN(request=req).post(req).content)
+    res = json.loads(PobierzOdpowiednikPublikacjiView.as_view()(req).content)
 
-    # Kilka rekordów PBN — do wyszukiwarki pola „Odpowiednik w PBN" trafia
-    # ISBN, a redaktor wybiera właściwy rekord z listy (FD#622).
-    assert res["id"] == ISBN
+    # Kilka rekordów PBN — nic nie jest wstawiane samo, redaktor wybiera
+    # właściwy rekord z listy pod przyciskiem (FD#622, FD#515).
+    assert res["status"] == "do_wyboru"
+    assert "id" not in res
     assert {k["id"] for k in res["kandydaci"]} == {UID_REKORDU, UID_REKORDU + "2"}
 
 

@@ -1,8 +1,9 @@
-"""Przyciski „Pobierz po ISBN" / „Pobierz po DOI" przy polu „Odpowiednik w PBN".
+"""Szukanie rekordów PBN po DOI i po ISBN — strategie przycisku „Pobierz
+z PBN” (``pbn_odpowiednik``) i akcji grupowej.
 
-Widok szuka rekordów PBN pasujących do ISBN-u albo DOI z formularza i zwraca
-je do przeglądarki, która wpisuje wynik w wyszukiwarkę pola „Odpowiednik
-w PBN". Redaktor sam wybiera rekord — widok NICZEGO nie wiąże.
+To NIE są widoki: dawne adresy „Pobierz po ISBN” / „Pobierz po DOI” zostały
+usunięte w FD#515 (zastąpił je jeden widok ``api_get_pbn_by_identifiers``).
+Została sama logika wyszukiwania — niczego nie wiąże.
 
 Kolejność wyszukiwania (FD#622):
 
@@ -13,11 +14,11 @@ Kolejność wyszukiwania (FD#622):
    bez myślników i z myślnikami, w odmianie ISBN-13 i ISBN-10; DOI tak, jak
    go zapisano, i małymi literami).
 
-Rok z formularza NIE zawęża wyników — ISBN i DOI to identyfikatory, a rok
-w PBN potrafi różnić się od roku w BPP (np. rok książki zamiast roku
-rozdziału). Rok służy wyłącznie do ustawienia kolejności wyników.
+Rok NIE zawęża wyników — ISBN i DOI to identyfikatory, a rok w PBN potrafi
+różnić się od roku w BPP (np. rok książki zamiast roku rozdziału). Rok
+służy wyłącznie do ustawienia kolejności kandydatów (w widoku).
 
-Wcześniejsza wersja pytała PBN o jedną formę identyfikatora z filtrem roku,
+Wersja sprzed FD#622 pytała PBN o jedną formę identyfikatora z filtrem roku,
 a znalezione rekordy odrzucała, jeżeli nie dały się automatycznie dopasować
 do jakiejś pracy w BPP (tytuł + rok) albo były już z którąś powiązane — np.
 rozdział z ISBN-em książki kończył się komunikatem „Taka publikacja nie
@@ -27,17 +28,12 @@ w PBN dopasowanym rekordom BPP.
 
 import functools
 import itertools
-import logging
 import operator
-import sys
 
 import isbnlib
-from django.contrib.auth.mixins import LoginRequiredMixin
 from django.db.models import Q
-from django.http import JsonResponse
-from django.views.generic.base import View
+from pbn_client.const import DELETED
 
-from bpp.models import Uczelnia
 from bpp.models.cache import Rekord
 from bpp.util.isbn import (
     adnotacje_isbn,
@@ -46,15 +42,10 @@ from bpp.util.isbn import (
     warunek_po_isbn,
     wyglada_jak_isbn,
 )
-from bpp.views.api.const import API_BRAK_PARAMETRU
-from bpp.zglaszanie_bledow import capture_exception
 from import_common.normalization import normalize_doi
 from import_common.util import strip_doi_urls
-from pbn_api.exceptions import NeedsPBNAuthorisationException, PraceSerwisoweException
 from pbn_api.models import Publication
 from pbn_integrator.utils import zapisz_mongodb
-
-logger = logging.getLogger(__name__)
 
 #: Ile rekordów maksymalnie zwracamy (i pobieramy z PBN) na jedno kliknięcie.
 MAX_KANDYDATOW = 10
@@ -94,34 +85,33 @@ def formy_doi(txt) -> list[str]:
     return [f for f in dict.fromkeys(formy) if f]
 
 
-class GetPBNPublicationsByBase(LoginRequiredMixin, View):
+#: Ile rekordów najwyżej bierzemy z lokalnej kopii dla jednego identyfikatora.
+LIMIT_LOKALNY = 500
+
+
+def bez_usunietych(uidy) -> list[str]:
+    """``uidy`` (z zachowaniem kolejności) bez rekordów oznaczonych w PBN
+    jako usunięte i bez takich, których nie ma w lokalnej kopii."""
+    uidy = list(uidy)
+    zywe = set(
+        Publication.objects.filter(pk__in=uidy)
+        .exclude(status=DELETED)
+        .values_list("pk", flat=True)
+    )
+    return [uid for uid in uidy if uid in zywe]
+
+
+class SzukaczPBN:
+    """Strategia szukania rekordów PBN po jednym rodzaju identyfikatora."""
+
     #: Nazwa parametru wyszukiwania w API PBN (``isbn``, ``doi``).
     publication_element_name = None
 
     #: Nazwa identyfikatora w komunikatach dla użytkownika.
     nazwa_identyfikatora = None
 
-    def get_rok(self, request):
-        rok = request.POST.get("rok", "").strip()[:1024]
-        try:
-            rok = int(rok)
-        except (ValueError, TypeError):
-            # Niepoprawny rok w zapytaniu usera to oczekiwane złe wejście,
-            # nie błąd serwera — debug, bez Rollbara.
-            logger.debug("Niepoprawny rok w zapytaniu PBN (rok=%r)", rok)
-            rok = None
-        return rok
-
-    def get_value(self, request):
-        return request.POST.get("t", "").strip()[:1024]
-
     def formy(self, value) -> list[str]:
         """Zapisy identyfikatora, o które kolejno pytamy API PBN."""
-        raise NotImplementedError
-
-    def tekst_dla_wyszukiwarki(self, value) -> str:
-        """Co wpisać w wyszukiwarkę pola „Odpowiednik w PBN", gdy wyników
-        jest więcej niż jeden."""
         raise NotImplementedError
 
     def warunek_lokalny(self, value) -> Q:
@@ -133,20 +123,25 @@ class GetPBNPublicationsByBase(LoginRequiredMixin, View):
         raise NotImplementedError
 
     def szukaj_lokalnie(self, value) -> list[str]:
-        """UID-y PBN znalezione bez odpytywania serwera PBN."""
+        """UID-y PBN znalezione bez odpytywania serwera PBN — PEŁNY wynik
+        (do ``LIMIT_LOKALNY``), w stałej kolejności, bez rekordów usuniętych
+        w PBN. Listę do pokazania obcina dopiero wołający: zawężenie po
+        tytule musi widzieć wszystko (książka z kilkudziesięcioma
+        rozdziałami o tym samym ISBN)."""
         uidy = list(
-            Publication.objects.filter(self.warunek_lokalny(value)).values_list(
-                "pk", flat=True
-            )[: MAX_KANDYDATOW * 2]
+            Publication.objects.filter(self.warunek_lokalny(value))
+            .order_by("pk")
+            .values_list("pk", flat=True)[:LIMIT_LOKALNY]
         )
         # Rekordy BPP, które mają już odpowiednik w PBN — np. książka
         # powiązana w BPP, której ISBN nosi też wprowadzany rozdział.
         uidy += list(
             self.rekordy_bpp(value)
             .exclude(pbn_uid_id=None)
-            .values_list("pbn_uid_id", flat=True)[: MAX_KANDYDATOW * 2]
+            .order_by("pbn_uid_id")
+            .values_list("pbn_uid_id", flat=True)[:LIMIT_LOKALNY]
         )
-        return list(dict.fromkeys(uidy))
+        return bez_usunietych(dict.fromkeys(uidy))
 
     def szukaj_w_pbn(self, client, value) -> list[str]:
         """UID-y z API PBN. Formy identyfikatora próbujemy po kolei i kończymy
@@ -175,92 +170,13 @@ class GetPBNPublicationsByBase(LoginRequiredMixin, View):
             if uid not in istniejace:
                 zapisz_mongodb(client.get_publication_by_id(uid), Publication)
 
-    def odpowiedz(self, uidy, value, rok):
-        uidy = uidy[:MAX_KANDYDATOW]
-        publikacje = {pub.pk: pub for pub in Publication.objects.filter(pk__in=uidy)}
-        # Rekordy z rokiem z formularza na początek; poza tym kolejność
-        # wyszukiwania (``sorted`` jest stabilne).
-        uidy = sorted(
-            (uid for uid in uidy if uid in publikacje),
-            key=lambda uid: publikacje[uid].year != rok,
-        )
-        kandydaci = [
-            {
-                "id": uid,
-                "tytul": publikacje[uid].title,
-                "rok": publikacje[uid].year,
-                "typ": publikacje[uid].type(),
-            }
-            for uid in uidy
-        ]
-        if len(uidy) == 1:
-            return JsonResponse({"id": uidy[0], "kandydaci": kandydaci})
-        return JsonResponse(
-            {"id": self.tekst_dla_wyszukiwarki(value), "kandydaci": kandydaci}
-        )
 
-    def post(self, request, *args, **kw):
-        value = self.get_value(request)
-        rok = self.get_rok(request)
-
-        if not self.formy(value):
-            return JsonResponse({"error": API_BRAK_PARAMETRU})
-
-        uidy = self.szukaj_lokalnie(value)
-        if uidy:
-            return self.odpowiedz(uidy, value, rok)
-
-        uczelnia = Uczelnia.objects.get_for_request(request)
-        if not uczelnia:
-            return JsonResponse({"error": "W systemie brak obiektu Uczelnia"})
-
-        try:
-            client = uczelnia.pbn_client(request.user.pbn_token)
-            uidy = self.szukaj_w_pbn(client, value)
-            self.zapewnij_lokalnie(client, uidy)
-        except PraceSerwisoweException:
-            return JsonResponse(
-                {"error": "Nie pomogę -- w PBNie trwają teraz prace serwisowe..."}
-            )
-
-        except NeedsPBNAuthorisationException:
-            return JsonResponse(
-                {"error": "Autoryzuj się w PBN korzystając z menu na głównej stronie. "}
-            )
-
-        except Exception:
-            # Zgłoś nieznany typ błędu do monitoringu (Rollbar/Sentry)
-            capture_exception(sys.exc_info())
-
-            # Generyczny komunikat dla klienta — szczegóły w logach serwera
-            return JsonResponse(
-                {
-                    "error": "Nieznany błąd po stronie serwera przy wywołaniu "
-                    "funkcji odpytującej PBN. "
-                }
-            )
-
-        if uidy:
-            return self.odpowiedz(uidy, value, rok)
-
-        return JsonResponse(
-            {
-                "error": f"Nie znaleziono publikacji z podanym "
-                f"{self.nazwa_identyfikatora} ani w lokalnej kopii danych z PBN, "
-                "ani w PBN (sprawdzone zapisy: " + ", ".join(self.formy(value)) + "). "
-            }
-        )
-
-
-class GetPBNPublicationsByISBN(GetPBNPublicationsByBase):
+class SzukaczISBN(SzukaczPBN):
     publication_element_name = "isbn"
     nazwa_identyfikatora = "ISBN"
 
     def formy(self, value):
         return formy_isbn(value)
-
-    def tekst_dla_wyszukiwarki(self, value):
-        return kanoniczny_isbn(value)
 
     def warunek_lokalny(self, value):
         # ``Publication.isbn`` przechowujemy bez separatorów, ale PBN dokleja
@@ -287,15 +203,12 @@ class GetPBNPublicationsByISBN(GetPBNPublicationsByBase):
         )
 
 
-class GetPBNPublicationsByDOI(GetPBNPublicationsByBase):
+class SzukaczDOI(SzukaczPBN):
     publication_element_name = "doi"
     nazwa_identyfikatora = "DOI"
 
     def formy(self, value):
         return formy_doi(value)
-
-    def tekst_dla_wyszukiwarki(self, value):
-        return normalize_doi(value)
 
     def warunek_lokalny(self, value):
         # PBN zapisuje DOI z oryginalną wielkością liter („10.1016/B978-…"),

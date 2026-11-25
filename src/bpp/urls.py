@@ -17,9 +17,11 @@ from bpp.views.api.crossref import (
     UstawStronyView,
     UstawTomView,
 )
-from bpp.views.api.pbn_get_by_parameter import (
-    GetPBNPublicationsByDOI,
-    GetPBNPublicationsByISBN,
+from bpp.views.api.pbn_odpowiednik import (
+    PobierzOdpowiednikAutoraView,
+    PobierzOdpowiednikPublikacjiView,
+    PobierzOdpowiednikWydawcyView,
+    PobierzOdpowiednikZrodlaView,
 )
 from bpp.views.api.pubmed import GetPubmedIDView
 from bpp.views.api.strona_tom_nr_zeszytu import StronaTomNrZeszytuView
@@ -265,14 +267,24 @@ urlpatterns = [
         name="api_pubmed_id",
     ),
     url(
-        r"^api/get-pbn-publications-by-isbn/$",
-        GetPBNPublicationsByISBN.as_view(),
-        name="api_get_pbn_by_isbn",
+        r"^api/pobierz-z-pbn/publikacja/$",
+        PobierzOdpowiednikPublikacjiView.as_view(),
+        name="api_get_pbn_by_identifiers",
     ),
     url(
-        r"^api/get-pbn-publications-by-doi/$",
-        GetPBNPublicationsByDOI.as_view(),
-        name="api_get_pbn_by_doi",
+        r"^api/pobierz-z-pbn/autor/$",
+        PobierzOdpowiednikAutoraView.as_view(),
+        name="api_pobierz_z_pbn_autora",
+    ),
+    url(
+        r"^api/pobierz-z-pbn/zrodlo/$",
+        PobierzOdpowiednikZrodlaView.as_view(),
+        name="api_pobierz_z_pbn_zrodla",
+    ),
+    url(
+        r"^api/pobierz-z-pbn/wydawca/$",
+        PobierzOdpowiednikWydawcyView.as_view(),
+        name="api_pobierz_z_pbn_wydawcy",
     ),
     url(
         r"^api/(?P<slug>[\w-]+)/wos-amr/$",

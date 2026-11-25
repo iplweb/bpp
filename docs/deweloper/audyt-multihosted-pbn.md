@@ -65,7 +65,7 @@ złym kontem PBN.
 ## Tier 🟢 OK / NISKIE — jawny resolver albo świadomy fallback
 
 - Jawny `get_for_request`/`pbn_client` tej uczelni: `crossref_bpp/views.py:124`,
-  `bpp/views/api/pbn_get_by_parameter.py:56/62`,
+  `bpp/views/api/pbn_odpowiednik.py` (`PobierzZPBNBase`),
   `bpp/views/autocomplete/{pbn_api.py:82, wydawnictwo_nadrzedne_w_pbn.py:172}`,
   `bpp/admin/helpers/pbn_api/gui.py:137`, `bpp/admin/uczelnia.py:307`.
 - Już naprawione ścieżki Celery (ostatnie commity) przez

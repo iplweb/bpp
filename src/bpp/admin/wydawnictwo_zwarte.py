@@ -44,6 +44,7 @@ from import_common.normalization import normalize_isbn
 from pbn_api.models import Publication
 
 from .actions import (
+    pobierz_odpowiedniki_z_pbn_w_tle,
     ustaw_po_korekcie,
     ustaw_przed_korekta,
     ustaw_w_trakcie_korekty,
@@ -115,6 +116,7 @@ class Wydawnictwo_ZwarteAdmin_Baza(
         ustaw_przed_korekta,
         wyslij_do_pbn,
         wyslij_do_pbn_w_tle,
+        pobierz_odpowiedniki_z_pbn_w_tle,
         wyslij_do_dspace,
         wyslij_do_dspace_w_tle,
     ]

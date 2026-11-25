@@ -1,0 +1,102 @@
+{% extends "admin/change_form.html" %}
+
+{# Postęp i raport grupowego pobierania odpowiedników z PBN (FD#516). #}
+
+{% block extrahead %}
+    {{ block.super }}
+    {% if zlecenie and not zlecenie.zakonczono and not zlecenie.przerwane %}
+        {# Dopóki zadanie pracuje w tle, strona odświeża się sama. #}
+        <meta http-equiv="refresh" content="5">
+    {% endif %}
+{% endblock %}
+
+{% block content %}
+    <div id="grp-content-container" class="pobieranie-odpowiednikow">
+        {% if zlecenie.przerwane %}
+            <p id="pobieranie-stan">
+                ⚠️ <strong>Zlecenie zostało przerwane</strong> — od dłuższego
+                czasu nie ma postępu (przetworzono {{ zlecenie.przetworzono }}
+                z {{ zlecenie.liczba_rekordow }}), najpewniej po restarcie
+                serwera. Możesz je ponowić: dotychczasowy raport zostaje,
+                zadanie dokończy pozostałe rekordy.
+            </p>
+            <form method="post">
+                {% csrf_token %}
+                <input type="submit" name="_ponow" value="🔁 Ponów zlecenie">
+            </form>
+        {% elif not zlecenie.zakonczono %}
+            <p id="pobieranie-stan">
+                ⏳ <strong>{{ zlecenie.stan|capfirst }}</strong> —
+                przetworzono {{ zlecenie.przetworzono }}
+                z {{ zlecenie.liczba_rekordow }} ({{ zlecenie.procent }}%).
+                Strona odświeża się sama; możesz ją zamknąć — po zakończeniu
+                dostaniesz powiadomienie.
+            </p>
+            <progress value="{{ zlecenie.procent }}" max="100"
+                      style="width: 100%;"></progress>
+        {% else %}
+            <p id="pobieranie-stan">
+                {% if zlecenie.blad %}❌{% else %}✅{% endif %}
+                <strong>{{ zlecenie.stan|capfirst }}</strong>
+                ({{ zlecenie.zakonczono|date:"Y-m-d H:i" }}) —
+                {{ zlecenie.get_rodzaj_display|lower }},
+                rekordów: {{ zlecenie.liczba_rekordow }},
+                zlecił(a): {{ zlecenie.zlecil }}.
+            </p>
+        {% endif %}
+
+        {% if zlecenie.blad %}
+            <p>Zadanie przerwał błąd — raport poniżej obejmuje tylko rekordy
+                przetworzone przed nim. Zleć akcję ponownie dla pozostałych.</p>
+            <pre style="white-space: pre-wrap;">{{ zlecenie.blad }}</pre>
+        {% endif %}
+
+        {% if grupy %}
+            <table id="pobieranie-podsumowanie" style="margin: 10px 0;">
+                <thead>
+                <tr>
+                    <th>Wynik</th>
+                    <th>Liczba rekordów</th>
+                </tr>
+                </thead>
+                <tbody>
+                {% for klucz, emoji, naglowek, wpisy in grupy %}
+                    <tr>
+                        <td><a href="#grupa-{{ klucz }}">{{ emoji }} {{ naglowek }}</a></td>
+                        <td>{{ wpisy|length }}</td>
+                    </tr>
+                {% endfor %}
+                </tbody>
+            </table>
+
+            {% for klucz, emoji, naglowek, wpisy in grupy %}
+                <h2 id="grupa-{{ klucz }}" style="margin-top: 16px;">
+                    {{ emoji }} {{ naglowek }} ({{ wpisy|length }})
+                </h2>
+                <table style="width: 100%;">
+                    <thead>
+                    <tr>
+                        <th>Rekord</th>
+                        <th>Szczegóły</th>
+                        <th>PBN UID</th>
+                    </tr>
+                    </thead>
+                    <tbody>
+                    {% for wpis in wpisy %}
+                        <tr>
+                            <td><a href="{% url url_rekordu wpis.pk %}">{{ wpis.rekord }}</a></td>
+                            <td>{{ wpis.opis }}</td>
+                            <td>{{ wpis.pbn_uid }}</td>
+                        </tr>
+                    {% endfor %}
+                    </tbody>
+                </table>
+            {% endfor %}
+        {% endif %}
+
+        <p style="margin-top: 16px;">
+            <a href="{% url "admin:pbn_integrator_pobieranieodpowiednikowpbn_changelist" %}">
+                ← Wszystkie zlecenia</a>
+        </p>
+    </div>
+{% endblock %}

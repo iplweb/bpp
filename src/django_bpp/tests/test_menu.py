@@ -84,7 +84,7 @@ def test_superuser_redaktor_zachowuje_importer_publikacji():
     u = baker.make("bpp.BppUser", is_superuser=True, is_staff=True)
     m = _menu_for(u)
     redaktor = _child(m, "Wprowadzanie danych")
-    assert len(redaktor.children) == 16
+    assert len(redaktor.children) == 17
     assert str(redaktor.children[-1].title) == "Importer publikacji"
 
 
@@ -128,7 +128,7 @@ def test_bez_grupy_zgloszen_znika_wlasnie_pozycja_zgloszen():
     assert _labels(m) == ["BPP", "Dashboard", "Wprowadzanie danych", "Mój profil"]
     redaktor = _child(m, "Wprowadzanie danych")
     etykiety = [str(c.title) for c in redaktor.children]
-    assert len(redaktor.children) == 15
+    assert len(redaktor.children) == 16
     assert "Zgłoszenia publikacji" not in etykiety
     assert etykiety[-1] == "Importer publikacji"
 
@@ -140,7 +140,7 @@ def test_grupa_zgloszenia_publikacji_nie_kasuje_elementu():
     u.groups.add(Group.objects.get_or_create(name="zgłoszenia publikacji")[0])
     m = _menu_for(u)
     redaktor = _child(m, "Wprowadzanie danych")
-    assert len(redaktor.children) == 16
+    assert len(redaktor.children) == 17
     assert str(redaktor.children[-1].title) == "Importer publikacji"
 
 

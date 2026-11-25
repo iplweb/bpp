@@ -115,8 +115,10 @@ które łatwo było przeoczyć.)
 Co zrobić — do wyboru:
 
 1. kliknij autora na liście i w jego formularzu ustaw **Odpowiednik
-   w PBN** (osobę z PBN; przy wielu autorach pomoże **importer autorów
-   PBN** z menu PBN), albo
+   w PBN** — najprościej przyciskiem
+   [„Pobierz z PBN”](autorzy.md#pobierz-z-pbn); przy wielu autorach
+   zaznacz ich na liście autorów i użyj akcji **„Pobierz odpowiedniki
+   z PBN (w tle)”** albo **importera autorów PBN** z menu PBN, albo
 2. wpisz autorowi **Identyfikator ORCID** — wtedy oświadczenie pójdzie
    z ORCID-em; PBN przypisze je do osoby, jeśli zna ten ORCID,
 3. jeżeli ta osoba **nie powinna** być oświadczana w tej pracy — w pracy,
@@ -187,35 +189,116 @@ instytucji, BPP niczego nie porównuje (nie sięga po dane pobrane wcześniej).
 Porównanie liczy razem autorów, redaktorów i tłumaczy. BPP niczego przy
 tym w PBN nie poprawia — tylko pokazuje różnicę.
 
-### Praca jest już w PBN — „Pobierz po ISBN” i „Pobierz po DOI” {#pobierz-po-isbn-doi}
+### Praca jest już w PBN — przycisk „Pobierz z PBN” {#pobierz-po-isbn-doi}
 
 Jeżeli praca (albo książka, z której pochodzi rozdział) jest już w PBN, nie
 wysyłaj jej drugi raz — powiąż ją z istniejącym rekordem. Przy pustym polu
-**Odpowiednik w PBN** są przyciski **„Pobierz po ISBN”** (wydawnictwa
-zwarte) i **„Pobierz po DOI”**. BPP szuka rekordu po wartości z pola
-„ISBN” (gdy puste — „E-ISBN”) albo „DOI”:
+**Odpowiednik w PBN** jest jeden przycisk **„🔎 Pobierz z PBN”** (dawniej
+osobne „Pobierz po DOI” i „Pobierz po ISBN”). Nie wybierasz, według czego
+szukać — BPP próbuje po kolei wszystkiego, co jest w formularzu:
 
-- najpierw w danych z PBN już pobranych do BPP i w pracach BPP, które mają
-  ustawiony odpowiednik w PBN — to trwa chwilę,
-- jeżeli tam nic nie ma — w PBN, po kilku zapisach tego samego numeru:
-  ISBN bez myślników i z myślnikami, w odmianie 13- i 10-cyfrowej; DOI tak,
-  jak je wpisano, i małymi literami. Adres `https://doi.org/` przed DOI nie
-  przeszkadza.
+1. **DOI**,
+2. **Adres WWW** i **Publiczny adres WWW** (porównanie z adresem pracy
+   w PBN; `http://`/`https://` i końcowy ukośnik nie mają znaczenia; sam
+   adres strony wydawcy, bez ścieżki do pracy, nie jest brany pod uwagę),
+3. **ISBN** i **E-ISBN** (wydawnictwa zwarte).
 
-Rok pracy nie zawęża wyszukiwania (rok w PBN bywa inny), tylko ustawia na
-początku listy rekordy z tego samego roku. Znaleziony rekord pojawia się
-w wyszukiwarce pola **Odpowiednik w PBN** — **wybierz go sam**; przyciski
-niczego nie wiążą automatycznie. Przy każdym rekordzie w nawiasie jest jego
-rodzaj w PBN, np. `[książka]` albo `[rozdział]`.
+Każdy identyfikator jest szukany najpierw w danych z PBN już pobranych do
+BPP i w pracach BPP, które mają ustawiony odpowiednik — to trwa chwilę.
+Jeżeli tam nic nie ma, BPP pyta serwer PBN: o DOI tak, jak je wpisano,
+i małymi literami (adres `https://doi.org/` przed DOI nie przeszkadza),
+o ISBN bez myślników i z myślnikami, w odmianie 13- i 10-cyfrowej. Po
+adresie WWW serwer PBN szukać nie pozwala, więc adres jest sprawdzany tylko
+w danych pobranych do BPP.
+
+Wynik pojawia się **pod przyciskiem** (bez wyskakujących okienek):
+
+| Co widzisz | Co to znaczy |
+|---|---|
+| ✅ „Znaleziono po: DOI … Wstawiono: …” | rekord wskazany jednoznacznie — jest już w polu **Odpowiednik w PBN**. **Zapisz pracę**, żeby go zachować |
+| 👉 lista rekordów z przyciskami **„Wybierz”** | BPP coś znalazło, ale nie ma pewności (kilka rekordów, inny tytuł albo inny rodzaj niż w formularzu) — wybierz właściwy; przy każdym jest tytuł, rok i rodzaj w PBN. Lista ma najwyżej 10 pozycji: najpierw rekordy o zgodnym tytule, potem z rokiem z formularza |
+| ℹ️ „Nie udało się znaleźć odpowiednika w PBN (sprawdzono: …)” | pod żadnym z wymienionych identyfikatorów PBN tej pracy nie zna |
+| ℹ️ „Uzupełnij DOI, adres WWW lub ISBN…” | formularz nie ma żadnego identyfikatora, po którym da się szukać |
+
+BPP wstawia rekord bez pytania tylko wtedy, gdy nie ma żadnej wątpliwości:
+
+- **rodzaj rekordu się zgadza** — artykuł w BPP z artykułem w PBN, książka
+  z książką, rozdział z rozdziałem. Rodzaj pracy BPP bierze z formularza
+  (wydawnictwo ciągłe to artykuł; w zwartym decyduje **Charakter formalny**
+  i to, czy wskazano **Wydawnictwo nadrzędne**), **oraz**
+- **DOI** wskazuje dokładnie jeden rekord albo rekord znaleziony po
+  **adresie WWW / ISBN** ma **ten sam tytuł** co praca w formularzu.
+
+W każdym innym przypadku — także gdy rodzaju nie da się ustalić (np. nowe
+wydawnictwo zwarte bez wybranego charakteru formalnego) — rekord trafia na
+listę do wyboru. Jeżeli jedyną przeszkodą jest nieustalony rodzaj pracy,
+pod listą zobaczysz podpowiedź 💡: **„Wybierz »Charakter formalny«, żeby BPP
+mogło samo wstawić pasujący rekord”** (wybierz charakter i kliknij przycisk
+ponownie) albo — gdy charakter jest wybrany, ale nie jest ani książką, ani
+rozdziałem — wyjaśnienie, że w takim przypadku rekord zawsze wybierasz
+ręcznie. Rekordy **usunięte w PBN** są pomijane. Przycisk niczego
+nie zapisuje — zmiana
+trafia do bazy dopiero, gdy zapiszesz pracę. Gdy praca **ma już**
+odpowiednik w PBN, przycisku nie ma (wraca po wyczyszczeniu pola).
+
+Jeśli pod wynikiem jest dopisek o logowaniu do PBN — BPP przeszukało tylko
+dane już pobrane; zaloguj się do PBN (menu **PBN → autoryzuj**) i kliknij
+jeszcze raz, żeby sprawdzić także serwer PBN. Dopisek **„Serwer PBN nie
+odpowiada”** znaczy to samo z innego powodu: BPP czeka na PBN najwyżej
+kilkadziesiąt sekund i pokazuje wynik z danych już pobranych — spróbuj
+ponownie później.
+
+Ten sam przycisk jest w formularzu **autora** (patrz
+[Autorzy](autorzy.md#pobierz-z-pbn)), **źródła** (szuka po ISSN, E-ISSN
+i nazwie) oraz **wydawcy** (po nazwie) — tam BPP szuka w słownikach PBN
+pobranych do BPP, a pozycje z wykazu ministerialnego pokazuje pierwsze (⭐).
 
 !!! warning "Rozdział i książka mają ten sam ISBN"
 
-    Rozdział nosi ISBN książki, więc „Pobierz po ISBN” w rozdziale znajdzie
-    zwykle **książkę**. Nie wybieraj rekordu `[książka]` jako odpowiednika
-    rozdziału. Rozdział wprowadź z **wydawnictwem nadrzędnym** (książką),
-    książce ustaw odpowiednik w PBN, a rozdział wyślij do PBN — albo, jeśli
-    rozdział już jest w PBN, wybierz rekord `[rozdział]` (najprościej znaleźć
-    go przyciskiem „Pobierz po DOI”, jeśli rozdział ma własne DOI).
+    Rozdział nosi ISBN książki, więc po samym ISBN BPP znajdzie zwykle
+    **książkę** — podobnie, gdy rozdziałowi wpisano DOI książki albo
+    zatytułowano go jak cały tom. Dlatego rekord `BOOK` nigdy nie jest
+    wstawiany rozdziałowi sam, tylko trafia na listę do wyboru. Nie wybieraj rekordu `BOOK` jako
+    odpowiednika rozdziału. Rozdział wprowadź z **wydawnictwem nadrzędnym**
+    (książką), książce ustaw odpowiednik w PBN, a rozdział wyślij do PBN —
+    albo, jeśli rozdział już jest w PBN, wybierz rekord `CHAPTER`.
+
+### Odpowiedniki dla wielu prac naraz {#pobierz-odpowiedniki-grupowo}
+
+Na liście **wydawnictw ciągłych** i **wydawnictw zwartych** zaznacz prace
+i z listy akcji wybierz **„Pobierz odpowiedniki z PBN (w tle)”**. BPP dla
+każdej zaznaczonej pracy bez odpowiednika robi to samo, co przycisk
+„Pobierz z PBN”, ale w tle — możesz pracować dalej. To jest **pobieranie**:
+do PBN nic nie jest wysyłane.
+
+- Po zleceniu zobaczysz komunikat z odnośnikiem **„zobacz postęp
+  i raport”**. Strona odświeża się sama; po zakończeniu dostaniesz
+  powiadomienie. Wszystkie swoje zlecenia znajdziesz w module redagowania,
+  w menu **Wprowadzanie danych → Pobieranie odpowiedników z PBN**.
+- Jednym zleceniem można objąć najwyżej **500 prac** bez odpowiednika —
+  przy większej liczbie zawęź listę filtrami (np. rokiem) i powtórz.
+- Prace, które mają już odpowiednik, są pomijane.
+
+Raport dzieli prace na grupy:
+
+| Grupa | Co się stało |
+|---|---|
+| ✅ Znaleziono i ustawiono odpowiednik | praca dostała odpowiednik (w raporcie: po czym); w **Historii** pracy jest wpis „PBN UID ustawiony automatycznie (grupowo) po: …” |
+| 👉 Do ręcznego wyboru | kilku kandydatów albo dopasowanie niepewne (inny tytuł, inny albo nieustalony rodzaj rekordu — np. ISBN lub DOI książki przy rozdziale; praca zmieniona w trakcie wyszukiwania) — **niczego nie ustawiono**; otwórz pracę z raportu i wybierz przyciskiem „Pobierz z PBN”. Gdy jedynym powodem jest charakter formalny, który nie mówi, czy praca jest książką, czy rozdziałem, raport to dopisuje |
+| ⚠️ Odpowiednik przypisany do innego rekordu | znaleziony rekord PBN ma już inna praca w BPP (także w koszu) — to zwykle duplikat; niczego nie ustawiono |
+| ❌ Nie znaleziono odpowiednika | PBN nie zna pracy pod sprawdzonymi identyfikatorami |
+| ✏️ Brak danych do wyszukania | praca nie ma DOI, adresu WWW ani ISBN — uzupełnij |
+| 🔌 Błąd połączenia z PBN | serwer PBN nie odpowiedział — zleć akcję ponownie dla tych prac |
+
+Gdy zadanie zostanie przerwane (np. restart serwera) i przez 15 minut nie ma
+postępu, strona zlecenia pokaże **„Zlecenie zostało przerwane”** i przycisk
+**„🔁 Ponów zlecenie”** — dotychczasowy raport zostaje, zadanie dokończy
+pozostałe prace.
+
+Żeby BPP mogło pytać serwer PBN, musisz być **zalogowany do PBN** (menu
+**PBN → autoryzuj**) w chwili zlecania. Bez tego zadanie przeszuka tylko
+dane już pobrane do BPP, a raport to zaznaczy („tylko w lokalnej kopii
+danych z PBN”).
 
 ### Wysyłka w tle
 
@@ -395,7 +478,7 @@ ten sam powód bywa poprzedzony nazwą błędu, np. `DOIorWWWMissing:`).
 | „Autor … nie ma odpowiednika w PBN — jego oświadczenie zostanie wysłane z identyfikatorem ORCID …” | informacja: autor ma ORCID, ale nie jest powiązany z osobą w PBN | nic; jeśli oświadczenia tej osoby nie widać potem w PBN, ustaw autorowi **Odpowiednik w PBN** |
 | „Wygląda na to, że wydawnictwo nadrzędne tego rekordu nie posiada odpowiednika w PBN …” | rozdział, którego książka nie jest jeszcze w PBN | najpierw wyślij książkę (albo ustaw jej **Odpowiednik w PBN**), potem rozdział |
 | „Rekord … został odrzucony przez PBN z powodu błędów walidacji danych: …” / w kolejce „Blad po stronie PBN -- kod 400” | PBN nie przyjął danych; lista pod spodem mówi, które pole | popraw wskazane pole, np. `openAccess.releaseDate` „Data udostępnienia w otwartym dostępie jest wymagana!” — uzupełnij dane otwartego dostępu |
-| `NOT_UNIQUE_PUBLICATION_ISBN_ISMN` „Publikacja o identycznym ISBN już istnieje!” | ta książka już jest w PBN (także: rozdział z ISBN-em książki wysyłany jako osobna książka) | nie wysyłaj jej drugi raz — powiąż pracę z istniejącą w PBN (pole **Odpowiednik w PBN**, przycisk [„Pobierz po ISBN”](#pobierz-po-isbn-doi)); rozdział wprowadź z wydawnictwem nadrzędnym |
+| `NOT_UNIQUE_PUBLICATION_ISBN_ISMN` „Publikacja o identycznym ISBN już istnieje!” | ta książka już jest w PBN (także: rozdział z ISBN-em książki wysyłany jako osobna książka) | nie wysyłaj jej drugi raz — powiąż pracę z istniejącą w PBN (pole **Odpowiednik w PBN**, przycisk [„Pobierz z PBN”](#pobierz-po-isbn-doi)); rozdział wprowadź z wydawnictwem nadrzędnym |
 | „… obiekt po stronie serwera PBN jest zablokowany. Spróbuj ponownie za jakiś czas.” / w kolejce „Zasób zablokowany w PBN (HTTP 423), ponawiam wysyłkę za kilka minut...” | ktoś (albo inny proces) właśnie zmienia tę pracę w PBN | poczekaj; kolejka ponowi sama |
 | „Po stronie PBN trwają prace serwisowe …” / „Prace serwisowe w PBN, spróbuję za kilka godzin” | przerwa techniczna PBN | poczekaj; kolejka ponowi sama |
 | „Identyczne dane rekordu … zostały wgrane do PBN w dniu … Nie aktualizuję w PBN API.” | od ostatniej wysyłki nic się nie zmieniło | nic — praca jest aktualna; aby mimo to wysłać, zmień coś w pracy albo poproś administratora o usunięcie wpisu o wysłanych danych |

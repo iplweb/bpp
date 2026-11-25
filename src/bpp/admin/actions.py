@@ -294,6 +294,87 @@ def wyslij_do_pbn_w_tle(modeladmin, request, queryset):
 wyslij_do_pbn_w_tle.short_description = "Wyślij do PBN w tle"
 
 
+def _zlec_pobranie_odpowiednikow(modeladmin, request, queryset, rodzaj):
+    """Utwórz zlecenie grupowego pobrania odpowiedników z PBN i uruchom je
+    w tle. Odczyt z PBN — nic nie jest do PBN wysyłane."""
+    from django.contrib.contenttypes.models import ContentType
+    from django.urls import reverse
+    from django.utils.html import format_html
+
+    from pbn_integrator.models import PobieranieOdpowiednikowPBN
+    from pbn_integrator.pobieranie_odpowiednikow import MAKS_REKORDOW
+    from pbn_integrator.tasks import pobierz_odpowiedniki_z_pbn
+
+    # Rekordy, które mają już odpowiednik, nie wchodzą do zlecenia.
+    pks = list(
+        dict.fromkeys(
+            queryset.filter(pbn_uid_id__isnull=True)
+            .order_by()
+            .values_list("pk", flat=True)[: MAKS_REKORDOW + 1]
+        )
+    )
+    if not pks:
+        modeladmin.message_user(
+            request,
+            "Wszystkie zaznaczone rekordy mają już odpowiednik w PBN — "
+            "nie ma czego szukać.",
+            messages.WARNING,
+        )
+        return
+    if len(pks) > MAKS_REKORDOW:
+        modeladmin.message_user(
+            request,
+            f"Jednym zleceniem można wyszukać odpowiedniki dla najwyżej "
+            f"{MAKS_REKORDOW} rekordów bez odpowiednika w PBN. Zawęź listę "
+            f"filtrami i powtórz akcję. Niczego nie zlecono.",
+            messages.ERROR,
+        )
+        return
+
+    zlecenie = PobieranieOdpowiednikowPBN.objects.create(
+        zlecil=request.user,
+        uczelnia=Uczelnia.objects.get_for_request(request),
+        rodzaj=rodzaj,
+        content_type=ContentType.objects.get_for_model(queryset.model),
+        identyfikatory=pks,
+    )
+    transaction.on_commit(lambda: pobierz_odpowiedniki_z_pbn.delay(zlecenie.pk))
+    url = reverse(
+        "admin:pbn_integrator_pobieranieodpowiednikowpbn_change", args=(zlecenie.pk,)
+    )
+    modeladmin.message_user(
+        request,
+        format_html(
+            "Zlecono wyszukiwanie odpowiedników w PBN dla {} {}. Zadanie "
+            'działa w tle — <a href="{}">zobacz postęp i raport</a>.',
+            len(pks),
+            ngettext("rekordu", "rekordów", len(pks)),
+            url,
+        ),
+        messages.SUCCESS,
+    )
+
+
+def pobierz_odpowiedniki_z_pbn_w_tle(modeladmin, request, queryset):
+    _zlec_pobranie_odpowiednikow(modeladmin, request, queryset, "publikacje")
+
+
+pobierz_odpowiedniki_z_pbn_w_tle.short_description = (
+    "Pobierz odpowiedniki z PBN (w tle)"
+)
+pobierz_odpowiedniki_z_pbn_w_tle.allowed_permissions = ("change",)
+
+
+def pobierz_odpowiedniki_autorow_z_pbn_w_tle(modeladmin, request, queryset):
+    _zlec_pobranie_odpowiednikow(modeladmin, request, queryset, "autorzy")
+
+
+pobierz_odpowiedniki_autorow_z_pbn_w_tle.short_description = (
+    "Pobierz odpowiedniki z PBN (w tle)"
+)
+pobierz_odpowiedniki_autorow_z_pbn_w_tle.allowed_permissions = ("change",)
+
+
 KOMUNIKAT_POKAZANO_JEDNOSTKI_RANKING = (
     "Pokazano na stronach jednostek i w rankingu (akcja masowa)"
 )

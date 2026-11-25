@@ -95,6 +95,57 @@ w rekordzie autora, albo dwóch autorów o tym samym nazwisku), powiązanie
 ustawia się ręcznie: **Redagowanie ➡ Administracja ➡ Użytkownicy**, wybierz
 konto, w sekcji **„Powiązanie z autorem”** wskaż autora i zapisz.
 
+## Odpowiednik autora w PBN — przycisk „Pobierz z PBN” {#pobierz-z-pbn}
+
+Pole **Odpowiednik w PBN** w formularzu autora wskazuje osobę z PBN, do
+której trafiają oświadczenia autora. Gdy pole jest puste, obok niego jest
+przycisk **„🔎 Pobierz z PBN”** (znika, gdy autor ma odpowiednik). Po
+kliknięciu BPP ustala odpowiednik samo:
+
+1. **Autor ma ORCID** (liczy się wartość z formularza, także jeszcze
+   niezapisana) — BPP szuka osoby z tym ORCID w danych z PBN pobranych do
+   BPP, a gdy jej tam nie ma, pyta serwer PBN i pobiera znalezioną osobę.
+2. **Autor nie ma ORCID** albo ORCID niczego nie wskazał — BPP szuka po
+   **imieniu i nazwisku** (z poprzednimi nazwiskami) oraz po **autorach
+   prac**, które ten autor ma w BPP z ustawionym odpowiednikiem w PBN.
+
+Wynik pojawia się pod przyciskiem:
+
+- ✅ **wskazanie jednoznaczne** — zgodny ORCID albo imię i nazwisko
+  potwierdzone przez publikacje — osoba jest od razu wstawiona w pole.
+  **Zapisz autora**, żeby zachować odpowiednik;
+- 👉 **kilku kandydatów albo wskazanie niepewne** (np. samo imię
+  i nazwisko) — BPP pokazuje listę z przyciskami **„Wybierz”**. Na
+  samej górze jest osoba ze **zgodnym ORCID** (jeśli taka jest), po niej,
+  z gwiazdką ⭐, osoby z **profilu instytucji w PBN** (pracownicy uczelni
+  znani PBN), a na końcu pozostałe osoby o tym nazwisku. Przy każdej widać, co za nią przemawia (zgodny ORCID, liczba
+  wspólnych prac, ORCID zapisany w PBN);
+- ⚠️ **„już przypisany do: …”** — ta osoba PBN jest odpowiednikiem innego
+  autora w BPP. To zwykle zdublowany autor: zamiast wybierać, scal autorów
+  (patrz [Duplikaty autorów i źródeł](duplikaty.md));
+- ℹ️ **nie znaleziono** — PBN nie zna takiej osoby pod tym ORCID ani
+  imieniem i nazwiskiem.
+
+BPP nie wstawia też nikogo samo, gdy pod ORCID autora PBN ma **kilka
+profili** albo gdy wskazana osoba ma w PBN **inny ORCID** niż autor.
+Przy niedostępnym serwerze PBN zobaczysz kandydatów z danych już
+pobranych i dopisek „Serwer PBN nie odpowiada”.
+
+Samo imię i nazwisko nigdy nie wystarcza do wstawienia odpowiednika bez
+pytania — osoby o tym samym nazwisku to częsty przypadek, a błędne
+powiązanie skierowałoby oświadczenia do innej osoby.
+
+### Wielu autorów naraz
+
+Na liście autorów zaznacz osoby i wybierz akcję **„Pobierz odpowiedniki
+z PBN (w tle)”**. Zadanie działa w tle i ustawia odpowiednik **tylko**
+przy wskazaniach jednoznacznych (każde z wpisem w historii autora);
+pozostałych autorów wymienia w raporcie z powodem: do ręcznego wyboru,
+możliwy duplikat autora, nie znaleziono. Raport i postęp: odnośnik
+w komunikacie po zleceniu albo menu **Wprowadzanie danych → Pobieranie
+odpowiedników z PBN**. Jednym zleceniem można objąć najwyżej 500 autorów bez
+odpowiednika.
+
 ## Wyróżnione publikacje autora
 
 Autor może wskazać i uszeregować **wyróżnione prace**, które pojawią się na

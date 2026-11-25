@@ -146,6 +146,7 @@ MODELE_BEZ_HISTORII = {
     "pbn_downloader_app.pbninstitutionpeopletask": "zadanie w tle",
     "pbn_downloader_app.pbnjournalsdownloadtask": "zadanie w tle",
     "pbn_export_queue.pbn_export_queue": "kolejka wysyłki do PBN",
+    "pbn_integrator.pobieranieodpowiednikowpbn": "zadanie w tle",
     "pbn_integrator.rekordwkoszupominietyprzezimport": "log importu",
     "pbn_komparator_zrodel.komparatorzrodelmeta": "stan porównania",
     "pbn_komparator_zrodel.rozbieznosczrodlapbn": "wynik porównania",

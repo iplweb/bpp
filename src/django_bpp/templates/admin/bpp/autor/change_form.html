@@ -27,5 +27,7 @@
 
 {% block submit_buttons_bottom %}
     {{ block.super }}
+    {% url "bpp:api_pobierz_z_pbn_autora" as pobierz_z_pbn_url %}
+    {% include "admin/pobierz_z_pbn_button_handler.html" with url=pobierz_z_pbn_url pola="orcid imiona nazwisko poprzednie_nazwiska" %}
     {% include "admin/copy_pbn_uid_button_handler.html" %}
 {% endblock %}

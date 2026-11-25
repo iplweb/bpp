@@ -15,5 +15,7 @@
 
 {% block submit_buttons_bottom %}
     {{ block.super }}
+    {% url "bpp:api_pobierz_z_pbn_wydawcy" as pobierz_z_pbn_url %}
+    {% include "admin/pobierz_z_pbn_button_handler.html" with url=pobierz_z_pbn_url pola="nazwa" %}
     {% include "admin/copy_pbn_uid_button_handler.html" %}
 {% endblock %}
