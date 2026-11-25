@@ -25,6 +25,8 @@ import itertools
 import logging
 
 import requests
+from django.conf import settings
+from pbn_client.const import DELETED
 
 from bpp import const
 from bpp.util.isbn import warianty_isbn
@@ -86,6 +88,39 @@ POLA_EXTRA_DO_UZUPELNIENIA = (
 _MAKS_WYNIKOW_ISBN = 5
 
 
+#: Timeout (połączenie, odczyt) w sekundach dla zapytań do drugiego źródła.
+#: Celowo krótki: drugie źródło jest dodatkiem i nie może wstrzymać importu.
+#: Nadpisywalny ustawieniem ``IMPORTER_DRUGIE_ZRODLO_TIMEOUT``.
+DOMYSLNY_TIMEOUT_DRUGIEGO_ZRODLA = (5, 15)
+
+
+def timeout_drugiego_zrodla():
+    return getattr(
+        settings, "IMPORTER_DRUGIE_ZRODLO_TIMEOUT", DOMYSLNY_TIMEOUT_DRUGIEGO_ZRODLA
+    )
+
+
+def jedna_szybka_proba(client):
+    """Przestaw TEN egzemplarz klienta PBN na krótki timeout i jedną próbę.
+
+    Zwykły klient ponawia nieudane połączenie 15 razy z timeoutem do 120 s
+    — dobre dla synchronizacji w tle, zabójcze dla importu: niedostępny PBN
+    wstrzymałby na kilka minut każdy import, także ten po DOI z CrossRef,
+    który PBN-u wcale nie potrzebuje. Zmiana dotyczy tylko przekazanego
+    egzemplarza; inne moduły dostają klienta z domyślnym zachowaniem.
+    """
+    transport = client.transport
+    transport.timeout = timeout_drugiego_zrodla()
+
+    def jedna_proba(url, headers, max_retries=1):
+        return requests.get(
+            transport.base_url + url, headers=headers, timeout=transport.timeout
+        )
+
+    transport._make_get_request_with_retry = jedna_proba
+    return client
+
+
 def _wpis(zrodlo, stan, **reszta):
     return {"zrodlo": zrodlo, "stan": stan, **reszta}
 
@@ -131,18 +166,39 @@ def uzupelnij_brakujace_pola(glowne, dodatkowe) -> list[str]:
     return uzupelnione
 
 
-def _klucz_osoby(osoba, cale_imie=True):
+def _klucz_osoby(osoba):
+    """``(nazwisko, (imiona…))`` w zapisie do porównań — bez znaków
+    diakrytycznych, kropek i wielkości liter."""
     nazwisko = normalize_nazwisko_do_porownania(osoba.get("family") or "")
-    imie = normalize_nazwisko_do_porownania(osoba.get("given") or "")
-    return nazwisko, (imie if cale_imie else imie[:1])
+    imiona = normalize_nazwisko_do_porownania(
+        (osoba.get("given") or "").replace(".", " ")
+    )
+    return nazwisko, tuple(imiona.split())
 
 
-def _indeks(osoby, klucz):
+def _imiona_zgodne(a, b) -> bool:
+    """Czy dwa zapisy imion mogą oznaczać tę samą osobę.
+
+    Dwa PEŁNE pierwsze imiona muszą być równe („Jan” to nie „Jerzy”, choć
+    inicjał ten sam). Po samym inicjale porównujemy tylko wtedy, gdy
+    któraś strona podała inicjał zamiast imienia („J.” ↔ „Jan”).
+    """
+    if a == b:
+        return True
+    if not a or not b:
+        return False
+    pierwsze_a, pierwsze_b = a[0], b[0]
+    if len(pierwsze_a) > 1 and len(pierwsze_b) > 1:
+        return pierwsze_a == pierwsze_b
+    return pierwsze_a[0] == pierwsze_b[0]
+
+
+def _po_nazwisku(osoby):
     wynik = {}
     for osoba in osoby:
-        k = klucz(osoba)
-        if k and k[0]:
-            wynik.setdefault(k, []).append(osoba)
+        nazwisko, imiona = _klucz_osoby(osoba)
+        if nazwisko:
+            wynik.setdefault(nazwisko, []).append((imiona, osoba))
     return wynik
 
 
@@ -161,26 +217,44 @@ def _jedyna_osoba(kandydaci):
     return kandydaci[0] if len(rozne) == 1 else None
 
 
-def _ta_sama_osoba(osoba, po_orcid, po_imieniu, po_inicjale, ilu_z_inicjalem):
+def _rola(osoba):
+    return osoba.get("typ_ogolny", const.TO_AUTOR)
+
+
+def _ta_sama_osoba(osoba, po_orcid, obcy_po_nazwisku, glowni_po_nazwisku):
     """Znajdź w drugim źródle osobę odpowiadającą ``osoba`` albo ``None``.
 
-    Kolejność: ORCID, nazwisko z pełnym imieniem, nazwisko z inicjałem.
-    Po nazwisku łączymy tylko jednoznacznie — przy dwóch „Kowalskich J.”
-    po którejkolwiek stronie wolimy nie uzupełnić nic, niż przypisać
+    Kolejność: ORCID, potem nazwisko z imieniem (``_imiona_zgodne``;
+    identyczny zapis ma pierwszeństwo). Po nazwisku łączymy tylko
+    jednoznacznie w OBIE strony: jedna osoba w drugim źródle i jeden wiersz
+    w źródle głównym. Przy dwóch „Kowalskich J.” albo dwóch różnych osobach
+    zapisanych identycznie wolimy nie uzupełnić nic, niż przypisać
     identyfikator PBN nie tej osobie.
     """
     orcid = (osoba.get("orcid") or "").strip().upper()
     if orcid and orcid in po_orcid:
         return po_orcid[orcid]
 
-    kandydaci = po_imieniu.get(_klucz_osoby(osoba), [])
-    if kandydaci:
-        return _jedyna_osoba(kandydaci)
-
-    inicjal = _klucz_osoby(osoba, cale_imie=False)
-    if ilu_z_inicjalem.get(inicjal) != 1:
+    nazwisko, imiona = _klucz_osoby(osoba)
+    zgodni = [
+        (i, o)
+        for i, o in obcy_po_nazwisku.get(nazwisko, [])
+        if _imiona_zgodne(imiona, i)
+    ]
+    identyczni = [(i, o) for i, o in zgodni if i == imiona]
+    druga = _jedyna_osoba([o for _, o in identyczni or zgodni])
+    if druga is None:
         return None
-    return _jedyna_osoba(po_inicjale.get(inicjal, []))
+
+    # Ta sama osoba jako redaktor i autor (FD#619) to dwa wiersze o różnych
+    # rolach — liczymy wiersze w obrębie jednej roli.
+    imiona_drugiej = _klucz_osoby(druga)[1]
+    wiersze = [
+        o
+        for i, o in glowni_po_nazwisku.get(nazwisko, [])
+        if _rola(o) == _rola(osoba) and _imiona_zgodne(i, imiona_drugiej)
+    ]
+    return druga if len(wiersze) == 1 else None
 
 
 def uzupelnij_autorow(glowne, dodatkowe) -> dict:
@@ -205,21 +279,11 @@ def uzupelnij_autorow(glowne, dodatkowe) -> dict:
     po_orcid = {
         (o.get("orcid") or "").strip().upper(): o for o in obcy if o.get("orcid")
     }
-    po_imieniu = _indeks(obcy, _klucz_osoby)
-    po_inicjale = _indeks(obcy, lambda o: _klucz_osoby(o, cale_imie=False))
-    # Ta sama osoba bywa i redaktorem, i autorem (FD#619) — liczymy osoby,
-    # nie wiersze.
-    ilu_z_inicjalem = {
-        inicjal: len({_klucz_osoby(o) for o in osoby})
-        for inicjal, osoby in _indeks(
-            glowne.authors, lambda o: _klucz_osoby(o, cale_imie=False)
-        ).items()
-    }
+    obcy_po_nazwisku = _po_nazwisku(obcy)
+    glowni_po_nazwisku = _po_nazwisku(glowne.authors)
 
     for osoba in glowne.authors:
-        druga = _ta_sama_osoba(
-            osoba, po_orcid, po_imieniu, po_inicjale, ilu_z_inicjalem
-        )
+        druga = _ta_sama_osoba(osoba, po_orcid, obcy_po_nazwisku, glowni_po_nazwisku)
         if druga is None:
             continue
         for klucz in ("pbn_uid", "orcid"):
@@ -267,7 +331,9 @@ def _identyfikatory_po_isbn(client, isbny) -> list[str]:
     for wariant in warianty:
         wyniki = client.search_publications(isbn=wariant)
         for elem in itertools.islice(wyniki, _MAKS_WYNIKOW_ISBN):
-            mongo_id = elem.get("mongoId") if isinstance(elem, dict) else None
+            if not isinstance(elem, dict) or elem.get("status") == DELETED:
+                continue
+            mongo_id = elem.get("mongoId")
             if mongo_id and mongo_id not in znalezione:
                 znalezione.append(mongo_id)
     return znalezione
@@ -370,7 +436,7 @@ def _dolacz_pbn(session, result) -> dict:
     from .views.pbn_search import _pbn_url
 
     try:
-        client = _get_pbn_client(session.uczelnia)
+        client = jedna_szybka_proba(_get_pbn_client(session.uczelnia))
     except ValueError:
         # ValueError = uczelnia nie ma skonfigurowanego dostępu do PBN.
         return _wpis(
@@ -384,6 +450,14 @@ def _dolacz_pbn(session, result) -> dict:
         return wpis
     if dane is None:
         return _wpis(ZRODLO_PBN, STAN_BRAK)
+    if dane.get("status") == DELETED:
+        # Pracy usuniętej z PBN nie wiążemy — rekord BPP wskazywałby na
+        # publikację, której w PBN już nie ma.
+        return _wpis(
+            ZRODLO_PBN,
+            STAN_BRAK,
+            komunikat="W PBN jest tylko usunięty rekord tej pracy.",
+        )
 
     mongo_id = dane["mongoId"]
     z_pbn = publikacja_z_danych_pbn(dane, mongo_id)
@@ -415,7 +489,11 @@ def _pobierz_z_crossref(doi):
     """
     from .providers import get_provider
 
-    return get_provider(ZRODLO_CROSSREF).fetch(doi)
+    provider = get_provider(ZRODLO_CROSSREF)
+    # Krótszy timeout niż przy imporcie zaczętym od CrossRef: tu CrossRef
+    # jest dodatkiem (biblioteka CrossRef sama zapytania nie ponawia).
+    provider.timeout = timeout_drugiego_zrodla()
+    return provider.fetch(doi)
 
 
 def _dolacz_crossref(result) -> dict | None:
@@ -468,7 +546,7 @@ def _bezpiecznie(session, zrodlo, funkcja, *args):
         )
 
 
-def polacz_zrodla(session, result) -> list[dict]:
+def polacz_zrodla(session, result, znak_zycia=None) -> list[dict]:
     """Sprawdź pozostałe źródła i uzupełnij ``result`` tym, czego mu brakuje.
 
     Import spoza PBN sprawdza PBN; każdy import poza zaczętym od CrossRef
@@ -477,6 +555,10 @@ def polacz_zrodla(session, result) -> list[dict]:
     Wywoływane w zadaniu pobierania, zaraz po odpowiedzi dostawcy i PRZED
     dopasowaniem typu, języka i autorów — dzięki temu identyfikator osoby
     w PBN dociągnięty do autora z CrossRef od razu służy do dopasowania.
+
+    ``znak_zycia`` — wywoływane przed każdym źródłem; zadanie pobierania
+    odświeża nim ``modified`` sesji, żeby wolne źródło nie zostało wzięte
+    za zawieszone zadanie.
 
     Zmienia ``result`` w miejscu oraz ``session.matched_data`` (odpowiednik
     pracy w PBN). Zwraca listę wpisów dla ``normalized_data[KLUCZ_ZRODEL]``.
@@ -498,9 +580,13 @@ def polacz_zrodla(session, result) -> list[dict]:
     else:
         # Najpierw PBN: książka znaleziona po ISBN może dopiero stamtąd
         # dostać numer DOI, o który zapytamy CrossRef.
+        if znak_zycia is not None:
+            znak_zycia()
         wpisy.append(_bezpiecznie(session, ZRODLO_PBN, _dolacz_pbn, session, result))
 
     if session.provider_name != ZRODLO_CROSSREF:
+        if znak_zycia is not None:
+            znak_zycia()
         wpisy.append(_bezpiecznie(session, ZRODLO_CROSSREF, _dolacz_crossref, result))
     return [w for w in wpisy if w is not None]
 
@@ -532,9 +618,8 @@ def _odswiez_oswiadczenia(session, user, mongo_id) -> str:
     if pub is None:
         return lokalne
     try:
-        session.uczelnia.pbn_client(user.pbn_token).download_statements_of_publication(
-            pub
-        )
+        client = jedna_szybka_proba(session.uczelnia.pbn_client(user.pbn_token))
+        client.download_statements_of_publication(pub)
     except (
         HttpException,
         AccessDeniedException,
@@ -589,14 +674,21 @@ def _dyscyplina_z_pbn(po_osobie, imported):
     return _dyscyplina_z_oswiadczenia(oswiadczenie)
 
 
-def _wolno_ustawic_dyscypline(session, imported, dyscyplina, rok) -> bool:
-    """Czy dyscyplinę z oświadczenia da się zapisać w rekordzie pracy.
+#: Powody, dla których dyscypliny z oświadczenia nie da się przyjąć.
+INNE_PRZYPISANIE = "inne_przypisanie"
+SPOZA_UCZELNI = "spoza_uczelni"
+
+
+def _przeszkoda_dla_dyscypliny(session, imported, dyscyplina, rok) -> str | None:
+    """Dlaczego dyscypliny z oświadczenia nie da się zapisać w rekordzie
+    pracy — albo ``None``, gdy się da.
 
     Te same reguły, co przy tworzeniu rekordu: autor z przypisaniem na rok
-    pracy musi mieć w nim tę dyscyplinę (FD#623); autor bez przypisania
-    dostanie je przy tworzeniu rekordu tylko jako autor uczelni (FD#620,
-    FD#640). Oświadczenia, którego nie da się zapisać, nie podpowiadamy —
-    zablokowałoby utworzenie pracy.
+    pracy musi mieć w nim tę dyscyplinę (FD#623, ``INNE_PRZYPISANIE``);
+    autor bez przypisania dostanie je przy tworzeniu rekordu tylko jako
+    autor uczelni (FD#620, FD#640; inaczej ``SPOZA_UCZELNI``). Oświadczenia,
+    którego nie da się zapisać, nie przyjmujemy — zablokowałoby utworzenie
+    pracy — ale redaktor widzi je przy autorze (``uwagi_o_dyscyplinach``).
     """
     from django.db.models import Q
 
@@ -606,37 +698,43 @@ def _wolno_ustawic_dyscypline(session, imported, dyscyplina, rok) -> bool:
 
     autor = imported.matched_autor
     if not rok:
-        return True
+        return None
     if ma_przypisanie_na_rok(autor, rok):
-        return (
+        zgodne = (
             Autor_Dyscyplina.objects.filter(autor=autor, rok=rok)
             .filter(
                 Q(dyscyplina_naukowa=dyscyplina) | Q(subdyscyplina_naukowa=dyscyplina)
             )
             .exists()
         )
-    return autor.jest_autorem_uczelni(_uczelnia_autora(session, imported))
+        return None if zgodne else INNE_PRZYPISANIE
+    if autor.jest_autorem_uczelni(_uczelnia_autora(session, imported)):
+        return None
+    return SPOZA_UCZELNI
 
 
-def zastosuj_dyscypliny_z_profilu(session, tylko=None) -> tuple[int, int]:
+def zastosuj_dyscypliny_z_profilu(session, tylko=None) -> dict:
     """Ustaw dopasowanym autorom dyscypliny z oświadczeń w profilu instytucji.
 
     Bez sieci — czyta lokalną kopię oświadczeń. Oświadczenie z PBN jest
     mocniejsze niż domysł „autor ma jedną dyscyplinę”, ale nigdy nie
     nadpisuje wyboru redaktora ani dyscypliny ze zgłoszenia publikacji.
-    Zwraca ``(ustawione, pominięte)``; pominięte to oświadczenia niezgodne
-    z przypisaniem dyscyplin autora w BPP na rok pracy.
+    Zwraca ``{"dyscypliny": ustawione, "pominiete": …, "pominiete_spoza": …}``:
+    ``pominiete`` to oświadczenia niezgodne z przypisaniem dyscyplin autora
+    w BPP na rok pracy, ``pominiete_spoza`` — oświadczenia autorów bez
+    przypisania na ten rok, którzy nie są autorami uczelni.
 
     ``tylko`` — identyfikatory wierszy autorów, do których ograniczyć
     działanie (np. właśnie utworzeni autorzy); ``None`` = wszyscy.
     """
+    wynik = {"dyscypliny": 0, "pominiete": 0, "pominiete_spoza": 0}
     po_osobie = _oswiadczenia_po_osobie(session)
     if not po_osobie:
-        return 0, 0
+        return wynik
 
     rok = (session.normalized_data or {}).get("year")
     Zrodlo = ImportedAuthor.DyscyplinaSource
-    ustawione = pominiete = 0
+    licznik = {INNE_PRZYPISANIE: "pominiete", SPOZA_UCZELNI: "pominiete_spoza"}
     wiersze = session.authors.filter(matched_autor__isnull=False)
     if tylko is not None:
         wiersze = wiersze.filter(pk__in=tylko)
@@ -648,14 +746,15 @@ def zastosuj_dyscypliny_z_profilu(session, tylko=None) -> tuple[int, int]:
         dyscyplina = _dyscyplina_z_pbn(po_osobie, imported)
         if dyscyplina is None:
             continue
-        if not _wolno_ustawic_dyscypline(session, imported, dyscyplina, rok):
-            pominiete += 1
+        przeszkoda = _przeszkoda_dla_dyscypliny(session, imported, dyscyplina, rok)
+        if przeszkoda is not None:
+            wynik[licznik[przeszkoda]] += 1
             continue
         imported.matched_dyscyplina = dyscyplina
         imported.dyscyplina_source = Zrodlo.PBN_PROFIL
         imported.save(update_fields=["matched_dyscyplina", "dyscyplina_source"])
-        ustawione += 1
-    return ustawione, pominiete
+        wynik["dyscypliny"] += 1
+    return wynik
 
 
 def dolacz_profil_instytucji(session, user) -> dict | None:
@@ -667,27 +766,26 @@ def dolacz_profil_instytucji(session, user) -> dict | None:
     if not mongo_id or session.rodzaj_rekordu == ImportSession.RodzajRekordu.PATENT:
         return None
 
+    lokalne = "z lokalnej kopii danych PBN"
     try:
         skad = _odswiez_oswiadczenia(session, user, mongo_id)
-        ustawione, pominiete = zastosuj_dyscypliny_z_profilu(session)
     except Exception:
         # Jak w ``polacz_zrodla``: dodatek nie może wywrócić importu.
+        # Nieudane odświeżenie nie rusza lokalnej kopii (pobieranie jest
+        # atomowe), więc dyscypliny bierzemy z niej.
         logger.exception(
             "Sesja importu %s: błąd pobierania oświadczeń z profilu instytucji",
             session.pk,
         )
         capture_exception()
-        return _wpis(
-            ZRODLO_PROFIL,
-            STAN_NIE_SPRAWDZONO,
-            komunikat="Nieoczekiwany błąd podczas odczytu oświadczeń.",
-        )
+        skad = lokalne
+
+    wynik = zastosuj_dyscypliny_z_profilu(session)
     return _wpis(
         ZRODLO_PROFIL,
-        STAN_ZNALEZIONO if ustawione else STAN_BRAK,
-        dyscypliny=ustawione,
-        pominiete=pominiete,
+        STAN_ZNALEZIONO if wynik["dyscypliny"] else STAN_BRAK,
         oswiadczenia=skad,
+        **wynik,
     )
 
 
@@ -742,6 +840,8 @@ def uwagi_o_dyscyplinach(session) -> dict:
       nie ma wśród nich tej z PBN (wtedy to ostrzeżenie: takiej dyscypliny
       nie da się zapisać w rekordzie, a PBN zapewne nie przyjmie
       oświadczenia z inną),
+    * ``spoza_uczelni`` — autor nie ma przypisania na rok pracy i nie jest
+      autorem uczelni, więc dyscypliny z PBN nie przyjęto,
     * ``rok`` — rok pracy.
 
     Liczone przy wyświetlaniu, z bieżącego stanu bazy — niczego nie zmienia.
@@ -753,7 +853,7 @@ def uwagi_o_dyscyplinach(session) -> dict:
     rok = (session.normalized_data or {}).get("year")
     wiersze = list(
         session.authors.filter(matched_autor__isnull=False).select_related(
-            "matched_autor", "matched_dyscyplina"
+            "matched_autor", "matched_dyscyplina", "matched_jednostka__uczelnia"
         )
     )
 
@@ -772,6 +872,12 @@ def uwagi_o_dyscyplinach(session) -> dict:
         przypisane = na_rok.get(imported.matched_autor_id)
         if przypisane and z_pbn not in przypisane:
             uwaga["na_rok"] = przypisane
-        if "zgloszenie" in uwaga or "na_rok" in uwaga:
+        elif (
+            imported.matched_dyscyplina != z_pbn
+            and _przeszkoda_dla_dyscypliny(session, imported, z_pbn, rok)
+            == SPOZA_UCZELNI
+        ):
+            uwaga["spoza_uczelni"] = True
+        if len(uwaga) > 3:
             uwagi[imported.pk] = uwaga
     return uwagi

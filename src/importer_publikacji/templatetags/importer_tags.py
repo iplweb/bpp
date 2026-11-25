@@ -114,3 +114,31 @@ def uwaga_o_dyscyplinie(author, session):
         uwagi = uwagi_o_dyscyplinach(session)
         session._fd512_uwagi_o_dyscyplinach = uwagi
     return uwagi.get(author.pk)
+
+
+@register.filter(name="rekord_z_odpowiednikiem_pbn")
+def rekord_z_odpowiednikiem_pbn(session):
+    """FD#512: rekord BPP, który ma już odpowiednik w PBN wybrany w tej
+    sesji — albo ``None``. Pole jest unikalne, więc utworzony rekord nie
+    zostałby powiązany (``_link_pbn_uid`` pomija powiązanie); redaktor ma
+    to zobaczyć przed utworzeniem. Rekord utworzony przez tę sesję nie jest
+    „cudzy”. Wynik liczymy raz na renderowanie."""
+    from bpp.models import Wydawnictwo_Ciagle, Wydawnictwo_Zwarte
+
+    if hasattr(session, "_fd512_zajety_odpowiednik"):
+        return session._fd512_zajety_odpowiednik
+
+    zajety = None
+    mongo_id = (session.matched_data or {}).get("pbn_mongo_id")
+    if mongo_id:
+        for model in (Wydawnictwo_Ciagle, Wydawnictwo_Zwarte):
+            rekord = model.objects.filter(pbn_uid_id=mongo_id).first()
+            if rekord is not None and not (
+                session.created_record_id == rekord.pk
+                and session.created_record_content_type is not None
+                and session.created_record_content_type.model_class() is model
+            ):
+                zajety = rekord
+                break
+    session._fd512_zajety_odpowiednik = zajety
+    return zajety

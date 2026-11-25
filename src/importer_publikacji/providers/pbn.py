@@ -128,14 +128,19 @@ def _extract_authors(obj: dict, key: str = "authors") -> list[dict]:
 LIMIT_DOCIAGANYCH_OSOB = 50
 
 
-def pobierz_brakujace_osoby(uczelnia, identyfikatory) -> int:
+def pobierz_brakujace_osoby(uczelnia, identyfikatory, przygotuj_klienta=None) -> int:
     """Pobierz z PBN osoby, których nie ma w lokalnej kopii danych PBN.
 
     Bez lokalnego wpisu osoby nowo tworzony autor nie może dostać
     odpowiednika w PBN, mimo że PBN podał jego identyfikator. Błąd PBN nie
     przerywa importu — autor powstanie wtedy bez odpowiednika, co krok
     „Autorzy” pokazuje wprost. Zwraca liczbę pobranych osób.
+
+    ``przygotuj_klienta`` — opcjonalna funkcja dostrajająca klienta PBN
+    (import spoza PBN przekazuje tu krótki timeout bez ponowień, FD#512).
     """
+    import requests
+
     from pbn_api.models import Scientist
     from pbn_integrator.utils.scientists import pobierz_i_zapisz_dane_jednej_osoby
 
@@ -154,6 +159,8 @@ def pobierz_brakujace_osoby(uczelnia, identyfikatory) -> int:
     except ValueError:
         logger.warning("Brak konfiguracji PBN — nie pobieram danych osób")
         return 0
+    if przygotuj_klienta is not None:
+        client = przygotuj_klienta(client)
 
     pobrane = 0
     for identyfikator in brakujace:
@@ -161,7 +168,13 @@ def pobierz_brakujace_osoby(uczelnia, identyfikatory) -> int:
             pobierz_i_zapisz_dane_jednej_osoby(
                 client, identyfikator, from_institution_api=False
             )
-        except (HttpException, PraceSerwisoweException, AccessDeniedException) as e:
+        except (
+            HttpException,
+            PraceSerwisoweException,
+            AccessDeniedException,
+            # Brak połączenia z PBN to też nie powód, by przerwać import.
+            requests.RequestException,
+        ) as e:
             logger.warning(
                 "PBN: nie udało się pobrać osoby %s (%s) — przerywam dociąganie",
                 identyfikator,

@@ -21,7 +21,7 @@ class CrossrefAPICacheManager(models.Manager):
         self.filter(ostatnio_zmodyfikowany__lte=cache_duration).delete()
         self.cache_last_run = timezone.now()
 
-    def api_get_by_doi(self, doi):
+    def api_get_by_doi(self, doi, timeout=None):
         from django.conf import settings
 
         works = PatchedWorks()
@@ -30,15 +30,21 @@ class CrossrefAPICacheManager(models.Manager):
         # ustawiamy go świadomie, żeby wolny/niereagujący CrossRef zamienił się
         # w szybki, łapalny requests.Timeout (→ IMPORT_FAILED z komunikatem),
         # zamiast trzymać workera pod górnym limitem biblioteki.
-        works.timeout = getattr(settings, "CROSSREF_API_TIMEOUT", 30)
+        # ``timeout`` z argumentu — dla wywołań, w których CrossRef jest tylko
+        # dodatkiem i nie może wstrzymać pracy (importer publikacji, FD#512).
+        works.timeout = (
+            timeout
+            if timeout is not None
+            else getattr(settings, "CROSSREF_API_TIMEOUT", 30)
+        )
         return works.doi(doi)
 
-    def get_by_doi(self, doi):
+    def get_by_doi(self, doi, timeout=None):
         self.cleanup()
 
         ret = self.filter(doi=doi).first()
         if ret is None:
-            data = self.api_get_by_doi(doi)
+            data = self.api_get_by_doi(doi, timeout=timeout)
             if data is None:
                 return
 

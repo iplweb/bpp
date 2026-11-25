@@ -1,5 +1,6 @@
 {# FD#512: skąd pochodzą dane tej sesji — źródło wybrane przez redaktora #}
 {# oraz źródła sprawdzone przez importer samodzielnie po pobraniu danych. #}
+{% load importer_tags %}
 {% with zrodla=session.normalized_data.zrodla_dodatkowe %}
     {% if zrodla %}
         <div class="callout primary zrodla-danych">
@@ -21,7 +22,22 @@
                             {% if z.zrodlo == "PBN" %}
                                 &mdash; praca jest w PBN (znaleziona po {{ z.po }}){% if z.url %},
                                     <a href="{{ z.url }}" target="_blank" rel="noopener">pokaż w PBN</a>{% endif %}.
-                                Rekord zostanie powiązany z tym odpowiednikiem w PBN.
+                                {# Stan bieżący: redaktor mógł zmienić wybór w kroku „Sprawdź w PBN” #}
+                                {% if z.identyfikator != session.matched_data.pbn_mongo_id %}
+                                    {% if session.matched_data.pbn_mongo_id %}
+                                        W kroku „Sprawdź w PBN” wybrano potem inny
+                                        odpowiednik — rekord zostanie powiązany z nim.
+                                    {% else %}
+                                        Odpowiednik został potem usunięty w kroku
+                                        „Sprawdź w PBN” — rekord nie zostanie powiązany z PBN.
+                                    {% endif %}
+                                {% elif session|rekord_z_odpowiednikiem_pbn %}
+                                    Rekord <strong>nie zostanie powiązany</strong> z tym
+                                    odpowiednikiem — ma go już inny rekord w BPP
+                                    (patrz ostrzeżenie poniżej).
+                                {% else %}
+                                    Rekord zostanie powiązany z tym odpowiednikiem w PBN.
+                                {% endif %}
                             {% elif z.zrodlo == "CrossRef" %}
                                 &mdash; praca jest w CrossRef (znaleziona po {{ z.po }}){% if z.url %},
                                     <a href="{{ z.url }}" target="_blank" rel="noopener">{{ z.identyfikator }}</a>{% endif %}.
@@ -51,7 +67,7 @@
                             {% endif %}
                         {% elif z.stan == "brak" %}
                             {% if z.zrodlo == "PBN" %}
-                                &mdash; nie znaleziono tej pracy w PBN.
+                                &mdash; nie znaleziono tej pracy w PBN. {{ z.komunikat }}
                             {% elif z.zrodlo == "CrossRef" %}
                                 &mdash; CrossRef nie zna numeru DOI tej pracy.
                             {% else %}
@@ -68,9 +84,17 @@
                         {% endif %}
                         {% if z.pominiete %}
                             <br>
-                            Pominięto oświadczenia {{ z.pominiete }} autorów: dyscyplina
+                            Nie przyjęto oświadczeń {{ z.pominiete }} autorów: dyscyplina
                             z PBN nie zgadza się z przypisaniem dyscyplin autora w BPP
-                            na rok pracy.
+                            na rok pracy (ostrzeżenie przy autorze w kroku
+                            „Dopasowanie autorów”).
+                        {% endif %}
+                        {% if z.pominiete_spoza %}
+                            <br>
+                            Nie przyjęto oświadczeń {{ z.pominiete_spoza }} autorów:
+                            autor nie ma w BPP przypisania dyscypliny na rok pracy
+                            i nie jest autorem uczelni (uwaga przy autorze w kroku
+                            „Dopasowanie autorów”).
                         {% endif %}
                     </li>
                 {% endfor %}
@@ -78,3 +102,4 @@
         </div>
     {% endif %}
 {% endwith %}
+{% include "importer_publikacji/partials/_odpowiednik_pbn_zajety.html" %}

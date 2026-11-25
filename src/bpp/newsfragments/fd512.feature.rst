@@ -20,4 +20,8 @@ jest w PBN, co w drugim źródle i co przyjęto. Skąd pochodzi która informacj
 danych” w krokach „Weryfikacja danych publikacji” i „Dopasowanie autorów”;
 przy każdym automatycznie dopasowanym autorze importer podaje, czy
 rozpoznał go po identyfikatorze PBN, po ORCID, czy po imieniu i nazwisku.
-Krok „Sprawdź w PBN” wyszukuje też po ISBN.
+Jeśli praca znaleziona w PBN jest już powiązana z innym rekordem w BPP,
+kreator pokazuje ostrzeżenie „Odpowiednik w PBN jest już zajęty”
+z odnośnikiem do tego rekordu. Niedostępność PBN lub CrossRef nie
+wstrzymuje importu — dodatkowe źródło dostaje jedną krótką próbę, a ramka
+podaje, że go nie sprawdzono. Krok „Sprawdź w PBN” wyszukuje też po ISBN.

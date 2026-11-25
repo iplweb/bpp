@@ -130,6 +130,12 @@ Importer otworzysz na dwa sposoby:
     ISBN albo książka o innym tytule, importer niczego nie wiąże sam —
     wskażesz właściwą pracę w kroku „Sprawdź w PBN”.
 
+    Czerwone ostrzeżenie **„Odpowiednik w PBN jest już zajęty”** oznacza,
+    że praca znaleziona w PBN jest już powiązana z innym rekordem w BPP
+    (odnośnik w ostrzeżeniu). To najpewniej ta sama praca — sprawdź, czy
+    nie tworzysz duplikatu. Jeśli mimo to utworzysz rekord, nie zostanie
+    on powiązany z PBN.
+
 4. **Dopasowanie źródła** (ekran „Krok 3: Dopasowanie źródła”). Dla
    artykułu importer szuka w BPP czasopisma o **podobnej nazwie** do tej
    z danych źródłowych (widać ją w ramce „Źródło w danych dostawcy”).
@@ -247,6 +253,11 @@ Importer otworzysz na dwa sposoby:
       to, co wynika z przypisania. Sprawdź, który zapis jest właściwy:
       popraw przypisanie dyscyplin autora w BPP albo oświadczenie w PBN —
       PBN może nie przyjąć oświadczenia z inną dyscypliną niż dotychczasowa;
+    - **żółte ostrzeżenie „nie jest autorem uczelni”** — autor ma
+      oświadczenie w PBN, ale w BPP nie ma przypisania dyscypliny na rok
+      pracy i nie należy do żadnej jednostki uczelni. Importer nie przyjmuje
+      wtedy dyscypliny. Jeśli to pracownik uczelni, przypisz go do jednostki
+      uczelni i wybierz dyscyplinę przyciskiem „Edytuj”;
     - **niebieska informacja** — oświadczenie w PBN podaje inną dyscyplinę
       niż zgłoszenie publikacji. Pierwszeństwo ma PBN; jeśli właściwa jest
       dyscyplina ze zgłoszenia, zmień ją przyciskiem „Edytuj”.

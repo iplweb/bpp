@@ -169,6 +169,17 @@ danych dostawcy wybranego przez operatora nie nadpisuje.
   operator wskazuje odpowiednik w kroku „Sprawdź w PBN”.
 - Błąd drugiego źródła nie przerywa importu — ramka „Źródła danych”
   w krokach weryfikacji i autorów podaje wtedy powód.
+- Drugie źródło nie może też importu wstrzymać: zapytania do PBN i CrossRef
+  w tej roli mają krótki timeout (domyślnie 5 s na połączenie i 15 s na
+  odpowiedź) i **jedną próbę**, bez ponawiania. Wartość zmienia ustawienie
+  `IMPORTER_DRUGIE_ZRODLO_TIMEOUT` (liczba sekund albo para
+  `(połączenie, odpowiedź)`). Synchronizacja z PBN w innych modułach
+  zachowuje dotychczasowe, dłuższe limity.
+- Praca oznaczona w PBN jako usunięta (`DELETED`) nie jest wiązana.
+- Gdy odpowiednik w PBN jest już przypisany do innego rekordu BPP, kreator
+  pokazuje czerwone ostrzeżenie z odnośnikiem do tego rekordu (kroki
+  weryfikacji, autorów, „Sprawdź w PBN” i przegląd); utworzony rekord nie
+  zostanie wtedy powiązany z PBN.
 - Patenty nie są sprawdzane w żadnym dodatkowym źródle.
 - Przycisk „Pobierz z CrossRef” w kroku weryfikacji (zastępuje całą sesję
   danymi z CrossRef) pozostaje dla importów spoza CrossRef: łączenie źródeł
@@ -254,8 +265,9 @@ o jej pochodzeniu:
   a autor ma dla niej oświadczenie w profilu instytucji. Ma pierwszeństwo
   przed „jedyną dyscypliną autora” i przed zgłoszeniem publikacji; nie jest
   przyjmowane, gdy autor ma na rok pracy przypisanie do innej dyscypliny
-  albo nie jest autorem uczelni. Rozbieżność z przypisaniem na rok system
-  pokazuje przy autorze jako ostrzeżenie, a rozbieżność ze zgłoszeniem
+  albo — nie mając żadnego przypisania na ten rok — nie jest autorem
+  uczelni. Oba przypadki system pokazuje przy autorze jako ostrzeżenie
+  (z właściwym powodem), a rozbieżność ze zgłoszeniem
   publikacji — jako informację (co jest w PBN, co w drugim źródle, co
   przyjęto).
 - *(Wybór użytkownika)* -- dyscyplina została wybrana ręcznie.

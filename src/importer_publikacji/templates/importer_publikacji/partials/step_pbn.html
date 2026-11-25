@@ -31,6 +31,8 @@
         </div>
     {% endif %}
 
+    {% include "importer_publikacji/partials/_odpowiednik_pbn_zajety.html" %}
+
     {# --- Operator niezalogowany do PBN --------------------------------- #}
     {% if not logged_in %}
         <div class="callout warning">

@@ -19,6 +19,7 @@ from celery import shared_task
 from django.contrib.auth import get_user_model
 from django.contrib.contenttypes.models import ContentType
 from django.db import transaction
+from django.utils import timezone
 
 from bpp.zglaszanie_bledow import capture_exception
 
@@ -47,6 +48,40 @@ _POLA_BLEDU = [
 ]
 
 
+class ZadanieZastapione(Exception):
+    """To zadanie pobierania nie jest już zadaniem swojej sesji.
+
+    Strażnik uznał sesję za zawieszoną (albo redaktor ją anulował) i być
+    może kliknięto „Ponów” — nowe zadanie pracuje na tej samej sesji. Stare
+    ma się wycofać bez zapisywania czegokolwiek, inaczej dopisałoby autorów
+    drugi raz albo nadpisało stan nowego zadania.
+    """
+
+
+def _znak_zycia(task, session):
+    """Sprawdź, że to wciąż zadanie tej sesji, i odśwież jej ``modified``.
+
+    Wołane przed każdą dłuższą operacją (zapytania do PBN i CrossRef) i przed
+    zapisami. ``modified`` odsuwa próg strażnika ``is_stalled`` — wolne, ale
+    żywe pobieranie nie jest brane za martwe. Rzuca ``ZadanieZastapione``,
+    gdy sesja wyszła ze stanu pobierania albo przejęło ją inne zadanie.
+    """
+    stan = (
+        ImportSession.objects.filter(pk=session.pk)
+        .values_list("status", "celery_task_id")
+        .first()
+    )
+    moje_id = task.request.id
+    if (
+        stan is None
+        or stan[0] != ImportSession.Status.FETCHING
+        # Puste pole = widok jeszcze nie zapisał identyfikatora zadania.
+        or (stan[1] and moje_id and stan[1] != moje_id)
+    ):
+        raise ZadanieZastapione(session.pk)
+    ImportSession.objects.filter(pk=session.pk).update(modified=timezone.now())
+
+
 @shared_task(bind=True)
 def fetch_session_task(self, session_id, request_user_id):
     """Pobierz dane od dostawcy + auto-dopasuj autorów + uzupełnij
@@ -63,9 +98,11 @@ def fetch_session_task(self, session_id, request_user_id):
     """
     session = ImportSession.objects.get(pk=session_id)
     try:
+        _znak_zycia(self, session)
         report_progress(self, "provider_fetch", stages=FETCH_STAGES)
         provider = get_provider(session.provider_name, uczelnia=session.uczelnia)
         result = provider.fetch(session.identifier)
+        _znak_zycia(self, session)
         if result is None:
             # Oczekiwany failure: dostawca nie zna identyfikatora.
             # NIE jest to bug naszego kodu — nie raise, żeby Celery nie
@@ -84,11 +121,14 @@ def fetch_session_task(self, session_id, request_user_id):
         report_progress(self, "create_session", stages=FETCH_STAGES)
         # FD#512: zanim cokolwiek dopasujemy, sprawdź pozostałe źródła (PBN
         # dla importu spoza PBN, CrossRef dla importu spoza CrossRef)
-        # i uzupełnij to, czego dostawca nie podał. Bez nowego etapu paska postępu —
-        # ``report_progress`` zna tylko etapy z FETCH_STAGES.
+        # i uzupełnij to, czego dostawca nie podał. Bez nowego etapu paska
+        # postępu — ``report_progress`` zna tylko etapy z FETCH_STAGES.
         from .zrodla import KLUCZ_ZRODEL, dolacz_profil_instytucji, polacz_zrodla
 
-        zrodla = polacz_zrodla(session, result)
+        zrodla = polacz_zrodla(
+            session, result, znak_zycia=lambda: _znak_zycia(self, session)
+        )
+        _znak_zycia(self, session)
         _store_normalized_data(session, result)
         session.normalized_data[KLUCZ_ZRODEL] = zrodla
         session.save(
@@ -117,6 +157,7 @@ def fetch_session_task(self, session_id, request_user_id):
         from .views.authors import _auto_match_single_author
 
         for i, author_data in enumerate(result.authors):
+            _znak_zycia(self, session)
             _auto_match_single_author(session, author_data, i, result.year)
             report_progress(
                 self,
@@ -130,16 +171,24 @@ def fetch_session_task(self, session_id, request_user_id):
         # trzeba będzie utworzyć, dociągamy dane osoby — inaczej nowy autor
         # nie miałby odpowiednika w PBN (FD#510).
         from .providers.pbn import pobierz_brakujace_osoby
+        from .zrodla import jedna_szybka_proba
 
+        _znak_zycia(self, session)
         pobierz_brakujace_osoby(
             session.uczelnia,
             session.authors.filter(matched_autor__isnull=True)
             .exclude(pbn_uid="")
             .values_list("pbn_uid", flat=True),
+            # Import spoza PBN nie może czekać na PBN (FD#512); import
+            # z PBN zachowuje dotychczasowe, cierpliwe zachowanie klienta.
+            przygotuj_klienta=(
+                None if session.provider_name == "PBN" else jedna_szybka_proba
+            ),
         )
 
         # FD#512: praca jest w PBN — dyscypliny z oświadczeń w profilu
         # instytucji. Przed zgłoszeniami: te uzupełniają tylko puste pola.
+        _znak_zycia(self, session)
         profil = dolacz_profil_instytucji(
             session, get_user_model().objects.filter(pk=request_user_id).first()
         )
@@ -170,9 +219,19 @@ def fetch_session_task(self, session_id, request_user_id):
 
         _prefill_dyscypliny_z_zgloszen(session)
 
+        _znak_zycia(self, session)
         session.status = ImportSession.Status.FETCHED
         session.celery_task_id = ""
         session.save(update_fields=["status", "celery_task_id", "modified"])
+    except ZadanieZastapione:
+        # Nie zapisujemy NICZEGO i nie zgłaszamy błędu: stan sesji należy
+        # już do strażnika albo do nowego zadania.
+        logger.warning(
+            "Sesja importu %s: zadanie pobierania %s zostało zastąpione — "
+            "wycofuję się bez zapisu.",
+            session_id,
+            self.request.id,
+        )
     except Exception as exc:
         session.status = ImportSession.Status.IMPORT_FAILED
         session.last_failed_stage = "fetch"

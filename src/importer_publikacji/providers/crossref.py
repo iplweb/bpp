@@ -11,6 +11,10 @@ from . import (
 
 @register_provider
 class CrossRefProvider(DataProvider):
+    #: Timeout zapytania do CrossRef; ``None`` = domyślny z ustawień. Łączenie
+    #: źródeł (FD#512) ustawia tu krótszy — CrossRef jest wtedy dodatkiem.
+    timeout = None
+
     @property
     def name(self) -> str:
         return "CrossRef"
@@ -39,7 +43,10 @@ class CrossRefProvider(DataProvider):
         if doi is None:
             return None
 
-        data = CrossrefAPICache.objects.get_by_doi(doi)
+        if self.timeout is None:
+            data = CrossrefAPICache.objects.get_by_doi(doi)
+        else:
+            data = CrossrefAPICache.objects.get_by_doi(doi, timeout=self.timeout)
         if data is None:
             return None
 

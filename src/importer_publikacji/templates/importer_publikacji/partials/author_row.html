@@ -114,6 +114,21 @@
                     </small>
                 </div>
             {% endif %}
+            {% if uwaga.spoza_uczelni %}
+                <div class="callout warning uwaga-dyscyplina-spoza"
+                     style="padding:0.4rem;margin:0.3rem 0 0">
+                    <small>
+                        <strong>Uwaga:</strong> oświadczenie w PBN:
+                        <strong>{{ uwaga.pbn }}</strong>. Autor nie ma w BPP
+                        przypisania dyscypliny na rok {{ uwaga.rok }} i nie
+                        jest autorem uczelni, więc importer nie przyjął tej
+                        dyscypliny. Przyjęto:
+                        <strong>{{ uwaga.przyjeta|default:"brak dyscypliny" }}</strong>.
+                        Jeśli to pracownik uczelni, przypisz go do jednostki
+                        uczelni i wybierz dyscyplinę przyciskiem „Edytuj”.
+                    </small>
+                </div>
+            {% endif %}
             {% if uwaga.zgloszenie %}
                 <div class="callout primary uwaga-dyscyplina-zgloszenie"
                      style="padding:0.4rem;margin:0.3rem 0 0">

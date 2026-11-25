@@ -9,10 +9,12 @@ Redaktor widzi w kreatorze, skąd pochodzi która informacja.
 Wszystko bez sieci: odpowiedzi PBN i CrossRef są podstawiane.
 """
 
+from datetime import timedelta
 from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
 
 import pytest
+import requests
 from django.db import transaction
 from django.urls import reverse
 from model_bakery import baker
@@ -25,6 +27,7 @@ from importer_publikacji.tasks import fetch_session_task
 from importer_publikacji.views.pbn_check import _link_pbn_uid
 from importer_publikacji.views.pbn_search import _search_pbn_equivalents
 from importer_publikacji.zrodla import (
+    DOMYSLNY_TIMEOUT_DRUGIEGO_ZRODLA,
     KLUCZ_ZRODEL,
     STAN_BRAK,
     STAN_NIE_SPRAWDZONO,
@@ -34,11 +37,15 @@ from importer_publikacji.zrodla import (
     ZRODLO_PBN,
     ZRODLO_PROFIL,
     dolacz_profil_instytucji,
+    jedna_szybka_proba,
     polacz_zrodla,
     uwagi_o_dyscyplinach,
     uzupelnij_autorow,
     uzupelnij_brakujace_pola,
     zastosuj_dyscypliny_z_profilu,
+)
+from importer_publikacji.zrodla import (
+    _pobierz_z_crossref as _prawdziwe_pobierz_z_crossref,
 )
 from pbn_api.exceptions import HttpException
 from pbn_api.models import Institution, OswiadczenieInstytucji, Publication, Scientist
@@ -791,7 +798,7 @@ def test_oswiadczenie_nie_nadpisuje_wyboru_redaktora_ani_zgloszenia(
     s.wiersz.dyscyplina_source = zrodlo
     s.wiersz.save()
 
-    assert zastosuj_dyscypliny_z_profilu(s.sesja) == (0, 0)
+    assert zastosuj_dyscypliny_z_profilu(s.sesja)["dyscypliny"] == 0
 
     s.wiersz.refresh_from_db()
     assert s.wiersz.matched_dyscyplina == s.d2
@@ -803,7 +810,7 @@ def test_oswiadczenie_redaktora_nie_trafia_do_autora(sesja_z_oswiadczeniem):
     s = sesja_z_oswiadczeniem
     OswiadczenieInstytucji.objects.update(type="EDITOR")
 
-    assert zastosuj_dyscypliny_z_profilu(s.sesja) == (0, 0)
+    assert zastosuj_dyscypliny_z_profilu(s.sesja)["dyscypliny"] == 0
 
 
 @pytest.mark.django_db
@@ -1059,3 +1066,321 @@ def test_zajety_odpowiednik_pbn_nie_psuje_transakcji_tworzenia(importer_user):
     nowy.refresh_from_db()
     assert nowy.pbn_uid_id is None
     assert nowy.pbn_uid is None
+
+
+# --- Poprawki po recenzji -----------------------------------------------------
+
+
+def _uczelnia_z_pbn(uczelnia):
+    uczelnia.pbn_app_name = "app"
+    uczelnia.pbn_app_token = "token"
+    uczelnia.pbn_api_root = "https://pbn.invalid"
+    uczelnia.save()
+    return uczelnia
+
+
+@pytest.mark.django_db
+def test_niedostepny_pbn_nie_wstrzymuje_importu(importer_user, uczelnia):
+    """PBN nie odpowiada: zwykły klient ponawiałby połączenie 15 razy
+    z długim timeoutem (ok. 8 minut) — a import po DOI z CrossRef w ogóle
+    PBN-u nie potrzebuje. Drugie źródło dostaje jedną, krótką próbę."""
+    proby = []
+
+    def get(*args, **kw):
+        proby.append(kw.get("timeout"))
+        raise requests.exceptions.ConnectTimeout("PBN nie odpowiada")
+
+    sesja = _sesja(importer_user, uczelnia=_uczelnia_z_pbn(uczelnia))
+    dostawca = MagicMock()
+    dostawca.fetch.return_value = _z_crossref()
+    with (
+        patch("importer_publikacji.tasks.get_provider", return_value=dostawca),
+        patch("requests.get", side_effect=get),
+        patch("pbn_client.transport.time.sleep") as spanie,
+    ):
+        fetch_session_task.apply(args=[sesja.pk, sesja.created_by_id]).get()
+
+    sesja.refresh_from_db()
+    assert sesja.status == ImportSession.Status.FETCHED
+    assert _wpis(sesja, ZRODLO_PBN)["stan"] == STAN_NIE_SPRAWDZONO
+    assert proby == [DOMYSLNY_TIMEOUT_DRUGIEGO_ZRODLA]
+    spanie.assert_not_called()
+    assert sesja.authors.count() == 2
+
+
+def test_krotki_timeout_nie_zmienia_innych_klientow_pbn():
+    """Strażnik: krótki timeout dotyczy jednego egzemplarza klienta."""
+    from importer_publikacji.providers.pbn import _get_pbn_client
+
+    uczelnia = MagicMock(
+        pbn_app_name="app", pbn_app_token="token", pbn_api_root="https://pbn.invalid"
+    )
+    zwykly = _get_pbn_client(uczelnia)
+    szybki = jedna_szybka_proba(_get_pbn_client(uczelnia))
+
+    assert szybki.transport.timeout == DOMYSLNY_TIMEOUT_DRUGIEGO_ZRODLA
+    assert zwykly.transport.timeout != DOMYSLNY_TIMEOUT_DRUGIEGO_ZRODLA
+    assert "_make_get_request_with_retry" not in vars(zwykly.transport)
+
+
+def test_crossref_jako_drugie_zrodlo_ma_krotki_timeout(monkeypatch):
+    from importer_publikacji.providers import crossref as crossref_mod
+
+    timeouty = []
+
+    def get_by_doi(doi, timeout=None):
+        timeouty.append(timeout)
+
+    monkeypatch.setattr(
+        crossref_mod.CrossrefAPICache, "objects", SimpleNamespace(get_by_doi=get_by_doi)
+    )
+
+    assert _prawdziwe_pobierz_z_crossref(DOI) is None
+    assert timeouty == [DOMYSLNY_TIMEOUT_DRUGIEGO_ZRODLA]
+
+
+@pytest.mark.django_db
+def test_wolne_zrodlo_odswieza_modified_sesji(importer_user):
+    """Przed każdym źródłem zadanie odświeża ``modified`` — strażnik nie
+    weźmie wolnego, ale żywego pobierania za zawieszone."""
+    sesja = _sesja(importer_user)
+    stary = sesja.modified - timedelta(seconds=170)
+    ImportSession.objects.filter(pk=sesja.pk).update(modified=stary)
+    widziane = []
+
+    def dolacz(session, result):
+        widziane.append(ImportSession.objects.get(pk=sesja.pk).modified)
+        return {"zrodlo": ZRODLO_PBN, "stan": STAN_BRAK}
+
+    with patch("importer_publikacji.zrodla._dolacz_pbn", side_effect=dolacz):
+        _pobierz(sesja, _z_crossref())
+
+    assert widziane[0] > stary + timedelta(seconds=100)
+
+
+@pytest.mark.django_db
+def test_zastapione_zadanie_niczego_nie_zapisuje(importer_user):
+    """Strażnik uznał sesję za zawieszoną i redaktor kliknął „Ponów”:
+    stare zadanie, które dopiero teraz doczekało się odpowiedzi PBN, nie
+    może dopisać autorów ani zmienić stanu sesji nowego zadania."""
+    sesja = _sesja(importer_user)
+
+    def dolacz(session, result):
+        # W trakcie zapytania do PBN sesję przejęło nowe zadanie.
+        ImportSession.objects.filter(pk=sesja.pk).update(celery_task_id="nowe-zadanie")
+        return {"zrodlo": ZRODLO_PBN, "stan": STAN_BRAK}
+
+    with patch("importer_publikacji.zrodla._dolacz_pbn", side_effect=dolacz):
+        _pobierz(sesja, _z_crossref())
+
+    assert sesja.status == ImportSession.Status.FETCHING
+    assert sesja.celery_task_id == "nowe-zadanie"
+    assert sesja.normalized_data == {}
+    assert sesja.authors.count() == 0
+    assert sesja.last_error_message == ""
+
+
+@pytest.mark.django_db
+def test_zadanie_sesji_oznaczonej_jako_zawieszona_wycofuje_sie(importer_user):
+    sesja = _sesja(importer_user)
+
+    def dolacz(session, result):
+        ImportSession.objects.get(pk=sesja.pk).mark_stalled()
+        return {"zrodlo": ZRODLO_PBN, "stan": STAN_BRAK}
+
+    with patch("importer_publikacji.zrodla._dolacz_pbn", side_effect=dolacz):
+        _pobierz(sesja, _z_crossref())
+
+    assert sesja.status == ImportSession.Status.IMPORT_FAILED
+    assert sesja.last_failed_stage == "fetch"
+    assert sesja.authors.count() == 0
+
+
+def test_rozne_pelne_imiona_nie_sa_laczone_po_inicjale():
+    """„Kowalski Jan” nie dostaje identyfikatora „Kowalskiego Jerzego”."""
+    glowne = _z_crossref(authors=[{"family": "Kowalski", "given": "Jan"}])
+    dodatkowe = _z_crossref(
+        authors=[{"family": "Kowalski", "given": "Jerzy", "pbn_uid": OSOBA_1}]
+    )
+
+    assert uzupelnij_autorow(glowne, dodatkowe)["pbn_uid"] == 0
+    assert "pbn_uid" not in glowne.authors[0]
+
+
+def test_dwie_osoby_o_tym_samym_zapisie_nie_dostaja_jednego_identyfikatora():
+    glowne = _z_crossref(
+        authors=[
+            {"family": "Zhang", "given": "Wei"},
+            {"family": "Nowak", "given": "Anna"},
+            {"family": "Zhang", "given": "Wei"},
+        ]
+    )
+    dodatkowe = _z_crossref(
+        authors=[
+            {"family": "Zhang", "given": "Wei", "pbn_uid": OSOBA_1},
+            {"family": "Nowak", "given": "Anna", "pbn_uid": OSOBA_2},
+        ]
+    )
+
+    assert uzupelnij_autorow(glowne, dodatkowe)["pbn_uid"] == 1
+    assert [a.get("pbn_uid") for a in glowne.authors] == [None, OSOBA_2, None]
+
+
+def test_drugie_imie_lub_inicjal_nie_przeszkadza_w_dopasowaniu():
+    """Strażnik: „Jan A.” ↔ „Jan” oraz „J.” ↔ „Jan Adam” to ta sama osoba."""
+    glowne = _z_crossref(
+        authors=[
+            {"family": "Kowalski", "given": "Jan A."},
+            {"family": "Nowak", "given": "A."},
+        ]
+    )
+    dodatkowe = _z_crossref(
+        authors=[
+            {"family": "Kowalski", "given": "Jan", "pbn_uid": OSOBA_1},
+            {"family": "Nowak", "given": "Anna Maria", "pbn_uid": OSOBA_2},
+        ]
+    )
+
+    assert uzupelnij_autorow(glowne, dodatkowe)["pbn_uid"] == 2
+
+
+@pytest.mark.django_db
+def test_praca_usunieta_w_pbn_nie_jest_wiazana(importer_user):
+    usunieta = _praca_pbn()
+    usunieta["status"] = "DELETED"
+
+    sesja = _pobierz(_sesja(importer_user), _z_crossref(), _klient_pbn(po_doi=usunieta))
+
+    wpis = _wpis(sesja, ZRODLO_PBN)
+    assert wpis["stan"] == STAN_BRAK
+    assert "usunięty" in wpis["komunikat"]
+    assert "pbn_mongo_id" not in sesja.matched_data
+    assert sesja.authors.get(order=0).pbn_uid == ""
+    assert not Publication.objects.filter(pk=PRACA_PBN).exists()
+
+
+@pytest.mark.django_db
+def test_usunieta_ksiazka_w_wynikach_isbn_jest_pomijana(importer_user):
+    client = _klient_pbn(
+        po_isbn=[
+            {"mongoId": PRACA_PBN, "status": "DELETED"},
+            {"mongoId": KSIAZKA_PBN, "status": "ACTIVE"},
+        ],
+        po_id={KSIAZKA_PBN: _ksiazka_pbn()},
+    )
+
+    sesja = _pobierz(_sesja(importer_user), _ksiazka(), client)
+
+    assert sesja.matched_data["pbn_mongo_id"] == KSIAZKA_PBN
+
+
+@pytest.mark.django_db
+def test_nieoczekiwany_blad_odswiezania_nie_wylacza_lokalnej_kopii(
+    sesja_z_oswiadczeniem,
+):
+    s = sesja_z_oswiadczeniem
+    with patch(
+        "importer_publikacji.zrodla._odswiez_oswiadczenia",
+        side_effect=RuntimeError("bum"),
+    ):
+        wpis = dolacz_profil_instytucji(s.sesja, s.sesja.created_by)
+
+    s.wiersz.refresh_from_db()
+    assert s.wiersz.matched_dyscyplina == s.d1
+    assert wpis["stan"] == STAN_ZNALEZIONO
+    assert wpis["oswiadczenia"] == "z lokalnej kopii danych PBN"
+
+
+@pytest.mark.django_db
+def test_uwaga_gdy_autor_spoza_uczelni_bez_przypisania(
+    importer_client, sesja_z_oswiadczeniem
+):
+    """Autor bez przypisania na rok pracy, który nie jest autorem uczelni:
+    dyscypliny z PBN nie przyjmujemy (FD#640), ale mówimy o tym przy
+    autorze — i podajemy prawdziwy powód w ramce „Źródła danych”."""
+    from bpp.models import Autor_Jednostka
+
+    s = sesja_z_oswiadczeniem
+    Autor_Jednostka.objects.filter(autor=s.autor).delete()
+    Autor.objects.filter(pk=s.autor.pk).update(aktualna_jednostka=None)
+
+    wpis = dolacz_profil_instytucji(s.sesja, s.sesja.created_by)
+    s.sesja.normalized_data[KLUCZ_ZRODEL] = [wpis]
+    s.sesja.save()
+
+    s.wiersz.refresh_from_db()
+    assert s.wiersz.matched_dyscyplina is None
+    assert (wpis["pominiete"], wpis["pominiete_spoza"]) == (0, 1)
+    uwaga = uwagi_o_dyscyplinach(s.sesja)[s.wiersz.pk]
+    assert uwaga == {"pbn": s.d1, "przyjeta": None, "rok": 2024, "spoza_uczelni": True}
+
+    tresc = _autorzy(importer_client, s.sesja)
+    assert "uwaga-dyscyplina-spoza" in tresc
+    assert "nie jest autorem uczelni" in tresc
+    assert "nie zgadza się z przypisaniem" not in tresc
+
+
+def _sesja_z_wpisem_pbn(importer_user, matched_data):
+    return _sesja(
+        importer_user,
+        status=ImportSession.Status.FETCHED,
+        matched_data=matched_data,
+        normalized_data={
+            "title": "Praca",
+            "doi": DOI,
+            KLUCZ_ZRODEL: [
+                {
+                    "zrodlo": ZRODLO_PBN,
+                    "stan": STAN_ZNALEZIONO,
+                    "po": "DOI",
+                    "identyfikator": PRACA_PBN,
+                    "url": "",
+                    "pola": [],
+                    "autorzy": {"pbn_uid": 0, "orcid": 0, "dodani": 0},
+                }
+            ],
+        },
+    )
+
+
+@pytest.mark.django_db
+def test_ramka_zrodel_nie_obiecuje_powiazania_po_usunieciu_odpowiednika(
+    importer_client, importer_user
+):
+    obietnica = "Rekord zostanie powiązany z tym odpowiednikiem w PBN."
+
+    aktualny = _sesja_z_wpisem_pbn(importer_user, {"pbn_mongo_id": PRACA_PBN})
+    assert obietnica in _weryfikacja(importer_client, aktualny)
+
+    usuniety = _sesja_z_wpisem_pbn(importer_user, {})
+    tresc = _weryfikacja(importer_client, usuniety)
+    assert obietnica not in tresc
+    assert "rekord nie zostanie powiązany z PBN" in tresc
+
+    zmieniony = _sesja_z_wpisem_pbn(importer_user, {"pbn_mongo_id": KSIAZKA_PBN})
+    tresc = _weryfikacja(importer_client, zmieniony)
+    assert obietnica not in tresc
+    assert "wybrano potem inny" in tresc
+
+
+@pytest.mark.django_db
+def test_zajety_odpowiednik_pbn_jest_pokazany_redaktorowi(
+    importer_client, importer_user
+):
+    praca = baker.make(Publication, mongoId=PRACA_PBN, versions=[])
+    istniejacy = baker.make(
+        Wydawnictwo_Zwarte, pbn_uid=praca, tytul_oryginalny="Rekord już w BPP"
+    )
+    sesja = _sesja_z_wpisem_pbn(importer_user, {"pbn_mongo_id": PRACA_PBN})
+
+    tresc = _weryfikacja(importer_client, sesja)
+
+    assert "Odpowiednik w PBN jest już zajęty" in tresc
+    assert "Rekord już w BPP" in tresc
+    assert istniejacy.get_absolute_url() in tresc
+    assert "Rekord zostanie powiązany z tym odpowiednikiem w PBN." not in tresc
+
+    wolny = _sesja_z_wpisem_pbn(importer_user, {"pbn_mongo_id": KSIAZKA_PBN})
+    assert "Odpowiednik w PBN jest już zajęty" not in _weryfikacja(
+        importer_client, wolny
+    )
