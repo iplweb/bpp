@@ -3,6 +3,7 @@ import json as complexjson
 from gzip import BadGzipFile
 
 from crossref.restful import Works, build_url_endpoint
+from requests.exceptions import HTTPError
 from requests.exceptions import JSONDecodeError as RequestsJSONDecodeError
 from requests.utils import guess_json_utf
 
@@ -33,14 +34,14 @@ class PatchedWorks(Works):
                     # used.
                     pass
                 except RequestsJSONDecodeError as e:
-                    raise RequestsJSONDecodeError(e.msg, e.doc, e.pos)
+                    raise RequestsJSONDecodeError(e.msg, e.doc, e.pos) from e
 
         try:
             return complexjson.loads(content, **kwargs)
         except RequestsJSONDecodeError as e:
             # Catch JSON-related errors and raise as requests.JSONDecodeError
             # This aliases json.JSONDecodeError and simplejson.JSONDecodeError
-            raise RequestsJSONDecodeError(e.msg, e.doc, e.pos)
+            raise RequestsJSONDecodeError(e.msg, e.doc, e.pos) from e
 
     # A to jest zabrane z crossref.restful.Works
     def doi(self, doi, only_message=True):
@@ -56,6 +57,16 @@ class PatchedWorks(Works):
 
         if result.status_code == 404:
             return None
+
+        # Odpowiedź błędu (429 — limit zapytań, 503 — serwis niedostępny)
+        # bywa poprawnym JSON-em bez klucza ``message``; odczyt ``message``
+        # kończył się ``KeyError``. Zgłaszamy błąd HTTP, który wołający
+        # obsługują jak każdy inny błąd połączenia z CrossRef.
+        if result.status_code >= 400:
+            raise HTTPError(
+                f"CrossRef zwrócił błąd HTTP {result.status_code} dla DOI {doi}",
+                response=result,
+            )
 
         if result.headers.get("content-encoding", "") == "gzip":
             try:

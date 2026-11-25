@@ -51,6 +51,8 @@ class Wiersz:
     #: Dla pól zapisywanych w powiązanych tabelach (streszczenia, słowa
     #: kluczowe): wykonywane PO zapisie rekordu.
     po_zapisie: bool = False
+    #: Kolumny rekordu zmieniane przez ``zastosuj`` — tylko one są zapisywane.
+    pola_rekordu: tuple = ()
 
     @property
     def status_tekst(self):
@@ -122,6 +124,7 @@ def _wiersz_prosty(
     wartosc_alternatywy=None,
     walidatory=(),
     pomin_gdy_brak_w_zrodle=False,
+    brak_sprawdza_alternatywe=False,
 ):
     """Wiersz dla zwykłego pola rekordu (tekst, liczba, identyfikator).
 
@@ -133,6 +136,8 @@ def _wiersz_prosty(
         return None
     obecna = getattr(rekord, nazwa)
     z, b = normalizuj(wartosc), normalizuj(obecna)
+    if not z and not b and brak_sprawdza_alternatywe:
+        return _brak_w_zrodle_z_alternatywy(rekord, pole, alternatywa, normalizuj)
     if not z and (not b or pomin_gdy_brak_w_zrodle):
         return None
     wiersz = Wiersz(
@@ -169,7 +174,26 @@ def _wiersz_prosty(
         setattr(r, nazwa, nowa)
 
     wiersz.zastosuj = zastosuj
+    wiersz.pola_rekordu = (nazwa,)
     return wiersz
+
+
+def _brak_w_zrodle_z_alternatywy(rekord, pole, alternatywa, normalizuj):
+    """Źródło nie ma wartości, a pole główne w BPP jest puste: jeśli BPP ma
+    wartość w polu alternatywnym (adres wyłącznie w polu wolnego dostępu),
+    to także „brak w źródle” — inaczej pola nie ma po żadnej stronie."""
+    zastepcza = getattr(rekord, alternatywa, "")
+    if not normalizuj(zastepcza):
+        return None
+    return Wiersz(
+        klucz=pole.name,
+        etykieta=_etykieta(pole),
+        status=BRAK_W_ZRODLE,
+        bpp=reguly.odstepy(zastepcza),
+        uwaga=(
+            f"W BPP ta wartość jest w polu „{_etykieta(_pole(rekord, alternatywa))}”."
+        ),
+    )
 
 
 def _wiersz_slownikowy(rekord, nazwa, kod, znajdz, opis_brakujacego):
@@ -208,6 +232,7 @@ def _wiersz_slownikowy(rekord, nazwa, kod, znajdz, opis_brakujacego):
         setattr(r, nazwa, nowa)
 
     wiersz.zastosuj = zastosuj
+    wiersz.pola_rekordu = (nazwa,)
     return wiersz
 
 
@@ -367,6 +392,7 @@ def _wiersze_slow_kluczowych(rekord, publikacja):
         _dopisz_slowa_eng,
     )
     if wiersz is not None:
+        wiersz.pola_rekordu = ("slowa_kluczowe_eng",)
         yield wiersz
 
 
@@ -374,54 +400,110 @@ def _angielski(kod_jezyka):
     return str(kod_jezyka or "").lower() in ("eng", "en")
 
 
-def _wiersze_streszczen(rekord, publikacja, znajdz_jezyk):
-    """Po wierszu na każde streszczenie ze źródła, którego rekord nie ma.
-    Przeniesienie DODAJE streszczenie — istniejących nie rusza."""
-    from ..views.helpers import _detect_language
+def _streszczenia_zrodla(publikacja):
+    """Streszczenia ze źródła jako lista ``(tekst, kod języka albo None)``.
+    PBN podaje je w podziale na języki — bierzemy wszystkie, nie pierwsze."""
     from ..views.publikacja import _build_abstracts_list
 
+    wg_jezyka = publikacja.extra.get("streszczenia_wg_jezyka")
+    if wg_jezyka is not None:
+        pary = [(tekst, kod) for kod, tekst in wg_jezyka.items()]
+    else:
+        pary = [
+            (a.get("text"), a.get("language"))
+            for a in _build_abstracts_list(publikacja)
+        ]
+    return [(reguly.odstepy(t), kod) for t, kod in pary if reguly.tekst(t)]
+
+
+class _StreszczeniaRekordu:
+    """Streszczenia rekordu (tekst, id języka); każde dopasowane raz."""
+
+    def __init__(self, rekord):
+        self.wszystkie = [
+            (s.streszczenie, s.jezyk_streszczenia_id)
+            for s in rekord.streszczenia.all()
+            if reguly.tekst(s.streszczenie)
+        ]
+        self.wolne = list(range(len(self.wszystkie)))
+
+    def _wez(self, warunek):
+        for nr in self.wolne:
+            if warunek(*self.wszystkie[nr]):
+                self.wolne.remove(nr)
+                return self.wszystkie[nr][0]
+        return None
+
+    def o_tekscie(self, tekst):
+        norm = reguly.tekst(tekst)
+        return self._wez(lambda t, _j: reguly.tekst(t) == norm)
+
+    def w_jezyku(self, jezyk, kod):
+        """Streszczenie rekordu w języku streszczenia ze źródła. Źródło bez
+        języków i jedno streszczenie w rekordzie — porównujemy je ze sobą."""
+        if jezyk is not None:
+            return self._wez(lambda _t, j: j == jezyk.pk)
+        if kod is None and len(self.wszystkie) == 1:
+            return self._wez(lambda _t, _j: True)
+        return None
+
+    def niedopasowane(self):
+        return [self.wszystkie[nr][0] for nr in self.wolne]
+
+
+def _wiersze_streszczen(rekord, publikacja, znajdz_jezyk):
+    """Streszczenia jako pary język–tekst.
+
+    Streszczenie ze źródła jest zgodne, gdy rekord ma streszczenie o tym
+    samym tekście. Gdy nie ma: jeśli rekord ma streszczenie W TYM SAMYM
+    JĘZYKU — „różne” (porównanie z nim), inaczej „brak w BPP” (rekord może
+    mieć streszczenia w innych językach — to nie zastępuje brakującego).
+    Streszczenia rekordu bez odpowiednika w źródle to „brak w źródle”.
+    Przeniesienie DODAJE streszczenie — istniejących nie rusza."""
     if not hasattr(rekord, "streszczenia"):
         return
-    obecne = [s.streszczenie for s in rekord.streszczenia.all()]
-    obecne_norm = {reguly.tekst(s) for s in obecne if reguly.tekst(s)}
-    ze_zrodla = [
-        (reguly.odstepy(a.get("text")), a.get("language"))
-        for a in _build_abstracts_list(publikacja)
-        if reguly.tekst(a.get("text"))
-    ]
-    if not ze_zrodla:
-        if obecne_norm:
-            yield Wiersz(
-                klucz="streszczenie",
-                etykieta="Streszczenie",
-                status=BRAK_W_ZRODLE,
-                bpp=reguly.odstepy(obecne[0]),
-            )
-        return
-    for nr, (tekst, kod_jezyka) in enumerate(ze_zrodla):
-        wiersz = Wiersz(
-            klucz=f"streszczenie-{nr}",
+    obecne = _StreszczeniaRekordu(rekord)
+    for nr, (tekst, kod) in enumerate(_streszczenia_zrodla(publikacja)):
+        jezyk = znajdz_jezyk(kod) if kod else None
+        yield _wiersz_streszczenia(nr, tekst, kod, jezyk, obecne, znajdz_jezyk)
+    for nr, tekst in enumerate(obecne.niedopasowane()):
+        yield Wiersz(
+            klucz=f"streszczenie-bpp-{nr}",
             etykieta="Streszczenie",
-            status=ZGODNE,
-            zrodlo=tekst,
-            bpp=tekst,
-            po_zapisie=True,
+            status=BRAK_W_ZRODLE,
+            bpp=reguly.odstepy(tekst),
         )
-        if reguly.tekst(tekst) not in obecne_norm:
-            wiersz.status = ROZNE if obecne_norm else BRAK_W_BPP
-            wiersz.bpp = reguly.odstepy(obecne[0]) if obecne else PUSTE
-            wiersz.zmiana = _zmiana(wiersz.status, wiersz.bpp, tekst)
-            if obecne_norm:
-                wiersz.uwaga = (
-                    "Przeniesienie doda kolejne streszczenie — istniejące zostaną."
-                )
 
-            def zastosuj(r, tekst=tekst, kod_jezyka=kod_jezyka):
-                jezyk = znajdz_jezyk(kod_jezyka or _detect_language(tekst))
-                r.streszczenia.create(streszczenie=tekst, jezyk_streszczenia=jezyk)
 
-            wiersz.zastosuj = zastosuj
-        yield wiersz
+def _wiersz_streszczenia(nr, tekst, kod, jezyk, obecne, znajdz_jezyk):
+    from ..views.helpers import _detect_language
+
+    nazwa_jezyka = str(jezyk) if jezyk is not None else (kod or "")
+    wiersz = Wiersz(
+        klucz=f"streszczenie-{nr}",
+        etykieta=f"Streszczenie ({nazwa_jezyka})" if nazwa_jezyka else "Streszczenie",
+        status=ZGODNE,
+        zrodlo=tekst,
+        bpp=tekst,
+        po_zapisie=True,
+    )
+    if obecne.o_tekscie(tekst) is not None:
+        return wiersz
+    w_tym_jezyku = obecne.w_jezyku(jezyk, kod)
+    wiersz.status = ROZNE if w_tym_jezyku is not None else BRAK_W_BPP
+    wiersz.bpp = reguly.odstepy(w_tym_jezyku) if w_tym_jezyku is not None else PUSTE
+    wiersz.zmiana = _zmiana(wiersz.status, wiersz.bpp, tekst)
+    if obecne.wszystkie:
+        wiersz.uwaga = "Przeniesienie doda kolejne streszczenie — istniejące zostaną."
+
+    def zastosuj(r):
+        jezyk_zapisu = jezyk
+        if jezyk_zapisu is None:
+            jezyk_zapisu = znajdz_jezyk(kod or _detect_language(tekst))
+        r.streszczenia.create(streszczenie=tekst, jezyk_streszczenia=jezyk_zapisu)
+
+    wiersz.zastosuj = zastosuj
+    return wiersz
 
 
 def _prosty(nazwa, wartosc, blizniacze=None, **opcje):
@@ -488,6 +570,7 @@ POLA = {
         normalizuj=reguly.adres,
         alternatywa="public_www",
         walidatory=(nie_zawiera_adresu_doi_org,),
+        brak_sprawdza_alternatywe=True,
     ),
     "jezyk": lambda rekord, p, jezyk: _wiersz_slownikowy(
         rekord,
@@ -557,7 +640,17 @@ def zastosuj(rekord, wiersze, wybrane):
     for wiersz in przeniesione:
         if not wiersz.po_zapisie:
             wiersz.zastosuj(rekord)
-    rekord.save()
+    # Zapisujemy WYŁĄCZNIE kolumny wybranych pól (plus datę ostatniej
+    # zmiany): pełny ``save()`` zapisałby cały wiersz i uruchomił porządki
+    # na polach, których redaktor nie zaznaczył (np. czyszczenie adresów WWW
+    # o niedozwolonym schemacie). Przy samych relacjach (słowa kluczowe,
+    # streszczenia) zapis dotyka tylko daty ostatniej zmiany. Opis
+    # bibliograficzny i pozostałe pola wyliczane odświeżają się jak zwykle —
+    # zależą od wyzwalaczy w bazie, nie od pełnego zapisu.
+    kolumny = {nazwa for wiersz in przeniesione for nazwa in wiersz.pola_rekordu}
+    if _pole(rekord, "ostatnio_zmieniony") is not None:
+        kolumny.add("ostatnio_zmieniony")
+    rekord.save(update_fields=sorted(kolumny))
     for wiersz in przeniesione:
         if wiersz.po_zapisie:
             wiersz.zastosuj(rekord)

@@ -56,7 +56,8 @@ i streszczenie. Dane ze źródeł są odczytywane tak samo jak w
    przycisk **„☑️ Zaznacz wszystkie różnice”** zaznacza wszystkie naraz).
 2. Kliknij **„⬇️ Przenieś zaznaczone pola do BPP”** na dolnej belce.
 
-Zmieniają się **tylko zaznaczone pola** — reszta rekordu zostaje bez zmian.
+Zmieniają się **tylko zaznaczone pola** — do bazy zapisywane są wyłącznie
+one (i data ostatniej zmiany rekordu); reszta rekordu zostaje bez zmian.
 Samo otwarcie porównania niczego w rekordzie nie zmienia. Po zatwierdzeniu
 wracasz do porównania i widzisz stan po zmianie.
 
@@ -68,8 +69,12 @@ wracasz do porównania i widzisz stan po zmianie.
   trafiają do pola „Słowa kluczowe”. Słowa dłuższego niż 100 znaków (w polu
   angielskim: 255) nie da się przenieść — zwykle to kilka słów sklejonych
   w źródle w jedno; wpisz je ręcznie.
-- **Streszczenie**: przeniesienie **dodaje** streszczenie ze źródła jako
-  kolejne; streszczenia już wpisane w rekordzie zostają.
+- **Streszczenie**: każde streszczenie ze źródła to osobny wiersz, z nazwą
+  języka (PBN podaje streszczenia w kilku językach — porównywane są
+  wszystkie). „Zgodne”, gdy rekord ma streszczenie o tym samym tekście;
+  „różne”, gdy ma inne w tym samym języku; „brak w BPP”, gdy w tym języku
+  nie ma żadnego. Przeniesienie **dodaje** streszczenie jako kolejne, we
+  właściwym języku; streszczenia już wpisane w rekordzie zostają.
 - **Adres WWW** trafia do pola „Adres WWW (płatny dostęp)”. Adresu
   w serwisie doi.org nie da się przenieść — numer DOI ma swoje pole.
 - Wartości, której BPP nie przyjmie (np. za długiej), nie da się zaznaczyć;
@@ -105,8 +110,12 @@ i cofnąć.
 Pod tabelą pól jest porównanie list autorów: kogo **brakuje w BPP**, kto
 jest **tylko w BPP** i kto jest **w innej kolejności**. Osoby są
 dopasowywane kolejno po identyfikatorze w PBN, po ORCID, a na końcu po
-nazwisku i pierwszej literze imienia; przy każdej osobie widać, jak ją
-dopasowano. Przy pracach z bardzo długą listą autorów pokazywane są same
+nazwisku i imieniu; przy każdej osobie widać, jak ją dopasowano. Osoby
+z **różnymi** numerami ORCID (albo identyfikatorami PBN) i osoby o różnych
+pełnych imionach (Jan i Jerzy) nigdy nie są uznawane za tę samą — nawet
+przy tym samym nazwisku i inicjale. Gdy źródło podaje sam inicjał, a w
+rekordzie jest kilku autorów o tym nazwisku i inicjale, osoba dostaje
+wynik **„do sprawdzenia”** — rozstrzygnij to w formularzu rekordu. Przy pracach z bardzo długą listą autorów pokazywane są same
 różnice.
 
 ### Dodawanie brakujących autorów {#brakujacy-autorzy}
@@ -176,5 +185,7 @@ PBN nie podaje, kto utworzył daną wersję — na liście jest tylko data.
 | „Nie udało się pobrać aktualnych danych z PBN…” / „…z CrossRef…” | Porównanie pokazuje dane pobrane wcześniej; spróbuj odświeżyć później. |
 | „Uczelnia nie ma skonfigurowanego dostępu do PBN.” | Odświeżanie z PBN wymaga danych dostępowych PBN w ustawieniach uczelni; porównanie z lokalną kopią działa bez nich. |
 | „Nie przeniesiono, bo rekord albo dane w źródle zmieniły się od podglądu…” | Otwórz porównanie jeszcze raz i zaznacz pola ponownie. |
+| „Nic nie zmieniono: od otwarcia porównania zmienił się numer DOI / odpowiednik w PBN…” | Ktoś w międzyczasie zmienił DOI albo odpowiednik w PBN rekordu — porównanie dotyczyło innej publikacji. Otwórz je jeszcze raz. |
+| Strona „nie znaleziono” (404) w instalacji z kilkoma uczelniami | Praca należy wyłącznie do innej uczelni (żaden autor nie jest w jednostce Twojej uczelni) — wzbogacać ją mogą redaktorzy tamtej uczelni. |
 | „Nie ma już takiej wersji tej publikacji w PBN…” | Wybierz inną wersję z listy. |
 | „Tego języka / tej licencji nie ma w słowniku…” | Dopisz pozycję w słowniku BPP albo ustaw pole ręcznie w rekordzie. |

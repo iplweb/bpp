@@ -16,6 +16,7 @@ i ``doi`` (``import_common.normalization``); dopasowanie licencji silnik
 bierze wprost z ``Komparator.porownaj_license``.
 """
 
+import html
 import re
 
 from django.utils.html import strip_tags
@@ -29,8 +30,9 @@ def odstepy(wartosc) -> str:
 
 
 def tekst(wartosc) -> str:
-    """Tekst bez znaczników HTML i nadmiarowych odstępów."""
-    return odstepy(strip_tags(str(wartosc or "")))
+    """Tekst bez znaczników HTML i nadmiarowych odstępów; encje HTML
+    (``&amp;``, ``&nbsp;``…) zamienione na znaki."""
+    return odstepy(html.unescape(strip_tags(str(wartosc or ""))))
 
 
 def numer(wartosc) -> str:

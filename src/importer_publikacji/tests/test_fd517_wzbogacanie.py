@@ -39,6 +39,8 @@ from importer_publikacji.wzbogacanie.pola import (
 pytestmark = pytest.mark.django_db
 
 DOI = "10.1234/test.2024.001"
+#: Wartość ukrytego pola formularza: publikacja w źródle z podglądu.
+ZID = f"doi:{DOI}"
 
 
 @pytest.fixture
@@ -268,7 +270,10 @@ def test_widok_przenosi_wybrane_pola_i_zapisuje_historie(
 
     res = admin_client.post(
         _url(rekord),
-        {"pole": [w["strony"].wartosc_wyboru, w["nr_zeszytu"].wartosc_wyboru]},
+        {
+            "zrodlo_id": ZID,
+            "pole": [w["strony"].wartosc_wyboru, w["nr_zeszytu"].wartosc_wyboru],
+        },
         follow=True,
     )
 
@@ -329,7 +334,10 @@ def test_widok_wymaga_prawa_zmiany_rekordu(client, rekord, crossref):
     wybor = _po_kluczu(_wiersze(rekord))["strony"].wartosc_wyboru
 
     assert client.get(_url(rekord)).status_code == 403
-    assert client.post(_url(rekord), {"pole": [wybor]}).status_code == 403
+    assert (
+        client.post(_url(rekord), {"zrodlo_id": ZID, "pole": [wybor]}).status_code
+        == 403
+    )
     rekord.refresh_from_db()
     assert rekord.strony == "100-111"
 
@@ -366,7 +374,7 @@ def test_wydawnictwo_zwarte_isbn(admin_client, wydawnictwo_zwarte, crossref):
         "admin:bpp_wydawnictwo_zwarte_wzbogac", args=(wydawnictwo_zwarte.pk, "crossref")
     )
 
-    admin_client.post(url, {"pole": [w["isbn"].wartosc_wyboru]})
+    admin_client.post(url, {"zrodlo_id": ZID, "pole": [w["isbn"].wartosc_wyboru]})
 
     wydawnictwo_zwarte.refresh_from_db()
     assert wydawnictwo_zwarte.isbn == "978-83-01-00000-1"
@@ -486,7 +494,9 @@ def test_rekord_zmieniony_od_podgladu_nie_jest_nadpisywany(
     wybor = _po_kluczu(_wiersze(rekord))["strony"].wartosc_wyboru
     Wydawnictwo_Ciagle.objects.filter(pk=rekord.pk).update(strony="100-112")
 
-    res = admin_client.post(_url(rekord), {"pole": [wybor]}, follow=True)
+    res = admin_client.post(
+        _url(rekord), {"zrodlo_id": ZID, "pole": [wybor]}, follow=True
+    )
 
     rekord.refresh_from_db()
     assert rekord.strony == "100-112"
@@ -501,7 +511,7 @@ def test_powtorzone_pole_w_formularzu_nie_dubluje_streszczenia(
     CrossrefAPICache.objects.filter(doi=DOI).update(data=crossref)
     wybor = _po_kluczu(_wiersze(rekord))["streszczenie-0"].wartosc_wyboru
 
-    admin_client.post(_url(rekord), {"pole": [wybor, wybor, wybor]})
+    admin_client.post(_url(rekord), {"zrodlo_id": ZID, "pole": [wybor, wybor, wybor]})
 
     assert rekord.streszczenia.count() == 1
 

@@ -109,6 +109,11 @@ def _przypnij(uczelnia, publikacja_pbn, identyfikator):
     )
 
 
+def _zid(wersja):
+    """Wartość ukrytego pola formularza: publikacja i wersja z podglądu."""
+    return f"pbn:{UID}:{wersja}"
+
+
 def _url(rekord, wersja=""):
     url = reverse("admin:bpp_wydawnictwo_ciagle_wzbogac", args=(rekord.pk, "pbn"))
     return f"{url}?wersja={wersja}" if wersja else url
@@ -195,6 +200,7 @@ def test_widok_odtwarza_pola_ze_starszej_wersji_i_zapisuje_historie(
         _url(rekord),
         {
             "wersja": HASH_1,
+            "zrodlo_id": _zid(HASH_1),
             "pole": [w["tytul_oryginalny"].wartosc_wyboru],
         },
         follow=True,
@@ -224,7 +230,14 @@ def test_wzbogacenie_z_najnowszej_wersji_ma_opis_wzbogacono(
     w = {x.klucz: x for x in porownaj(rekord, dane.publikacja)}
     assert w["nr_zeszytu"].status == BRAK_W_BPP
 
-    admin_client.post(_url(rekord), {"pole": [w["nr_zeszytu"].wartosc_wyboru]})
+    admin_client.post(
+        _url(rekord),
+        {
+            "wersja": HASH_3,
+            "zrodlo_id": _zid(HASH_3),
+            "pole": [w["nr_zeszytu"].wartosc_wyboru],
+        },
+    )
 
     rekord.refresh_from_db()
     assert rekord.nr_zeszytu == "2"
@@ -281,7 +294,12 @@ def test_zatwierdzenie_nie_laczy_sie_z_pbn(
     w = {x.klucz: x for x in porownaj(rekord, dane.publikacja)}
 
     admin_client.post(
-        _url(rekord), {"wersja": HASH_1, "pole": [w["tom"].wartosc_wyboru]}
+        _url(rekord),
+        {
+            "wersja": HASH_1,
+            "zrodlo_id": _zid(HASH_1),
+            "pole": [w["tom"].wartosc_wyboru],
+        },
     )
 
     bez_dostepu_do_pbn.assert_not_called()
@@ -394,10 +412,12 @@ def test_przeniesienie_slow_dopisuje_brakujace_w_polu_swojego_jezyka(
     admin_client.post(
         _url(rekord),
         {
+            "wersja": HASH_3,
+            "zrodlo_id": _zid(HASH_3),
             "pole": [
                 w["slowa_kluczowe"].wartosc_wyboru,
                 w["slowa_kluczowe_eng"].wartosc_wyboru,
-            ]
+            ],
         },
     )
 
@@ -439,7 +459,11 @@ def test_za_dlugie_slowo_kluczowe_nie_jest_przenoszone(
     assert not w.mozna_przeniesc
     assert "najwyżej 100 znaków" in w.uwaga
 
-    res = admin_client.post(_url(rekord), {"pole": [w.wartosc_wyboru]}, follow=True)
+    res = admin_client.post(
+        _url(rekord),
+        {"wersja": HASH_3, "zrodlo_id": _zid(HASH_3), "pole": [w.wartosc_wyboru]},
+        follow=True,
+    )
 
     assert res.status_code == 200
     assert not rekord.slowa_kluczowe.exists()
@@ -472,3 +496,72 @@ def test_issn_z_obiektu_publikacji_pbn():
     assert publikacja_z_obiektu_wersji({}, obiekt, UID).issn == "1111-2222"
     del obiekt["issn"]
     assert publikacja_z_obiektu_wersji({}, obiekt, UID).issn == "3333-4444"
+
+
+# --- Druga recenzja ---------------------------------------------------------
+
+
+def test_zatwierdzenie_odrzucone_gdy_zmienil_sie_odpowiednik_pbn(
+    admin_client, rekord, uczelnia, bez_dostepu_do_pbn
+):
+    """Między podglądem a zatwierdzeniem rekord dostał inny odpowiednik
+    w PBN — dane z podglądu dotyczą poprzedniej publikacji, nic nie zapisujemy."""
+    dane = zrodla.pobierz_z_pbn(rekord, uczelnia, wersja=HASH_1)
+    w = {x.klucz: x for x in porownaj(rekord, dane.publikacja)}
+    inna = Publication.objects.create(
+        mongoId="b" * 24, status="ACTIVE", versions=copy.deepcopy(WERSJE)
+    )
+    type(rekord).objects.filter(pk=rekord.pk).update(pbn_uid=inna)
+
+    res = admin_client.post(
+        _url(rekord),
+        {
+            "wersja": HASH_1,
+            "zrodlo_id": _zid(HASH_1),
+            "pole": [w["tom"].wartosc_wyboru],
+        },
+        follow=True,
+    )
+
+    assert "Nic nie zmieniono" in res.content.decode()
+    rekord.refresh_from_db()
+    assert rekord.tom == "99"
+    assert not LogEntry.objects.filter(object_id=str(rekord.pk)).exists()
+
+
+def test_streszczenia_wszystkie_jezyki_z_pbn(rekord, uczelnia, publikacja_pbn, jezyki):
+    """PBN ma streszczenie polskie (zgodne z BPP) i angielskie (w BPP go nie
+    ma) — brak angielskiego nie jest gubiony."""
+    from bpp.models import Jezyk
+
+    wersje = copy.deepcopy(WERSJE)
+    wersje[-1]["object"]["abstracts"] = {
+        "pol": "Streszczenie po polsku.",
+        "eng": "An abstract in English.",
+    }
+    publikacja_pbn.versions = wersje
+    publikacja_pbn.save()
+    polski = Jezyk.objects.get(skrot="pol.")
+    angielski = Jezyk.objects.get(skrot="ang.")
+    angielski.pbn_uid = baker.make("pbn_api.Language", code="eng")
+    angielski.save()
+    rekord.streszczenia.create(
+        streszczenie="Streszczenie po polsku.", jezyk_streszczenia=polski
+    )
+
+    dane = zrodla.pobierz_z_pbn(rekord, uczelnia)
+    w = [x for x in porownaj(rekord, dane.publikacja) if "streszczenie" in x.klucz]
+
+    w.sort(key=lambda x: x.etykieta, reverse=True)
+    assert [(x.etykieta, x.status) for x in w] == [
+        ("Streszczenie (polski)", ZGODNE),
+        ("Streszczenie (angielski)", BRAK_W_BPP),
+    ]
+    w[1].zastosuj(rekord)
+    nowe = rekord.streszczenia.get(streszczenie="An abstract in English.")
+    assert nowe.jezyk_streszczenia == angielski
+    # Inne streszczenie w tym samym języku to „różne”, nie „brak”.
+    rekord.streszczenia.filter(pk=nowe.pk).update(streszczenie="Another abstract.")
+    w = [x for x in porownaj(rekord, dane.publikacja) if "angielski" in x.etykieta]
+    assert w[0].status == ROZNE
+    assert w[0].bpp == "Another abstract."

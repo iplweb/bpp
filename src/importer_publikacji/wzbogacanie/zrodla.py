@@ -120,6 +120,21 @@ def odswiez_z_crossref(rekord) -> str:
     return ""
 
 
+def identyfikator(rekord, zrodlo, wersja="") -> str:
+    """Co dokładnie porównujemy: publikacja w źródle wskazywana TERAZ przez
+    rekord (DOI albo odpowiednik w PBN) i — dla PBN — wersja.
+
+    Podgląd zapisuje tę wartość w formularzu; zatwierdzenie liczy ją ponownie
+    (przed pobraniem danych źródła i jeszcze raz na rekordzie odczytanym pod
+    blokadą). Różnica oznacza, że rekord wskazuje już inną publikację niż
+    ta, której dane widział redaktor."""
+    from import_common.normalization import normalize_doi
+
+    if zrodlo == CROSSREF:
+        return f"doi:{normalize_doi(rekord.doi or '') or ''}"
+    return f"pbn:{rekord.pbn_uid_id or ''}:{wersja or ''}"
+
+
 def pobierz_z_crossref(rekord) -> DaneZrodla:
     """Dane CrossRef dla DOI rekordu — z pamięci podręcznej BPP; pierwszy
     raz (brak danych) pobierane jednym zapytaniem z krótkim limitem czasu."""
