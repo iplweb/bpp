@@ -4355,7 +4355,8 @@ CREATE TABLE public.bpp_autoreksporttask (
     tylko_dla_redakcji boolean NOT NULL,
     zlecone_anonimowo boolean NOT NULL,
     ukryte_statusy_slotow integer[] NOT NULL,
-    z_punktacja_autora boolean NOT NULL
+    z_punktacja_autora boolean NOT NULL,
+    z_sumami_punktacji boolean NOT NULL
 );
 
 
@@ -15706,7 +15707,7 @@ COPY public.bpp_autor_jednostka (id, rozpoczal_prace, zakonczyl_prace, autor_id,
 -- Data for Name: bpp_autoreksporttask; Type: TABLE DATA; Schema: public; Owner: -
 --
 
-COPY public.bpp_autoreksporttask (id, format, status, result_file, error_message, celery_task_id, created_at, started_at, completed_at, autor_id, ukryte_statusy, tylko_dla_redakcji, zlecone_anonimowo, ukryte_statusy_slotow, z_punktacja_autora) FROM stdin;
+COPY public.bpp_autoreksporttask (id, format, status, result_file, error_message, celery_task_id, created_at, started_at, completed_at, autor_id, ukryte_statusy, tylko_dla_redakcji, zlecone_anonimowo, ukryte_statusy_slotow, z_punktacja_autora, z_sumami_punktacji) FROM stdin;
 \.
 
 
@@ -17084,6 +17085,56 @@ COPY public.django_countdown_sitecountdown (id, countdown_time, message, long_de
 --
 
 COPY public.django_migrations (id, app, name, applied) FROM stdin;
+235	bpp	0153_django21	2000-01-01 00:00:00+00
+105	bpp	0028_openaccess	2000-01-01 00:00:00+00
+915	rozbieznosci_dyscyplin	0014_recreate	2000-01-01 00:00:00+00
+87	bpp	0010_auto_20141126_1825	2000-01-01 00:00:00+00
+1110	zglos_publikacje	0027_zgloszenie_zaimportowane	2000-01-01 00:00:00+00
+1111	importer_publikacji	0020_importsession_zgloszenie	2000-01-01 00:00:00+00
+713	flexible_reports	0005_column_attrs	2000-01-01 00:00:00+00
+1088	import_pracownikow	0026_importpracownikow_uczelnia	2000-01-01 00:00:00+00
+1090	bpp	0470_indeksy_gin_i_funkcyjne	2000-01-01 00:00:00+00
+1093	bpp	0471_deduplikuj_autor_jednostka_bez_daty	2000-01-01 00:00:00+00
+1094	bpp	0472_constraint_autor_jednostka_bez_daty	2000-01-01 00:00:00+00
+1095	bpp	0466_faza_c_backfill_poprzednie_nazwy	2000-01-01 00:00:00+00
+1096	bpp	0467_faza_c_drop_wydzial	2000-01-01 00:00:00+00
+1097	bpp	0468_faza_c_drop_legacy_markery	2000-01-01 00:00:00+00
+1098	bpp	0469_faza_c_czysc_contenttype_wydzial	2000-01-01 00:00:00+00
+476	bpp	0369_wyd_zwarte_nadrzedne_w_pbn	2000-01-01 00:00:00+00
+1105	pbn_api	0078_deduplikacja_publikacji_instytucji	2000-01-01 00:00:00+00
+1106	pbn_api	0079_constraint_publikacja_instytucji	2000-01-01 00:00:00+00
+1091	pbn_api	0076_unikalne_uuid_dyscyplin	2000-01-01 00:00:00+00
+1092	pbn_api	0077_constrainty_uuid_dyscyplin	2000-01-01 00:00:00+00
+531	bpp	0418_merge_20260601_0954	2000-01-01 00:00:00+00
+535	bpp	0421_cache_trigger_pk_filter	2000-01-01 00:00:00+00
+533	bpp	0419_merge_20260601_1319	2000-01-01 00:00:00+00
+329	bpp	0236_merge_20210202_0850	2000-01-01 00:00:00+00
+104	bpp	0027_auto_20150921_2304	2000-01-01 00:00:00+00
+442	pbn_api	0045_pbn_export_queue	2000-01-01 00:00:00+00
+447	taggit	0005_auto_20220424_2025	2000-01-01 00:00:00+00
+903	rozbieznosci_dyscyplin	0002_rok_2017_i_wyzej	2000-01-01 00:00:00+00
+904	rozbieznosci_dyscyplin	0003_brakprzypisaniaview_rozbiezneprzypisaniaview_rozbieznosciview	2000-01-01 00:00:00+00
+905	rozbieznosci_dyscyplin	0004_recreate	2000-01-01 00:00:00+00
+350	bpp	0258_auto_20210407_2320	2000-01-01 00:00:00+00
+906	rozbieznosci_dyscyplin	0005_recreate	2000-01-01 00:00:00+00
+35	pbn_api	0001_initial	2000-01-01 00:00:00+00
+36	pbn_api	0002_institution	2000-01-01 00:00:00+00
+1	contenttypes	0001_initial	2000-01-01 00:00:00+00
+5	admin	0002_logentry_remove_auto_add	2000-01-01 00:00:00+00
+6	admin	0003_logentry_add_action_flag_choices	2000-01-01 00:00:00+00
+7	admin_dashboard	0001_initial	2000-01-01 00:00:00+00
+8	contenttypes	0002_remove_content_type_name	2000-01-01 00:00:00+00
+40	pbn_api	0006_sciencist	2000-01-01 00:00:00+00
+608	denorm	0016_not_parametrized_notify	2000-01-01 00:00:00+00
+269	bpp	0182_auto_20191013_2324	2000-01-01 00:00:00+00
+9	auth	0002_alter_permission_name_max_length	2000-01-01 00:00:00+00
+10	auth	0003_alter_user_email_max_length	2000-01-01 00:00:00+00
+11	auth	0004_alter_user_username_opts	2000-01-01 00:00:00+00
+12	auth	0005_alter_user_last_login_null	2000-01-01 00:00:00+00
+13	auth	0006_require_contenttypes_0002	2000-01-01 00:00:00+00
+14	auth	0007_alter_validators_add_error_messages	2000-01-01 00:00:00+00
+1227	bpp	0530_uczelnia_pbn_wysylaj_bez_identyfikatora_autora	2000-01-01 00:00:00+00
+1228	importer_publikacji	0022_importedauthor_pbn_uid	2000-01-01 00:00:00+00
 344	bpp	0252_slug	2000-01-01 00:00:00+00
 800	importer_publikacji	0007_async_import_state	2000-01-01 00:00:00+00
 15	auth	0008_alter_user_username_max_length	2000-01-01 00:00:00+00
@@ -17307,7 +17358,6 @@ COPY public.django_migrations (id, app, name, applied) FROM stdin;
 230	bpp	0148_charakter_formalny_nadrzedny	2000-01-01 00:00:00+00
 231	bpp	0149_ranking_afiliacje	2000-01-01 00:00:00+00
 232	bpp	0150_auto_20181125_1202	2000-01-01 00:00:00+00
-235	bpp	0153_django21	2000-01-01 00:00:00+00
 236	bpp	0154_auto_20190303_1029	2000-01-01 00:00:00+00
 237	bpp	0155_CASCADE	2000-01-01 00:00:00+00
 238	bpp	0156_auto_20190324_1828	2000-01-01 00:00:00+00
@@ -17709,7 +17759,6 @@ COPY public.django_migrations (id, app, name, applied) FROM stdin;
 679	ewaluacja_liczba_n	0007_alter_iloscudzialowdlaautorazacalosc_komentarz	2000-01-01 00:00:00+00
 848	pbn_export_queue	0005_reclassify_old_validation_errors	2000-01-01 00:00:00+00
 1216	ewaluacja_metryki	0015_statusgenerowania_reset_sekwencji	2000-01-01 00:00:00+00
-105	bpp	0028_openaccess	2000-01-01 00:00:00+00
 630	dspace_api	0001_initial	2000-01-01 00:00:00+00
 681	ewaluacja_liczba_n	0009_alter_dyscyplinanieraportowana_uczelnia_and_more	2000-01-01 00:00:00+00
 685	ewaluacja_metryki	0004_metrykaautora_rodzaj_autora	2000-01-01 00:00:00+00
@@ -18078,7 +18127,6 @@ COPY public.django_migrations (id, app, name, applied) FROM stdin;
 912	rozbieznosci_dyscyplin	0011_null_is_wrong	2000-01-01 00:00:00+00
 913	rozbieznosci_dyscyplin	0012_rozbieznosci_dyscyplin_zrodel	2000-01-01 00:00:00+00
 914	rozbieznosci_dyscyplin	0013_rozbieznoscizrodelview	2000-01-01 00:00:00+00
-915	rozbieznosci_dyscyplin	0014_recreate	2000-01-01 00:00:00+00
 916	rozbieznosci_dyscyplin	0015_recreate	2000-01-01 00:00:00+00
 79	bpp	0002_auto_20141020_1738	2000-01-01 00:00:00+00
 673	ewaluacja_liczba_n	0001_initial	2000-01-01 00:00:00+00
@@ -18177,7 +18225,6 @@ COPY public.django_migrations (id, app, name, applied) FROM stdin;
 1023	import_polon	0016_importplikupolon_uczelnia	2000-01-01 00:00:00+00
 1024	import_punktacji_zrodel	0001_initial	2000-01-01 00:00:00+00
 1025	importer_publikacji	0012_importsession_uczelnia	2000-01-01 00:00:00+00
-87	bpp	0010_auto_20141126_1825	2000-01-01 00:00:00+00
 1060	importer_publikacji	0018_importsession_rodzaj_rekordu	2000-01-01 00:00:00+00
 348	bpp	0256_auto_20210407_1151	2000-01-01 00:00:00+00
 576	pbn_api	0065_make_uzytkownik_nullable	2000-01-01 00:00:00+00
@@ -18261,52 +18308,7 @@ COPY public.django_migrations (id, app, name, applied) FROM stdin;
 1087	import_pracownikow	0025_importpracownikow_plik_po_imporcie	2000-01-01 00:00:00+00
 1108	bpp	0473_szablon_nazwa_szablonu	2000-01-01 00:00:00+00
 1109	bpp	0474_merge_20260724_1635	2000-01-01 00:00:00+00
-1110	zglos_publikacje	0027_zgloszenie_zaimportowane	2000-01-01 00:00:00+00
-1111	importer_publikacji	0020_importsession_zgloszenie	2000-01-01 00:00:00+00
-713	flexible_reports	0005_column_attrs	2000-01-01 00:00:00+00
-1088	import_pracownikow	0026_importpracownikow_uczelnia	2000-01-01 00:00:00+00
-1090	bpp	0470_indeksy_gin_i_funkcyjne	2000-01-01 00:00:00+00
-1093	bpp	0471_deduplikuj_autor_jednostka_bez_daty	2000-01-01 00:00:00+00
-1094	bpp	0472_constraint_autor_jednostka_bez_daty	2000-01-01 00:00:00+00
-1095	bpp	0466_faza_c_backfill_poprzednie_nazwy	2000-01-01 00:00:00+00
-1096	bpp	0467_faza_c_drop_wydzial	2000-01-01 00:00:00+00
-1097	bpp	0468_faza_c_drop_legacy_markery	2000-01-01 00:00:00+00
-1098	bpp	0469_faza_c_czysc_contenttype_wydzial	2000-01-01 00:00:00+00
-476	bpp	0369_wyd_zwarte_nadrzedne_w_pbn	2000-01-01 00:00:00+00
-1105	pbn_api	0078_deduplikacja_publikacji_instytucji	2000-01-01 00:00:00+00
-1106	pbn_api	0079_constraint_publikacja_instytucji	2000-01-01 00:00:00+00
-1091	pbn_api	0076_unikalne_uuid_dyscyplin	2000-01-01 00:00:00+00
-1092	pbn_api	0077_constrainty_uuid_dyscyplin	2000-01-01 00:00:00+00
-531	bpp	0418_merge_20260601_0954	2000-01-01 00:00:00+00
-535	bpp	0421_cache_trigger_pk_filter	2000-01-01 00:00:00+00
-533	bpp	0419_merge_20260601_1319	2000-01-01 00:00:00+00
-329	bpp	0236_merge_20210202_0850	2000-01-01 00:00:00+00
-104	bpp	0027_auto_20150921_2304	2000-01-01 00:00:00+00
-442	pbn_api	0045_pbn_export_queue	2000-01-01 00:00:00+00
-447	taggit	0005_auto_20220424_2025	2000-01-01 00:00:00+00
-903	rozbieznosci_dyscyplin	0002_rok_2017_i_wyzej	2000-01-01 00:00:00+00
-904	rozbieznosci_dyscyplin	0003_brakprzypisaniaview_rozbiezneprzypisaniaview_rozbieznosciview	2000-01-01 00:00:00+00
-905	rozbieznosci_dyscyplin	0004_recreate	2000-01-01 00:00:00+00
-350	bpp	0258_auto_20210407_2320	2000-01-01 00:00:00+00
-906	rozbieznosci_dyscyplin	0005_recreate	2000-01-01 00:00:00+00
-35	pbn_api	0001_initial	2000-01-01 00:00:00+00
-36	pbn_api	0002_institution	2000-01-01 00:00:00+00
-1	contenttypes	0001_initial	2000-01-01 00:00:00+00
-5	admin	0002_logentry_remove_auto_add	2000-01-01 00:00:00+00
-6	admin	0003_logentry_add_action_flag_choices	2000-01-01 00:00:00+00
-7	admin_dashboard	0001_initial	2000-01-01 00:00:00+00
-8	contenttypes	0002_remove_content_type_name	2000-01-01 00:00:00+00
-40	pbn_api	0006_sciencist	2000-01-01 00:00:00+00
-608	denorm	0016_not_parametrized_notify	2000-01-01 00:00:00+00
-269	bpp	0182_auto_20191013_2324	2000-01-01 00:00:00+00
-9	auth	0002_alter_permission_name_max_length	2000-01-01 00:00:00+00
-10	auth	0003_alter_user_email_max_length	2000-01-01 00:00:00+00
-11	auth	0004_alter_user_username_opts	2000-01-01 00:00:00+00
-12	auth	0005_alter_user_last_login_null	2000-01-01 00:00:00+00
-13	auth	0006_require_contenttypes_0002	2000-01-01 00:00:00+00
-14	auth	0007_alter_validators_add_error_messages	2000-01-01 00:00:00+00
-1227	bpp	0530_uczelnia_pbn_wysylaj_bez_identyfikatora_autora	2000-01-01 00:00:00+00
-1228	importer_publikacji	0022_importedauthor_pbn_uid	2000-01-01 00:00:00+00
+1229	bpp	0531_eksport_autora_z_sumami_punktacji	2000-01-01 00:00:00+00
 \.
 
 
@@ -20445,7 +20447,7 @@ SELECT pg_catalog.setval('public.django_countdown_sitecountdown_id_seq', 1, fals
 -- Name: django_migrations_id_seq; Type: SEQUENCE SET; Schema: public; Owner: -
 --
 
-SELECT pg_catalog.setval('public.django_migrations_id_seq', 1228, true);
+SELECT pg_catalog.setval('public.django_migrations_id_seq', 1229, true);
 
 
 --
