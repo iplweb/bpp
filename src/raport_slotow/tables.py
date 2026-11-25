@@ -66,7 +66,7 @@ class RaportSlotowAutorTable(RaportCommonMixin, tables.Table):
     )
     rok = Column("Rok", "rekord__rok", orderable=True)
     dyscyplina = Column(orderable=False)
-    punkty_kbn = Column("Punkty MNiSW/MEiN", "rekord__punkty_kbn")
+    punkty_kbn = Column("Punkty MNiSW", "rekord__punkty_kbn")
     zrodlo_informacje = Column(
         "Źródło / informacje", "rekord", empty_values=(), orderable=False
     )
@@ -290,7 +290,7 @@ class RaportSlotowEwaluacjaTable(RaportCommonMixin, tables.Table):
         return value.informacje
 
     rodzaj_publikacji = Column("Rodzaj", "rekord")
-    typ_kbn = Column("Typ MNiSW/MEiN", "rekord__typ_kbn__nazwa")
+    typ_kbn = Column("Typ MNiSW", "rekord__typ_kbn__nazwa")
     liczba_autorow_z_dyscypliny = Column(
         "Liczba autorów z dyscypliny",
         "autorzy_z_dyscypliny",

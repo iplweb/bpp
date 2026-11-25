@@ -142,7 +142,7 @@ class PracujeNaUczelni(SimpleListFilter):
 
 
 class PunktyKbnFilter(SimpleListFilter):
-    title = "punkty MNiSW/MEiN"
+    title = "punkty MNiSW"
     parameter_name = "punkty_kbn"
 
     def lookups(self, request, model_admin):

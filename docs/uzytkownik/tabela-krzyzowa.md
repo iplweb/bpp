@@ -59,8 +59,8 @@ Do wyboru są:
 
 | Lista | Dostępne wartości |
 |---|---|
-| **Wiersze** | Rok, Charakter formalny, Charakter ogólny (rodzaj), Typ MNiSW/MEiN, Koszyk punktów PK, Język, Źródło, Jednostka, Dyscyplina naukowa, Autor |
-| **Kolumny** | (brak), Rok, Charakter formalny, Charakter ogólny (rodzaj), Typ MNiSW/MEiN, Koszyk punktów PK, Język, Dyscyplina naukowa |
+| **Wiersze** | Rok, Charakter formalny, Charakter ogólny (rodzaj), Typ MNiSW, Koszyk punktów PK, Język, Źródło, Jednostka, Dyscyplina naukowa, Autor |
+| **Kolumny** | (brak), Rok, Charakter formalny, Charakter ogólny (rodzaj), Typ MNiSW, Koszyk punktów PK, Język, Dyscyplina naukowa |
 | **W komórce** | Liczba prac, Σ punkty PK, Σ Impact Factor, Σ liczba cytowań, Σ punktacja wewnętrzna |
 
 **Źródło**, **Jednostka** i **Autor** mogą być tylko wierszami — mają tak

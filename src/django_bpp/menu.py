@@ -97,7 +97,7 @@ SYSTEM_MENU_2 = [
     ("Stanowiska dydaktyczne", "/admin/bpp/stanowiskodydaktyczne/"),
     ("Statusy korekt", "/admin/bpp/status_korekty/"),
     ("Stopnie służbowe", "/admin/bpp/stopiensluzbowy/"),
-    ("Typy MNiSW/MEiN", "/admin/bpp/typ_kbn/"),
+    ("Typy MNiSW", "/admin/bpp/typ_kbn/"),
     ("Typy odpowiedzialności", "/admin/bpp/typ_odpowiedzialnosci/"),
     ("Tytuły", "/admin/bpp/tytul/"),
     ("Wydawcy", "/admin/bpp/wydawca/"),

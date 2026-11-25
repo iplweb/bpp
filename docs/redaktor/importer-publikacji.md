@@ -84,7 +84,7 @@ Importer otworzysz na dwa sposoby:
       *Wydawnictwo zwarte (książka/rozdział)* albo *Patent*,
     - **Rok publikacji** — wpisany automatycznie; popraw, jeśli jest
       błędny lub go brakuje,
-    - **Charakter formalny**, **Typ MNiSW/MEiN** i **Język**.
+    - **Charakter formalny**, **Typ MNiSW** i **Język**.
 
     Część pól może być już wypełniona — zielony komunikat „Na podstawie
     typu … ustawiono …” mówi, co importer dobrał sam. Zawsze możesz to
@@ -93,7 +93,7 @@ Importer otworzysz na dwa sposoby:
     rekordu (np. dla książki *Wydawnictwo zwarte*), a **Charakter
     formalny** musisz wybrać samodzielnie. Kliknij **„Dalej”**.
 
-    ![Weryfikacja danych publikacji: odczytane dane, rodzaj rekordu, charakter formalny, typ MNiSW/MEiN, język](../images/redaktor/importer-publikacji/07-weryfikacja.png)
+    ![Weryfikacja danych publikacji: odczytane dane, rodzaj rekordu, charakter formalny, typ MNiSW, język](../images/redaktor/importer-publikacji/07-weryfikacja.png)
 
     Jeśli wpis zawiera DOI, na górze pojawi się propozycja
     **„Pobierz z CrossRef (…)”**. Kliknij ją, gdy dane z BibTeX-a są
@@ -252,12 +252,12 @@ Importer otworzysz na dwa sposoby:
 9. **Punktacja** (ekran „Krok: Punktacja”). Importer proponuje punkty
    MNiSW na podstawie punktacji czasopisma za rok publikacji (dla
    książek — poziomu wydawcy) i pokazuje, skąd je wziął. Popraw wartość
-   w polu **„Punkty MNiSW/MEiN”**, jeśli trzeba, albo zostaw ją pustą.
+   w polu **„Punkty MNiSW”**, jeśli trzeba, albo zostaw ją pustą.
    Czerwony komunikat o dyscyplinach HST przypomina, że w naukach
    humanistycznych, społecznych i teologicznych próg może być wyższy.
    Kliknij **„Dalej”**.
 
-    ![Krok „Punktacja”: sugerowana punktacja i pole „Punkty MNiSW/MEiN”](../images/redaktor/importer-publikacji/13-punktacja.png)
+    ![Krok „Punktacja”: sugerowana punktacja i pole „Punkty MNiSW”](../images/redaktor/importer-publikacji/13-punktacja.png)
 
 10. **Sprawdź w PBN** (krok opcjonalny). Importer może wyszukać tę pracę
     w PBN po DOI, tytule i adresie WWW, żeby powiązać rekord z jej

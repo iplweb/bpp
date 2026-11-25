@@ -173,7 +173,7 @@ class VerifyForm(forms.Form):
     )
     typ_kbn = forms.ModelChoiceField(
         queryset=Typ_KBN.objects.filter(ukryty=False),
-        label="Typ MNiSW/MEiN",
+        label="Typ MNiSW",
         required=False,
     )
     jezyk = forms.ModelChoiceField(
@@ -296,7 +296,7 @@ class PunktacjaForm(forms.Form):
     """Formularz kroku punktacji — jedno pole, edytowalne."""
 
     punkty_kbn = forms.DecimalField(
-        label="Punkty MNiSW/MEiN",
+        label="Punkty MNiSW",
         required=False,
         min_value=0,
     )

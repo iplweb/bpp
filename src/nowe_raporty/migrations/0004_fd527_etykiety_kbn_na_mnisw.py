@@ -1,10 +1,15 @@
-"""FD#527: „KBN” → „MNiSW/MEiN” w etykietach kolumn raportów.
+"""FD#527: „KBN” i „MNiSW/MEiN” → „MNiSW” w etykietach kolumn raportów.
 
 Etykiety kolumn ``flexible_reports`` siedzą w bazie (zakładane przez seed
 albo przeniesione z dawnych instalacji), więc zmiana w ``seeding`` nie
-dotarłaby do istniejących instalacji. Podmieniamy samo słowo „KBN”
-w etykietach kolumn (np. „Typ KBN” → „Typ MNiSW/MEiN”); etykiet bez „KBN”,
-w tym zmienionych już ręcznie przez redaktora, nie ruszamy.
+dotarłaby do istniejących instalacji. Dwie podmiany:
+
+- samo słowo „KBN” w etykiecie kolumny (np. „Typ KBN” → „Typ MNiSW”,
+  „Punkty KBN (suma)” → „Punkty MNiSW (suma)”) — nazwa nieistniejącego
+  komitetu ma zniknąć wszędzie,
+- etykiety równe DOKŁADNIE jednej ze znanych form z „/MEiN” (tak nazywały
+  się pola w BPP, więc redaktorzy przepisywali je do tabel) — na formę bez
+  „/MEiN”. Innych etykiet, także zawierających „MEiN”, nie ruszamy.
 """
 
 import re
@@ -13,10 +18,16 @@ from django.db import migrations
 
 # Całe słowo, żeby nie trafić w przypadkowy zlepek liter.
 KBN = re.compile(r"\bKBN\b")
-NOWE = "MNiSW/MEiN"
+NOWE = "MNiSW"
+DOKLADNE = {
+    "Typ MNiSW/MEiN": "Typ MNiSW",
+    "Typy MNiSW/MEiN": "Typy MNiSW",
+    "Punkty MNiSW/MEiN": "Punkty MNiSW",
+    "Pkt. MNiSW/MEiN": "Pkt. MNiSW",
+}
 # Jedyna etykieta z „KBN”, jaką zakładał seed — tylko ją umiemy cofnąć.
 SEED_STARA = "Typ KBN"
-SEED_NOWA = "Typ MNiSW/MEiN"
+SEED_NOWA = "Typ MNiSW"
 
 
 def naprzod(apps, schema_editor):
@@ -26,6 +37,8 @@ def naprzod(apps, schema_editor):
         if nowa != kolumna.label:
             kolumna.label = nowa
             kolumna.save(update_fields=["label"])
+    for stara, nowa in DOKLADNE.items():
+        Column.objects.filter(label=stara).update(label=nowa)
 
 
 def wstecz(apps, schema_editor):

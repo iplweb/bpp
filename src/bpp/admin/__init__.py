@@ -153,7 +153,7 @@ class Charakter_PBNAdmin(
             [f"{x.nazwa} ({x.skrot})" for x in rec.charakter_formalny_set.all()]
         )
 
-    @admin.display(description="Typy MNiSW/MEiN")
+    @admin.display(description="Typy MNiSW")
     def typy_kbn(self, rec):
         return ", ".join([f"{x.nazwa} ({x.skrot})" for x in rec.typ_kbn_set.all()])
 

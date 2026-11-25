@@ -54,7 +54,7 @@ def praca(db, jezyki, charaktery_formalne, statusy_korekt):
 @pytest.mark.parametrize("model", MODELE)
 def test_fd527_modele_maja_aliasy_bez_nowych_pol(model):
     assert hasattr(model, "punkty_mnisw")
-    # Patent nie ma typu MNiSW/MEiN — ani pod dawną, ani pod nową nazwą.
+    # Patent nie ma typu MNiSW — ani pod dawną, ani pod nową nazwą.
     assert hasattr(model, "typ_mnisw") == hasattr(model, "typ_kbn")
     assert hasattr(model, "typ_mnisw") == (model is not Patent)
     # Strażnik: alias to nie pole — baza i migracje go nie widzą.
@@ -76,7 +76,7 @@ def test_fd527_szablon_na_publikacji_i_rekordzie(praca):
 
 
 def test_fd527_patent_bez_typu_nie_wywraca_szablonu(db, patent):
-    # Patent nie ma typu MNiSW/MEiN — alias, jak dawna nazwa, daje pustkę.
+    # Patent nie ma typu MNiSW — alias, jak dawna nazwa, daje pustkę.
     assert not hasattr(patent, "typ_mnisw")
     wynik = SZABLON.render(Context({"praca": patent}))
     assert wynik == SZABLON_STARY.render(Context({"praca": patent}))

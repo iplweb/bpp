@@ -19,7 +19,7 @@ Definicje raportów może zmieniać superużytkownik oraz osoby z grupy
 
 1. Moduł redagowania → **Raporty** → **Tabele** → wybierz tabelę.
 2. W sekcji **Kolumny** zmień pole **Etykieta** wybranej kolumny (np.
-   z „Typ MNiSW/MEiN” na „Typ pracy”) i zapisz tabelę.
+   z „Typ MNiSW” na „Typ pracy”) i zapisz tabelę.
 
 Nowa etykieta jest widoczna od razu — przy najbliższym wygenerowaniu raportu,
 bez restartu serwera — w nagłówku tabeli na ekranie oraz w plikach pobranych
@@ -39,10 +39,10 @@ Warto wiedzieć:
 - Etykiety kolumn w jednej tabeli powinny być różne — dwie kolumny o tej samej
   etykiecie pokażą się w raporcie jako jedna.
 
-## Nazwy pól punktów i typu MNiSW/MEiN w zapytaniach {#nazwy-pol-mnisw}
+## Nazwy pól punktów i typu MNiSW w zapytaniach {#nazwy-pol-mnisw}
 
 W zapytaniach źródeł danych (**Raporty** → **Źródła danych**) punkty i typ
-MNiSW/MEiN można zapisać nową nazwą — `punkty_mnisw`, `typ_mnisw` — albo
+MNiSW można zapisać nową nazwą — `punkty_mnisw`, `typ_mnisw` — albo
 dawną: `punkty_kbn`, `typ_kbn`. Obie działają tak samo w obu językach zapytań
 (django-dsl i DjangoQL), np. `punkty_mnisw > 0 AND NOT typ_mnisw = "PW"`.
 Istniejących źródeł danych nie trzeba poprawiać.

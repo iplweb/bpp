@@ -17,7 +17,7 @@ class ModelPunktowanyBaza(AliasPunktyMNiSWMixin, models.Model):
         db_index=True,
     )
     punkty_kbn = models.DecimalField(
-        "punkty MNiSW/MEiN",
+        "punkty MNiSW",
         max_digits=6,
         decimal_places=2,
         default=Decimal("0.00"),

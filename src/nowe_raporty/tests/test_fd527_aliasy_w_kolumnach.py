@@ -17,8 +17,8 @@ from model_bakery import baker
 from bpp.models import Autor, Jednostka, Typ_KBN, Wydawnictwo_Ciagle
 from nowe_raporty.seeding import definicje, seed_default_reports
 
-PKT = "Pkt. MNiSW/MEiN"
-TYP = "Typ MNiSW/MEiN"
+PKT = "Pkt. MNiSW"
+TYP = "Typ MNiSW"
 
 
 @pytest.fixture

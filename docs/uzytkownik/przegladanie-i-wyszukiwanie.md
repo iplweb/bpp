@@ -236,7 +236,7 @@ Kliknięcie w dowolną pracę — na liście wyników, na stronie autora,
 jednostki czy źródła — otwiera **stronę publikacji** ze wszystkimi danymi
 o niej: opisem bibliograficznym, autorami (każde nazwisko prowadzi do strony
 autora), źródłem, rokiem, charakterem formalnym, danymi Open Access
-(licencja, wersja tekstu) oraz **punktami MNiSW/MEiN** i Impact Factor.
+(licencja, wersja tekstu) oraz **punktami MNiSW** i Impact Factor.
 
 ![Strona publikacji: przycisk otwierający DOI, metryki z punktami i eksport cytowania](../images/uzytkownik/wyszukiwanie/05-strona-publikacji.png)
 

@@ -62,7 +62,7 @@ def test_typ_kbn_maps_to_nazwa():
 
     baker.make(Typ_KBN, nazwa="PO")
     frag = leaf_to_djangoql(
-        registry, {"field": "Typ MNiSW/MEiN", "operator": str(EQUAL), "value": "PO"}
+        registry, {"field": "Typ MNiSW", "operator": str(EQUAL), "value": "PO"}
     )
     assert frag == 'typ_kbn.nazwa = "PO"'
 
