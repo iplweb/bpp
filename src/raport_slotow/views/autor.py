@@ -46,6 +46,11 @@ class WyborOsoby(
         context["title"] = "Wybór autora"
         return context
 
+    def get_form_kwargs(self):
+        kwargs = super().get_form_kwargs()
+        kwargs["uczelnia"] = uczelnia_dla_odczytu(self.request)
+        return kwargs
+
     def form_valid(self, form):
         form.cleaned_data["obiekt"] = form.cleaned_data["obiekt"].pk
         self.request.session[SESSION_KEY] = form.cleaned_data
@@ -204,7 +209,9 @@ class RaportSlotow(BaseRaportAuthMixin, MyExportMixin, MultiTableMixin, Template
     def get(self, request, *args, **kwargs):
         # Wczytaj dane z sesji i zwaliduj przez formularz
         data = request.session.get(SESSION_KEY)
-        form = AutorRaportSlotowForm(data)
+        # FD#640: ta sama walidacja co w formularzu — autor spoza uczelni
+        # z zapisanej sesji (lub innej uczelni w multi-host) nie przejdzie.
+        form = AutorRaportSlotowForm(data, uczelnia=uczelnia_dla_odczytu(request))
         if form.is_valid():
             self.kwargs.update(form.cleaned_data)
 

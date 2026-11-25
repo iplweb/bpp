@@ -2,8 +2,15 @@
 // do maksimum w grafie. Surowe wartości siedzą w danych węzła, więc
 // zmiana metryki nie wymaga ponownego pobrania.
 
-// Wartość bieżącej metryki dla węzła.
+// Stała średnica [px] kółka autora spoza uczelni (FD#640): jego metryki
+// (liczba prac, IF, PK) nie są publikowane, więc rozmiar nie może niczego
+// sugerować — ani „mało prac”, ani „zerowy IF”.
+export const ROZMIAR_NEUTRALNY = 20;
+
+// Wartość bieżącej metryki dla węzła; null dla autora spoza uczelni
+// (nie wchodzi do maksimum i dostaje ROZMIAR_NEUTRALNY).
 export function wartoscMetryki(ctx, node) {
+    if (node.data("spoza_uczelni")) { return null; }
     if (ctx.metryka === "if") { return node.data("if_sum") || 0; }
     if (ctx.metryka === "pk") { return node.data("pk_sum") || 0; }
     return node.data("works") || 0;
@@ -14,6 +21,7 @@ export function wartoscMetryki(ctx, node) {
 // clamp do 12..46. Czysta funkcja — jedyne źródło wzoru dla obu wariantów
 // (skokowego i animowanego).
 export function srednica(v, max) {
+    if (v === null) { return ROZMIAR_NEUTRALNY; }
     const d = 12 + 34 * Math.sqrt(v / max);
     return Math.max(12, Math.min(46, d));
 }

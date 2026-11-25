@@ -18,6 +18,7 @@ from import_common.normalization import normalize_doi
 from ..historia import (
     komunikat_orcid,
     komunikat_utworzenia,
+    komunikat_utworzenia_z_pbn,
     komunikat_zatrudnienia,
     zapisz_utworzenie,
     zapisz_zmiane,
@@ -109,15 +110,32 @@ def _auto_match_single_author(session, author_data, order, year):
     typ_ogolny = author_data.get("typ_ogolny", const.TO_AUTOR)
     if typ_ogolny not in (const.TO_AUTOR, const.TO_REDAKTOR):
         typ_ogolny = const.TO_AUTOR
+    pbn_uid = (author_data.get("pbn_uid") or "")[:32]
     imported = ImportedAuthor.objects.create(
         session=session,
         order=order,
         family_name=family,
         given_name=given,
         orcid=orcid,
+        pbn_uid=pbn_uid,
         typ_ogolny=typ_ogolny,
         zapisany_jako=f"{family} {given}".strip()[:512],
     )
+
+    # Identyfikator osoby w PBN to najmocniejszy klucz (FD#510): jeśli
+    # dokładnie jeden autor BPP jest z nią powiązany, to jest to ta osoba —
+    # niezależnie od zapisu nazwiska. Gdy powiązanych autorów jest kilku
+    # (duplikaty), decyduje dotychczasowa logika.
+    if pbn_uid:
+        powiazani = list(Autor.objects.filter(pbn_uid_id=pbn_uid)[:2])
+        if len(powiazani) == 1:
+            bpp_autor = powiazani[0]
+            imported.match_status = ImportedAuthor.MatchStatus.AUTO_EXACT
+            imported.matched_autor = bpp_autor
+            imported.matched_jednostka = bpp_autor.aktualna_jednostka
+            _apply_dyscyplina(imported, bpp_autor, year)
+            imported.save()
+            return imported
 
     result = Komparator.porownaj_author(author_data)
     bpp_autor = result.sugerowany or result.rekord_po_stronie_bpp
@@ -242,7 +260,9 @@ def _prefill_dyscypliny_z_zgloszen(session):
     zpa_by_autor = {}
     for zpa in Zgloszenie_Publikacji_Autor.objects.filter(
         rekord=zgloszenie,
-    ).select_related("dyscyplina_naukowa", "jednostka"):
+    ).select_related("dyscyplina_naukowa", "jednostka", "autor"):
+        if session.uczelnia_id is not None:
+            zpa._uczelnia = session.uczelnia
         zpa_by_autor[zpa.autor_id] = zpa
 
     to_update = session.authors.filter(
@@ -254,12 +274,37 @@ def _prefill_dyscypliny_z_zgloszen(session):
         zpa = zpa_by_autor.get(imported.matched_autor_id)
         if not zpa:
             continue
-        if zpa.dyscyplina_naukowa_id:
-            imported.matched_dyscyplina = zpa.dyscyplina_naukowa
+        # FD#640: autorowi spoza uczelni nie przenosimy ze zgłoszenia ani
+        # dyscypliny, ani jednostki uczelni (stare zgłoszenia mogły je mieć) —
+        # zapis pracy założyłby mu ``Autor_Jednostka`` w jednostce uczelni.
+        # Dyscyplina-propozycja autora uczelni bez przypisania na rok pracy
+        # stanie się przypisaniem dopiero przy tworzeniu rekordu
+        # (``przypisz_brakujace_dyscypliny``, w imieniu redaktora).
+        dyscyplina = zpa.dyscyplina_dla_redakcji()
+        if dyscyplina is not None:
+            imported.matched_dyscyplina = dyscyplina
             imported.dyscyplina_source = ImportedAuthor.DyscyplinaSource.ZGLOSZENIE
-        if not imported.matched_jednostka_id and zpa.jednostka_id:
-            imported.matched_jednostka = zpa.jednostka
+        if not imported.matched_jednostka_id:
+            jednostka = _jednostka_ze_zgloszenia(zpa)
+            if jednostka is not None:
+                imported.matched_jednostka = jednostka
         imported.save()
+
+
+def _jednostka_ze_zgloszenia(zpa):
+    """Jednostka autora zgłoszenia do podpowiedzi w importerze (FD#640).
+
+    Autor spoza uczelni z inną jednostką niż obca (stare zgłoszenie,
+    jednostka uczelni albo innej uczelni) dostaje w zamian obcą jednostkę
+    uczelni — ``_add_authors_to_record`` zapisze ją bez afiliacji. Gdy
+    uczelnia jej nie ma, jednostka zostaje pusta (wiersz autora pokazuje
+    ostrzeżenie) i redaktor wybiera ją ręcznie."""
+    jednostka = zpa.jednostka_dla_redakcji()
+    if jednostka is None and zpa.jednostka_id is not None:
+        uczelnia = zpa.uczelnia_zgloszenia()
+        if uczelnia is not None:
+            jednostka = uczelnia.obca_jednostka
+    return jednostka
 
 
 @transaction.atomic
@@ -273,10 +318,85 @@ def _ustaw_orcid_autora(imported, user):
     zapisz_zmiane(user, autor, komunikat_orcid(imported.session, imported.orcid))
 
 
+def _osoby_instytucji(session):
+    """Osoby z PBN zatrudnione w uczelni sesji — do szukania odpowiednika
+    nowego autora po imieniu i nazwisku."""
+    from pbn_integrator.utils.dopasowanie_autorow import OsobyInstytucji
+
+    return OsobyInstytucji(session.uczelnia)
+
+
+def _szukaj_osoby_pbn(imported, osoby_instytucji):
+    """Osoba PBN dla wiersza sesji: identyfikator od dostawcy → ORCID →
+    imię i nazwisko wśród osób z instytucji."""
+    from pbn_integrator.utils.dopasowanie_autorow import znajdz_osobe_pbn
+
+    return znajdz_osobe_pbn(
+        pbn_uid=imported.pbn_uid,
+        orcid=imported.orcid,
+        imiona=imported.given_name,
+        nazwisko=imported.family_name,
+        osoby_instytucji=osoby_instytucji,
+    )
+
+
+#: Powyżej tylu niedopasowanych autorów krok „Autorzy” nie sprawdza z góry,
+#: ilu z nich nie ma odpowiednika w PBN (każdy to kilka zapytań do bazy,
+#: a krok jest odświeżany po każdej akcji na wierszu).
+LIMIT_SPRAWDZANIA_PBN = 200
+
+
+def _niedopasowani_bez_odpowiednika_pbn(session):
+    """Ilu niedopasowanych autorów sesji powstałoby BEZ odpowiednika w PBN.
+
+    ``None``, gdy niedopasowanych jest zbyt wielu, by to sprawdzać przy
+    każdym wyświetleniu kroku.
+    """
+    from pbn_integrator.utils.dopasowanie_autorow import JEDNOZNACZNE
+
+    niedopasowani = list(
+        session.authors.filter(match_status=ImportedAuthor.MatchStatus.UNMATCHED)[
+            : LIMIT_SPRAWDZANIA_PBN + 1
+        ]
+    )
+    if not niedopasowani:
+        return 0
+    if len(niedopasowani) > LIMIT_SPRAWDZANIA_PBN:
+        return None
+    osoby_instytucji = _osoby_instytucji(session)
+    return sum(
+        1
+        for imported in niedopasowani
+        if _szukaj_osoby_pbn(imported, osoby_instytucji).status != JEDNOZNACZNE
+    )
+
+
+def _dopasuj_istniejacego(imported, existing, obca, user):
+    """Przypnij wiersz sesji do ISTNIEJĄCEGO autora (zamiast tworzyć
+    duplikat) i dopisz mu zatrudnienie w obcej jednostce."""
+    # Zatrudnienie dopisane istniejącemu autorowi też ma być widać
+    # w jego historii: kto, kiedy, przy którym imporcie (FD#600).
+    zatrudnienia = Autor_Jednostka.objects.filter(autor=existing)
+    przed = zatrudnienia.count()
+    zapewnij_wersje_poczatkowa(existing)
+    existing.dodaj_jednostke(obca)
+    if zatrudnienia.count() != przed:
+        zapisz_zmiane(
+            user or imported.session.created_by,
+            existing,
+            komunikat_zatrudnienia(imported.session, obca),
+        )
+    imported.matched_autor = existing
+    imported.matched_jednostka = obca
+    imported.match_status = ImportedAuthor.MatchStatus.MANUAL
+    imported.save()
+    return existing
+
+
 @transaction.atomic
-def _create_single_author(imported, obca, user=None):
-    """Utwórz (lub dopasuj po ORCID) rekord ``Autor`` dla pojedynczego
-    ``ImportedAuthor`` i przypisz go do obcej jednostki.
+def _create_single_author(imported, obca, user=None, osoby_instytucji=None):
+    """Utwórz (lub dopasuj po ORCID / osobie PBN) rekord ``Autor`` dla
+    pojedynczego ``ImportedAuthor`` i przypisz go do obcej jednostki.
 
     Wspólny rdzeń dla masowego ``_create_unmatched_authors`` oraz
     per-wierszowego ``AuthorCreateNewView`` ("Utwórz nowego" z modala
@@ -286,42 +406,70 @@ def _create_single_author(imported, obca, user=None):
     Jeśli dostawca podał ORCID i istnieje już ``Autor`` z tym ORCID-em,
     dopasowuje istniejącego zamiast tworzyć duplikat.
 
+    Zanim powstanie nowy autor, szukamy jego odpowiednika wśród osób z PBN
+    (FD#510): identyfikator osoby od dostawcy → ORCID → imię i nazwisko
+    wśród osób z instytucji. Jednoznaczne wskazanie ustawia nowemu autorowi
+    ``pbn_uid``; niejednoznaczne — nie, a powód trafia do
+    ``imported.pbn_uwagi`` (widoczny w kroku „Autorzy”). Bez tego każdy
+    autor utworzony w importerze był dla PBN nieznany i jego oświadczenia
+    nie były wysyłane.
+
     Nowo utworzony ``Autor`` dostaje wpis w historii zmian (FD#441) w imieniu
     ``user`` (domyślnie twórcy sesji importu).
     """
+    from pbn_integrator.utils.dopasowanie_autorow import (
+        JEDNOZNACZNE,
+        NIEJEDNOZNACZNE,
+        ZRODLO_NAZWISKO,
+    )
+
     orcid = imported.orcid.strip() or None
 
     if orcid:
         existing = Autor.objects.filter(orcid=orcid).first()
         if existing:
-            # Zatrudnienie dopisane istniejącemu autorowi też ma być widać
-            # w jego historii: kto, kiedy, przy którym imporcie (FD#600).
-            zatrudnienia = Autor_Jednostka.objects.filter(autor=existing)
-            przed = zatrudnienia.count()
-            zapewnij_wersje_poczatkowa(existing)
-            existing.dodaj_jednostke(obca)
-            if zatrudnienia.count() != przed:
-                zapisz_zmiane(
-                    user or imported.session.created_by,
-                    existing,
-                    komunikat_zatrudnienia(imported.session, obca),
-                )
-            imported.matched_autor = existing
-            imported.matched_jednostka = obca
-            imported.match_status = ImportedAuthor.MatchStatus.MANUAL
-            imported.save()
-            return existing
+            return _dopasuj_istniejacego(imported, existing, obca, user)
+
+    if osoby_instytucji is None:
+        osoby_instytucji = _osoby_instytucji(imported.session)
+    wynik = _szukaj_osoby_pbn(imported, osoby_instytucji)
+
+    pbn_uid = None
+    imported.pbn_uwagi = ""
+    if wynik.status == JEDNOZNACZNE:
+        powiazani = list(Autor.objects.filter(pbn_uid_id=wynik.scientist_id)[:2])
+        if not powiazani:
+            pbn_uid = wynik.scientist_id
+        elif len(powiazani) == 1 and wynik.zrodlo != ZRODLO_NAZWISKO:
+            # Osoba wskazana identyfikatorem albo ORCID-em ma już autora
+            # w BPP — to ta sama osoba, nie tworzymy duplikatu.
+            return _dopasuj_istniejacego(imported, powiazani[0], obca, user)
+        else:
+            # Samo imię i nazwisko nie wystarcza, żeby podważyć decyzję
+            # „utwórz nowego” — ale drugi autor z tą samą osobą PBN byłby
+            # błędem, więc nowy powstaje bez odpowiednika.
+            imported.pbn_uwagi = (
+                f"Osoba PBN {wynik.scientist_id} ({wynik.zrodlo}) jest już "
+                f"przypisana do autora {powiazani[0]} — możliwy duplikat."
+            )[:512]
+    elif wynik.status == NIEJEDNOZNACZNE:
+        imported.pbn_uwagi = wynik.opis[:512]
+    else:
+        imported.pbn_uwagi = "Nie znaleziono tej osoby w danych pobranych z PBN."
 
     autor = Autor.objects.create(
         imiona=imported.given_name,
         nazwisko=imported.family_name,
         orcid=orcid,
+        pbn_uid_id=pbn_uid,
     )
     autor.dodaj_jednostke(obca)
     zapisz_utworzenie(
         user or imported.session.created_by,
         autor,
-        komunikat_utworzenia(imported.session),
+        komunikat_utworzenia_z_pbn(imported.session, wynik)
+        if pbn_uid
+        else komunikat_utworzenia(imported.session),
     )
 
     imported.matched_autor = autor
@@ -338,6 +486,7 @@ def _create_unmatched_authors(session, obca, user=None):
     unmatched = session.authors.filter(
         match_status=(ImportedAuthor.MatchStatus.UNMATCHED)
     )
+    osoby_instytucji = _osoby_instytucji(session)
     # Ta sama osoba może być w sesji dwa razy — jako redaktor i autor
     # (FD#619). Bez ORCID-u ``_create_single_author`` nie ma po czym jej
     # rozpoznać i utworzyłby dwa identyczne rekordy ``Autor``; drugi wiersz
@@ -346,11 +495,14 @@ def _create_unmatched_authors(session, obca, user=None):
     for imported in unmatched.order_by("order"):
         klucz = (
             imported.orcid.strip()
+            or imported.pbn_uid
             or f"{imported.family_name.strip()} {imported.given_name.strip()}".lower()
         )
         autor = utworzeni.get(klucz)
         if autor is None:
-            utworzeni[klucz] = _create_single_author(imported, obca, user)
+            utworzeni[klucz] = _create_single_author(
+                imported, obca, user, osoby_instytucji
+            )
             continue
         imported.matched_autor = autor
         imported.matched_jednostka = obca

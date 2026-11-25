@@ -39,7 +39,7 @@ def test_raport_w_okresie_bez_metryk_przekierowuje_i_przelicza(
     wybierz_okres(client, okres_2026)
 
     with patch(TASK) as task:
-        task.delay.return_value = MagicMock(id="zadanie-1")
+        task.apply_async.return_value = MagicMock(id="zadanie-1")
         url = reverse("ewaluacja_metryki:metryki_jednostki", args=[jednostka.pk])
         res = client.get(url, follow=True)
 
@@ -47,8 +47,8 @@ def test_raport_w_okresie_bez_metryk_przekierowuje_i_przelicza(
     tresc = res.content.decode()
     assert "nie ma metryk ewaluacyjnych w okresie" in tresc
     assert "uruchomiono ich przeliczenie z ustawieniami domyślnymi" in tresc
-    task.delay.assert_called_once()
-    assert task.delay.call_args.kwargs["okres_pk"] == okres_2026.pk
+    task.apply_async.assert_called_once()
+    assert task.apply_async.call_args.kwargs["kwargs"]["okres_pk"] == okres_2026.pk
     assert StatusGenerowania.objects.get(okres=okres_2026).w_trakcie
 
 
@@ -63,11 +63,11 @@ def test_przeliczanie_w_trakcie_nie_startuje_drugi_raz(
     url = reverse("ewaluacja_metryki:metryki_jednostek")
 
     with patch(TASK) as task:
-        task.delay.return_value = MagicMock(id="zadanie-1")
+        task.apply_async.return_value = MagicMock(id="zadanie-1")
         client.get(url)
         res = client.get(url)
 
-    task.delay.assert_called_once()
+    task.apply_async.assert_called_once()
     assert "są właśnie przeliczane" in res.content.decode()
 
 
@@ -88,7 +88,7 @@ def test_zakonczone_przeliczenie_bez_wynikow_nie_startuje_ponownie(
     with patch(TASK) as task:
         res = client.get(reverse("ewaluacja_metryki:metryki_jednostek"))
 
-    task.delay.assert_not_called()
+    task.apply_async.assert_not_called()
     assert "nie dało żadnych metryk" in res.content.decode()
 
 
@@ -106,5 +106,5 @@ def test_bez_uprawnien_do_przeliczania_tylko_komunikat(
         res = client.get(reverse("ewaluacja_metryki:metryki_jednostek"))
 
     assert res.status_code == 200
-    task.delay.assert_not_called()
+    task.apply_async.assert_not_called()
     assert "nie zostały jeszcze policzone" in res.content.decode()

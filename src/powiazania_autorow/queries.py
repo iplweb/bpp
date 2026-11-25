@@ -188,12 +188,32 @@ def _link_do_pbn(autor, pbn_root):
     return ""
 
 
-def _autor_dict(autor, pbn_root, shared=None, metryki=None):
+def _autorzy_spoza_uczelni(autor_ids, uczelnia):
+    """Zbiór id autorów z `autor_ids`, którzy są spoza `uczelnia` (FD#640,
+    ``AutorQuerySet.spoza_uczelni``) — jednym zapytaniem dla całej paczki
+    węzłów. ``uczelnia=None`` → pusty zbiór (nikt nie jest obcy)."""
+    if uczelnia is None or not autor_ids:
+        return set()
+    return set(
+        Autor.objects.filter(id__in=autor_ids)
+        .spoza_uczelni(uczelnia)
+        .values_list("id", flat=True)
+    )
+
+
+def _autor_dict(autor, pbn_root, shared=None, metryki=None, spoza_uczelni=False):
     """Wspólny kształt payloadu dla centrum i każdego sąsiada.
 
     `metryki` to słownik {works, if_sum, pk_sum} — UI używa wybranej metryki
     jako wielkości kółka (suma prac / IF / PK), przeliczając po stronie klienta
     bez dodatkowego żądania.
+
+    `spoza_uczelni` (FD#640): autor spoza uczelni zostaje w grafie (węzeł,
+    krawędzie, liczba wspólnych prac na krawędzi), ale bez żadnych
+    statystyk dorobku — ``total_works``, ``if_sum`` i ``pk_sum`` są
+    ``null`` (UI rysuje wtedy kółko w neutralnym, najmniejszym rozmiarze
+    i nie pokazuje liczby prac). Jego dorobek w NASZEJ bazie nic nie mówi
+    o jego twórczości, więc nie pokazujemy go w publicznej części serwisu.
     """
     m = metryki or {}
     dane = {
@@ -207,7 +227,12 @@ def _autor_dict(autor, pbn_root, shared=None, metryki=None):
         "total_works": m.get("works", 0),
         "if_sum": m.get("if_sum", 0.0),
         "pk_sum": m.get("pk_sum", 0.0),
+        "spoza_uczelni": spoza_uczelni,
     }
+    if spoza_uczelni:
+        dane["total_works"] = None
+        dane["if_sum"] = None
+        dane["pk_sum"] = None
     if shared is not None:
         dane["shared"] = shared
     return dane

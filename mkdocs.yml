@@ -156,6 +156,7 @@ nav:
       - Mapa kodu: deweloper/mapa-kodu.md
       - Polecenia: deweloper/polecenia.md
       - Pakiety klienckie PBN: deweloper/pakiety-pbn.md
+      - Testowanie PBN lokalnie: deweloper/testowanie-pbn-lokalnie.md
       - Soft-delete (kosz): deweloper/soft-delete.md
       - Przeliczenia po aktualizacji: deweloper/przeliczenia-po-aktualizacji.md
       - Historia zmian (reversion): deweloper/historia-zmian-reversion.md

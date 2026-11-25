@@ -11,11 +11,12 @@ from dal import autocomplete
 from django import forms
 from django.core.exceptions import ValidationError
 
-from .. import const
-from . import OUTPUT_FORMATS_WITH_PDF
-
 from bpp.models import Autor, Uczelnia
 from bpp.util import formdefaults_html_after, formdefaults_html_before, year_last_month
+from bpp.util.autor_spoza_uczelni import sprawdz_autora_raportu
+
+from .. import const
+from . import OUTPUT_FORMATS_WITH_PDF
 
 
 class AutorRaportSlotowForm(forms.Form):
@@ -53,6 +54,10 @@ class AutorRaportSlotowForm(forms.Form):
     _export = forms.ChoiceField(
         label="Format wyjściowy", choices=OUTPUT_FORMATS_WITH_PDF, required=True
     )
+
+    def clean_obiekt(self):
+        # FD#640: sum slotów autora spoza uczelni nie liczymy.
+        return sprawdz_autora_raportu(self.cleaned_data["obiekt"], self.uczelnia)
 
     def clean(self):
         if "od_roku" in self.cleaned_data and "do_roku" in self.cleaned_data:
@@ -98,7 +103,10 @@ class AutorRaportSlotowForm(forms.Form):
                 }
             )
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, *args, uczelnia=None, **kwargs):
+        # ``uczelnia`` — uczelnia oglądającego (z requestu); bez niej (np.
+        # introspekcja formdefaults) nikt nie jest „spoza uczelni”.
+        self.uczelnia = uczelnia
         super().__init__(*args, **kwargs)
 
         self.helper = FormHelper()

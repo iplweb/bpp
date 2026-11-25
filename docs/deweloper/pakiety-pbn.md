@@ -59,6 +59,13 @@ W repozytorium danego pakietu (nie w BPP):
 
 ## Autoryzacja PBN API na lokalnej instancji (przeniesienie `ott`)
 
+!!! tip "Jedno polecenie zamiast poniższej procedury"
+    Całość — konfigurację aplikacji PBN z serwera, logowanie z przechwyceniem
+    powrotu i zabezpieczenie przed przypadkową wysyłką — robi
+    `bin/pbn-zaloguj-lokalnie.py`. Patrz
+    [Testowanie PBN lokalnie](testowanie-pbn-lokalnie.md). Niżej opis samego
+    mechanizmu i ręczna procedura.
+
 PBN po zalogowaniu przekierowuje na adres callbacku skonfigurowany dla
 aplikacji, czyli zwykle na serwer produkcyjny, a nie na `localhost`.
 Parametru `state` PBN nie odsyła. Callback (`/pbn_api/callback?ott=<uuid>`)

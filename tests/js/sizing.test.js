@@ -1,6 +1,7 @@
 // Testy normalizacji metryki na średnicę węzła + wyboru metryki.
 import { describe, test, expect } from "vitest";
 import {
+    ROZMIAR_NEUTRALNY,
     srednica,
     wartoscMetryki,
 } from "../../src/powiazania_autorow/static/powiazania_autorow/js/powiazania/sizing.js";
@@ -47,5 +48,24 @@ describe("wartoscMetryki", () => {
     test("brak danych → 0", () => {
         const pusty = { data: () => undefined };
         expect(wartoscMetryki({ metryka: "if" }, pusty)).toBe(0);
+    });
+});
+
+describe("autor spoza uczelni (FD#640)", () => {
+    const obcy = {
+        data: (k) => ({
+            spoza_uczelni: true, works: 0, if_sum: 0, pk_sum: 0,
+        }[k]),
+    };
+
+    test("brak metryki niezależnie od wybranej (null)", () => {
+        for (const metryka of ["works", "if", "pk"]) {
+            expect(wartoscMetryki({ metryka }, obcy)).toBeNull();
+        }
+    });
+
+    test("null → stały, neutralny rozmiar (nie najmniejsze kółko)", () => {
+        expect(srednica(null, 100)).toBe(ROZMIAR_NEUTRALNY);
+        expect(srednica(null, 100)).toBeGreaterThan(srednica(0, 100));
     });
 });

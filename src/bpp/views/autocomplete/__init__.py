@@ -98,6 +98,7 @@ from .units import (  # noqa: F401
     PublicJednostkaToplevelAutocomplete,
     PublicJednostkaWydzialRankinguAutocomplete,
     WidocznaJednostkaAutocomplete,
+    ZgloszenieJednostkaAutocomplete,
 )
 
 # PBN parent publication autocomplete

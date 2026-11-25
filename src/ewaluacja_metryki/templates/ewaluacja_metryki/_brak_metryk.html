@@ -24,6 +24,15 @@
     <script>
         setTimeout(function () { window.location.reload(); }, 15000);
     </script>
+{% elif stan_metryk.anulowane %}
+    <div class="callout alert" id="metryki-anulowane">
+        Przeliczenie metryk ewaluacyjnych za okres <strong>{{ stan_metryk.okres }}</strong> zostało anulowane.
+        {{ stan_metryk.status.ostatni_komunikat }}
+        {% if stan_metryk.moze_przeliczac %}
+            Przeliczenie można uruchomić ponownie na stronie
+            <a href="{% url 'ewaluacja_metryki:lista' %}">metryk ewaluacyjnych</a>.
+        {% endif %}
+    </div>
 {% elif stan_metryk.przeliczone_bez_wynikow %}
     <div class="callout warning">
         Przeliczenie metryk ewaluacyjnych za okres <strong>{{ stan_metryk.okres }}</strong> zakończyło się

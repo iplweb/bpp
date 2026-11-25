@@ -2,13 +2,13 @@
 {% load static liveops %}
 
 {% block extratitle %}
-    Import z POLON - {{ object.plik.name }}
+    Import z POLON - {{ object.nazwa_pliku }}
 {% endblock %}
 
 {% block breadcrumbs %}
     {{ block.super }}
     <li><a href="{% url "import_polon:index" %}">import POLON</a></li>
-    <li class="current">import {{ object.plik.name }}</li>
+    <li class="current">import {{ object.nazwa_pliku }}</li>
 {% endblock %}
 
 {% block content %}
@@ -22,6 +22,11 @@
     {# Anuluj/Ponów liveops to gołe przyciski htmx poza formularzem, a BPP ma #}
     {# CSRF_COOKIE_HTTPONLY=True, więc liveops.js nie odczyta tokenu z ciasteczka #}
     {# (getCookie zwraca pusty łańcuch) → POST bez tokenu = 403 CSRF token missing. #}
+    {% if object.finished_on and not object.finished_successfully and object.blokada_ponownego_przebiegu %}
+        {# Bez pliku „Ponów” liveops i tak skończy się tym komunikatem — #}
+        {# pokazujemy go od razu, także po przeładowaniu strony. #}
+        <div class="panel callout warning">{{ object.komunikat_braku_pliku }}</div>
+    {% endif %}
     <div hx-headers='{"X-CSRFToken": "{{ csrf_token }}"}'>
         {% live_operation object %}
     </div>

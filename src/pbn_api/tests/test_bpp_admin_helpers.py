@@ -385,7 +385,7 @@ def test_sprobuj_wyslac_do_pbn_bez_oswiadczen_sukces(
 
 
 @pytest.mark.django_db
-def test_sprobuj_wyslac_do_pbn_ostrzezenie_brak_dyscypliny_autora(
+def test_sprobuj_wyslac_do_pbn_autor_bez_odpowiednika_i_orcid_blokada(
     pbn_wydawnictwo_zwarte_z_autorem_z_dyscyplina, pbn_client, rf, pbn_uczelnia
 ):
     req = rf.get("/")
@@ -419,8 +419,12 @@ def test_sprobuj_wyslac_do_pbn_ostrzezenie_brak_dyscypliny_autora(
             req, pbn_wydawnictwo_zwarte_z_autorem_z_dyscyplina, pbn_client=pbn_client
         )
 
-    msg = get_messages(req)
-    assert "nie zostanie oświadczona" in list(msg)[0].message
+    # FD#509: dawniej praca szła do PBN bez oświadczenia, z samym żółtym
+    # ostrzeżeniem („nie zostanie oświadczona"). Teraz wysyłka jest
+    # zatrzymana i nic nie trafia do PBN.
+    msg = [m.message for m in get_messages(req)]
+    assert any("NIE został wysłany do PBN" in m for m in msg), msg
+    assert pbn_client.transport.input_values == {}
 
 
 @pytest.mark.django_db

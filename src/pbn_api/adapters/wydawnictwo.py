@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import logging
+
 from django.utils.functional import cached_property
 
 from bpp import const
@@ -11,6 +13,7 @@ from bpp.util import strip_html
 from import_common.normalization import normalize_isbn, normalize_issn
 
 from ..exceptions import (
+    AutorBezIdentyfikatoraPBN,
     CharakterFormalnyMissingPBNUID,
     DaneLokalneWymagajaAktualizacjiException,
     DOIorWWWMissing,
@@ -20,9 +23,15 @@ from ..exceptions import (
 )
 from .autor import AutorSimplePBNAdapter, AutorZDyscyplinaPBNAdapter
 from .wydawca import WydawcaPBNAdapter
-from .wydawnictwo_autor import WydawnictwoAutorToStatementPBNAdapter
+from .wydawnictwo_autor import (
+    WydawnictwoAutorToStatementPBNAdapter,
+    ostrzezenie_o_pominietych_oswiadczeniach,
+    powiazania_bez_identyfikatora_osoby,
+)
 from .wydawnictwo_nadrzedne import WydawnictwoNadrzednePBNAdapter
 from .zrodlo import ZrodloPBNAdapter
+
+logger = logging.getLogger(__name__)
 
 
 class OplataZaWydawnictwoPBNAdapter:
@@ -108,6 +117,9 @@ class WydawnictwoPBNAdapter:
         self.original = original
 
         self.pbn_wysylaj_bez_oswiadczen = False
+        # FD#509: bez uczelni (albo bez zgody uczelni) autor bez identyfikatora
+        # osoby ZATRZYMUJE wysyłkę — bezpieczna wartość domyślna.
+        self.pbn_wysylaj_bez_identyfikatora_autora = False
 
         if request is not None and uczelnia is None:
             uczelnia = Uczelnia.objects.get_for_request(request)
@@ -118,6 +130,9 @@ class WydawnictwoPBNAdapter:
 
             if uczelnia.pbn_wysylaj_bez_oswiadczen:
                 self.pbn_wysylaj_bez_oswiadczen = True
+
+            if uczelnia.pbn_wysylaj_bez_identyfikatora_autora:
+                self.pbn_wysylaj_bez_identyfikatora_autora = True
 
         if export_pk_zero is not None:
             self.export_pk_zero = export_pk_zero
@@ -624,15 +639,45 @@ class WydawnictwoPBNAdapter:
         ):
             ret["evaluationWosConference"] = True
 
-    def _validate_export(self, ret: dict) -> None:
-        """Final validation before export."""
-        if ret["type"] not in [
-            WydawnictwoPBNAdapter.ARTICLE,
-            WydawnictwoPBNAdapter.CHAPTER,
-        ]:
+    def sprawdz_identyfikatory_autorow(self) -> None:
+        """Zatrzymuje wysyłkę pracy, gdy czyjeś oświadczenie by przepadło (FD#509).
+
+        Dotyczy KAŻDEGO rodzaju pracy (także książek) i NIE zależy od
+        ``pbn_wysylaj_bez_oswiadczen``: tamto ustawienie pozwala wysyłać prace,
+        w których nikt nie ma przypiętej dyscypliny (ścieżka repozytoryjna),
+        a tutaj dyscyplina JEST przypięta — redaktor chce oświadczenia, tylko
+        nie da się go przypisać do osoby w PBN. Praca bez przypiętych dyscyplin
+        nie ma takich autorów i przechodzi jak dotąd.
+
+        Wyjątek: uczelnia z włączonym „Wysyłaj prace, gdy autor nie ma
+        identyfikatora w PBN” (``pbn_wysylaj_bez_identyfikatora_autora``).
+        Wtedy praca idzie BEZ oświadczeń tych autorów, a o tym, ilu ich
+        pominięto, mówi ostrzeżenie — tutaj w logu aplikacji (wspólne dla
+        wszystkich dróg wysyłki), a w formularzu i kolejce eksportu dodatkowo
+        komunikat dla redaktora.
+        """
+        autorzy = list(powiazania_bez_identyfikatora_osoby(self.original.autorzy_set))
+        if not autorzy:
             return
 
-        if self.export_pk_zero is False:
+        if not self.pbn_wysylaj_bez_identyfikatora_autora:
+            raise AutorBezIdentyfikatoraPBN(autorzy)
+
+        logger.warning(
+            "Wysyłka do PBN rekordu %s (pk=%s): %s",
+            self.original,
+            self.original.pk,
+            ostrzezenie_o_pominietych_oswiadczeniach(self.original, autorzy),
+        )
+
+    def _validate_export(self, ret: dict) -> None:
+        """Final validation before export."""
+        artykul_lub_rozdzial = ret["type"] in [
+            WydawnictwoPBNAdapter.ARTICLE,
+            WydawnictwoPBNAdapter.CHAPTER,
+        ]
+
+        if artykul_lub_rozdzial and self.export_pk_zero is False:
             if hasattr(self.original, "punkty_kbn"):
                 if self.original.punkty_kbn == 0:
                     raise PKZeroExportDisabled(
@@ -640,6 +685,15 @@ class WydawnictwoPBNAdapter:
                         "zero jest wyłączony w konfiguracji systemu "
                         "(obiekt Uczelnia). "
                     )
+
+        # PRZED ``StatementsMissing``: gdy jedyny autor z dyscypliną nie ma
+        # identyfikatora, „brak oświadczeń" byłby prawdą, ale nie mówiłby
+        # redaktorowi, co poprawić. PO wykluczeniu PK=0: pracy, której i tak
+        # nie wysyłamy, nie każemy poprawiać.
+        self.sprawdz_identyfikatory_autorow()
+
+        if not artykul_lub_rozdzial:
+            return
 
         if not ret.get("statements") and not self.pbn_wysylaj_bez_oswiadczen:
             raise StatementsMissing(
