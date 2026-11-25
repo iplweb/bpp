@@ -4,8 +4,10 @@ from braces.views import GroupRequiredMixin
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required, permission_required
 from django.contrib.contenttypes.models import ContentType
+from django.contrib.contenttypes.prefetch import GenericPrefetch
+from django.core.paginator import Paginator
 from django.db import models
-from django.db.models import Count, Q
+from django.db.models import Count, Q, Value
 from django.http import HttpResponseRedirect, JsonResponse
 from django.shortcuts import render
 from django.urls import reverse
@@ -14,6 +16,8 @@ from django.views import View
 from django.views.generic import DetailView
 
 from bpp.const import GR_WPROWADZANIE_DANYCH
+from bpp.models.wydawnictwo_ciagle import Wydawnictwo_Ciagle_Autor
+from bpp.models.wydawnictwo_zwarte import Wydawnictwo_Zwarte_Autor
 from ewaluacja_common.okres import lata_okresu
 from komparator_pbn_udzialy.models import (
     BrakAutoraWPublikacji,
@@ -23,6 +27,10 @@ from komparator_pbn_udzialy.models import (
 from pbn_downloader_app.freshness import is_pbn_publications_data_fresh
 
 logger = logging.getLogger(__name__)
+
+#: Znaczniki tabeli źródłowej w połączonej liście problemów (UNION).
+RODZAJ_ROZBIEZNOSC = "rozbieznosc"
+RODZAJ_BRAK_AUTORA = "brak_autora"
 
 #: Ścieżka od rekordu problemu do roku publikacji w PBN.
 ROK_PUBLIKACJI_PBN = "oswiadczenie_instytucji__publicationId__year"
@@ -53,6 +61,8 @@ class ProblemyPBNListView(GroupRequiredMixin, View):
     group_required = GR_WPROWADZANIE_DANYCH
     template_name = "komparator_pbn_udzialy/list.html"
 
+    paginate_by = 50
+
     def get(self, request):
         # Filtry
         search = request.GET.get("search", "")
@@ -62,21 +72,23 @@ class ProblemyPBNListView(GroupRequiredMixin, View):
         rok_min = request.GET.get("rok_min", str(okres_od))
         rok_max = request.GET.get("rok_max", str(okres_do))
 
-        # Pobierz rozbieżności
         rozbieznosci = self._get_rozbieznosci(search, filter_type, rok_min, rok_max)
-
-        # Pobierz brakujących autorów
         brakujacy = self._get_brakujacy(search, filter_type, rok_min, rok_max)
 
-        # Opakuj w wrapper i połącz
-        all_problems = []
-        for r in rozbieznosci:
-            all_problems.append(ProblemWrapper(r))
-        for b in brakujacy:
-            all_problems.append(ProblemWrapper(b))
-
-        # Sortuj po dacie (najnowsze pierwsze)
-        all_problems.sort(key=lambda x: x.created_at, reverse=True)
+        # Obie tabele w jednym zapytaniu (UNION ALL): filtrowanie, sortowanie
+        # (najnowsze pierwsze) i stronicowanie robi baza, a nie Python.
+        klucze = (
+            rozbieznosci.annotate(rodzaj=Value(RODZAJ_ROZBIEZNOSC))
+            .values_list("rodzaj", "pk", "created_at")
+            .union(
+                brakujacy.annotate(rodzaj=Value(RODZAJ_BRAK_AUTORA)).values_list(
+                    "rodzaj", "pk", "created_at"
+                ),
+                all=True,
+            )
+            .order_by("-created_at", "rodzaj", "-pk")
+        )
+        page_obj = Paginator(klucze, self.paginate_by).get_page(request.GET.get("page"))
 
         # Statystyki
         stats = self._get_stats(rok_min, rok_max)
@@ -87,7 +99,10 @@ class ProblemyPBNListView(GroupRequiredMixin, View):
         )
 
         context = {
-            "problemy": all_problems,
+            "problemy": self._problemy_strony(page_obj.object_list),
+            "page_obj": page_obj,
+            "paginator": page_obj.paginator,
+            "is_paginated": page_obj.has_other_pages(),
             "search": search,
             "filter": filter_type,
             "rok_min": rok_min,
@@ -100,17 +115,59 @@ class ProblemyPBNListView(GroupRequiredMixin, View):
 
         return render(request, self.template_name, context)
 
+    @staticmethod
+    def _problemy_strony(klucze):
+        """Rekordy jednej strony (w kolejności ``klucze``) z danymi do tabeli
+        dociągniętymi stałą liczbą zapytań — bez zapytań na wiersz."""
+        klucze = list(klucze)
+        pk_wg_rodzaju = {RODZAJ_ROZBIEZNOSC: [], RODZAJ_BRAK_AUTORA: []}
+        for rodzaj, pk, _created_at in klucze:
+            pk_wg_rodzaju[rodzaj].append(pk)
+
+        obiekty = {}
+        if pk_wg_rodzaju[RODZAJ_ROZBIEZNOSC]:
+            for obj in (
+                RozbieznoscDyscyplinPBN.objects.filter(
+                    pk__in=pk_wg_rodzaju[RODZAJ_ROZBIEZNOSC]
+                )
+                .select_related(
+                    "oswiadczenie_instytucji__publicationId",
+                    "dyscyplina_bpp",
+                    "dyscyplina_pbn",
+                )
+                .prefetch_related(
+                    GenericPrefetch(
+                        "wydawnictwo_autor",
+                        [
+                            model.objects.select_related("autor__tytul", "rekord")
+                            for model in (
+                                Wydawnictwo_Ciagle_Autor,
+                                Wydawnictwo_Zwarte_Autor,
+                            )
+                        ],
+                    )
+                )
+            ):
+                obiekty[RODZAJ_ROZBIEZNOSC, obj.pk] = obj
+        if pk_wg_rodzaju[RODZAJ_BRAK_AUTORA]:
+            for obj in BrakAutoraWPublikacji.objects.filter(
+                pk__in=pk_wg_rodzaju[RODZAJ_BRAK_AUTORA]
+            ).select_related(
+                "oswiadczenie_instytucji__publicationId",
+                "pbn_scientist",
+                "dyscyplina_pbn",
+            ):
+                obiekty[RODZAJ_BRAK_AUTORA, obj.pk] = obj
+
+        return [
+            ProblemWrapper(obiekty[rodzaj, pk])
+            for rodzaj, pk, _created_at in klucze
+            if (rodzaj, pk) in obiekty
+        ]
+
     def _get_rozbieznosci(self, search, filter_type, rok_min, rok_max):
-        """Pobiera rozbieżności dyscyplin z uwzględnieniem filtrów."""
-        queryset = RozbieznoscDyscyplinPBN.objects.select_related(
-            "oswiadczenie_instytucji",
-            "oswiadczenie_instytucji__publicationId",
-            "dyscyplina_bpp",
-            "dyscyplina_pbn",
-            "content_type",
-        ).prefetch_related(
-            "oswiadczenie_instytucji__personId",
-        )
+        """Rozbieżności dyscyplin z uwzględnieniem filtrów (queryset)."""
+        queryset = RozbieznoscDyscyplinPBN.objects.all()
 
         # Wyszukiwanie
         if search:
@@ -136,20 +193,13 @@ class ProblemyPBNListView(GroupRequiredMixin, View):
             BrakAutoraWPublikacji.TYP_BRAK_PUBLIKACJI,
         ]:
             # Filtr dla typu brakującego autora - nie pokazuj rozbieżności
-            return []
+            return queryset.none()
 
-        return list(filtruj_lata(queryset, rok_min, rok_max))
+        return filtruj_lata(queryset, rok_min, rok_max)
 
     def _get_brakujacy(self, search, filter_type, rok_min, rok_max):
-        """Pobiera brakujących autorów z uwzględnieniem filtrów."""
-        queryset = BrakAutoraWPublikacji.objects.select_related(
-            "oswiadczenie_instytucji",
-            "oswiadczenie_instytucji__publicationId",
-            "pbn_scientist",
-            "autor",
-            "dyscyplina_pbn",
-            "content_type",
-        )
+        """Brakujący autorzy z uwzględnieniem filtrów (queryset)."""
+        queryset = BrakAutoraWPublikacji.objects.all()
 
         # Wyszukiwanie
         if search:
@@ -169,9 +219,9 @@ class ProblemyPBNListView(GroupRequiredMixin, View):
             queryset = queryset.filter(typ=filter_type)
         elif filter_type in ["bpp_empty", "pbn_empty", "both_present"]:
             # Filtr dla rozbieżności - nie pokazuj brakujących
-            return []
+            return queryset.none()
 
-        return list(filtruj_lata(queryset, rok_min, rok_max))
+        return filtruj_lata(queryset, rok_min, rok_max)
 
     def _get_stats(self, rok_min, rok_max):
         """Statystyki wszystkich typów problemów dla tego samego zakresu lat

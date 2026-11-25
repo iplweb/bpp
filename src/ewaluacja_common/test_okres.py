@@ -327,7 +327,7 @@ def test_po_przelaczeniu_okresu_komparator_pokazuje_lata_nowego_okresu(
 @pytest.mark.parametrize(
     "adres",
     [
-        "/ewaluacja_liczba_n/2022-2025/?rok=2023&rok_od=2023&rok_min=1&year_min=2",
+        "/ewaluacja_liczba_n/2022-2025/?rok_od=2023&rok_min=1&year_min=2&sort=x",
         "/ewaluacja_metryki/2022-2025/?widok=tabela&rok_od=2023&sort=-nazwisko",
         "/komparator_pbn/2022-2025/?rok_od=2023&x=1",
     ],
@@ -335,11 +335,49 @@ def test_po_przelaczeniu_okresu_komparator_pokazuje_lata_nowego_okresu(
 def test_pasek_na_pozostalych_stronach_nie_rusza_parametrow(
     admin_client, uczelnia, adres
 ):
-    """Strażnik: na stronach ewaluacji i w komparatorze PBN (bez pól lat)
-    pasek przenosi cały query string bez zmian."""
+    """Strażnik: na stronach ewaluacji i w komparatorze PBN (bez pól zakresu
+    lat) pasek przenosi pozostałe parametry bez zmian, co do znaku."""
     html = admin_client.get(adres).content.decode()
 
     assert _link_paska(html, "2026-2030") == adres.replace("2022-2025", "2026-2030")
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize(
+    "adres,zostaje",
+    [
+        (
+            "/ewaluacja_liczba_n/2022-2025/?rok=2023&dyscyplina=5&page=3",
+            {"dyscyplina": "5"},
+        ),
+        (
+            "/ewaluacja_metryki/2022-2025/?page=2&widok=tabela&sort=-nazwisko",
+            {"widok": "tabela", "sort": "-nazwisko"},
+        ),
+        ("/komparator_pbn/2022-2025/?page=4", {}),
+        (
+            "/komparator-pbn-udzialy/2022-2025/?page=2&search=x&rok_min=2023",
+            {"search": "x"},
+        ),
+        (
+            "/komparator-zrodel-pbn/2022-2025/?page=2&sort=-rok&rok_od=2023",
+            {"sort": "-rok"},
+        ),
+    ],
+)
+def test_pasek_gubi_numer_strony_i_pojedynczy_rok(
+    admin_client, uczelnia, adres, zostaje
+):
+    """FD#514: przełączenie okresu wraca na pierwszą stronę i kasuje
+    pojedynczy rok (zostałby rok spoza nowego okresu); reszta zostaje."""
+    from django.http import QueryDict
+
+    html = admin_client.get(adres).content.decode()
+
+    link = _link_paska(html, "2026-2030")
+    sciezka, _, zapytanie = link.partition("?")
+    assert sciezka == adres.partition("?")[0].replace("2022-2025", "2026-2030")
+    assert QueryDict(zapytanie).dict() == zostaje
 
 
 @pytest.mark.django_db

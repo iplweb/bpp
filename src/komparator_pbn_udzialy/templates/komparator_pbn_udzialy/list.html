@@ -128,6 +128,8 @@
 
         <!-- Tabela problemów -->
         {% if problemy %}
+        <p>Znaleziono: <strong>{{ paginator.count }}</strong>{% if is_paginated %} (strona {{ page_obj.number }} z {{ paginator.num_pages }}){% endif %}</p>
+        {% include "pagination/pagination_with_anchor.html" %}
         <table class="table">
             <thead>
                 <tr>
@@ -192,6 +194,7 @@
                 {% endfor %}
             </tbody>
         </table>
+        {% include "pagination/pagination_with_anchor.html" %}
 
         {% else %}
         <div class="alert-box info">

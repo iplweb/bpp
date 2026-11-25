@@ -18,3 +18,10 @@ okresu, więc pasek nie wskazuje innego okresu niż dane (pozostałe filtry,
 np. wyszukiwana fraza, zostają). W komparatorze źródeł PBN puste albo
 błędne pole „Minimalny rok” na stronie „Przebuduj” nie kończy się już
 błędem serwera: puste oznacza rok 2022, a błędna wartość daje komunikat.
+Na wszystkich stronach z paskiem „Okres ewaluacji” (także liczba N,
+optymalizacja ewaluacji, metryki) przełączenie okresu wraca teraz na pierwszą
+stronę listy i kasuje filtr pojedynczego roku, żeby nie zostawał rok spoza
+wybranego okresu. Lista „Problemy PBN” jest stronicowana (po 50 pozycji,
+od najnowszych) i otwiera się szybko także przy tysiącach pozycji; kafelki
+„Statystyki” i pole „Szukaj” nadal obejmują cały wybrany zakres lat, a nie
+jedną stronę.

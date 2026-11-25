@@ -377,8 +377,8 @@ okres wyznacza lata, dla których strona liczy dane, jest zapamiętywany
 i widać go w adresie strony, więc link można komuś wysłać. W komparatorze
 publikacji, źródeł i udziałów pola **„Rok od” / „Rok do”** są domyślnie
 wypełnione latami wybranego okresu — można wpisać w nie własny zakres.
-Kliknięcie innego okresu na pasku przywraca lata tego okresu (pozostałe
-filtry zostają).
+Kliknięcie innego okresu na pasku przywraca lata tego okresu i wraca na
+pierwszą stronę listy (pozostałe filtry zostają).
 
 Komparator publikacji przegląda **do 100 prac każdego typu naraz** —
 przy dużej bazie zawęź lata albo wyszukaj po tytule, DOI lub ISBN.
