@@ -8,6 +8,7 @@ from django.db.models import PROTECT, SET_NULL
 
 from bpp.fields import YearField
 
+from .aliasy_mnisw import AliasTypMNiSWMixin
 from .utils import get_liczba_arkuszy_wydawniczych
 
 
@@ -35,7 +36,7 @@ class ModelRecenzowany(models.Model):
         abstract = True
 
 
-class ModelTypowany(models.Model):
+class ModelTypowany(AliasTypMNiSWMixin, models.Model):
     """Model zawierający typ MNiSW/MEiN oraz język."""
 
     typ_kbn = models.ForeignKey(

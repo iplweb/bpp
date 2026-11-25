@@ -47,8 +47,17 @@ dawną: `punkty_kbn`, `typ_kbn`. Obie działają tak samo w obu językach zapyta
 (django-dsl i DjangoQL), np. `punkty_mnisw > 0 AND NOT typ_mnisw = "PW"`.
 Istniejących źródeł danych nie trzeba poprawiać.
 
-W polu **Atrybut** kolumny tabeli nadal wpisuje się nazwę pola z bazy
-(`punkty_kbn`, `typ_kbn`).
+Te same nowe nazwy działają w tabelach raportów (**Raporty** → **Tabele**
+→ sekcja **Kolumny**):
+
+- w polu **Atrybut** kolumny — `punkty_mnisw`, `typ_mnisw`, także ze
+  ścieżką, np. `typ_mnisw.nazwa`. Kolumna wyświetla się, sortuje po
+  kliknięciu w nagłówek i eksportuje do MS Word i XLSX tak samo jak
+  z dawną nazwą,
+- w polu **Szablon** kolumny — `{{ record.punkty_mnisw }}`,
+  `{{ record.typ_mnisw }}`, `{{ record.typ_mnisw.nazwa }}`.
+
+Kolumn z dawnymi nazwami (`punkty_kbn`, `typ_kbn`) nie trzeba zmieniać.
 
 ## Klonowanie tabeli {#klonowanie-tabeli}
 

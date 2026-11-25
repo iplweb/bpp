@@ -8,10 +8,11 @@ from django.db import models
 
 from bpp import const
 
+from .aliasy_mnisw import AliasPunktyMNiSWMixin
 from .utils import ImpactFactorField
 
 
-class ModelPunktowanyBaza(models.Model):
+class ModelPunktowanyBaza(AliasPunktyMNiSWMixin, models.Model):
     impact_factor = ImpactFactorField(
         db_index=True,
     )
