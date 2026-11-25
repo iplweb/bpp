@@ -7,21 +7,8 @@ from django.views.generic.base import TemplateView
 from bpp.models import Wydawnictwo_Ciagle, Wydawnictwo_Zwarte
 from bpp.models.wydawnictwo_ciagle import Wydawnictwo_Ciagle_Autor
 from bpp.models.wydawnictwo_zwarte import Wydawnictwo_Zwarte_Autor
-from ewaluacja_common.okres import okres_dla_request
+from ewaluacja_common.okres import lata_okresu
 from pbn_api.models import OswiadczenieInstytucji, Publication, Scientist
-
-# Lata okresu ewaluacji, gdy w bazie nie ma żadnego okresu (awaryjnie).
-EVALUATION_START_YEAR = 2022
-EVALUATION_END_YEAR = 2025
-
-
-def lata_okresu(request):
-    """``(rok_od, rok_do)`` okresu ewaluacji wybranego na pasku okresu
-    (albo w adresie URL)."""
-    okres = okres_dla_request(request)
-    if okres is None:
-        return EVALUATION_START_YEAR, EVALUATION_END_YEAR
-    return okres.rok_od, okres.rok_do
 
 
 @method_decorator(staff_member_required, name="dispatch")

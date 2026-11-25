@@ -10,6 +10,7 @@ from django.views import View
 
 from ..models import KomparatorZrodelMeta, RozbieznoscZrodlaPBN
 from ..utils import is_pbn_journals_data_fresh
+from .forms import PrzebudujForm
 
 
 class PrzebudujRozbieznosciView(GroupRequiredMixin, View):
@@ -46,12 +47,18 @@ class PrzebudujRozbieznosciView(GroupRequiredMixin, View):
 
         from ..tasks import porownaj_zrodla_task
 
-        min_rok = int(request.POST.get("min_rok", 2022))
-        clear_existing = request.POST.get("clear_existing") == "on"
+        form = PrzebudujForm(request.POST)
+        if not form.is_valid():
+            messages.error(
+                request,
+                "Nie uruchomiono porównywania: „Minimalny rok” musi być "
+                "liczbą z zakresu 2000–2100.",
+            )
+            return HttpResponseRedirect(reverse("pbn_komparator_zrodel:przebuduj"))
 
         task = porownaj_zrodla_task.delay(
-            min_rok=min_rok,
-            clear_existing=clear_existing,
+            min_rok=form.cleaned_data["min_rok"],
+            clear_existing=form.cleaned_data["clear_existing"],
         )
 
         request.session["komparator_zrodel_task_id"] = task.id

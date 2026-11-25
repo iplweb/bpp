@@ -24,6 +24,8 @@ APLIKACJE_Z_OKRESEM = frozenset(
         "pbn_wysylka_oswiadczen",
         "komparator_pbn",
         "pbn_komparator_zrodel",
+        "komparator_pbn_udzialy:list",
+        "komparator_publikacji_pbn:comparison_list",
         "deduplikator_autorow",
     }
 )
@@ -132,6 +134,17 @@ def okres_dla_request(request):
         okres = okres_domyslny()
     request._okres_ewaluacji = okres
     return okres
+
+
+def lata_okresu(request):
+    """``(rok_od, rok_do)`` okresu ewaluacji wybranego na pasku okresu (albo
+    w adresie URL); bez wyboru — okresu domyślnego. Wspólne źródło domyślnego
+    zakresu lat komparatorów PBN. Gdy tabela okresów jest pusta (awaryjnie)
+    — lata ostatniego z ``OKRESY_STARTOWE``."""
+    okres = okres_dla_request(request)
+    if okres is None:
+        return OKRESY_STARTOWE[-1][:2]
+    return okres.rok_od, okres.rok_do
 
 
 def ustaw_okres(request, okres):

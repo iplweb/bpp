@@ -24,7 +24,7 @@ import sys
 import types
 
 from django.conf import settings
-from django.http import HttpResponseRedirect
+from django.http import HttpResponseRedirect, QueryDict
 from django.urls import URLResolver, include, path
 from django.urls.exceptions import Resolver404
 
@@ -39,8 +39,24 @@ APLIKACJE_W_URL = (
     "pbn-wysylka-oswiadczen/",
     "komparator_pbn/",
     "komparator-zrodel-pbn/",
+    "komparator-pbn-udzialy/",
+    "komparator-publikacji-pbn/",
     "deduplikator_autorow/",
 )
+
+#: Parametry GET, których linki paska okresu NIE przenoszą (patrz
+#: ``adres_dla_okresu(bez_lat=True)``), na każdej stronie z paskiem:
+#: numer strony (w nowym okresie wracamy na pierwszą) i pojedynczy rok
+#: (zostałby rok spoza nowego okresu).
+PARAMETRY_GUBIONE = ("page", "rok")
+
+#: Jak wyżej, ale dla wybranych aplikacji (prefiks → nazwy): ręcznie wpisany
+#: zakres lat komparatorów PBN.
+PARAMETRY_LAT = {
+    "komparator-zrodel-pbn/": ("rok_od", "rok_do"),
+    "komparator-pbn-udzialy/": ("rok_min", "rok_max"),
+    "komparator-publikacji-pbn/": ("year_min", "year_max"),
+}
 
 _SLUG = r"(?P<rok_od>\d{4})-(?P<rok_do>\d{4})"
 _ADRES = re.compile(
@@ -117,17 +133,31 @@ def rozbierz_adres(sciezka):
     return m["prefiks"], slug, m["reszta"]
 
 
-def adres_dla_okresu(request, okres):
+def adres_dla_okresu(request, okres, bez_lat=False):
     """Bieżący adres (ze ścieżką i query stringiem) przełączony na ``okres``
-    albo ``None``, gdy strona nie należy do aplikacji z okresem w URL."""
+    albo ``None``, gdy strona nie należy do aplikacji z okresem w URL.
+
+    ``bez_lat=True`` (linki paska okresu): z adresu znikają numer strony,
+    pojedynczy rok (``PARAMETRY_GUBIONE``) i ręcznie wpisany zakres lat
+    (``PARAMETRY_LAT``), żeby po przełączeniu okresu strona pokazała pierwszą
+    stronę danych nowego okresu. Pozostałe parametry zostają."""
     czesci = rozbierz_adres(request.path_info)
     if czesci is None:
         return None
     prefiks, _slug, reszta = czesci
     script_name = request.path[: len(request.path) - len(request.path_info)]
     adres = f"{script_name}/{prefiks}{okres.slug}/{reszta}"
-    if request.META.get("QUERY_STRING"):
-        adres += "?" + request.META["QUERY_STRING"]
+    zapytanie = request.META.get("QUERY_STRING", "")
+    if bez_lat and zapytanie:
+        parametry = QueryDict(zapytanie, mutable=True)
+        gubione = PARAMETRY_GUBIONE + PARAMETRY_LAT.get(prefiks, ())
+        # Adres bez gubionych parametrów zostaje co do znaku.
+        if any(nazwa in parametry for nazwa in gubione):
+            for nazwa in gubione:
+                parametry.pop(nazwa, None)
+            zapytanie = parametry.urlencode()
+    if zapytanie:
+        adres += "?" + zapytanie
     return adres
 
 

@@ -9,9 +9,7 @@ w widokach (z żądania) — zadania Celery dostają gotowe ``pk`` rekordów.
 from django.db.models import Exists, OuterRef
 
 from bpp.models import Wydawnictwo_Ciagle
-from ewaluacja_common.okres import okres_dla_request
-
-from .constants import DEFAULT_ROK_DO, DEFAULT_ROK_OD
+from ewaluacja_common.okres import lata_okresu  # noqa: F401 (re-eksport)
 
 #: Parametr GET filtra „tylko źródła z publikacjami w wybranym okresie”.
 PARAM_PUBLIKACJE_W_OKRESIE = "tylko_z_publikacjami_w_okresie"
@@ -19,14 +17,6 @@ PARAM_PUBLIKACJE_W_OKRESIE = "tylko_z_publikacjami_w_okresie"
 #: Dawna nazwa tego parametru (lata 2022–2025 na sztywno) — nadal działa,
 #: żeby stare zakładki/linki nie gubiły filtra.
 PARAM_PUBLIKACJE_W_OKRESIE_DAWNY = "bez_publikacji_2022_2025"
-
-
-def lata_okresu(request):
-    """``(rok_od, rok_do)`` okresu ewaluacji wybranego na pasku okresu."""
-    okres = okres_dla_request(request)
-    if okres is None:
-        return DEFAULT_ROK_OD, DEFAULT_ROK_DO
-    return okres.rok_od, okres.rok_do
 
 
 def tylko_z_publikacjami_w_okresie(request):

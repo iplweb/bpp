@@ -6,18 +6,16 @@ from django.db.models import Q
 from django.http import HttpResponse
 from django.utils.decorators import method_decorator
 from django.utils.html import strip_tags
+from django.utils.http import urlencode
 from django.views.generic import ListView
 from openpyxl import Workbook
 from openpyxl.styles import Alignment, Font, PatternFill
 
 from bpp.models import Wydawnictwo_Ciagle, Wydawnictwo_Zwarte
 from bpp.util import sanitize_xlsx_row
+from ewaluacja_common.okres import lata_okresu
 from import_common.normalization import normalize_isbn, normalize_issn
 from pbn_downloader_app.freshness import is_pbn_publications_data_fresh
-
-# Default year range for evaluation period
-DEFAULT_YEAR_MIN = 2022
-DEFAULT_YEAR_MAX = 2025
 
 # All available comparison fields
 COMPARISON_FIELDS = {
@@ -46,14 +44,16 @@ DEFAULT_FIELDS = ["title", "year", "doi", "isbn", "issn", "url", "authors"]
 SESSION_KEY = "komparator_publikacji_filters"
 
 
-def _get_default_filters():
-    """Return default filter values."""
+def _get_default_filters(request):
+    """Filtry domyślne: lata okresu ewaluacji wybranego na pasku okresu."""
+    rok_od, rok_do = lata_okresu(request)
     return {
         "query": "",
         "publication_type": "all",
-        "year_min": str(DEFAULT_YEAR_MIN),
-        "year_max": str(DEFAULT_YEAR_MAX),
+        "year_min": str(rok_od),
+        "year_max": str(rok_do),
         "enabled_fields": DEFAULT_FIELDS.copy(),
+        "okres": f"{rok_od}-{rok_do}",
     }
 
 
@@ -74,7 +74,17 @@ class PublicationComparisonView(ListView):
     paginate_by = 5
 
     def _get_filters(self):
-        """Get filters from GET params or session."""
+        """Filtry z parametrów GET albo z sesji (raz na żądanie).
+
+        Zakres lat bez ręcznego wyboru to wybrany okres ewaluacji. Zakres
+        zapamiętany w sesji obowiązuje tylko w okresie, w którym go ustawiono
+        — po zmianie okresu na pasku lata wracają do lat nowego okresu
+        (pozostałe filtry zostają).
+        """
+        if hasattr(self, "_filters"):
+            return self._filters
+
+        domyslne = _get_default_filters(self.request)
         has_filter_params = any(
             key in self.request.GET
             for key in ["q", "type", "year_min", "year_max", "fields"]
@@ -84,15 +94,27 @@ class PublicationComparisonView(ListView):
             filters = {
                 "query": self.request.GET.get("q", ""),
                 "publication_type": self.request.GET.get("type", "all"),
-                "year_min": self.request.GET.get("year_min", str(DEFAULT_YEAR_MIN)),
-                "year_max": self.request.GET.get("year_max", str(DEFAULT_YEAR_MAX)),
+                "year_min": self.request.GET.get("year_min", domyslne["year_min"]),
+                "year_max": self.request.GET.get("year_max", domyslne["year_max"]),
                 "enabled_fields": self.request.GET.getlist("fields")
                 or DEFAULT_FIELDS.copy(),
+                "okres": domyslne["okres"],
             }
             self.request.session[SESSION_KEY] = filters
         else:
-            filters = self.request.session.get(SESSION_KEY, _get_default_filters())
+            filters = self.request.session.get(SESSION_KEY)
+            if filters is None:
+                filters = domyslne
+            elif filters.get("okres") != domyslne["okres"]:
+                filters = {
+                    **filters,
+                    "year_min": domyslne["year_min"],
+                    "year_max": domyslne["year_max"],
+                    "okres": domyslne["okres"],
+                }
+                self.request.session[SESSION_KEY] = filters
 
+        self._filters = filters
         return filters
 
     def _process_publications(self, queryset, pub_type, enabled_fields, comparisons):
@@ -109,8 +131,9 @@ class PublicationComparisonView(ListView):
 
         query = filters["query"]
         publication_type = filters["publication_type"]
-        year_min = _parse_year(filters["year_min"], DEFAULT_YEAR_MIN)
-        year_max = _parse_year(filters["year_max"], DEFAULT_YEAR_MAX)
+        okres_od, okres_do = lata_okresu(self.request)
+        year_min = _parse_year(filters["year_min"], okres_od)
+        year_max = _parse_year(filters["year_max"], okres_do)
         enabled_fields = filters["enabled_fields"]
 
         if publication_type in ["all", "ciagle"]:
@@ -596,8 +619,9 @@ class PublicationComparisonView(ListView):
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
 
-        # Manual pagination since we're working with a list
-        queryset = self.get_queryset()
+        # Manual pagination since we're working with a list (porównania są
+        # już policzone w ``get()`` — nie liczymy ich drugi raz).
+        queryset = self.object_list
         paginator = Paginator(queryset, self.paginate_by)
         page_number = self.request.GET.get("page")
         page_obj = paginator.get_page(page_number)
@@ -606,8 +630,7 @@ class PublicationComparisonView(ListView):
         context["page_obj"] = page_obj
         context["is_paginated"] = page_obj.has_other_pages()
 
-        # Get filters from session
-        filters = self.request.session.get(SESSION_KEY, _get_default_filters())
+        filters = self._get_filters()
 
         context["query"] = filters["query"]
         context["publication_type"] = filters["publication_type"]
@@ -623,22 +646,9 @@ class PublicationComparisonView(ListView):
             "year_min": filters["year_min"],
             "year_max": filters["year_max"],
             "export": "xlsx",
+            "fields": filters["enabled_fields"],
         }
-        # Add fields to export params
-        for field in filters["enabled_fields"]:
-            if "fields" not in export_params:
-                export_params["fields"] = []
-            export_params["fields"].append(field)
-
-        # Build URL string
-        export_url_parts = []
-        for key, value in export_params.items():
-            if key == "fields":
-                for field_val in value:
-                    export_url_parts.append(f"fields={field_val}")
-            else:
-                export_url_parts.append(f"{key}={value}")
-        context["export_url"] = f"?{'&'.join(export_url_parts)}"
+        context["export_url"] = "?" + urlencode(export_params, doseq=True)
 
         # Add PBN data freshness check
         pbn_data_fresh, pbn_stale_message, pbn_last_download = (

@@ -8,11 +8,15 @@ from model_bakery import baker
 
 from komparator_pbn_udzialy.models import BrakAutoraWPublikacji, RozbieznoscDyscyplinPBN
 
+# Lista w okresie 2022–2025 (okres w adresie URL). Bez okresu w adresie widok
+# bierze okres domyślny (wg bieżącego roku) — patrz ``test_okres_ewaluacji.py``.
+URL_LISTY_2022_2025 = "/komparator-pbn-udzialy/2022-2025/"
+
 
 @pytest.mark.django_db
 def test_problemy_pbn_list_view_requires_group(client: Client):
     """Anonimowy klient nie ma dostępu do listy problemów PBN."""
-    url = reverse("komparator_pbn_udzialy:list")
+    url = URL_LISTY_2022_2025
     response = client.get(url)
     # GroupRequiredMixin zwraca 302 (login redirect) albo 403 dla
     # zalogowanych bez grupy; oba są akceptowalne, byle nie 200.
@@ -23,7 +27,7 @@ def test_problemy_pbn_list_view_requires_group(client: Client):
 def test_problemy_pbn_list_view_empty(client_with_group: Client):
     """Test widoku listy problemów PBN gdy brak danych."""
     client = client_with_group
-    url = reverse("komparator_pbn_udzialy:list")
+    url = URL_LISTY_2022_2025
     response = client.get(url)
 
     assert response.status_code == 200
@@ -62,7 +66,7 @@ def test_problemy_pbn_list_view_with_rozbieznosc(client_with_group: Client):
         dyscyplina_pbn=dyscyplina_pbn,
     )
 
-    url = reverse("komparator_pbn_udzialy:list")
+    url = URL_LISTY_2022_2025
     response = client.get(url)
 
     assert response.status_code == 200
@@ -90,7 +94,7 @@ def test_problemy_pbn_list_view_with_brak_autora(client_with_group: Client):
         typ=BrakAutoraWPublikacji.TYP_BRAK_AUTORA_W_BPP,
     )
 
-    url = reverse("komparator_pbn_udzialy:list")
+    url = URL_LISTY_2022_2025
     response = client.get(url)
 
     assert response.status_code == 200
@@ -119,7 +123,7 @@ def test_problemy_pbn_list_view_filter_by_typ(client_with_group: Client):
     )
 
     # Filtruj po typie brak_autora - nie powinno być wyników
-    url = reverse("komparator_pbn_udzialy:list")
+    url = URL_LISTY_2022_2025
     response = client.get(url, {"filter": BrakAutoraWPublikacji.TYP_BRAK_AUTORA_W_BPP})
 
     assert response.status_code == 200
@@ -142,10 +146,12 @@ def test_problemy_pbn_list_view_statistics(client_with_group: Client):
     oswiadczenie1 = baker.make(
         "pbn_api.OswiadczenieInstytucji",
         personId=pbn_scientist,
+        publicationId=baker.make("pbn_api.Publication", year=2024),
     )
     oswiadczenie2 = baker.make(
         "pbn_api.OswiadczenieInstytucji",
         personId=pbn_scientist,
+        publicationId=baker.make("pbn_api.Publication", year=2024),
     )
 
     # Utwórz dwa różne problemy
@@ -160,7 +166,7 @@ def test_problemy_pbn_list_view_statistics(client_with_group: Client):
         typ=BrakAutoraWPublikacji.TYP_BRAK_POWIAZANIA,
     )
 
-    url = reverse("komparator_pbn_udzialy:list")
+    url = URL_LISTY_2022_2025
     response = client.get(url)
 
     assert response.status_code == 200
