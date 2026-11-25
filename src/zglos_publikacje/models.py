@@ -16,6 +16,7 @@ from bpp.models.abstract import (
     ModelZOplataZaPublikacje,
     ModelZRokiem,
 )
+from bpp.models.autor import _jednostki_uczelni_bez_sztucznych
 from bpp.models.soft_delete import (
     BppDzieckoPublikacjiMixin,
     BppSoftDeleteSlownikMixin,
@@ -347,6 +348,13 @@ class Zgloszenie_Publikacji_Autor(
 
     rok = models.PositiveSmallIntegerField()
 
+    # FD#640: zgłoszenie to dane niezweryfikowane — zapis autora zgłoszenia NIE
+    # zakłada mu powiązania z jednostką. Wcześniej wybranie jednostki uczelni
+    # przy autorze obcym dopisywało go do niej (stawała się jego „aktualną
+    # jednostką”), a przez to autor obcy zaczynał wyglądać jak autor uczelni.
+    # Powiązanie powstanie dopiero przy zapisie pracy przez redakcję.
+    dodawaj_jednostke_autorowi_przy_zapisie = False
+
     class Meta:
         verbose_name = "autor w zgłoszeniu publikacji"
         verbose_name_plural = "autorzy w zgłoszeniu publikacji"
@@ -355,9 +363,117 @@ class Zgloszenie_Publikacji_Autor(
     def __str__(self):
         return f"autor {self.autor} dla zgłoszenia publikacji {self.rekord.tytul_oryginalny}"
 
+    def uczelnia_zgloszenia(self):
+        """Uczelnia, do której trafia zgłoszenie.
+
+        Formularz publiczny ustawia ``_uczelnia`` z requestu i ta wartość
+        jest wiążąca — także ``None`` (wtedy fail-closed: nikt nie jest
+        autorem uczelni), żeby zgłaszający nie mógł wybrać uczelni wyborem
+        jednostki. Poza formularzem (kod, testy): uczelnia wybranej
+        jednostki, w ostateczności jedyna uczelnia w systemie."""
+        if hasattr(self, "_uczelnia"):
+            return self._uczelnia
+        if self.jednostka_id is not None:
+            return self.jednostka.uczelnia
+        return Uczelnia.objects.get_single_uczelnia_or_none()
+
+    def autor_jest_autorem_uczelni(self):
+        """FD#640: dyscyplinę i jednostkę uczelni określamy wyłącznie
+        autorom uczelni (``Autor.jest_autorem_uczelni``)."""
+        return self.autor.jest_autorem_uczelni(self.uczelnia_zgloszenia())
+
+    def jednostka_jest_jednostka_uczelni(self):
+        """Czy wybrana jednostka to „nasza” jednostka uczelni zgłoszenia —
+        ta sama granica, która czyni autora autorem uczelni
+        (``AutorQuerySet.autorzy_uczelni``: bez ``Uczelnia.obca_jednostka``
+        i jednostek o pk < 0)."""
+        uczelnia = self.uczelnia_zgloszenia()
+        if self.jednostka_id is None or uczelnia is None:
+            return False
+        return (
+            _jednostki_uczelni_bez_sztucznych(uczelnia)
+            .filter(pk=self.jednostka_id)
+            .exists()
+        )
+
+    def jednostka_dla_redakcji(self):
+        """Jednostka ze zgłoszenia do podpowiedzi przy zatwierdzaniu
+        (importer, „Dodaj wyd. …” w adminie).
+
+        FD#640: autorowi spoza uczelni podpowiadamy WYŁĄCZNIE obcą jednostkę
+        uczelni zgłoszenia (``Uczelnia.obca_jednostka``) — tę samą regułę
+        stosuje formularz zgłoszenia. Każda inna jednostka (uczelni albo
+        innej uczelni w tej samej bazie — stare zgłoszenia mogły ją mieć)
+        daje ``None``: zapis pracy założyłby autorowi ``Autor_Jednostka``
+        i z afiliacją „zrobił” z niego autora uczelni. Wołający uzupełnia
+        wtedy obcą jednostkę bez afiliacji (albo ostrzega redaktora, gdy
+        uczelnia jej nie ma)."""
+        if self.jednostka_id is None:
+            return None
+        if self.autor_jest_autorem_uczelni():
+            return self.jednostka
+        uczelnia = self.uczelnia_zgloszenia()
+        if uczelnia is not None and self.jednostka_id == uczelnia.obca_jednostka_id:
+            return self.jednostka
+        return None
+
+    def dyscyplina_dla_redakcji(self):
+        """Dyscyplina-propozycja ze zgłoszenia do podpowiedzi przy
+        zatwierdzaniu — tylko dla autora uczelni (FD#640)."""
+        if self.dyscyplina_naukowa_id is None:
+            return None
+        if not self.autor_jest_autorem_uczelni():
+            return None
+        return self.dyscyplina_naukowa
+
+    @staticmethod
+    def blad_jednostki_autora_spoza_uczelni(autor, jednostka, uczelnia):
+        """FD#640: komunikat błędu, gdy autor spoza uczelni ``uczelnia`` ma
+        w zgłoszeniu inną jednostkę niż obca jednostka uczelni
+        (``Uczelnia.obca_jednostka``) — także jednostkę innej uczelni z tej
+        samej bazie. Gdy uczelnia nie ma ustawionej obcej jednostki, takiego
+        autora nie da się zgłosić (komunikat kieruje do redakcji — obcą
+        jednostkę ustawia się ręcznie). ``None`` — jednostka w porządku.
+
+        Sprawdza to formularz zgłoszenia (``Zgloszenie_Publikacji_AutorForm
+        .clean``) — jedyna ścieżka, którą dane zgłoszenia wpisuje
+        zgłaszający; model tego nie wymusza, żeby dało się odczytać i zapisać
+        dawne zgłoszenia (i dane testowe) bez obcej jednostki."""
+        obca_id = uczelnia.obca_jednostka_id if uczelnia is not None else None
+        if obca_id is not None and jednostka is not None and jednostka.pk == obca_id:
+            return None
+        if obca_id is None:
+            return (
+                f"Autor {autor} nie jest autorem uczelni — można go zgłosić "
+                "tylko z obcą jednostką uczelni, a uczelnia nie ma jej "
+                "ustawionej. Skontaktuj się z biblioteką lub redakcją (obcą "
+                "jednostkę ustawia się w module redagowania: Uczelnia → "
+                "„Obca jednostka”)."
+            )
+        return (
+            f"Autor {autor} nie jest autorem uczelni (nie jest ani nie był "
+            "przypisany do żadnej jej jednostki) — można go przypisać "
+            f"wyłącznie do jednostki „{uczelnia.obca_jednostka}”."
+        )
+
     def clean(self):
         if self.autor_id is None:
             raise ValidationError({"autor": "Wybierz jakiegoś autora"})
+
+        if not self.autor_jest_autorem_uczelni():
+            # FD#640: autorowi spoza uczelni nie określamy dyscypliny — ani
+            # nie wymagamy jej, ani nie przyjmujemy. Jednostkę (tylko obca)
+            # sprawdza formularz — ``blad_jednostki_autora_spoza_uczelni``.
+            if self.dyscyplina_naukowa_id is not None:
+                raise ValidationError(
+                    {
+                        "dyscyplina_naukowa": f"Autor {self.autor} nie jest "
+                        "autorem uczelni (nie jest ani nie był przypisany do "
+                        "żadnej jej jednostki) — dla autorów spoza uczelni "
+                        "nie podaje się dyscypliny. Pozostaw to pole puste."
+                    }
+                )
+            return
 
         przypisanie_na_rok_istnieje = Autor_Dyscyplina.objects.filter(
             autor=self.autor,
@@ -377,9 +493,10 @@ class Zgloszenie_Publikacji_Autor(
             and getattr(self, "dopusc_propozycje_dyscypliny", False)
             and not przypisanie_na_rok_istnieje
         ):
-            # FD#620: formularz zgłoszenia — autor bez przypisania na rok
-            # pracy; dyscyplina z podpowiadanej listy zostanie mu przypisana
-            # przy zapisie zgłoszenia (``zglos_publikacje.dyscypliny``).
+            # FD#620/FD#640: formularz zgłoszenia — autor bez przypisania na
+            # rok pracy może dostać dyscyplinę z podpowiadanej listy. To tylko
+            # PROPOZYCJA zapisana w zgłoszeniu: ``Autor_Dyscyplina`` zakłada
+            # dopiero redakcja przy zatwierdzaniu (importer publikacji).
             from zglos_publikacje.dyscypliny import (
                 dyscyplina_z_propozycji,
                 ma_przypisanie_na_rok,

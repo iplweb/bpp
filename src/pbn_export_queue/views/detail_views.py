@@ -294,6 +294,40 @@ class PBNExportQueueDetailView(
                     do_monitoringu=True,
                 )
 
+    def _add_autorzy_bez_identyfikatora(self, context):
+        """Autorzy, przez których wysyłka tej pracy jest zatrzymana (FD#509).
+
+        Lista liczona NA ŻYWO z rekordu (nie z zapisanego komunikatu): po
+        uzupełnieniu autorowi odpowiednika w PBN albo ORCID znika sama i widać,
+        że wpis można wysłać ponownie.
+
+        Wpis zakończony BŁĘDEM: lista autorów, którzy zatrzymali wysyłkę.
+        Wpis zakończony SUKCESEM (uczelnia ma włączone „Wysyłaj prace, gdy
+        autor nie ma identyfikatora w PBN”): ci sami autorzy jako ostrzeżenie
+        — praca poszła, ale bez ich oświadczeń — z liczbami „M z N”.
+        """
+        if self.object.zakonczono_pomyslnie is None:
+            return
+        rekord = self.object.rekord_do_wysylki
+        if rekord is None or not hasattr(rekord, "autorzy_set"):
+            return
+
+        from pbn_api.adapters.wydawnictwo_autor import (
+            powiazania_bez_identyfikatora_osoby,
+            powiazania_do_oswiadczenia,
+        )
+
+        autorzy = list(powiazania_bez_identyfikatora_osoby(rekord.autorzy_set))
+        if self.object.zakonczono_pomyslnie is False:
+            context["autorzy_bez_identyfikatora"] = autorzy
+            return
+
+        if autorzy:
+            wszystkich = powiazania_do_oswiadczenia(rekord.autorzy_set).count()
+            context["autorzy_pominieci_w_oswiadczeniach"] = autorzy
+            context["oswiadczen_do_wyslania"] = wszystkich
+            context["oswiadczen_wyslanych"] = wszystkich - len(autorzy)
+
     def _add_clipboard_data(self, context, sent_data):
         """Pre-fetch clipboard data for Safari compatibility."""
         if not sent_data:
@@ -339,5 +373,7 @@ class PBNExportQueueDetailView(
 
         # Pre-fetch clipboard data if SentData exists
         self._add_clipboard_data(context, sent_data)
+
+        self._add_autorzy_bez_identyfikatora(context)
 
         return context

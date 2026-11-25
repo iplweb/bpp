@@ -136,3 +136,58 @@ def test_start_bib_nie_ustawia_punktacji(
         client.post(url)
     task = AutorEksportTask.objects.get(autor=autor_z_punktacja)
     assert task.z_punktacja_autora is False
+
+
+def test_fd640_xlsx_bez_arkusza_podsumowania(autor_z_punktacja):
+    """Autor spoza uczelni (FD#640): lista prac zostaje, ale bez arkusza
+    „Podsumowanie” — nawet liczba prac w latach byłaby statystyką dorobku."""
+    wb = _wygeneruj(
+        autor_z_punktacja, z_punktacja_autora=True, z_sumami_punktacji=False
+    )
+    assert wb.sheetnames == ["Publikacje"]
+    naglowek, *dane = _wiersze(wb["Publikacje"])
+    assert len(dane) == 1
+    assert "PKdAut" not in naglowek
+
+
+def test_fd640_xlsx_autora_uczelni_z_arkuszem_podsumowania(autor_z_punktacja):
+    """Strażnik: autor uczelni (z_sumami_punktacji=True) ma oba arkusze."""
+    wb = _wygeneruj(autor_z_punktacja, z_sumami_punktacji=True)
+    assert wb.sheetnames == ["Publikacje", "Podsumowanie"]
+    naglowek, *dane = _wiersze(wb["Podsumowanie"])
+    assert naglowek[:2] == ["Rok", "Liczba prac"]
+    assert len(dane) == 1
+
+
+def _start_xlsx(client, django_user_model, autor):
+    client.force_login(
+        django_user_model.objects.create_user(username="czytelnik", password="x")
+    )
+    url = reverse("bpp:autor_eksport_start", args=(autor.pk, "xlsx"))
+    with mock.patch("bpp.tasks.generuj_eksport_autora.delay"):
+        assert client.post(url).status_code == 302
+    return AutorEksportTask.objects.get(autor=autor)
+
+
+def test_fd640_start_xlsx_autora_spoza_uczelni_bez_sum(
+    client, django_user_model, uczelnia_z_obca_jednostka, obca_jednostka
+):
+    from bpp.models import Autor, Autor_Jednostka
+
+    uczelnia_z_obca_jednostka.pokazuj_raport_slotow_autor = (
+        OpcjaWyswietlaniaField.POKAZUJ_ZAWSZE
+    )
+    uczelnia_z_obca_jednostka.save()
+    obcy = baker.make(Autor)
+    Autor_Jednostka.objects.create(autor=obcy, jednostka=obca_jednostka)
+
+    task = _start_xlsx(client, django_user_model, obcy)
+    assert task.z_sumami_punktacji is False
+    assert task.z_punktacja_autora is False
+
+
+def test_fd640_start_xlsx_autora_uczelni_z_sumami(
+    client, django_user_model, uczelnia_z_obca_jednostka, autor_z_punktacja
+):
+    task = _start_xlsx(client, django_user_model, autor_z_punktacja)
+    assert task.z_sumami_punktacji is True

@@ -29,6 +29,11 @@ setenv_default("ALTCHA_HMAC_KEY", secrets.token_hex(32))
 # tam klucz przychodzi z prawdziwego env/.env. Override: ustaw
 # DSPACE_CREDENTIALS_KEY w srodowisku przed startem.
 setenv_default("DSPACE_CREDENTIALS_KEY", "beRCn4RUNneKiOizMZEEZDjeZVwdOJ6m2etsvwC3wfs=")
+# Lokalna instancja NIGDY nie wysyla do PBN sama z siebie (kopia bazy klienta
+# + prawdziwy token = prawdziwa wysylka z maszyny dewelopera). Reczna wysylka
+# rekordu dziala. Testy automatow kolejki na zywo: ustaw
+# DJANGO_BPP_PBN_WSTRZYMAJ_AUTOMATY=0 przed startem.
+setenv_default("DJANGO_BPP_PBN_WSTRZYMAJ_AUTOMATY", "1")
 
 from .base import *  # noqa
 from .base import (  # noqa

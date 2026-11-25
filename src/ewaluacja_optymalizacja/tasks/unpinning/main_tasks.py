@@ -35,7 +35,18 @@ def run_unpinning_after_metrics_wrapper(
     """
     from ewaluacja_metryki.models import MetrykaAutora
 
+    from ...models import StatusUnpinningAnalyzy
     from ...okres import pobierz_okres
+
+    # Zadanie przeleżało w kolejce, a strażnik przebiegów zdążył je anulować
+    # (użytkownik przeczytał już, że nie zostanie wykonane) — nie analizuj.
+    if StatusUnpinningAnalyzy.przebieg_anulowany(self.request.id):
+        logger.warning(
+            "run_unpinning_after_metrics_wrapper: przebieg %s został "
+            "anulowany — pomijam.",
+            self.request.id,
+        )
+        return {"uczelnia_id": uczelnia_id, "status": "cancelled"}
 
     logger.info(
         f"Metrics task completed with result: {metrics_result}. "

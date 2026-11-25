@@ -1,3 +1,6 @@
+from datetime import timedelta
+
+from django.conf import settings
 from django.db import models
 from django.db.models import Value
 from django.db.models.functions import Coalesce
@@ -6,6 +9,7 @@ from django.utils import timezone
 from bpp.models.autor import Autor
 from bpp.models.dyscyplina_naukowa import Dyscyplina_Naukowa
 from bpp.models.jednostka import Jednostka
+from ewaluacja_common.przebiegi import PilnowanyPrzebiegMixin
 
 
 def _domyslny_okres_pk():
@@ -241,8 +245,46 @@ class MetrykaAutora(models.Model):
         )
 
 
-class StatusGenerowania(models.Model):
+#: Po ilu sekundach od zlecenia generowanie metryk, które w ogóle nie ruszyło
+#: (zadanie w tle nie zgłosiło startu), jest automatycznie anulowane.
+#: Do zmiany ustawieniem ``EWALUACJA_METRYKI_LIMIT_STARTU_SEKUNDY``.
+DOMYSLNY_LIMIT_STARTU_SEKUNDY = 5 * 60
+
+
+def limit_startu_generowania():
+    """Ile wolno czekać na start zleconego generowania metryk."""
+    return timedelta(
+        seconds=getattr(
+            settings,
+            "EWALUACJA_METRYKI_LIMIT_STARTU_SEKUNDY",
+            DOMYSLNY_LIMIT_STARTU_SEKUNDY,
+        )
+    )
+
+
+class StatusGenerowania(PilnowanyPrzebiegMixin, models.Model):
     """Model przechowujący informację o ostatnim generowaniu metryk (per uczelnia)."""
+
+    # Strażnik przebiegów (``ewaluacja_common.przebiegi``): generowanie,
+    # które wystartowało i padło w trakcie, zostaje anulowane.
+    ZADANIA_PRZEBIEGU = (
+        "ewaluacja_metryki.tasks.generuj_metryki_task_parallel",
+        "ewaluacja_metryki.tasks.generuj_metryki_task",
+        "ewaluacja_metryki.tasks.oblicz_metryki_dla_autora_task",
+        "ewaluacja_metryki.tasks.finalizuj_generowanie_metryk",
+    )
+    NAZWA_PRZEBIEGU = "Generowanie metryk"
+
+    #: Komunikat zapisywany przy ZLECENIU generowania (w żądaniu HTTP).
+    #: Dopóki status go zawiera, zadanie w tle nie dało znaku życia —
+    #: po starcie zadanie od razu podmienia go na ``KOMUNIKAT_WYSTARTOWALO``
+    #: (``potwierdz_start``). To jedyny sygnał „zadanie ruszyło” przed
+    #: pierwszym przetworzonym autorem (przeliczanie liczby N na dużej
+    #: uczelni trwa), więc nie zmieniaj tego tekstu bez przejrzenia
+    #: ``czeka_na_start``.
+    KOMUNIKAT_ZLECONO = "Rozpoczęto generowanie metryk"
+    KOMUNIKAT_WYSTARTOWALO = "Zadanie rozpoczęte — przygotowanie danych..."
+    KOMUNIKAT_OBLICZANIE = "Obliczanie metryk autorów..."
 
     data_rozpoczecia = models.DateTimeField(
         null=True, blank=True, help_text="Data rozpoczęcia ostatniego generowania"
@@ -344,8 +386,31 @@ class StatusGenerowania(models.Model):
         obj, created = cls.objects.get_or_create(uczelnia=uczelnia, okres_id=okres_id)
         return obj
 
-    def rozpocznij_generowanie(self, task_id="", liczba_do_przetworzenia=0, okres=None):
-        """Oznacz rozpoczęcie generowania"""
+    @classmethod
+    def aktualny(cls, uczelnia=None, okres=None):
+        """Status do POKAZANIA albo do decyzji „czy generowanie trwa”:
+        jak ``get_or_create``, ale przebieg, który nie wystartował w czasie
+        albo padł w trakcie, zostaje przy okazji anulowany. Zadania w tle
+        używają ``get_or_create`` — one niczego nie anulują."""
+        status = cls.get_or_create(uczelnia=uczelnia, okres=okres)
+        status.anuluj_jesli_nie_wystartowalo()
+        status.anuluj_jesli_martwy()
+        return status
+
+    def _przebieg_juz_zakonczony(self):
+        # ``task_id`` to zadanie-rodzic, które kończy się zaraz po rozesłaniu
+        # zadań per autor — jego wynik nic nie mówi o przebiegu. Koniec
+        # przebiegu zdejmuje ``w_trakcie`` sam (``zakoncz_generowanie``).
+        return False
+
+    def rozpocznij_generowanie(
+        self, task_id="", liczba_do_przetworzenia=0, okres=None, komunikat=None
+    ):
+        """Oznacz rozpoczęcie generowania.
+
+        Bez ``komunikat`` status jest „zlecony, czeka na start zadania”
+        (patrz ``KOMUNIKAT_ZLECONO``); zadanie, które już pracuje, podaje
+        własny komunikat."""
         if okres is not None:
             self.okres = okres
         self.data_rozpoczecia = timezone.now()
@@ -354,9 +419,114 @@ class StatusGenerowania(models.Model):
         self.liczba_przetworzonych = 0
         self.liczba_do_przetworzenia = liczba_do_przetworzenia
         self.liczba_bledow = 0
-        self.ostatni_komunikat = "Rozpoczęto generowanie metryk"
-        self.task_id = task_id
+        self.ostatni_komunikat = komunikat or self.KOMUNIKAT_ZLECONO
+        self.task_id = task_id or ""
         self.save()
+
+    @property
+    def czeka_na_start(self):
+        """Generowanie zlecone, ale zadanie w tle nie dało znaku życia."""
+        return (
+            self.w_trakcie
+            and self.liczba_przetworzonych == 0
+            and self.ostatni_komunikat == self.KOMUNIKAT_ZLECONO
+        )
+
+    @property
+    def anulowane(self):
+        """Ostatni przebieg przerwano przed końcem (nie trwa i nigdy się nie
+        zakończył). Zakończenie — także błędem — zawsze ustawia
+        ``data_zakonczenia``, więc ten stan zostawia tylko anulowanie."""
+        return bool(
+            not self.w_trakcie
+            and self.data_rozpoczecia is not None
+            and self.data_zakonczenia is None
+        )
+
+    def oznacz_anulowane(self, komunikat):
+        """Przerwij przebieg z komunikatem dla użytkownika (stan
+        ``anulowane``: nie trwa, bez daty zakończenia)."""
+        self.w_trakcie = False
+        self.data_zakonczenia = None
+        self.ostatni_komunikat = komunikat
+        self.save(update_fields=["w_trakcie", "data_zakonczenia", "ostatni_komunikat"])
+
+    def potwierdz_start(self, task_id):
+        """Wołane przez zadanie w tle na samym początku: „ruszyłem”.
+
+        Zwraca ``False``, gdy ten przebieg nie jest już aktualny (anulowany
+        albo zastąpiony nowym zleceniem) — zadanie ma wtedy wyjść, niczego
+        nie zmieniając. Warunkowy UPDATE, żeby nie ścigać się z anulowaniem.
+        """
+        zmienione = (
+            type(self)
+            .objects.filter(pk=self.pk, w_trakcie=True, task_id=task_id)
+            .update(ostatni_komunikat=self.KOMUNIKAT_WYSTARTOWALO)
+        )
+        if zmienione:
+            self.refresh_from_db()
+        return bool(zmienione)
+
+    def anuluj_jesli_nie_wystartowalo(self):
+        """Anuluj przebieg, który od zlecenia nie ruszył przez
+        ``limit_startu_generowania()`` (nie działa worker, kolejka stoi,
+        zadanie przepadło). Zwraca ``True``, gdy anulowano.
+
+        Przebieg, który dał znak życia (``potwierdz_start``) albo przetworzył
+        choć jednego autora, NIE jest tu ruszany, choćby trwał długo.
+        """
+        if not self.czeka_na_start or self.data_rozpoczecia is None:
+            return False
+        limit = limit_startu_generowania()
+        if timezone.now() - self.data_rozpoczecia < limit:
+            return False
+
+        from .celery_worker import czy_dziala_worker_celery
+
+        # Raz na anulowany przebieg: po anulowaniu ``czeka_na_start`` jest
+        # już fałszem, więc kolejne odpytania statusu tu nie dochodzą.
+        worker_dziala = czy_dziala_worker_celery()
+
+        minuty = max(1, round(limit.total_seconds() / 60))
+        komunikat = (
+            f"Generowanie metryk nie rozpoczęło się w ciągu {minuty} min "
+            "od uruchomienia i zostało anulowane. "
+        )
+        if worker_dziala is False:
+            komunikat += (
+                "Usługa przetwarzania zadań w tle nie działa — zgłoś to "
+                "administratorowi systemu. Dopóki nie zostanie uruchomiona, "
+                "ponowne uruchomienie generowania nic nie da."
+            )
+        elif worker_dziala:
+            komunikat += (
+                "Usługa przetwarzania zadań w tle działa — spróbuj uruchomić "
+                "generowanie ponownie."
+            )
+        else:
+            komunikat += (
+                "Nie udało się sprawdzić, czy usługa przetwarzania zadań "
+                "w tle działa — spróbuj uruchomić generowanie ponownie, "
+                "a jeśli sytuacja się powtórzy, zgłoś to administratorowi "
+                "systemu."
+            )
+
+        # Warunkowy UPDATE: jeśli w międzyczasie zadanie jednak ruszyło
+        # (zmieniło komunikat) albo zlecono nowy przebieg — nic nie robimy.
+        zmienione = (
+            type(self)
+            .objects.filter(
+                pk=self.pk,
+                w_trakcie=True,
+                liczba_przetworzonych=0,
+                ostatni_komunikat=self.KOMUNIKAT_ZLECONO,
+                task_id=self.task_id,
+                data_rozpoczecia=self.data_rozpoczecia,
+            )
+            .update(w_trakcie=False, ostatni_komunikat=komunikat)
+        )
+        self.refresh_from_db()
+        return bool(zmienione)
 
     def zakoncz_generowanie(self, liczba_bledow=0):
         """

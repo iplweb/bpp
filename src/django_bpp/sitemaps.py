@@ -78,6 +78,17 @@ class AutorSitemap(AlphabeticBppSitemap):
     def items(self):
         # Autor ze schowaną stroną zwraca 404 — nie podsuwamy go robotom.
         qs = Autor.objects.filter(pokazuj_strone_autora=True)
+        # FD#640: autor spoza uczelni ma tylko prostą stronę informacyjną
+        # (noindex) — do mapy go nie dajemy. Mapa jest wspólna dla wszystkich
+        # hostów, więc pomijamy tylko autorów obcych dla KAŻDEJ uczelni.
+        uczelnie = list(Uczelnia.objects.all())
+        if uczelnie:
+            obcy_wszedzie = Autor.objects.all()
+            for uczelnia in uczelnie:
+                obcy_wszedzie = obcy_wszedzie.filter(
+                    pk__in=Autor.objects.spoza_uczelni(uczelnia).values("pk")
+                )
+            qs = qs.exclude(pk__in=obcy_wszedzie.values("pk"))
         if self.litera:
             qs = qs.filter(nazwisko__istartswith=self.litera)
         return list(qs)

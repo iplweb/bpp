@@ -1,0 +1,1 @@
+Import danych z POL-on i import absencji: usunięcie importu (także automatyczne — lista przechowuje 10 ostatnich importów, starsze kasuje) usuwa teraz z serwera również wgrany plik. Wcześniej pliki starych importów zostawały na dysku na zawsze.

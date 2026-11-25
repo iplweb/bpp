@@ -13,6 +13,7 @@ from .queries import (
     STATEMENT_TIMEOUT_FILTR_MS,
     Filtr,
     _autor_dict,
+    _autorzy_spoza_uczelni,
     _autorzy_widocznej_sieci,
     _bfs_siec,
     _filtr_z_request,
@@ -114,16 +115,29 @@ class GrafPowiazanDaneView(View):
         else:
             wybrani = _sasiedzi_authorconnection(autor, uczelnia_zatr)
 
-        metryki = _metryki_prac([autor.pk] + [a.pk for a, _ in wybrani], ukryte)
+        ids = [autor.pk] + [a.pk for a, _ in wybrani]
+        metryki = _metryki_prac(ids, ukryte)
+        spoza = _autorzy_spoza_uczelni(ids, uczelnia)
 
         neighbors = [
-            _autor_dict(a, pbn_root, shared=s, metryki=metryki.get(a.pk))
+            _autor_dict(
+                a,
+                pbn_root,
+                shared=s,
+                metryki=metryki.get(a.pk),
+                spoza_uczelni=a.pk in spoza,
+            )
             for a, s in wybrani
         ]
 
         return JsonResponse(
             {
-                "center": _autor_dict(autor, pbn_root, metryki=metryki.get(autor.pk)),
+                "center": _autor_dict(
+                    autor,
+                    pbn_root,
+                    metryki=metryki.get(autor.pk),
+                    spoza_uczelni=autor.pk in spoza,
+                ),
                 "neighbors": neighbors,
             }
         )
@@ -191,13 +205,16 @@ class GrafPowiazanSiecView(View):
         }
         pbn_root = _pbn_root(uczelnia)
         metryki = _metryki_prac(list(visited), ukryte)
+        spoza = _autorzy_spoza_uczelni(list(visited), uczelnia)
 
         nodes = []
         for aid in visited:
             a = autorzy.get(aid)
             if a is None:
                 continue
-            dane = _autor_dict(a, pbn_root, metryki=metryki.get(aid))
+            dane = _autor_dict(
+                a, pbn_root, metryki=metryki.get(aid), spoza_uczelni=aid in spoza
+            )
             dane["level"] = level_of[aid]
             dane["parent"] = parent_of[aid]
             nodes.append(dane)
