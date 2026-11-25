@@ -64,6 +64,19 @@ def test_formularz_zly_obiekt_w_querystringu_nie_wywala(webtest_app):
 
 
 @pytest.mark.django_db
+@pytest.mark.parametrize("obiekt", ["vS04D", "1abc", "-1", "1.5", "%20"])
+def test_formularz_nienumeryczny_obiekt_w_querystringu_nie_wywala(
+    webtest_app, obiekt
+):
+    # ?obiekt=<nie-liczba> wywalał 500 (ValueError: Field 'id' expected
+    # a number) — błędny parametr od klienta ma dać formularz bez wyboru.
+    seed_default_reports()
+    url = reverse("nowe_raporty:raport_form", args=["raport-autorow"])
+    res = webtest_app.get(url + f"?obiekt={obiekt}")
+    assert res.status_code == 200
+
+
+@pytest.mark.django_db
 def test_kilka_raportow_na_tym_samym_poziomie(webtest_app, uczelnia):
     seed_default_reports()
     report = DefinicjaRaportu.objects.get(slug="raport-autorow").report

@@ -1,0 +1,1 @@
+Formularz raportu (np. „Raport autorów”) otwarty z nienumerycznym parametrem ``?obiekt=`` w adresie nie kończy się już błędem serwera (500) — wyświetla się zwykły formularz bez wstępnie wybranego obiektu.

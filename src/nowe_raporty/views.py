@@ -350,9 +350,12 @@ class RaportFormView(RaportDostepMixin, FormDefaultsMixin, FormView):
             # Szukamy w ``queryset``, nie w ``cfg.model`` — pk podrzucony w URL
             # spoza poziomu nie ma prawa przemycić obiektu, którego formularz
             # i tak by nie przyjął (ta sama zasada co w ``get_object``).
-            pk = self.request.GET.get("obiekt")
-            if pk:
-                initial["obiekt"] = queryset.filter(pk=pk).first()
+            # Tylko liczba: ``obiekt`` to ręcznie edytowalny parametr URL,
+            # a ``filter(pk="abc")`` rzuca ValueError (= 500). Śmieć traktujemy
+            # jak nieistniejący pk — formularz bez wstępnego wyboru.
+            pk = self.request.GET.get("obiekt", "").strip()
+            if pk.isdigit():
+                initial["obiekt"] = queryset.filter(pk=int(pk)).first()
 
             if not initial.get("obiekt") and queryset.count() == 1:
                 initial["obiekt"] = queryset.first()
