@@ -217,6 +217,8 @@ class OstatniaJednostkaIDyscyplinaView(View):
                 dict(
                     jednostka_id=ost_jed.pk,
                     nazwa=ost_jed.nazwa,
+                    # FD#640: JS odznacza „Afiliuje” dla jednostki obcej.
+                    jednostka_przyjmuje_afiliacje=ost_jed.przyjmuje_afiliacje(),
                     status="ok",
                 )
             )
@@ -225,6 +227,19 @@ class OstatniaJednostkaIDyscyplinaView(View):
             rok = int(request.POST.get("rok"))
         except (TypeError, ValueError):
             rok = None
+
+        # FD#640: formularz zgłaszania prac ukrywa pole dyscypliny dla autora
+        # spoza uczelni i ustawia mu jednostkę obcą uczelni
+        # (``autorform_dependant.js``, tylko pola oznaczone ``data-*``).
+        uczelnia = Uczelnia.objects.get_for_request(request)
+        ret["autor_uczelni"] = a.jest_autorem_uczelni(uczelnia)
+        if (
+            not ret["autor_uczelni"]
+            and uczelnia is not None
+            and uczelnia.obca_jednostka_id is not None
+        ):
+            ret["obca_jednostka_id"] = uczelnia.obca_jednostka_id
+            ret["obca_jednostka_nazwa"] = uczelnia.obca_jednostka.nazwa
 
         ost_dys = ostatnia_dyscyplina(request, a, rok)
 

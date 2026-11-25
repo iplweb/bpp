@@ -1,0 +1,53 @@
+Wysyłka do PBN: praca nie trafia już do PBN bez oświadczenia autora, który
+nie ma ani odpowiednika w PBN, ani ORCID. Wcześniej, gdy autor miał w pracy
+przypiętą dyscyplinę i afiliował, ale w jego formularzu puste były zarówno
+pole „Odpowiednik w PBN”, jak i „Identyfikator ORCID”, praca była wysyłana,
+a oświadczenie tej osoby po cichu znikało; jedynym śladem było żółte
+ostrzeżenie „… nie zostanie oświadczona w PBN, gdyż autor nie posiada
+odpowiednika w PBN”, łatwe do przeoczenia (a w wysyłce w tle widoczne tylko
+w szczegółach wpisu zakończonego sukcesem). Gdy dotyczyło to wszystkich
+autorów, a uczelnia miała włączone „Wysyłaj prace bez oświadczeń”, praca
+szła do PBN zupełnie bez oświadczeń.
+
+Teraz wysyłka takiej pracy jest zatrzymywana i nic nie trafia do PBN. Nad
+formularzem pojawia się czerwony komunikat „Rekord … NIE został wysłany do
+PBN” z listą autorów (każdy z odnośnikiem do swojego formularza). W kolejce
+eksportu do PBN wpis kończy się błędem merytorycznym, a na stronie wpisu
+jest ta sama lista autorów. Dotyczy to wszystkich dróg wysyłki: przycisków
+„Zapisz i wyślij do PBN” i „Zapisz i wyślij do PBN w tle”, akcji „Wyślij do
+PBN” na liście prac, wysyłki samych oświadczeń oraz wysyłek uruchamianych
+przez administratora.
+
+Co zrobić: ustaw autorowi „Odpowiednik w PBN” albo wpisz „Identyfikator
+ORCID” i wyślij pracę ponownie. Jeżeli ta osoba nie powinna być oświadczana
+w tej pracy, odepnij jej dyscyplinę albo popraw afiliację w pracy.
+
+Czego zmiana nie rusza: autor, który ma ORCID, a nie ma odpowiednika w PBN,
+jest oświadczany jak dotąd (z ORCID-em) — zamiast mylącego ostrzeżenia
+pojawia się tylko niebieska informacja. Prace, w których nikt nie ma
+przypiętej dyscypliny, są wysyłane jak dotąd (zgodnie z ustawieniem
+„Wysyłaj prace bez oświadczeń”). Lista autorów pracy w PBN się nie zmienia.
+Prace wysłane wcześniej nie są ruszane, ale przy następnej wysyłce również
+zostaną zatrzymane, dopóki autor nie zostanie uzupełniony. Skalę (liczbę
+prac i autorów) administrator sprawdzi poleceniem
+``pbn_oswiadczenia_bez_identyfikatora`` (opcje ``--rok-od``, ``--rok-do``,
+``--szczegoly``), które niczego nie zmienia.
+
+Dla uczelni, które mimo to chcą wysyłać takie prace, w ustawieniach uczelni
+(sekcja PBN) jest nowe pole „Wysyłaj prace, gdy autor nie ma identyfikatora
+w PBN” — domyślnie wyłączone. Po jego zaznaczeniu praca jest wysyłana bez
+oświadczeń autorów bez odpowiednika w PBN i bez ORCID, ale już nie po cichu:
+obok komunikatu o sukcesie pojawia się żółte ostrzeżenie „UWAGA:
+oświadczenia rekordu … w PBN są NIEPEŁNE” z liczbami (np. „Z 10 autorów
+z przypiętą dyscypliną do PBN trafiło 5 oświadczeń, pominięto 5”) i listą
+pominiętych autorów z odnośnikami do ich formularzy. To samo ostrzeżenie
+widać na stronie wpisu w kolejce eksportu do PBN oraz w logu wysyłki samych
+oświadczeń.
+
+Dodatkowo po każdej udanej wysyłce pracy BPP porównuje listę autorów, którą
+wysłał, z tą, którą PBN faktycznie zapisał (BPP zawsze wysyła wszystkich
+autorów pracy, także tych bez odpowiednika w PBN). Jeżeli PBN zapisał ich
+mniej, obok komunikatu o sukcesie pojawia się żółte ostrzeżenie, np. „UWAGA:
+PBN zapisał 4 z 6 wysłanych autorów — w PBN brakuje 2. Prawdopodobnie
+brakuje: …”. Ostrzeżenie widać nad formularzem rekordu, po akcji „Wyślij do
+PBN” na liście prac oraz w komunikacie wpisu w kolejce eksportu do PBN.

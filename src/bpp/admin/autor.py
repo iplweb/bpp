@@ -44,6 +44,7 @@ from .filters import (
 )
 from .helpers.fieldsets import ADNOTACJE_FIELDSET, ZapiszZAdnotacjaMixin
 from .helpers.mixins import BppSoftDeleteAdminMixin
+from .helpers.okresy_pracy import OkresyPracyFormSetMixin
 from .helpers.site_filtered import SiteFilteredAdminMixin
 from .helpers.wersje import HistoriaWersjiMixin
 from .helpers.widgets import CHARMAP_SINGLE_LINE
@@ -159,7 +160,7 @@ class Autor_JednostkaInlineForm(forms.ModelForm):
         ]
 
 
-class Autor_JednostkaInlineFormSet(BaseInlineFormSet):
+class Autor_JednostkaInlineFormSet(OkresyPracyFormSetMixin, BaseInlineFormSet):
     """Pilnuje przyjaznie (na poziomie formularza, zanim cokolwiek trafi do
     bazy), zeby autor mial najwyzej jedno podstawowe miejsce pracy.
 

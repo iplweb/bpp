@@ -49,6 +49,10 @@ def test_form_przyjmuje_zwykla_jednostke(autor, jednostka):
     # Zwykła jednostka (przyjmuje afiliację) — brak błędu na polu ``jednostka``.
     # (Formularz może być niepełny z innych powodów — np. brak rekordu
     # nadrzędnego — ale nie z powodu jednostki.)
+    from bpp.models import Autor_Jednostka
+
+    # FD#640: autor bez przypisań to autor spoza uczelni (tylko obca jednostka).
+    Autor_Jednostka.objects.create(autor=autor, jednostka=jednostka)
     form = Zgloszenie_Publikacji_AutorForm(data=_form_data(autor, jednostka))
     form.is_valid()
 

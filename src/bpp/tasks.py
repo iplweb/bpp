@@ -352,6 +352,7 @@ def generuj_eksport_autora(self, task_id: str):
                 ukryte_statusy=task.ukryte_statusy,
                 z_punktacja_autora=task.z_punktacja_autora,
                 ukryte_statusy_slotow=task.ukryte_statusy_slotow,
+                z_sumami_punktacji=task.z_sumami_punktacji,
                 limit=MAKS_EKSPORT_AUTORA,
             )
         else:

@@ -19,6 +19,7 @@ from .filters import JednostkaNadrzednaFilter, PBN_UID_IDObecnyFilter, WydzialFi
 from .helpers import LimitingFormset
 from .helpers.fieldsets import ADNOTACJE_FIELDSET
 from .helpers.mixins import ZapiszZAdnotacjaMixin
+from .helpers.okresy_pracy import OkresyPracyFormSetMixin
 from .helpers.site_filtered import SiteFilteredAdminMixin
 from .helpers.wersje import HistoriaWersjiMixin
 from .jednostka_import import JednostkaImportResource
@@ -75,11 +76,15 @@ class Autor_JednostkaForm(forms.ModelForm):
         fields = ["autor", "rozpoczal_prace", "zakonczyl_prace", "funkcja"]
 
 
+class Autor_JednostkaFormSet(OkresyPracyFormSetMixin, LimitingFormset):
+    """Nakładające się okresy pracy — błąd formularza zamiast 500 (FD#640)."""
+
+
 class Autor_JednostkaInline(admin.TabularInline):
     form = Autor_JednostkaForm
     model = Autor_Jednostka
     readonly_fields = ["autor"]
-    formset = LimitingFormset
+    formset = Autor_JednostkaFormSet
     extra = 0
 
 

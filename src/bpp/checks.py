@@ -5,6 +5,7 @@
 - ``bpp.W101``–``bpp.W104``: szyfrowanie sekretów integracji
   (EncryptedTextField).
 - ``bpp.W201``: logowanie Microsoft bez konkretnego katalogu (tenanta).
+- ``bpp.W301``: uczelnia bez ustawionej obcej jednostki (FD#640).
 
 Wszystkie są ostrzeżeniami (Warning) — nie blokują startu, ``migrate`` ani
 buildu. Checki zaglądające do bazy mają tag ``Tags.database`` i działają
@@ -72,6 +73,43 @@ def konta_staff_bez_uczelni_check(app_configs, databases=None, **kwargs):
             "w adminie (edycja użytkownika → sekcja „Dostęp do uczelni”).",
             id=W001_ID,
         )
+    ]
+
+
+W301_ID = "bpp.W301"
+
+
+@checks.register(checks.Tags.database)
+def uczelnia_bez_obcej_jednostki_check(app_configs, databases=None, **kwargs):
+    """FD#640: uczelnia bez ``obca_jednostka``. Autora spoza uczelni można
+    zgłosić (formularz zgłaszania prac) wyłącznie z obcą jednostką uczelni —
+    bez niej takiego autora nie da się zgłosić. Jednostki NIE zakładamy
+    automatycznie: redakcja ustawia ją ręcznie."""
+    if not databases:
+        return []
+
+    from bpp.models import Uczelnia
+
+    try:
+        bez_obcej = list(
+            Uczelnia.objects.filter(obca_jednostka=None)
+            .order_by("nazwa")
+            .values_list("nazwa", flat=True)
+        )
+    except DatabaseError:
+        # Tabele mogą jeszcze nie istnieć (check przed pierwszym ``migrate``).
+        return []
+
+    return [
+        checks.Warning(
+            f"Uczelnia „{nazwa}” nie ma ustawionej obcej jednostki — w "
+            "formularzu zgłaszania prac nie da się zgłosić autora spoza "
+            "uczelni.",
+            hint="Ustaw ręcznie w module redagowania: Uczelnia → pole "
+            "„Obca jednostka” (jednostka z wyłączonym „Skupia pracowników”).",
+            id=W301_ID,
+        )
+        for nazwa in bez_obcej
     ]
 
 

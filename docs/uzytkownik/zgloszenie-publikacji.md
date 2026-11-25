@@ -53,10 +53,24 @@ punktacji ani opisu bibliograficznego: wystarczy tytuł, rok i link albo plik.
     wcześniejszego roku, w którym je miał — rok jest podany w nagłówku),
     a gdy autor nie miał dyscypliny nigdy — dyscypliny **typowe dla
     uczelni** (najczęściej przypisywane w pracach z ostatnich trzech lat).
-    Wybrana dyscyplina zostanie po wysłaniu zgłoszenia **przypisana
-    autorowi na rok publikacji** — w historii autora zostaje wpis, kto ją
-    wybrał (login albo — bez logowania — e-mail zgłaszającego), z tytułem
-    i numerem zgłoszenia. Można wybrać tylko dyscyplinę z podpowiedzi.
+    Można wybrać tylko dyscyplinę z podpowiedzi. Wybrana dyscyplina to
+    **propozycja dla redakcji** — wysłanie zgłoszenia nie zmienia danych
+    autora. Dyscyplina zostanie przypisana autorowi na rok publikacji
+    dopiero wtedy, gdy redakcja zatwierdzi zgłoszenie (doda pracę do bazy).
+
+    **Dyscyplinę i jednostkę uczelni podaje się tylko dla autorów
+    uczelni** — osób, które są lub były przypisane do którejś z jednostek
+    uczelni (także doktorantów, studentów czy emerytów). Po wybraniu
+    autora spoza uczelni pole **Dyscyplina** znika z formularza, a pole
+    **Jednostka** ustawia się na obcą jednostkę uczelni — lista jednostek
+    podpowiada wtedy tylko ją. Zgłoszenie z dyscypliną albo z inną
+    jednostką niż obca (także jednostką innej uczelni) przy takim autorze
+    nie zostanie przyjęte (komunikat przy polu). Jeśli uczelnia nie ma
+    ustawionej obcej jednostki, autora spoza uczelni nie da się zgłosić —
+    formularz poprosi o kontakt z biblioteką lub redakcją. Wybrana przy
+    autorze **Jednostka** trafia tylko do zgłoszenia — nie zmienia danych
+    autora w bazie (jego aktualnej jednostki). Zgłoszenie, także poprawione
+    po zwrocie, nie zmienia żadnych danych autorów.
 
     ![Krok „Autorzy”: autor, jednostka, dyscyplina i przycisk „Dodaj kolejnego autora”](../images/uzytkownik/zgloszenie-publikacji/05-autorzy.png)
 

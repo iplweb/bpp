@@ -157,6 +157,28 @@ Odpowiedź na wiadomość („Odpowiedz”) trafia prosto do zgłaszającego.
    i dyscyplinami. W polu **Adnotacje** zostaje e-mail zgłaszającego
    i numer zgłoszenia. Uzupełnij resztę opisu i zapisz rekord.
 
+    !!! note "Dyscypliny i jednostki ze zgłoszenia to propozycje"
+        Zgłoszenie nie zmienia danych autorów — dyscyplina wybrana przez
+        zgłaszającego jest tylko propozycją. Autorowi, który nie ma na rok
+        pracy przypisania do proponowanej dyscypliny, formularz jej nie
+        wpisze (zapis rekordu i tak by jej nie przyjął) — nad formularzem
+        pojawi się komunikat. Przypisz ją wtedy w edycji autora albo
+        dopisz pracę **importerem**, który sam założy przypisanie.
+        Autorowi spoza uczelni formularz nie wpisuje ani dyscypliny, ani
+        jednostki uczelni ze zgłoszenia (zamiast niej — obcą jednostkę
+        uczelni, z odznaczonym „Afiliuje”), żeby zapis pracy nie zrobił
+        z niego pracownika. Wybór jednostki obcej w formularzu autora
+        rekordu sam odznacza „Afiliuje” — obca jednostka nigdy nie afiliuje.
+
+    !!! warning "Ustaw obcą jednostkę uczelni"
+        Autora spoza uczelni można zgłosić wyłącznie z **obcą jednostką
+        uczelni** (Uczelnia → pole „Obca jednostka”). Jeśli nie jest
+        ustawiona, formularz zgłoszenia odrzuci takiego autora, a lista
+        zgłoszeń w module redagowania pokazuje ostrzeżenie (tak samo
+        `manage.py check --database default`). BPP nie zakłada tej jednostki
+        sam — ustaw ją ręcznie (jednostka z wyłączonym „Skupia
+        pracowników”).
+
     !!! warning "Ręczne dopisanie nie zamyka zgłoszenia"
         Po zapisaniu rekordu tą drogą zgłoszenie **dalej ma status „nowe
         zgłoszenie”** i zostaje na liście „Do obsługi”. Usuń je ręcznie
