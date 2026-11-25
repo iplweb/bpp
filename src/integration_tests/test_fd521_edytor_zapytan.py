@@ -110,16 +110,38 @@ def test_fd521_formatuj_uklada_zapytanie(
 def test_fd521_zmiana_modelu_odswieza_podpowiedzi(
     channels_live_server, admin_page: Page, transactional_db
 ):
-    _otworz_nowe_zrodlo_danych(admin_page, channels_live_server)
-    admin_page.select_option("#id_query_language", "djangoql")
+    from django.contrib.contenttypes.models import ContentType
+    from flexible_reports.models import Datasource
 
-    with admin_page.expect_response(lambda r: "query-editor/schema" in r.url):
-        admin_page.select_option("#id_base_model", label="BPP | autor")
+    from bpp.models import Autor
 
+    # Nowe źródło danych ma na liście sam Rekord (FD#522), więc zmianę modelu
+    # da się pokazać tylko na źródle zapisanym wcześniej z innym modelem —
+    # jego model zostaje na liście obok Rekordu.
+    ds = Datasource.objects.create(
+        label="po autorach",
+        base_model=ContentType.objects.get_for_model(Autor),
+        query_language="djangoql",
+        dsl_query='nazwisko = "x"',
+    )
+    admin_page.goto(
+        channels_live_server.url + f"/admin/flexible_reports/datasource/{ds.pk}/change/"
+    )
+    wait_for_page_load(admin_page)
+    admin_page.wait_for_selector(POLE + "[data-fr-query-editor=on]", timeout=10000)
+
+    admin_page.fill(POLE, "")
     admin_page.click(POLE)
     admin_page.keyboard.type("nazwis")
-
     _oczekuj_podpowiedzi(admin_page, "nazwisko")
+
+    with admin_page.expect_response(lambda r: "query-editor/schema" in r.url):
+        admin_page.select_option("#id_base_model", label="BPP | rekord")
+
+    admin_page.fill(POLE, "")
+    admin_page.click(POLE)
+    admin_page.keyboard.type("tytul_oryg")
+    _oczekuj_podpowiedzi(admin_page, "tytul_oryginalny")
 
 
 def test_fd521_django_dsl_pokazuje_liste_pol(

@@ -1,7 +1,8 @@
 Raporty: lista **„Podstawowy model”** w formularzu źródła danych (moduł
-redagowania → **Raporty** → **Źródła danych**) zawiera teraz tylko modele,
-z których faktycznie buduje się raporty — rekord, autorzy i autor — zamiast
-kilkuset pozycji ze wszystkimi tabelami systemu. Przy dodawaniu nowego źródła
-danych domyślnie wybrany jest rekord. Źródła danych zapisane wcześniej z innym
+redagowania → **Raporty** → **Źródła danych**) zawiera teraz tylko model, z którego
+faktycznie buduje się raporty — **rekord** (wszystkie publikacje) — zamiast
+kilkuset pozycji ze wszystkimi tabelami systemu; przy dodawaniu nowego źródła
+danych jest on od razu wybrany. Po autorze, jednostce czy charakterze
+formalnym filtruje się w zapytaniu, w ramach rekordu. Źródła danych zapisane wcześniej z innym
 modelem działają bez zmian: ich model nadal jest widoczny w formularzu i można
 je edytować.

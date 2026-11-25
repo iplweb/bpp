@@ -9,8 +9,8 @@ from django.contrib.contenttypes.models import ContentType
 from django.urls import reverse
 from flexible_reports.models import Datasource
 
-from bpp.models import Autor, Wydawnictwo_Zwarte
-from bpp.models.cache import Autorzy, Rekord
+from bpp.models import Wydawnictwo_Zwarte
+from bpp.models.cache import Rekord
 
 wymaga_pakietu = pytest.mark.skipif(
     find_spec("flexible_reports.base_models") is None,
@@ -31,7 +31,8 @@ def test_fd522_ustawienie_wskazuje_istniejace_modele():
     # Niezależne od wersji pakietu: literówka w ustawieniu ma wyjść w testach,
     # a nie dopiero jako błąd 500 formularza źródła danych.
     modele = [apps.get_model(m) for m in settings.FLEXIBLE_REPORTS_BASE_MODELS]
-    assert modele == [Rekord, Autorzy, Autor]
+    # Decyzja produktowa: źródłem danych raportów jest Rekord i tyle.
+    assert modele == [Rekord]
 
 
 @wymaga_pakietu
@@ -39,7 +40,7 @@ def test_fd522_ustawienie_wskazuje_istniejace_modele():
 def test_fd522_nowe_zrodlo_danych_ma_krotka_liste_i_domyslny_rekord(admin_client):
     odpowiedz = admin_client.get(reverse("admin:flexible_reports_datasource_add"))
 
-    assert _modele_w_formularzu(odpowiedz) == [Rekord, Autorzy, Autor]
+    assert _modele_w_formularzu(odpowiedz) == [Rekord]
     form = odpowiedz.context["adminform"].form
     assert form["base_model"].initial == _ct(Rekord).pk
 
@@ -56,12 +57,7 @@ def test_fd522_istniejace_zrodlo_z_innym_modelem_daje_sie_edytowac(admin_client)
 
     odpowiedz = admin_client.get(url)
     # Jego model jest na liście (po modelach z ustawienia) i jest wybrany.
-    assert _modele_w_formularzu(odpowiedz) == [
-        Rekord,
-        Autorzy,
-        Autor,
-        Wydawnictwo_Zwarte,
-    ]
+    assert _modele_w_formularzu(odpowiedz) == [Rekord, Wydawnictwo_Zwarte]
     assert odpowiedz.context["adminform"].form["base_model"].initial == stary.pk
 
     odpowiedz = admin_client.post(

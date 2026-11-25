@@ -27,11 +27,11 @@ istniejące źródło.
 
 ### Podstawowy model {#podstawowy-model}
 
-Lista zawiera modele, z których buduje się raporty: **rekord** (wszystkie
-publikacje — wydawnictwa ciągłe i zwarte, patenty, prace doktorskie
-i habilitacyjne; wybrany domyślnie), **autorzy** (powiązania autorów
-z publikacjami) i **autor**. Raporty z menu **raporty** wybierają publikacje,
-więc ich źródła danych korzystają z modelu **rekord**.
+Lista zawiera model, z którego buduje się raporty: **rekord** — wszystkie
+publikacje (wydawnictwa ciągłe i zwarte, patenty, prace doktorskie
+i habilitacyjne). Przy dodawaniu nowego źródła danych jest on od razu wybrany.
+Po autorze, jednostce, charakterze formalnym itd. filtruje się w zapytaniu,
+w ramach rekordu (np. `autorzy.autor`, skrót `autor`).
 
 Źródło danych zapisane wcześniej z innym modelem działa bez zmian — jego model
 pozostaje na liście w formularzu tego źródła i można je normalnie edytować.
