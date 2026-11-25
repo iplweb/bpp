@@ -38,6 +38,7 @@ from multiseek.logic import (
 
 from bpp.djangoql_schema import BppQLSchemaOgraniczony
 from bpp.models import Rekord
+from bpp.multiseek_registry.dawne_etykiety import aktualna_etykieta
 
 logger = logging.getLogger(__name__)
 
@@ -285,7 +286,7 @@ def leaf_to_djangoql(registry, leaf, warnings=None):
     """
     if not isinstance(leaf, dict):
         return None
-    field = registry.field_by_name.get(leaf.get("field"))
+    field = registry.field_by_name.get(aktualna_etykieta(leaf.get("field")))
     if field is None:
         return None
     value = leaf.get("value")

@@ -141,9 +141,10 @@ def test_fd527_migracja_poprawia_etykiety_kolumn_w_bazie(migracja):
     # Strażnik: etykiet bez „KBN” migracja nie rusza.
     assert obca.label == "Typ pracy"
 
+    # Cofnięcie niczego nie zmienia: „Typ MNiSW” mógł wpisać redaktor.
     migracja.wstecz(apps, None)
     seedowa.refresh_from_db()
-    assert seedowa.label == "Typ KBN"
+    assert seedowa.label == "Typ MNiSW"
 
 
 def test_fd527_zadne_pole_modelu_nie_ma_mein_w_etykiecie():
@@ -170,7 +171,9 @@ def test_fd527_etykiety_wyszukiwarki_i_raportow_bez_mein():
     assert "Punkty MNiSW" in etykiety
     assert "Typ MNiSW" in etykiety
     etykiety += [str(p.label) for p in RankingAutorowForm.base_fields.values()]
-    etykiety += [str(k.verbose_name) for k in RaportSlotowAutorTable.base_columns.values()]
+    etykiety += [
+        str(k.verbose_name) for k in RaportSlotowAutorTable.base_columns.values()
+    ]
     etykiety += [kolumna["label"] for kolumna in definicje.KOLUMNY]
     etykiety += [
         tekst
@@ -181,28 +184,6 @@ def test_fd527_etykiety_wyszukiwarki_i_raportow_bez_mein():
     assert not [e for e in etykiety if "mein" in e.lower()]
 
 
-@pytest.mark.django_db
-def test_fd527_migracja_skraca_znane_etykiety_z_mein(migracja):
-    seed_default_reports()
-    tabela = Column.objects.filter(parent__label=definicje.TABELA_LABEL).first().parent
-    znane = [
-        baker.make(Column, parent=tabela, label=stara) for stara in migracja.DOKLADNE
-    ]
-    obca = baker.make(Column, parent=tabela, label="Wykaz MEiN 2023")
-    podobna = baker.make(Column, parent=tabela, label="Punkty MNiSW/MEiN autora")
-
-    migracja.naprzod(apps, None)
-
-    for kolumna, nowa in zip(znane, migracja.DOKLADNE.values(), strict=True):
-        kolumna.refresh_from_db()
-        assert kolumna.label == nowa
-    obca.refresh_from_db()
-    podobna.refresh_from_db()
-    # Strażnik: tylko dokładne dopasowania znanych etykiet.
-    assert obca.label == "Wykaz MEiN 2023"
-    assert podobna.label == "Punkty MNiSW/MEiN autora"
-
-
 @pytest.fixture
 def migracja_bpp():
     return importlib.import_module("bpp.migrations.0533_fd527_etykiety_mnisw")
@@ -211,47 +192,215 @@ def migracja_bpp():
 @pytest.mark.django_db
 def test_fd527_uprawnienia_slownika_typow_maja_nowa_nazwe(migracja_bpp):
     from django.contrib.auth.models import Permission
+    from django.contrib.contenttypes.models import ContentType
 
-    uprawnienia = Permission.objects.filter(
-        content_type__app_label="bpp", content_type__model="typ_kbn"
-    )
+    typ = ContentType.objects.get(app_label="bpp", model="typ_kbn")
+    uprawnienia = Permission.objects.filter(content_type=typ)
     dodawanie = uprawnienia.get(codename="add_typ_kbn")
     Permission.objects.filter(pk=dodawanie.pk).update(name="Can add typ MNiSW/MEiN")
     przegladanie = uprawnienia.get(codename="view_typ_kbn")
     Permission.objects.filter(pk=przegladanie.pk).update(name="Can view typ KBN")
+    wlasne = Permission.objects.create(
+        content_type=typ, codename="scalaj_typ_kbn", name="Może scalać typ KBN"
+    )
 
     migracja_bpp.popraw_nazwy_uprawnien(apps, None)
 
     dodawanie.refresh_from_db()
     przegladanie.refresh_from_db()
+    wlasne.refresh_from_db()
     assert dodawanie.name == "Can add typ MNiSW"
     assert przegladanie.name == "Can view typ MNiSW"
-    # Strażnik: kody uprawnień (po nich działa kontrola dostępu) bez zmian.
+    # Strażnicy: kody uprawnień (po nich działa kontrola dostępu) bez zmian,
+    # a uprawnienia spoza czterech standardowych nie są dotykane.
     assert dodawanie.codename == "add_typ_kbn"
+    assert wlasne.name == "Może scalać typ KBN"
 
 
 @pytest.mark.django_db
-def test_fd527_zapisany_formularz_wyszukiwania_po_zmianie_etykiet(migracja_bpp):
-    """Zapisane formularze pamiętają pola po etykiecie — migracja je poprawia."""
-    from django.db import connection
+def test_fd527_zapisane_formularze_wyszukiwania(migracja_bpp):
+    """Migracja zmienia wyłącznie klucz pola — nie wartości filtrów."""
+    import json
+
     from multiseek.models import SearchForm
 
-    dane = (
-        '{"form_data": [null, {"field": "Punkty MNiSW/MEiN", "operator": "=", '
-        '"value": 100}, {"field": "Typ MNiSW/MEiN", "value": "PO"}, '
-        '{"field": "Tytuł pracy", "value": "wykaz MNiSW/MEiN"}]}'
+    warunki = [
+        None,
+        {"field": "Punkty MNiSW/MEiN", "operator": "=", "value": 100},
+        # wartość równa dawnej etykiecie — to tekst użytkownika, zostaje
+        {"field": "Tytuł pracy", "operator": "~", "value": "Punkty MNiSW/MEiN"},
+        [None, {"field": "Typ KBN", "operator": "=", "value": "Typ MNiSW/MEiN"}],
+    ]
+    zwykly = baker.make(
+        SearchForm,
+        name="fd527 zwykly",
+        data=json.dumps({"form_data": warunki, "ordering": {"order_0": "6"}}),
     )
-    formularz = baker.make(SearchForm, data=dane)
-    sql = next(
-        op.sql
-        for op in migracja_bpp.Migration.operations
-        if op.__class__.__name__ == "RunSQL"
+    # poprawny JSON z escapowanym ukośnikiem w etykiecie
+    escapowany = baker.make(
+        SearchForm,
+        name="fd527 escapowany",
+        data='{"form_data": [null, {"field": "Typ MNiSW\\/MEiN", "value": "PO"}]}',
     )
-    with connection.cursor() as kursor:
-        kursor.execute(sql)
+    assert "\\/" in escapowany.data
+    uszkodzony = baker.make(
+        SearchForm, name="fd527 zepsuty", data='{"form_data": [null, {"field": '
+    )
+    aktualny_tekst = '{"form_data": [null, {"field": "Punkty MNiSW", "value": 1}]}'
+    aktualny = baker.make(SearchForm, name="fd527 aktualny", data=aktualny_tekst)
 
-    formularz.refresh_from_db()
-    assert '"field": "Punkty MNiSW"' in formularz.data
-    assert '"field": "Typ MNiSW"' in formularz.data
-    # Strażnik: wartość wpisana przez użytkownika zostaje nietknięta.
-    assert '"value": "wykaz MNiSW/MEiN"' in formularz.data
+    migracja_bpp.popraw_zapisane_formularze(apps, None)
+
+    zwykly.refresh_from_db()
+    dane = json.loads(zwykly.data)
+    assert dane["form_data"][1] == {
+        "field": "Punkty MNiSW",
+        "operator": "=",
+        "value": 100,
+    }
+    assert dane["form_data"][2]["value"] == "Punkty MNiSW/MEiN"
+    assert dane["form_data"][3][1] == {
+        "field": "Typ MNiSW",
+        "operator": "=",
+        "value": "Typ MNiSW/MEiN",
+    }
+    assert dane["ordering"] == {"order_0": "6"}
+
+    escapowany.refresh_from_db()
+    assert json.loads(escapowany.data)["form_data"][1]["field"] == "Typ MNiSW"
+
+    # Strażnicy: uszkodzony JSON i formularz bez dawnych etykiet — bez zmian.
+    uszkodzony.refresh_from_db()
+    assert uszkodzony.data == '{"form_data": [null, {"field": '
+    aktualny.refresh_from_db()
+    assert aktualny.data == aktualny_tekst
+
+
+def test_fd527_mapa_etykiet_w_migracji_zgodna_z_rejestrem(migracja_bpp):
+    from bpp.multiseek_registry.dawne_etykiety import DAWNE_ETYKIETY
+
+    assert migracja_bpp.DAWNE_ETYKIETY_POL == DAWNE_ETYKIETY
+
+
+@pytest.mark.parametrize(
+    "stara,nowa",
+    [
+        ("Typ KBN", "Typ MNiSW"),
+        ("Typ kbn", "Typ MNiSW"),
+        ("Punkty KBN (suma)", "Punkty MNiSW (suma)"),
+        # bez podwojenia, gdy obie nazwy stały obok siebie
+        ("Punkty KBN/MNiSW", "Punkty MNiSW"),
+        ("Pkt. MNiSW/KBN", "Pkt. MNiSW"),
+        ("Punkty KBN / MNiSW", "Punkty MNiSW"),
+        # znane frazy z „/MEiN”, także ze spacją na brzegu i z dopiskiem
+        ("Typ MNiSW/MEiN", "Typ MNiSW"),
+        ("Typy MNiSW/MEiN", "Typy MNiSW"),
+        ("Pkt. MNiSW/MEiN ", "Pkt. MNiSW"),
+        ("Punkty MNiSW/MEiN (suma)", "Punkty MNiSW (suma)"),
+        ("Punkty MNiSW/MEiN autora", "Punkty MNiSW autora"),
+        ("typ mnisw/mein", "typ MNiSW"),
+        # strażnicy: tego migracja nie rusza
+        ("KBN-owskie", "KBN-owskie"),
+        ("punkty_kbn", "punkty_kbn"),
+        ("Punkty MNiSW/MEiN/NCN", "Punkty MNiSW/MEiN/NCN"),
+        ("Typ MNiSW ", "Typ MNiSW "),
+        ("Wykaz MEiN 2023", "Wykaz MEiN 2023"),
+        ("Typ MNiSW", "Typ MNiSW"),
+        ("Rok", "Rok"),
+    ],
+)
+def test_fd527_migracja_raportow_podmiany(migracja, stara, nowa):
+    assert migracja.nowa_etykieta(stara) == nowa
+
+
+@pytest.mark.django_db
+def test_fd527_migracja_raportow_na_bazie(migracja):
+    seed_default_reports()
+    tabela = Column.objects.filter(parent__label=definicje.TABELA_LABEL).first().parent
+    Column.objects.filter(parent=tabela, label__in=["Typ MNiSW", "Pkt. MNiSW"]).delete()
+    przypadki = {
+        "Punkty KBN/MNiSW": "Punkty MNiSW",
+        "Typ kbn": "Typ MNiSW",
+        "Pkt. MNiSW/MEiN ": "Pkt. MNiSW",
+        "KBN-owskie": "KBN-owskie",
+    }
+    kolumny = {
+        stara: baker.make(Column, parent=tabela, label=stara) for stara in przypadki
+    }
+    migracja.naprzod(apps, None)
+    for stara, nowa in przypadki.items():
+        kolumny[stara].refresh_from_db()
+        assert kolumny[stara].label == nowa, stara
+
+
+@pytest.mark.django_db
+def test_fd527_kafel_najczesciej_uzywane_bez_typy_kbn(admin_user):
+    from admin_dashboard.models import MenuClick
+
+    migracja_menu = importlib.import_module(
+        "admin_dashboard.migrations.0002_fd527_menu_typy_mnisw"
+    )
+    adres = "/admin/bpp/typ_kbn/"
+    for etykieta in ("Typy KBN", "Typy KBN", "Typy MNiSW/MEiN", "Typy MNiSW"):
+        baker.make(MenuClick, user=admin_user, menu_label=etykieta, menu_url=adres)
+    inne = baker.make(
+        MenuClick, user=admin_user, menu_label="Tytuły", menu_url="/admin/bpp/tytul/"
+    )
+
+    migracja_menu.naprzod(apps, None)
+
+    etykiety = set(
+        MenuClick.objects.filter(menu_url=adres).values_list("menu_label", flat=True)
+    )
+    assert etykiety == {"Typy MNiSW"}
+    # Kliknięcia nie znikają — zliczają się teraz pod jedną nazwą.
+    assert MenuClick.objects.filter(menu_url=adres).count() == 4
+    inne.refresh_from_db()
+    assert inne.menu_label == "Tytuły"
+
+
+def test_fd527_migracja_raportow_plan_kolizji(migracja):
+    """Etykieta jest kluczem kolumny w tabeli raportu — dwie takie same
+    oznaczałyby, że jedna kolumna znika z raportu."""
+    zmiany, kolizje = migracja.zaplanuj_zmiany(
+        {
+            1: "Typ KBN",
+            2: "Typ MNiSW",
+            3: "Punkty KBN",
+            4: "Punkty MNiSW/MEiN",
+            5: "Rok",
+        }
+    )
+    # „Typ MNiSW” już jest → „Typ KBN” zostaje; z dwóch kandydatów na
+    # „Punkty MNiSW” zmienia się pierwszy, drugi zostaje.
+    assert zmiany == {3: "Punkty MNiSW"}
+    assert kolizje == [
+        (1, "Typ KBN", "Typ MNiSW"),
+        (4, "Punkty MNiSW/MEiN", "Punkty MNiSW"),
+    ]
+
+
+@pytest.mark.django_db
+def test_fd527_migracja_raportow_nie_tworzy_duplikatow_w_tabeli(migracja, caplog):
+    from flexible_reports.models import Table
+
+    seed_default_reports()
+    tabela = Column.objects.filter(parent__label=definicje.TABELA_LABEL).first().parent
+    # W tej tabeli „Typ MNiSW” już jest (seed) — dokładamy dawne „Typ KBN”.
+    stara = baker.make(Column, parent=tabela, label="Typ KBN")
+    # W innej tabeli kolizji nie ma, więc tam zmiana zachodzi.
+    inna = baker.make(Table, label="FD527 inna tabela", base_model=tabela.base_model)
+    w_innej = baker.make(Column, parent=inna, label="Typ KBN")
+
+    with caplog.at_level("WARNING"):
+        migracja.naprzod(apps, None)
+
+    stara.refresh_from_db()
+    w_innej.refresh_from_db()
+    assert stara.label == "Typ KBN"
+    assert w_innej.label == "Typ MNiSW"
+    etykiety = list(
+        Column.objects.filter(parent=tabela).values_list("label", flat=True)
+    )
+    assert len(etykiety) == len(set(etykiety))
+    assert "zajęta" in caplog.text

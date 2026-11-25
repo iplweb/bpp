@@ -1,8 +1,9 @@
 from django.db.models import Case, Q, TextField, When
-from multiseek.logic import Ordering, create_registry
+from multiseek.logic import Ordering, UnknownField, create_registry
 
 from bpp.models import Rekord
 
+from .dawne_etykiety import aktualna_etykieta
 from .fields import *  # noqa
 from .reports import multiseek_report_types
 
@@ -61,3 +62,20 @@ def _get_fields(self, request):
 
 
 registry.get_fields = lambda request, registry=registry: _get_fields(registry, request)
+
+
+def _get_field_by_name(nazwa, registry=registry):
+    """Pole po etykiecie — także DAWNEJ (patrz ``dawne_etykiety.py``).
+
+    Nieznana etykieta to ``UnknownField`` (bazowa metoda zwraca ``None``,
+    przez co odtwarzanie formularza kończyło się ``AttributeError``); widoki
+    wyszukiwarki łapią ten wyjątek i czyszczą formularz zamiast zwracać 500.
+    """
+    szukana = aktualna_etykieta(nazwa)
+    for pole in registry.fields:
+        if str(pole.label) == szukana:
+            return pole
+    raise UnknownField(f"Nieznane pole wyszukiwarki: {nazwa!r}")
+
+
+registry.get_field_by_name = _get_field_by_name
