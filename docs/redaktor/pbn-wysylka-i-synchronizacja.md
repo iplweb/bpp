@@ -366,7 +366,7 @@ ostrzegają).
 | **komparator publikacji PBN** | prace powiązane z PBN, których **dane się różnią** (tytuł, rok, DOI, ISBN, ISSN, WWW, liczba autorów; dodatkowe pola do wyboru); tabela „Wartość w BPP / Wartość w PBN”, eksport do XLSX |
 | **komparator źródeł PBN** | czasopisma z inną **punktacją** albo **dyscyplinami** niż w PBN; „Ustaw punkty wg PBN” przepisuje punkty z PBN |
 | **komparator udziałów PBN** („Problemy PBN”) | rozbieżności **dyscyplin** autorów w pracach między BPP a oświadczeniami w PBN oraz oświadczenia z PBN, którym w BPP brakuje autora, powiązania autora z pracą albo samej pracy |
-| **źródła skasowane w PBN** | źródła usunięte w PBN, do przemapowania na aktualne |
+| **źródła skasowane w PBN** | źródła usunięte w PBN, do przemapowania na aktualne (zob. [Przemapowanie źródeł](przemapowanie-zrodel.md)) |
 
 ![Komparator PBN: sekcja „Publikacje - rozbieżności między PBN a BPP”](../images/redaktor/pbn-wysylka-i-synchronizacja/12-komparator-pbn.png)
 

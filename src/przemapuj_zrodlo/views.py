@@ -17,6 +17,7 @@ from pbn_api.exceptions import AlreadyEnqueuedError
 from pbn_export_queue.models import PBN_Export_Queue
 
 from .forms import PrzemapowaZrodloForm
+from .historia import opis_zrodla
 from .models import PrzemapowaZrodla
 
 logger = logging.getLogger(__name__)
@@ -201,10 +202,17 @@ class PrzemapujZrodloView(WprowadzanieDanychRequiredMixin, FormView):
 
         try:
             with transaction.atomic():
-                # Pobierz wszystkie publikacje do przemapowania
-                publikacje = Wydawnictwo_Ciagle.objects.filter(
-                    zrodlo=self.zrodlo_zrodlowe
+                # Zablokuj publikacje do przemapowania i pracuj dalej na TYM
+                # SAMYM zestawie (aktualizacja, log, historia). Bez blokady
+                # drugi redaktor mógłby w międzyczasie przenieść publikację
+                # gdzie indziej — trafiłaby do logu i historii, choć nie
+                # została przemapowana.
+                publikacje = list(
+                    Wydawnictwo_Ciagle.objects.select_for_update(of=("self",))
+                    .filter(zrodlo=self.zrodlo_zrodlowe)
+                    .order_by("pk")
                 )
+                publikacje_pks = [pub.pk for pub in publikacje]
 
                 # Zbierz historię publikacji (do JSONa) i publikacje do wysłania do PBN
                 publikacje_historia, publikacje_do_wyslania = (
@@ -215,16 +223,18 @@ class PrzemapujZrodloView(WprowadzanieDanychRequiredMixin, FormView):
 
                 # Wykonaj przemapowanie (z wpisem w historii każdej pracy).
                 komentarz = (
-                    f"Przemapowano źródło „{self.zrodlo_zrodlowe}” → "
-                    f"„{zrodlo_docelowe}”"
+                    f"Przemapowano źródło {opis_zrodla(self.zrodlo_zrodlowe)} → "
+                    f"{opis_zrodla(zrodlo_docelowe)}"
                 )
                 with zmiany_rekordow(
                     self.request.user,
                     Wydawnictwo_Ciagle,
-                    list(publikacje.values_list("pk", flat=True)),
+                    publikacje_pks,
                     komentarz + ".",
                 ) as zmiana:
-                    liczba_przemapowanych = publikacje.update(zrodlo=zrodlo_docelowe)
+                    liczba_przemapowanych = Wydawnictwo_Ciagle.objects.filter(
+                        pk__in=publikacje_pks
+                    ).update(zrodlo=zrodlo_docelowe)
 
                     # Zapisz historię przemapowania
                     przemapowanie = PrzemapowaZrodla.objects.create(
@@ -342,22 +352,30 @@ class CofnijPrzemapowaView(WprowadzanieDanychRequiredMixin, View):
         try:
             with transaction.atomic():
                 # Pobierz IDs publikacji z historii
-                publikacje_ids = [p["id"] for p in przemapowanie.publikacje_historia]
+                publikacje_ids = [
+                    p["id"] for p in przemapowanie.publikacje_historia if p.get("id")
+                ]
 
-                # Cofnij przemapowanie: zmień z powrotem źródło
-                do_cofniecia = Wydawnictwo_Ciagle.objects.filter(
-                    pk__in=publikacje_ids, zrodlo=przemapowanie.zrodlo_do
+                # Cofnij przemapowanie: zmień z powrotem źródło. Blokada —
+                # jak przy przemapowaniu: ten sam zestaw rekordów idzie do
+                # aktualizacji i do historii.
+                do_cofniecia_pks = list(
+                    Wydawnictwo_Ciagle.objects.select_for_update(of=("self",))
+                    .filter(pk__in=publikacje_ids, zrodlo=przemapowanie.zrodlo_do)
+                    .order_by("pk")
+                    .values_list("pk", flat=True)
                 )
                 with zmiany_rekordow(
                     request.user,
                     Wydawnictwo_Ciagle,
-                    list(do_cofniecia.values_list("pk", flat=True)),
+                    do_cofniecia_pks,
                     f"Cofnięto przemapowanie źródeł nr {przemapowanie.pk}: "
-                    f"„{przemapowanie.zrodlo_do}” → „{przemapowanie.zrodlo_z}”.",
+                    f"{opis_zrodla(przemapowanie.zrodlo_do)} → "
+                    f"{opis_zrodla(przemapowanie.zrodlo_z)}.",
                 ):
-                    liczba_cofnietych = do_cofniecia.update(
-                        zrodlo=przemapowanie.zrodlo_z
-                    )
+                    liczba_cofnietych = Wydawnictwo_Ciagle.objects.filter(
+                        pk__in=do_cofniecia_pks
+                    ).update(zrodlo=przemapowanie.zrodlo_z)
 
                 # Oznacz przemapowanie jako cofnięte
                 przemapowanie.cofnieto = timezone.now()

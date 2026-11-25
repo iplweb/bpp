@@ -108,6 +108,8 @@ from pbn_api.models import (
     SentData,
 )
 from pbn_api.models.discipline import DisciplineGroup
+from przemapuj_zrodla_pbn.models import PrzeMapowanieZrodla
+from przemapuj_zrodlo.models import PrzemapowaZrodla
 from rozbieznosci.models import IgnorowanaRozbieznosc, RozbieznoscLog
 from rozbieznosci_dyscyplin.models import RozbieznosciView, RozbieznosciZrodelView
 from zglos_publikacje.models import (
@@ -222,6 +224,11 @@ groups = {
         NotADuplicate,
         LogScalania,
         IgnoredScientist,
+        # Logi przemapowań źródeł (FD#508) — podgląd dla tych, którzy
+        # przemapowują. Admin obu modeli jest tylko do odczytu (bez
+        # dodawania i edycji, usuwanie wyłącznie dla superużytkownika).
+        PrzemapowaZrodla,
+        PrzeMapowanieZrodla,
     ],
     "indeks autorów": [Autor, Autor_Jednostka],
     "administracja": [
