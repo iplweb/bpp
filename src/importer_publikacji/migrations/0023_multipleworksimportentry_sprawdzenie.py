@@ -3,7 +3,7 @@ from django.db import migrations, models
 
 class Migration(migrations.Migration):
     dependencies = [
-        ("importer_publikacji", "0021_importsession_powrot_do_zgloszen"),
+        ("importer_publikacji", "0022_importedauthor_pbn_uid"),
     ]
 
     operations = [
