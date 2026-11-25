@@ -9,13 +9,13 @@ patencie polskim „Nr zgłoszenia” — przed datą zgłoszenia.
 """
 
 import importlib
+import re
 from datetime import date
 
 import pytest
 from denorm import denorms
-from denorm.models import DirtyInstance
-from django.contrib.contenttypes.models import ContentType
 from django.core.exceptions import ValidationError
+from django.db import migrations
 from django.urls import reverse
 
 from bpp.models import Patent
@@ -110,6 +110,41 @@ def test_opis_cache_po_zapisie(patent_z_autorem):  # noqa: F811
     assert f"{ETYKIETA} P.123456" in patent.opis_bibliograficzny_cache
 
 
+@pytest.mark.django_db
+def test_opis_cache_po_zmianie_tylko_pierwszenstwa_save(patent_z_autorem):  # noqa: F811
+    """Zmiana WYŁĄCZNIE nowej kolumny (``update_fields``) musi przeliczyć
+    cache opisu — łapie trigger denorm, który tej kolumny nie obserwuje."""
+    patent = zagraniczny(patent_z_autorem)
+    patent.pierwszenstwo_nr_zgloszenia = "P.1"
+    patent.save()
+    denorms.flush()
+
+    patent.pierwszenstwo_nr_zgloszenia = "P.2"
+    patent.save(update_fields=["pierwszenstwo_nr_zgloszenia"])
+    denorms.flush()
+
+    patent.refresh_from_db()
+    assert f"{ETYKIETA} P.2," in patent.opis_bibliograficzny_cache
+    assert "P.1" not in patent.opis_bibliograficzny_cache
+
+
+@pytest.mark.django_db
+def test_opis_cache_po_zmianie_tylko_pierwszenstwa_update(patent_z_autorem):  # noqa: F811
+    """Jak wyżej, ale ``QuerySet.update()`` — z pominięciem ``save()``,
+    więc przeliczenie zależy wyłącznie od triggera w bazie."""
+    patent = zagraniczny(patent_z_autorem)
+    patent.pierwszenstwo_nr_zgloszenia = "P.1"
+    patent.save()
+    denorms.flush()
+
+    Patent.objects.filter(pk=patent.pk).update(pierwszenstwo_nr_zgloszenia="P.2")
+    denorms.flush()
+
+    patent.refresh_from_db()
+    assert f"{ETYKIETA} P.2," in patent.opis_bibliograficzny_cache
+    assert "P.1" not in patent.opis_bibliograficzny_cache
+
+
 #
 # Walidacja
 #
@@ -196,7 +231,10 @@ def test_admin_formularz_przyjmuje_pierwszenstwo_dla_zagranicznego(patent):
 
     form = Patent_Form(dane, instance=patent)
 
-    assert "pierwszenstwo_nr_zgloszenia" not in form.errors
+    # Cały formularz, nie tylko jedno pole: brak błędów pól i non_field_errors.
+    assert form.is_valid(), form.errors
+    assert not form.non_field_errors()
+    assert form.cleaned_data["pierwszenstwo_nr_zgloszenia"] == "P.1"
 
 
 @pytest.mark.django_db
@@ -220,8 +258,34 @@ def test_skrypt_admina_chowa_wiersz_pierwszenstwa():
 
     from django.contrib.staticfiles import finders
 
-    skrypt = Path(finders.find("bpp/js/patent-typ-kraj.js"))
-    assert "id_pierwszenstwo_nr_zgloszenia" in skrypt.read_text()
+    # Test STATYCZNY (treść skryptu) — realne chowanie wiersza sprawdza
+    # test_playwright_chowa_wiersz_pierwszenstwa poniżej.
+    tresc = Path(finders.find("bpp/js/patent-typ-kraj.js")).read_text()
+    pola = re.search(r"POLA_ZAGRANICZNE\s*=\s*\[([^\]]*)\]", tresc)
+    assert pola is not None
+    assert '"id_pierwszenstwo_nr_zgloszenia"' in pola.group(1)
+    assert 'typ.value === "zagraniczny"' in tresc
+    assert 'style.display = pokaz ? "" : "none"' in tresc
+
+
+@pytest.mark.django_db(transaction=True)
+def test_playwright_chowa_wiersz_pierwszenstwa(admin_page, channels_live_server):
+    from playwright.sync_api import expect
+
+    admin_page.goto(channels_live_server.url + reverse("admin:bpp_patent_add"))
+    admin_page.wait_for_selector("#id_typ_patentu", state="attached")
+    wiersz = admin_page.locator("#id_pierwszenstwo_nr_zgloszenia").locator(
+        "xpath=ancestor::*[contains(@class, 'grp-row') "
+        "or contains(@class, 'form-row')][1]"
+    )
+
+    expect(wiersz).to_be_hidden()
+
+    admin_page.select_option("#id_typ_patentu", "zagraniczny")
+    expect(wiersz).to_be_visible()
+
+    admin_page.select_option("#id_typ_patentu", "polski")
+    expect(wiersz).to_be_hidden()
 
 
 @pytest.mark.django_db
@@ -275,13 +339,14 @@ def test_bibtex_zawiera_pierwszenstwo(patent_z_autorem):  # noqa: F811
     )
 
 
-@pytest.mark.django_db
-def test_migracja_oznacza_patenty_do_przeliczenia_opisu(patent):
-    denorms.flush()
-    ct = ContentType.objects.get_for_model(Patent)
-    DirtyInstance.objects.filter(content_type=ct).delete()
-
+def test_migracja_tylko_dodaje_pole():
+    """Migracja tylko dodaje pole (z ``default=""``) — bez RunPython: nowe pole
+    jest wszędzie puste, więc żaden opis się nie zmienia i nie ma czego
+    przeliczać."""
     mod = importlib.import_module("bpp.migrations.0533_patent_pierwszenstwo_fd449")
-    mod.przelicz_opisy_patentow(None, None)
 
-    assert DirtyInstance.objects.filter(content_type=ct, object_id=patent.pk).exists()
+    operacje = mod.Migration.operations
+    assert [type(op) for op in operacje] == [migrations.AddField]
+    assert operacje[0].model_name == "patent"
+    assert operacje[0].name == "pierwszenstwo_nr_zgloszenia"
+    assert operacje[0].field.default == ""

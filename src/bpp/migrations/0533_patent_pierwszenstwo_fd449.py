@@ -1,18 +1,6 @@
 from django.db import migrations, models
 
 
-def przelicz_opisy_patentow(apps, schema_editor):
-    """Opis bibliograficzny patentu zyskał pole „Pierwszeństwo z polskiego
-    patentu o nr zgłoszenia” — oznacz patenty do przeliczenia
-    ``opis_bibliograficzny_cache``. Tylko oznaczenie „dirty” (jak 0532):
-    przeliczenie dokańcza asynchroniczna kolejka denorm."""
-    from denorm import denorms
-
-    from bpp.models.patent import Patent
-
-    denorms.rebuild_instances_of(Patent)
-
-
 class Migration(migrations.Migration):
     dependencies = [
         ("bpp", "0532_patent_pola_fd449"),
@@ -30,5 +18,4 @@ class Migration(migrations.Migration):
                 verbose_name="Pierwszeństwo z polskiego patentu o nr zgłoszenia",
             ),
         ),
-        migrations.RunPython(przelicz_opisy_patentow, migrations.RunPython.noop),
     ]
