@@ -5,14 +5,13 @@ from django.core.paginator import Paginator
 from django.db.models import Q
 from django.http import HttpResponse
 from django.utils.decorators import method_decorator
-from django.utils.html import strip_tags
 from django.views.generic import ListView
 from openpyxl import Workbook
 from openpyxl.styles import Alignment, Font, PatternFill
 
 from bpp.models import Wydawnictwo_Ciagle, Wydawnictwo_Zwarte
 from bpp.util import sanitize_xlsx_row
-from import_common.normalization import normalize_isbn, normalize_issn
+from import_common import porownanie_pol as reguly
 from pbn_downloader_app.freshness import is_pbn_publications_data_fresh
 
 # Default year range for evaluation period
@@ -186,8 +185,7 @@ class PublicationComparisonView(ListView):
     def _compare_title(self, bpp_pub, pbn_pub, differences):
         bpp_title = bpp_pub.tytul_oryginalny or ""
         pbn_title = pbn_pub.title or pbn_pub.value_or_none("object", "title") or ""
-        bpp_title_clean = strip_tags(bpp_title)
-        if bpp_title_clean.strip() != pbn_title.strip():
+        if reguly.tytul_bpp_zastany(bpp_title) != reguly.tekst_zastany(pbn_title):
             differences.append(
                 {
                     "field": "Tytuł",
@@ -213,7 +211,7 @@ class PublicationComparisonView(ListView):
     def _compare_doi(self, bpp_pub, pbn_pub, differences):
         bpp_doi = bpp_pub.doi or ""
         pbn_doi = pbn_pub.doi or pbn_pub.value_or_none("object", "doi") or ""
-        if bpp_doi.strip().lower() != pbn_doi.strip().lower():
+        if reguly.doi_zastane(bpp_doi) != reguly.doi_zastane(pbn_doi):
             differences.append(
                 {"field": "DOI", "bpp_value": bpp_doi, "pbn_value": pbn_doi}
             )
@@ -223,14 +221,14 @@ class PublicationComparisonView(ListView):
             return
         bpp_isbn_raw = bpp_pub.isbn or ""
         pbn_isbn_raw = pbn_pub.isbn or pbn_pub.value_or_none("object", "isbn") or ""
-        bpp_isbn_normalized = normalize_isbn(bpp_isbn_raw) or ""
-        pbn_isbn_normalized = normalize_isbn(pbn_isbn_raw) or ""
+        bpp_isbn_normalized = reguly.numer(bpp_isbn_raw)
+        pbn_isbn_normalized = reguly.numer(pbn_isbn_raw)
 
         if bpp_isbn_normalized == pbn_isbn_normalized:
             return
 
         if hasattr(bpp_pub, "e_isbn") and bpp_pub.e_isbn:
-            bpp_e_isbn_normalized = normalize_isbn(bpp_pub.e_isbn) or ""
+            bpp_e_isbn_normalized = reguly.numer(bpp_pub.e_isbn)
             if bpp_e_isbn_normalized == pbn_isbn_normalized:
                 return
 
@@ -245,7 +243,7 @@ class PublicationComparisonView(ListView):
         pbn_uri = (
             pbn_pub.publicUri or pbn_pub.value_or_none("object", "publicUri") or ""
         )
-        if bpp_www.strip() != pbn_uri.strip():
+        if reguly.tekst_zastany(bpp_www) != reguly.tekst_zastany(pbn_uri):
             differences.append(
                 {
                     "field": "URL/WWW",
@@ -273,7 +271,11 @@ class PublicationComparisonView(ListView):
             return
         bpp_tom = bpp_pub.tom if hasattr(bpp_pub, "tom") else ""
         pbn_volume = pbn_pub.volume() if hasattr(pbn_pub, "volume") else ""
-        if bpp_tom and pbn_volume and str(bpp_tom).strip() != str(pbn_volume).strip():
+        if (
+            bpp_tom
+            and pbn_volume
+            and reguly.tekst_zastany(bpp_tom) != reguly.tekst_zastany(pbn_volume)
+        ):
             differences.append(
                 {
                     "field": "Tom",
@@ -287,7 +289,7 @@ class PublicationComparisonView(ListView):
             return
         bpp_pages = bpp_pub.strony or ""
         pbn_pages = pbn_pub.value_or_none("object", "pages") or ""
-        if bpp_pages.strip() != pbn_pages.strip():
+        if reguly.tekst_zastany(bpp_pages) != reguly.tekst_zastany(pbn_pages):
             differences.append(
                 {"field": "Strony", "bpp_value": bpp_pages, "pbn_value": pbn_pages}
             )
@@ -321,20 +323,20 @@ class PublicationComparisonView(ListView):
             or pbn_pub.value_or_none("object", "journal", "issn")
             or ""
         )
-        bpp_issn_normalized = normalize_issn(bpp_issn_raw) or ""
-        pbn_issn_normalized = normalize_issn(pbn_issn_raw) or ""
+        bpp_issn_normalized = reguly.numer(bpp_issn_raw)
+        pbn_issn_normalized = reguly.numer(pbn_issn_raw)
 
         if bpp_issn_normalized == pbn_issn_normalized:
             return
 
         pbn_eissn = pbn_pub.value_or_none("object", "journal", "eissn") or ""
-        pbn_eissn_normalized = normalize_issn(pbn_eissn) or ""
+        pbn_eissn_normalized = reguly.numer(pbn_eissn)
 
         if bpp_issn_normalized == pbn_eissn_normalized:
             return
 
         if hasattr(bpp_pub, "e_issn") and bpp_pub.e_issn:
-            bpp_e_issn_normalized = normalize_issn(bpp_pub.e_issn) or ""
+            bpp_e_issn_normalized = reguly.numer(bpp_pub.e_issn)
             if (
                 bpp_e_issn_normalized == pbn_issn_normalized
                 or bpp_e_issn_normalized == pbn_eissn_normalized
@@ -351,7 +353,7 @@ class PublicationComparisonView(ListView):
         bpp_issue = bpp_pub.nr_zeszytu if hasattr(bpp_pub, "nr_zeszytu") else ""
         bpp_issue = bpp_issue or ""
         pbn_issue = pbn_pub.value_or_none("object", "issue") or ""
-        if bpp_issue.strip() != pbn_issue.strip():
+        if reguly.tekst_zastany(bpp_issue) != reguly.tekst_zastany(pbn_issue):
             differences.append(
                 {
                     "field": "Numer zeszytu",

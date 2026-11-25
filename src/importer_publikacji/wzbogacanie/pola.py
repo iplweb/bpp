@@ -7,16 +7,15 @@ pól. Słowniki (język, licencja) dopasowują te same funkcje co przy imporcie.
 """
 
 import hashlib
-import re
 from collections.abc import Callable
 from dataclasses import dataclass
 
 from django.core.exceptions import FieldDoesNotExist, ValidationError
-from django.utils.html import format_html, strip_tags
+from django.utils.html import format_html
 
 from bpp.admin.helpers.porownanie_wersji import diff_slow
 from bpp.models import nie_zawiera_adresu_doi_org
-from import_common.normalization import normalize_doi, normalize_isbn
+from import_common import porownanie_pol as reguly
 
 ZGODNE = "zgodne"
 ROZNE = "rozne"
@@ -78,39 +77,6 @@ class Wiersz:
         return f"{self.klucz}:{self.token}"
 
 
-def _spacje(wartosc):
-    return re.sub(r"\s+", " ", str(wartosc or "")).strip()
-
-
-def _tekst(wartosc):
-    """Tekst do porównania: bez znaczników HTML i nadmiarowych odstępów."""
-    return _spacje(strip_tags(str(wartosc or "")))
-
-
-def _strony(wartosc):
-    return re.sub(r"\s*[-–—]\s*", "-", _spacje(wartosc))
-
-
-def _doi(wartosc):
-    return normalize_doi(str(wartosc or "")) or ""
-
-
-def _numer(wartosc):
-    """ISSN/ISBN bez kresek, kropek i odstępów."""
-    return (normalize_isbn(str(wartosc or "")) or "").upper()
-
-
-def _adres(wartosc):
-    return _spacje(wartosc).rstrip("/")
-
-
-def _rok(wartosc):
-    try:
-        return str(int(wartosc))
-    except (TypeError, ValueError):
-        return ""
-
-
 def _etykieta(pole):
     nazwa = str(pole.verbose_name)
     if nazwa[1:2] == "-":  # „e-ISSN” zostaje, jak jest
@@ -149,8 +115,8 @@ def _wiersz_prosty(
     nazwa,
     wartosc,
     *,
-    normalizuj=_tekst,
-    do_zapisu=_spacje,
+    normalizuj=reguly.tekst,
+    do_zapisu=reguly.odstepy,
     alternatywa=None,
     walidatory=(),
     pomin_gdy_brak_w_zrodle=False,
@@ -171,8 +137,8 @@ def _wiersz_prosty(
         klucz=nazwa,
         etykieta=_etykieta(pole),
         status=ZGODNE,
-        zrodlo=_spacje(wartosc) or PUSTE,
-        bpp=_spacje(obecna) or PUSTE,
+        zrodlo=reguly.odstepy(wartosc) or PUSTE,
+        bpp=reguly.odstepy(obecna) or PUSTE,
     )
     if not z:
         wiersz.status = BRAK_W_ZRODLE
@@ -257,13 +223,13 @@ def _znajdz_licencje(adres):
 
 
 def _slowa(lista):
-    return {_spacje(s).casefold() for s in lista if _spacje(s)}
+    return {reguly.odstepy(s).casefold() for s in lista if reguly.odstepy(s)}
 
 
 def _wiersz_slow_kluczowych(rekord, slowa):
     if not hasattr(rekord, "slowa_kluczowe"):
         return None
-    slowa = [_spacje(s) for s in slowa or [] if _spacje(s)]
+    slowa = [reguly.odstepy(s) for s in slowa or [] if reguly.odstepy(s)]
     obecne = sorted(rekord.slowa_kluczowe.names(), key=str.casefold)
     if not slowa and not obecne:
         return None
@@ -301,11 +267,11 @@ def _wiersze_streszczen(rekord, publikacja):
     if not hasattr(rekord, "streszczenia"):
         return
     obecne = [s.streszczenie for s in rekord.streszczenia.all()]
-    obecne_norm = {_tekst(s) for s in obecne if _tekst(s)}
+    obecne_norm = {reguly.tekst(s) for s in obecne if reguly.tekst(s)}
     ze_zrodla = [
-        (_spacje(a.get("text")), a.get("language"))
+        (reguly.odstepy(a.get("text")), a.get("language"))
         for a in _build_abstracts_list(publikacja)
-        if _tekst(a.get("text"))
+        if reguly.tekst(a.get("text"))
     ]
     if not ze_zrodla:
         if obecne_norm:
@@ -313,7 +279,7 @@ def _wiersze_streszczen(rekord, publikacja):
                 klucz="streszczenie",
                 etykieta="Streszczenie",
                 status=BRAK_W_ZRODLE,
-                bpp=_spacje(obecne[0]),
+                bpp=reguly.odstepy(obecne[0]),
             )
         return
     for nr, (tekst, kod_jezyka) in enumerate(ze_zrodla):
@@ -325,9 +291,9 @@ def _wiersze_streszczen(rekord, publikacja):
             bpp=tekst,
             po_zapisie=True,
         )
-        if _tekst(tekst) not in obecne_norm:
+        if reguly.tekst(tekst) not in obecne_norm:
             wiersz.status = ROZNE if obecne_norm else BRAK_W_BPP
-            wiersz.bpp = _spacje(obecne[0]) if obecne else PUSTE
+            wiersz.bpp = reguly.odstepy(obecne[0]) if obecne else PUSTE
             wiersz.zmiana = _zmiana(wiersz.status, wiersz.bpp, tekst)
             if obecne_norm:
                 wiersz.uwaga = (
@@ -353,24 +319,30 @@ def porownaj(rekord, publikacja) -> list[Wiersz]:
             p.extra.get("original_title"),
             pomin_gdy_brak_w_zrodle=True,
         ),
-        _wiersz_prosty(rekord, "rok", p.year, normalizuj=_rok, do_zapisu=int),
-        _wiersz_prosty(rekord, "doi", p.doi, normalizuj=_doi, do_zapisu=_doi),
+        _wiersz_prosty(rekord, "rok", p.year, normalizuj=reguly.rok, do_zapisu=int),
+        _wiersz_prosty(
+            rekord, "doi", p.doi, normalizuj=reguly.doi, do_zapisu=reguly.doi
+        ),
         _wiersz_prosty(rekord, "tom", p.volume),
         _wiersz_prosty(rekord, "nr_zeszytu", p.issue),
-        _wiersz_prosty(rekord, "strony", p.pages, normalizuj=_strony),
-        _wiersz_prosty(rekord, "issn", p.issn, normalizuj=_numer, alternatywa="e_issn"),
+        _wiersz_prosty(rekord, "strony", p.pages, normalizuj=reguly.strony),
         _wiersz_prosty(
-            rekord, "e_issn", p.e_issn, normalizuj=_numer, alternatywa="issn"
+            rekord, "issn", p.issn, normalizuj=reguly.numer, alternatywa="e_issn"
         ),
-        _wiersz_prosty(rekord, "isbn", p.isbn, normalizuj=_numer, alternatywa="e_isbn"),
         _wiersz_prosty(
-            rekord, "e_isbn", p.e_isbn, normalizuj=_numer, alternatywa="isbn"
+            rekord, "e_issn", p.e_issn, normalizuj=reguly.numer, alternatywa="issn"
+        ),
+        _wiersz_prosty(
+            rekord, "isbn", p.isbn, normalizuj=reguly.numer, alternatywa="e_isbn"
+        ),
+        _wiersz_prosty(
+            rekord, "e_isbn", p.e_isbn, normalizuj=reguly.numer, alternatywa="isbn"
         ),
         _wiersz_prosty(
             rekord,
             "www",
             p.url,
-            normalizuj=_adres,
+            normalizuj=reguly.adres,
             alternatywa="public_www",
             walidatory=(nie_zawiera_adresu_doi_org,),
         ),
