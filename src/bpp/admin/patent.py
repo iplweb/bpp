@@ -75,6 +75,7 @@ class Patent_Form(Wycinaj_W_z_InformacjiMixin, forms.ModelForm):
             "rodzaj_prawa",
             "typ_patentu",
             "kraj",
+            "pierwszenstwo_nr_zgloszenia",
             "wdrozenie",
             "wydzial",
             "uprawnieni",
@@ -109,7 +110,8 @@ class Patent_Admin(
     djangoql_completion = True
 
     class Media:
-        # FD#449: wiersz „Kraj” widoczny tylko dla patentu zagranicznego.
+        # FD#449: wiersze „Kraj” i „Pierwszeństwo z polskiego patentu…”
+        # widoczne tylko dla patentu zagranicznego.
         # Warstwa wyłącznie wizualna — regułę egzekwuje Patent.clean().
         js = ["/static/bpp/js/patent-typ-kraj.js"]
 
@@ -136,6 +138,7 @@ class Patent_Admin(
         "numer_zgloszenia",
         "numer_prawa_wylacznego",
         "uprawnieni",
+        "pierwszenstwo_nr_zgloszenia",
         "id",
     ]
 
@@ -167,6 +170,7 @@ class Patent_Admin(
                     "rodzaj_prawa",
                     "typ_patentu",
                     "kraj",
+                    "pierwszenstwo_nr_zgloszenia",
                     "data_zgloszenia",
                     "numer_zgloszenia",
                     "data_decyzji",

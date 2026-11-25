@@ -851,6 +851,7 @@ bpp.patent:
   opis_bibliograficzny_cache                   str
   opis_bibliograficzny_zapisani_autorzy_cache  str?
   ostatnio_zmieniony                           datetime?
+  pierwszenstwo_nr_zgloszenia                  str  "Pierwszeństwo z polskiego patentu o nr zgłoszenia" — Numer zgłoszenia polskiego patentu, z którego patent zagraniczny wywodzi pierwszeństwo, np. „P.123456”. Wpisz numer ręcznie — także wtedy, gdy polski patent jest w bazie (numery nie zawsze są takie same jak w polu „Numer zgłoszenia”). Wypełnij tylko dla patentu zagranicznego.
   public_dostep_dnia                           date?  "Dostęp dnia (wolny dostęp)" — Data wolnego dostępu do strony WWW.
   public_www                                   str  "Adres WWW (wolny dostęp)"
   punktacja_snip                               float

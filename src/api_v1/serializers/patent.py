@@ -71,6 +71,7 @@ class PatentSerializer(
             "rodzaj_prawa",
             "typ_patentu",
             "kraj",
+            "pierwszenstwo_nr_zgloszenia",
             "wdrozenie",
             "wydzial",
             "uprawnieni",

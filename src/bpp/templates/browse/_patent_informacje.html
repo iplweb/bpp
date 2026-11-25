@@ -11,6 +11,7 @@
                 {% if praca.uprawnieni %}<b>Uprawnieni:</b> {{ praca.uprawnieni }}<br/>{% endif %}
                 <b>Rodzaj prawa:</b> {{ praca.rodzaj_prawa|default:"brak" }}<br/>
                 {% if praca.typ_patentu_z_krajem %}<b>Typ patentu:</b> {{ praca.typ_patentu_z_krajem }}<br/>{% endif %}
+                {% if praca.pierwszenstwo_nr_zgloszenia %}<b>Pierwszeństwo z polskiego patentu o nr zgłoszenia:</b> {{ praca.pierwszenstwo_nr_zgloszenia }}<br/>{% endif %}
                 <b>Data zgłoszenia:</b> {{ praca.data_zgloszenia|default:"brak" }}<br/>
                 <b>Data decyzji:</b> {{ praca.data_decyzji|default:"brak" }}<br/>
                 {% if praca.data_opublikowania %}<b>Data opublikowania:</b> {{ praca.data_opublikowania }}<br/>{% endif %}

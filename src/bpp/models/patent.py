@@ -169,6 +169,18 @@ class Patent(
         "patentu zagranicznego.",
     )
 
+    pierwszenstwo_nr_zgloszenia = models.CharField(
+        "Pierwszeństwo z polskiego patentu o nr zgłoszenia",
+        max_length=255,
+        blank=True,
+        default="",
+        help_text="Numer zgłoszenia polskiego patentu, z którego patent "
+        "zagraniczny wywodzi pierwszeństwo, np. „P.123456”. Wpisz numer "
+        "ręcznie — także wtedy, gdy polski patent jest w bazie (numery nie "
+        "zawsze są takie same jak w polu „Numer zgłoszenia”). Wypełnij tylko "
+        "dla patentu zagranicznego.",
+    )
+
     autor_rekordu_klass = Patent_Autor
     autorzy = models.ManyToManyField(Autor, through=autor_rekordu_klass)
 
@@ -204,14 +216,25 @@ class Patent(
 
         self.uprawnieni = (self.uprawnieni or "").strip()
         self.kraj = (self.kraj or "").strip()
-        if self.kraj and self.typ_patentu != TypPatentu.ZAGRANICZNY:
-            raise ValidationError(
-                {
-                    "kraj": "Kraj podaje się tylko dla patentu zagranicznego "
+        self.pierwszenstwo_nr_zgloszenia = (
+            self.pierwszenstwo_nr_zgloszenia or ""
+        ).strip()
+        if self.typ_patentu != TypPatentu.ZAGRANICZNY:
+            bledy = {}
+            if self.kraj:
+                bledy["kraj"] = (
+                    "Kraj podaje się tylko dla patentu zagranicznego "
                     "— ustaw „Typ patentu” na „zagraniczny” albo wyczyść "
                     "to pole."
-                }
-            )
+                )
+            if self.pierwszenstwo_nr_zgloszenia:
+                bledy["pierwszenstwo_nr_zgloszenia"] = (
+                    "Pierwszeństwo z polskiego patentu podaje się tylko dla "
+                    "patentu zagranicznego — ustaw „Typ patentu” na "
+                    "„zagraniczny” albo wyczyść to pole."
+                )
+            if bledy:
+                raise ValidationError(bledy)
 
     def typ_patentu_z_krajem(self):
         """„zagraniczny / Kanada”, „polski” albo pusty napis."""
@@ -239,6 +262,15 @@ class Patent(
             ret.append(("s.", strony))
         if self.numer_zgloszenia:
             ret.append(("Nr zgłoszenia:", self.numer_zgloszenia))
+        # FD#449: we wzorcu patentu zagranicznego pierwszeństwo stoi tam,
+        # gdzie przy polskim numer zgłoszenia — przed datą zgłoszenia.
+        if self.pierwszenstwo_nr_zgloszenia:
+            ret.append(
+                (
+                    "Pierwszeństwo z polskiego patentu o nr zgłoszenia:",
+                    self.pierwszenstwo_nr_zgloszenia,
+                )
+            )
         for etykieta, data in (
             ("Data zgłoszenia:", self.data_zgloszenia),
             ("Data decyzji:", self.data_decyzji),
