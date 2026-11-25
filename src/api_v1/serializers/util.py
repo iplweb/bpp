@@ -3,7 +3,7 @@ from rest_framework import serializers
 
 class ChoicesSerializerField(serializers.SerializerMethodField):
     def to_representation(self, value):
-        method_name = "get_{field_name}_display".format(field_name=self.field_name)
+        method_name = f"get_{self.field_name}_display"
         method = getattr(value, method_name)
         return method()
 
@@ -52,6 +52,14 @@ class WydawnictwoSerializerMixin(serializers.HyperlinkedModelSerializer):
     typ_kbn = serializers.HyperlinkedRelatedField(
         view_name="api_v1:typ_kbn-detail", read_only=True
     )
+    # FD#527: te same dane pod nowymi nazwami; dawne klucze ``typ_kbn``
+    # i ``punkty_kbn`` zostają dla istniejących integracji.
+    typ_mnisw = serializers.HyperlinkedRelatedField(
+        view_name="api_v1:typ_kbn-detail", read_only=True, source="typ_kbn"
+    )
+    punkty_mnisw = serializers.DecimalField(
+        source="punkty_kbn", max_digits=6, decimal_places=2, read_only=True
+    )
     status_korekty = serializers.StringRelatedField()
 
     openaccess_tryb_dostepu = serializers.StringRelatedField()
@@ -62,5 +70,7 @@ class WydawnictwoSerializerMixin(serializers.HyperlinkedModelSerializer):
     )
 
     nagrody = serializers.HyperlinkedRelatedField(
-        many=True, view_name="api_v1:nagroda-detail", read_only=True,
+        many=True,
+        view_name="api_v1:nagroda-detail",
+        read_only=True,
     )

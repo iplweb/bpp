@@ -81,7 +81,7 @@ KOLUMNY = [
         footer_template="{{ value }}",
     ),
     dict(
-        label="Typ KBN",
+        label="Typ MNiSW",
         position=5,
         sortable=True,
         attr_name="typ_kbn",

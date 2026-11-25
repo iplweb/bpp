@@ -38,7 +38,13 @@ class Nowe_Sumy_View(ModelZLiczbaCytowan, ModelPunktowany, models.Model):
     charakter_formalny = models.ForeignKey(
         "Charakter_Formalny", DO_NOTHING, null=True, blank=True
     )
-    typ_kbn = models.ForeignKey("Typ_KBN", DO_NOTHING, null=True, blank=True)
+    typ_kbn = models.ForeignKey(
+        "Typ_KBN",
+        DO_NOTHING,
+        null=True,
+        blank=True,
+        verbose_name="typ MNiSW",
+    )
 
     objects = Nowe_SumyQuerySet.as_manager()
 

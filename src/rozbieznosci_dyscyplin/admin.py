@@ -301,7 +301,8 @@ class RozbieznosciZrodelViewResource(resources.ModelResource):
     autor_nazwisko = Field(attribute="autor__nazwisko")
     autor_imiona = Field(attribute="autor__imiona")
     dyscyplina_naukowa_nazwa = Field(attribute="dyscyplina_naukowa__nazwa")
-    punkty_kbn = Field(attribute="punkty_kbn")
+    # FD#527: nagłówek kolumny w pliku to ``punkty_mnisw``.
+    punkty_kbn = Field(attribute="punkty_kbn", column_name="punkty_mnisw")
     charakter_formalny_nazwa = Field(attribute="charakter_formalny__nazwa")
     dyscypliny_zrodla = Field()
     zrodlo_strona_url = Field()

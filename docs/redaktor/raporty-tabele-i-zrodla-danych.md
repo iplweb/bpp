@@ -19,7 +19,7 @@ Definicje raportów może zmieniać superużytkownik oraz osoby z grupy
 
 1. Moduł redagowania → **Raporty** → **Tabele** → wybierz tabelę.
 2. W sekcji **Kolumny** zmień pole **Etykieta** wybranej kolumny (np.
-   z „Typ KBN” na „Typ MNiSW”) i zapisz tabelę.
+   z „Typ MNiSW” na „Typ pracy”) i zapisz tabelę.
 
 Nowa etykieta jest widoczna od razu — przy najbliższym wygenerowaniu raportu,
 bez restartu serwera — w nagłówku tabeli na ekranie oraz w plikach pobranych
@@ -38,6 +38,26 @@ Warto wiedzieć:
   trafia do plików Word i Excel, niezależnie od etykiety.
 - Etykiety kolumn w jednej tabeli powinny być różne — dwie kolumny o tej samej
   etykiecie pokażą się w raporcie jako jedna.
+
+## Nazwy pól punktów i typu MNiSW w zapytaniach {#nazwy-pol-mnisw}
+
+W zapytaniach źródeł danych (**Raporty** → **Źródła danych**) punkty i typ
+MNiSW można zapisać nową nazwą — `punkty_mnisw`, `typ_mnisw` — albo
+dawną: `punkty_kbn`, `typ_kbn`. Obie działają tak samo w obu językach zapytań
+(django-dsl i DjangoQL), np. `punkty_mnisw > 0 AND NOT typ_mnisw = "PW"`.
+Istniejących źródeł danych nie trzeba poprawiać.
+
+Te same nowe nazwy działają w tabelach raportów (**Raporty** → **Tabele**
+→ sekcja **Kolumny**):
+
+- w polu **Atrybut** kolumny — `punkty_mnisw`, `typ_mnisw`, także ze
+  ścieżką, np. `typ_mnisw.nazwa`. Kolumna wyświetla się, sortuje po
+  kliknięciu w nagłówek i eksportuje do MS Word i XLSX tak samo jak
+  z dawną nazwą,
+- w polu **Szablon** kolumny — `{{ record.punkty_mnisw }}`,
+  `{{ record.typ_mnisw }}`, `{{ record.typ_mnisw.nazwa }}`.
+
+Kolumn z dawnymi nazwami (`punkty_kbn`, `typ_kbn`) nie trzeba zmieniać.
 
 ## Klonowanie tabeli {#klonowanie-tabeli}
 

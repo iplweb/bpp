@@ -62,7 +62,7 @@ MULTISEEK_EXPORT_HEADERS = (
     "pk",
     "bpp_id",
     "typ_rekordu",
-    "typ_mnisw_mein",
+    "typ_mnisw",
     "id_rekordu",
     "pbn_uid_id",
     "link_do_bpp_url",
@@ -79,7 +79,7 @@ MULTISEEK_EXPORT_XLSX_HEADERS = (
     "PK",
     "BPP ID",
     "Typ rekordu",
-    "Typ MNiSW/MEiN",
+    "Typ MNiSW",
     "ID rekordu",
     "PBN UID",
     "Link do BPP",
@@ -105,7 +105,7 @@ MULTISEEK_EXPORT_OPIS_XLSX_HEADERS = (
     "IF",
     "PK",
     "Charakter",
-    "Typ MNiSW/MEiN",
+    "Typ MNiSW",
 )
 
 MULTISEEK_EXPORT_OPIS_FIELDS = (

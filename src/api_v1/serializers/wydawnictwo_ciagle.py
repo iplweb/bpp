@@ -6,7 +6,6 @@ from api_v1.serializers.util import (
     Wydawnictwo_AutorSerializerMixin,
     WydawnictwoSerializerMixin,
 )
-
 from bpp.models import (
     Wydawnictwo_Ciagle,
     Wydawnictwo_Ciagle_Autor,
@@ -106,6 +105,7 @@ class Wydawnictwo_CiagleSerializer(
             "jezyk_alt",
             "charakter_formalny",
             "typ_kbn",
+            "typ_mnisw",
             #
             "zrodlo",
             #
@@ -128,6 +128,7 @@ class Wydawnictwo_CiagleSerializer(
             #
             "impact_factor",
             "punkty_kbn",
+            "punkty_mnisw",
             #
             "informacje",
             "szczegoly",

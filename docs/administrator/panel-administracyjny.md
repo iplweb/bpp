@@ -90,7 +90,7 @@ użytkowników.
 |---|---|
 | **Prace w bazie** | ile wydawnictw ciągłych i zwartych (razem) ma rok wydania nie późniejszy niż dany rok, licząc od 1980 — krzywa narastająca |
 | **Łączny Impact Factor** | narastająca suma pola „impact factor” prac od 2010 roku, według roku wydania |
-| **Łączne punkty MNiSW** | narastająca suma pola „punkty MNiSW/MEiN” od 2010 roku, według roku wydania |
+| **Łączne punkty MNiSW** | narastająca suma pola „punkty MNiSW” od 2010 roku, według roku wydania |
 | **Nowo dodane prace** | ile rekordów **wpisano do BPP** w każdym miesiącu ostatnich pięciu lat, osobno dla wydawnictw ciągłych i zwartych |
 
 Pierwsze trzy wykresy zależą od **roku wydania** pracy, czwarty — od daty

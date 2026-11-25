@@ -89,7 +89,7 @@ def _dopasuj_kalkulator(original, uczelnia=None):  # noqa: C901
                 return SlotKalkulator_Wydawnictwo_Ciagle_Prog3(original)
 
         raise CannotAdapt(
-            f"punkty MNiSW/MEiN rekordu ({original.punkty_kbn}) i rok ({original.rok}) nie pozwalają na dopasowanie "
+            f"punkty MNiSW rekordu ({original.punkty_kbn}) i rok ({original.rok}) nie pozwalają na dopasowanie "
             f"tego rekordu do jakiejkolwiek grupy"
         )
 

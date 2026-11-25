@@ -29,7 +29,7 @@ DIMENSIONS: dict[str, PivotDimension] = {
     ),
     "typ_kbn": PivotDimension(
         "typ_kbn",
-        "Typ MNiSW/MEiN",
+        "Typ MNiSW",
         "typ_kbn_id",
         label_kind="fk",
         fk_model="bpp.Typ_KBN",

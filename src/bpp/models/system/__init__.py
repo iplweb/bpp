@@ -106,7 +106,7 @@ class Typ_KBN(NazwaISkrot):
     artykul_pbn = models.BooleanField(
         "Artykuł w PBN",
         help_text="""Wydawnictwa ciągłe posiadające
-    ten typ MNiSW/MEiN zostaną włączone do eksportu PBN jako artykuły""",
+    ten typ MNiSW zostaną włączone do eksportu PBN jako artykuły""",
         default=False,
     )
 
@@ -129,14 +129,14 @@ class Typ_KBN(NazwaISkrot):
     ukryty = models.BooleanField(
         "Ukryj na listach wyboru",
         default=False,
-        help_text="""Jeżeli zaznaczone, ten typ MNiSW/MEiN nie będzie
+        help_text="""Jeżeli zaznaczone, ten typ MNiSW nie będzie
         proponowany na listach wyboru przy wprowadzaniu nowych rekordów.
         Istniejące rekordy korzystające z tej wartości pozostają bez zmian.""",
     )
 
     class Meta:
-        verbose_name = "typ MNiSW/MEiN"
-        verbose_name_plural = "typy KBN"
+        verbose_name = "typ MNiSW"
+        verbose_name_plural = "typy MNiSW"
         ordering = ["nazwa"]
         app_label = "bpp"
 

@@ -235,7 +235,7 @@ uczelni" w rekordzie autora; gdy jest pusta, link opisany jest jako „Profil
 w portalu uczelni".
 ## Ukrywanie nieużywanych pozycji słowników
 
-Słowniki takie jak **Języki**, **Charaktery formalne**, **Typy KBN**
+Słowniki takie jak **Języki**, **Charaktery formalne**, **Typy MNiSW**
 i **Charakter PBN** (menu „Dane systemowe”) mają często setki
 pozycji, z których uczelnia używa kilkunastu — reszta tylko wydłuża listy
 wyboru przy wprowadzaniu rekordów.

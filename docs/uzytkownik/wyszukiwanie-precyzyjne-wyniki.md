@@ -32,8 +32,8 @@ Kolejność wyników ustawiasz **w formularzu**, polem **„Sortuj”**
 i — po kliknięciu **„+ dodaj sortowanie”** — drugim kryterium **„potem”**
 (najwyżej dwa poziomy, każdy z przełącznikiem **„rosnąco”** /
 **„malejąco”**). Do wyboru są m.in. rok, tytuł oryginalny, impact factor,
-liczba cytowań, liczba autorów, punkty MNiSW/MEiN, charakter formalny,
-typ MNiSW/MEiN i źródło. Domyślnie: rok, malejąco.
+liczba cytowań, liczba autorów, punkty MNiSW, charakter formalny,
+typ MNiSW i źródło. Domyślnie: rok, malejąco.
 
 Aby zmienić kolejność już wyświetlonych wyników, kliknij **„Powrót”**,
 zmień sortowanie i ponownie **„Wyświetl wyniki”**. W podglądzie

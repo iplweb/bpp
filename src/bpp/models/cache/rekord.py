@@ -27,6 +27,10 @@ from bpp.models.abstract import (
     ModelZRokiem,
     ModelZWWW,
 )
+from bpp.models.abstract.aliasy_mnisw import (
+    AliasyMNiSWQuerySetMixin,
+    SkrotyDSLZAliasami,
+)
 from bpp.models.fields import TupleField
 from bpp.models.util import ModelZOpisemBibliograficznym
 from bpp.util import FulltextSearchMixin
@@ -35,8 +39,16 @@ from .punktacja import Cache_Punktacja_Autora, Cache_Punktacja_Dyscypliny
 from .views import SlowaKluczoweView
 
 
+class RekordQuerySet(AliasyMNiSWQuerySetMixin, models.QuerySet):
+    """QuerySet rekordów: sortowanie także po aliasach ``punkty_mnisw`` /
+    ``typ_mnisw`` (FD#527) — patrz ``AliasyMNiSWQuerySetMixin``."""
+
+
 class RekordManager(FulltextSearchMixin, models.Manager):
     fts_field = "search_index"
+
+    def get_queryset(self):
+        return RekordQuerySet(self.model, using=self._db)
 
     def get_for_model(self, model):
         pk = (ContentType.objects.get_for_model(model).pk, model.pk)
@@ -266,14 +278,19 @@ class RekordBase(
 
     # Skróty dla django-dsl
 
-    django_dsl_shortcuts = {
-        "charakter": "charakter_formalny__skrot",
-        "typ_kbn": "typ_kbn__skrot",
-        "typ_odpowiedzialnosci": "autorzy__typ_odpowiedzialnosci__skrot",
-        "autor": "autorzy__autor_id",
-        "jednostka": "autorzy__jednostka__pk",
-        "wydzial": "autorzy__jednostka__wydzial__pk",
-    }
+    django_dsl_shortcuts = SkrotyDSLZAliasami(
+        {
+            "charakter": "charakter_formalny__skrot",
+            "typ_kbn": "typ_kbn__skrot",
+            # FD#527: nowe nazwy obok dawnych (kolumny w bazie bez zmian).
+            "typ_mnisw": "typ_kbn__skrot",
+            "punkty_mnisw": "punkty_kbn",
+            "typ_odpowiedzialnosci": "autorzy__typ_odpowiedzialnosci__skrot",
+            "autor": "autorzy__autor_id",
+            "jednostka": "autorzy__jednostka__pk",
+            "wydzial": "autorzy__jednostka__wydzial__pk",
+        }
+    )
 
     class Meta:
         abstract = True

@@ -80,7 +80,7 @@ otrzymujesz wynik wyszukiwania:
 ![Wynik zapytania DjangoQL rok = 2022 or rok = 2024](../images/redaktor/wyszukiwanie-redagowanie/07-djangoql-wynik.png)
 
 Spróbujmy czegoś trudniejszego: wyszukajmy prace o charakterze formalnym
-„KSP” lub „AC”, które mają co najmniej 100 punktów MNiSW/MEiN. Podczas
+„KSP” lub „AC”, które mają co najmniej 100 punktów MNiSW. Podczas
 pisania zapytania system podpowiada nazwy pól:
 
 ![Podpowiedzi nazw pól podczas pisania zapytania DjangoQL](../images/redaktor/wyszukiwanie-redagowanie/08-djangoql-podpowiedzi.png)
@@ -93,8 +93,13 @@ obiektu „Charakter formalny”, po których można wyszukiwać:
 Dokończmy zapytanie:
 
 ``` python
-(charakter_formalny.skrot = "KSP" or charakter_formalny.skrot = "AC") and punkty_kbn >= 100
+(charakter_formalny.skrot = "KSP" or charakter_formalny.skrot = "AC") and punkty_mnisw >= 100
 ```
+
+!!! note "Dawne nazwy pól"
+    Dawne nazwy `punkty_kbn` i `typ_kbn` nadal działają i znaczą dokładnie
+    to samo co `punkty_mnisw` i `typ_mnisw` — zapisanych zapytań nie trzeba
+    poprawiać.
 
 Jak widać na zrzucie ekranu poniżej, zadziałało ono:
 
@@ -236,7 +241,7 @@ Oznacza to, że ciąg warunków połączonych `and` jest traktowany jak jedna
 całość:
 
 ``` python
-rok = 2024 and charakter_formalny.skrot = "KSP" and punkty_kbn >= 100
+rok = 2024 and charakter_formalny.skrot = "KSP" and punkty_mnisw >= 100
 ```
 
 To zapytanie wyszuka prace z 2024 roku, z charakterem formalnym „KSP”, czyli
@@ -246,7 +251,7 @@ Dołożenie operatora `or` do takiego ciągu warunków może nie dać dobrych
 efektów:
 
 ``` python
-rok = 2024 or rok = 2025 and charakter_formalny.skrot = "KSP" and punkty_kbn >= 100
+rok = 2024 or rok = 2025 and charakter_formalny.skrot = "KSP" and punkty_mnisw >= 100
 ```
 
 Takie zapytanie znajdzie **wszystkie** rekordy z 2024 roku oraz prace z 2025
@@ -269,7 +274,7 @@ dodawanie. Porównajmy pierwsze zapytanie:
 Na pierwszy rzut oka widać, co trzeba zrobić — dodać nawiasy:
 
 ``` python
-(rok = 2024 or rok = 2025) and charakter_formalny.skrot = "KSP" and punkty_kbn >= 100
+(rok = 2024 or rok = 2025) and charakter_formalny.skrot = "KSP" and punkty_mnisw >= 100
 ```
 
 Analogicznie w przykładzie matematycznym:
@@ -315,7 +320,7 @@ Dla modelu **rekord** dostępne są:
   i linkami "Zobacz" / "Edytuj",
 - **lista** — numerowana lista opisów bibliograficznych,
 - **tabela** — tabela z sumami (impact factor, liczba cytowań, punkty
-  KBN, punktacja wewnętrzna),
+  MNiSW, punktacja wewnętrzna),
 - **punktacja z wewnętrzną** / **punktacja sumaryczna** — warianty
   tabeli z innym zestawem kolumn punktowych,
 - **BibTeX** — lista opisów jako brama do eksportu pliku `.bib`,

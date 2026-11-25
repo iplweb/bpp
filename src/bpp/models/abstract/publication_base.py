@@ -8,6 +8,7 @@ from django.db.models import PROTECT, SET_NULL
 
 from bpp.fields import YearField
 
+from .aliasy_mnisw import AliasTypMNiSWMixin
 from .utils import get_liczba_arkuszy_wydawniczych
 
 
@@ -35,13 +36,13 @@ class ModelRecenzowany(models.Model):
         abstract = True
 
 
-class ModelTypowany(models.Model):
-    """Model zawierający typ MNiSW/MEiN oraz język."""
+class ModelTypowany(AliasTypMNiSWMixin, models.Model):
+    """Model zawierający typ MNiSW oraz język."""
 
     typ_kbn = models.ForeignKey(
         "Typ_KBN",
         PROTECT,
-        verbose_name="typ MNiSW/MEiN",
+        verbose_name="typ MNiSW",
         limit_choices_to={"ukryty": False},
     )
     jezyk = models.ForeignKey(
@@ -74,8 +75,7 @@ class ModelZRokiem(models.Model):
     """Model zawierający pole "Rok" """
 
     rok = YearField(
-        help_text="""Rok uwzględniany przy wyszukiwaniu i raportach
-        KBN/MNiSW)""",
+        help_text="Rok uwzględniany przy wyszukiwaniu i raportach MNiSW",
         db_index=True,
         validators=[MinValueValidator(0)],
     )

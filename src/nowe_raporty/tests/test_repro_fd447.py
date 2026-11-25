@@ -135,13 +135,15 @@ def test_fd447_zmiana_w_kopii_nie_rusza_oryginalu(admin_client, tabela):
     _klonuj(admin_client, tabela)
     klon = Table.objects.exclude(pk=tabela.pk).get()
 
-    Column.objects.filter(parent=klon, label="Typ KBN").update(label="Typ MNiSW")
+    Column.objects.filter(parent=klon, label="Typ MNiSW").update(
+        label="Typ pracy"
+    )
     Column.objects.filter(parent=klon, label="ID rekordu").delete()
 
     etykiety = set(Column.objects.filter(parent=tabela).values_list("label", flat=True))
-    assert "Typ KBN" in etykiety
+    assert "Typ MNiSW" in etykiety
     assert "ID rekordu" in etykiety
-    assert "Typ MNiSW" not in etykiety
+    assert "Typ pracy" not in etykiety
 
 
 def test_fd447_klonowanie_tylko_przez_post(admin_client, tabela):

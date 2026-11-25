@@ -54,9 +54,9 @@ nieco różnić.
 | Autorzy | Nazwisko i imię, Autor, Redaktor, Tłumacz, Recenzent, Pierwsze nazwisko i imię, ORCID, Dyscyplina naukowa autora, Kierunek studiów |
 | Jednostki | Jednostka, Wydział, Pierwsza jednostka, Pierwszy wydział, Aktualna jednostka dowolnego autora, Rodzaj jednostki |
 | Rok | Rok, Zakres lat |
-| Rodzaj pracy | Typ rekordu (publikacje / streszczenia / inne), Charakter formalny, Charakter formalny ogólny (artykuł / rozdział / książka / inne), Typ MNiSW/MEiN, Praca recenzowana, Język |
+| Rodzaj pracy | Typ rekordu (publikacje / streszczenia / inne), Charakter formalny, Charakter formalny ogólny (artykuł / rozdział / książka / inne), Typ MNiSW, Praca recenzowana, Język |
 | Gdzie wydano | Źródło, Wydawca, Wydawnictwo nadrzędne, Konferencja, Rodzaj konferencji, Konferencja w bazie Web of Science, Konferencja w bazie Scopus |
-| Punkty i wskaźniki | Punkty MNiSW/MEiN, Impact factor, Liczba cytowań, Index Copernicus, Punktacja SNIP, Punktacja wewnętrzna |
+| Punkty i wskaźniki | Punkty MNiSW, Impact factor, Liczba cytowań, Index Copernicus, Punktacja SNIP, Punktacja wewnętrzna |
 | Treść | Tytuł pracy, Słowa kluczowe, Informacje, Szczegóły, Uwagi, Liczba autorów, Liczba znaków wydawniczych |
 | Open Access | OpenAccess: wersja tekstu, OpenAccess: licencja, OpenAccess: czas udostępnienia |
 | Inne | Zewnętrzna baza danych, Status korekty |
@@ -72,10 +72,10 @@ licencja ustawiona**, **Dostęp dnia ustawiony**, **Strona WWW ustawiona**.
 | Rodzaj pola | Operatory |
 |---|---|
 | tekst (Tytuł pracy, Informacje, Uwagi, DOI…) | zawiera, nie zawiera, równy, różny, zaczyna się od, nie zaczyna się od |
-| liczba (Rok, Punkty MNiSW/MEiN, Impact factor…) | równy, różny, większy, niż, mniejszy, niż, większy lub równy, mniejszy lub równy |
+| liczba (Rok, Punkty MNiSW, Impact factor…) | równy, różny, większy, niż, mniejszy, niż, większy lub równy, mniejszy lub równy |
 | Zakres lat | w zakresie, poza zakresem (wpisujesz rok „od” i „do”) |
 | data (Data utworzenia, Ostatnio zmieniony) | równa, różna, większa, niż, większa lub równa, mniejsza, niż, mniejsza lub równa, w zakresie, poza zakresem |
-| wybór z listy (Charakter formalny, Język, Typ MNiSW/MEiN…) | równy, różny |
+| wybór z listy (Charakter formalny, Język, Typ MNiSW…) | równy, różny |
 | autor (Nazwisko i imię) | równe, różne, równe+wspólne |
 | jednostka (Jednostka, Pierwsza jednostka) | równa, różna, równa+podrzędne, równa+wspólna, równa+podrzędne+wspólna |
 

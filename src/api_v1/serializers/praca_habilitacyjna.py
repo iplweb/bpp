@@ -42,6 +42,7 @@ class Praca_HabilitacyjnaSerializer(
             "jezyk_alt",
             "charakter_formalny",
             "typ_kbn",
+            "typ_mnisw",
             #
             "www",
             "dostep_dnia",
@@ -55,6 +56,7 @@ class Praca_HabilitacyjnaSerializer(
             #
             "impact_factor",
             "punkty_kbn",
+            "punkty_mnisw",
             #
             "informacje",
             "szczegoly",
