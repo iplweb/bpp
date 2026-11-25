@@ -12,7 +12,7 @@ from django.shortcuts import render
 from django.utils import timezone
 from django.utils.http import url_has_allowed_host_and_scheme
 from django.views import View
-from django.views.generic import RedirectView
+from django.views.generic import RedirectView, TemplateView
 
 from bpp.models import Uczelnia
 from bpp.zglaszanie_bledow import capture_exception
@@ -179,3 +179,43 @@ class TokenLandingPage(LoginRequiredMixin, RedirectView):
             capture_exception(sys.exc_info())
 
         return redirect_url
+
+
+class NiepelneListyAutorowView(LoginRequiredMixin, TemplateView):
+    """Prace, które w profilu instytucji w PBN mają mniej autorów niż w BPP
+    (FD#641). Tylko odczyt z lokalnej kopii danych PBN — niczego nie wysyła.
+    """
+
+    template_name = "pbn_api/niepelne_listy_autorow.html"
+
+    def dispatch(self, request, *args, **kwargs):
+        from django.core.exceptions import PermissionDenied
+
+        from bpp.const import GR_WPROWADZANIE_DANYCH
+
+        user = request.user
+        if user.is_authenticated and not (
+            user.is_superuser
+            or user.groups.filter(name=GR_WPROWADZANIE_DANYCH).exists()
+        ):
+            raise PermissionDenied("Nie masz uprawnień do tej strony")
+        return super().dispatch(request, *args, **kwargs)
+
+    def get_context_data(self, **kwargs):
+        from django.urls import reverse
+
+        from .porownanie_autorow import prace_z_niepelna_lista_autorow_w_profilu
+
+        context = super().get_context_data(**kwargs)
+        uczelnia = Uczelnia.objects.get_for_request(self.request)
+        prace = prace_z_niepelna_lista_autorow_w_profilu(uczelnia)
+        for praca in prace:
+            rekord = praca.rekord
+            praca.url_edycji = reverse(
+                f"admin:bpp_{rekord._meta.model_name}_change", args=(rekord.pk,)
+            )
+            praca.url_pbn = rekord.link_do_pbn(uczelnia=uczelnia)
+            praca.url_profilu = rekord.link_do_pi(uczelnia=uczelnia)
+        context["prace"] = prace
+        context["uczelnia_raportu"] = uczelnia
+        return context

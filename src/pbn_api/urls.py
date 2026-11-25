@@ -3,7 +3,7 @@
 
 from django.urls import path
 
-from .views import TokenLandingPage, TokenRedirectPage
+from .views import NiepelneListyAutorowView, TokenLandingPage, TokenRedirectPage
 
 app_name = "pbn_api"
 
@@ -34,6 +34,11 @@ CALLBACK_ALIASES = [
 
 urlpatterns = [
     path("authorize", TokenRedirectPage.as_view(), name="authorize"),
+    path(
+        "niepelne-listy-autorow/",
+        NiepelneListyAutorowView.as_view(),
+        name="niepelne-listy-autorow",
+    ),
 ]
 
 for _alias in CALLBACK_ALIASES:

@@ -36,7 +36,10 @@ from pbn_api.exceptions import (
 )
 from pbn_api.models.pbn_odpowiedzi_niepozadane import PBNOdpowiedziNiepozadane
 from pbn_api.models.sentdata import SentData
-from pbn_api.porownanie_autorow import porownaj_autorow
+from pbn_api.porownanie_autorow import (
+    porownaj_autorow,
+    porownaj_autorow_z_profilem,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -745,6 +748,10 @@ class PublicationSyncMixin(StatementsMixin):
                 e,
             )
 
+        # FD#641: rekord publikacji ma zwykle komplet autorów, a krótszą
+        # listę widać dopiero w profilu instytucji — porównaj także z nim.
+        self._ostrzez_o_brakujacych_autorach_w_profilu(pub, js, objectId, notificator)
+
         # KROK 5: synchronizacja oświadczeń (split flow, po wysyłce publikacji)
         uczelnia = self.uczelnia
         kasuj_selektywnie = (
@@ -791,6 +798,34 @@ class PublicationSyncMixin(StatementsMixin):
             pub,
             pub.pk,
             publication.pk,
+            komunikat,
+        )
+        if notificator is not None:
+            notificator.warning(komunikat)
+
+    def _ostrzez_o_brakujacych_autorach_w_profilu(self, pub, js, objectId, notificator):
+        """Porównuje autorów wysłanych z profilem instytucji w PBN (FD#641).
+
+        Czyta lokalną kopię wpisu profilu, odświeżoną przed chwilą w KROKU 4
+        (bez dodatkowego zapytania do PBN). Brak wpisu = nie ma czego
+        porównywać (praca spoza profilu albo PBN jeszcze go nie wystawił).
+        """
+        from pbn_api.models import PublikacjaInstytucji_V2
+
+        wpisy = PublikacjaInstytucji_V2.objects.filter(objectId_id=objectId)
+        if self.uczelnia is not None:
+            wpisy = wpisy.filter(uczelnia=self.uczelnia)
+
+        porownanie = porownaj_autorow_z_profilem(js, wpisy.first())
+        if porownanie is None or not porownanie.niepelne:
+            return
+
+        komunikat = porownanie.komunikat()
+        logger.warning(
+            "Wysyłka do PBN rekordu %s (pk=%s, PBN %s): %s",
+            pub,
+            pub.pk,
+            objectId,
             komunikat,
         )
         if notificator is not None:

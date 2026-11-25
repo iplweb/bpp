@@ -166,6 +166,29 @@ i sprawdź listę autorów, wymienionym autorom ustaw w BPP **Odpowiednik
 w PBN** i wyślij pracę ponownie. Przy wysyłce w tle to samo ostrzeżenie
 jest w komunikacie wpisu w kolejce eksportu.
 
+#### Mniej autorów w profilu instytucji {#mniej-autorow-w-profilu-instytucji}
+
+Częstszy przypadek: sam rekord publikacji w PBN ma komplet autorów, a mniej
+widać ich dopiero w **profilu instytucji** — czyli tam, gdzie uczelnia
+składa oświadczenia. BPP sprawdza po wysyłce także profil instytucji
+i ostrzega osobnym komunikatem:
+
+> UWAGA: w profilu instytucji w PBN jest 1 z 3 wysłanych autorów — brakuje 2.
+> Prawdopodobnie brakuje: …
+
+Profil instytucji bywa aktualizowany przez PBN z opóźnieniem albo wskazuje
+inną wersję pracy niż bieżąca, więc tuż po pierwszej wysyłce ostrzeżenie
+może być przejściowe.
+
+Wszystkie takie prace — także te, które nigdy nie były wysyłane z BPP —
+pokazuje strona **PBN → niepełne listy autorów w PBN**: rok, tytuł
+(odnośnik do edycji rekordu), liczba autorów w BPP i w profilu instytucji,
+informacja, czy praca była wysyłana z BPP, data pobrania profilu oraz
+odnośniki do pracy w profilu instytucji i do rekordu publikacji w PBN.
+Strona niczego nie wysyła i nie poprawia w PBN; powstaje z danych pobranych
+wcześniej, więc żeby ją odświeżyć, użyj **PBN → pobieranie danych z PBN**.
+Autorzy, redaktorzy i tłumacze liczeni są razem.
+
 ### Praca jest już w PBN — „Pobierz po ISBN” i „Pobierz po DOI” {#pobierz-po-isbn-doi}
 
 Jeżeli praca (albo książka, z której pochodzi rozdział) jest już w PBN, nie
@@ -368,6 +391,7 @@ ten sam powód bywa poprzedzony nazwą błędu, np. `DOIorWWWMissing:`).
 | „Język rekordu "…" nie ma określonego odpowiednika w PBN” | język nie jest powiązany ze słownikiem PBN | zgłoś administratorowi (słownik języków) albo, jeśli język jest błędny, popraw go w pracy |
 | „Nie wyślę rekordu artykułu lub rozdziału bez zadeklarowanych oświadczeń autorów (dyscyplin).” | żaden autor nie ma w tej pracy dyscypliny | uzupełnij dyscypliny autorów w pracy; wysyłkę prac bez oświadczeń może włączyć administrator |
 | „Rekord … NIE został wysłany do PBN. Ci autorzy mają w tej pracy przypiętą dyscyplinę i afiliują, ale nie mają ani odpowiednika w PBN, ani identyfikatora ORCID …” / w kolejce „… oświadczenia nie mogą zostać wysłane, bo autor nie ma ani odpowiednika w PBN, ani ORCID: …” | oświadczenia wymienionych autorów nie da się przypisać do osoby w PBN, więc BPP nie wysyła pracy | w formularzu autora ustaw **Odpowiednik w PBN** (pomoże **importer autorów PBN**) albo wpisz **Identyfikator ORCID** i wyślij pracę ponownie; jeśli osoba nie powinna być oświadczana — odepnij jej dyscyplinę albo popraw afiliację w pracy. Szczegóły: [Autor bez odpowiednika w PBN i bez ORCID](#autor-bez-identyfikatora) |
+| „UWAGA: w profilu instytucji w PBN jest … z … wysłanych autorów — brakuje …” | praca została wysłana, ale profil instytucji w PBN pokazuje mniej autorów niż rekord w BPP (sam rekord publikacji może mieć komplet) | otwórz pracę w profilu instytucji i sprawdź listę autorów; wszystkie takie prace pokazuje **PBN → niepełne listy autorów w PBN**. Szczegóły: [Mniej autorów w profilu instytucji](#mniej-autorow-w-profilu-instytucji) |
 | „UWAGA: PBN zapisał … z … wysłanych autorów — w PBN brakuje …” | praca została wysłana z kompletem autorów, ale PBN zapisał ich mniej | otwórz pracę w PBN i sprawdź listę autorów; wymienionym autorom ustaw **Odpowiednik w PBN** i wyślij pracę ponownie. Szczegóły: [W PBN jest mniej autorów niż w BPP](#mniej-autorow-w-pbn) |
 | „UWAGA: oświadczenia rekordu … w PBN są NIEPEŁNE. Z … autorów z przypiętą dyscypliną do PBN trafiło … oświadczeń, pominięto …” | praca została wysłana, ale bez oświadczeń wymienionych autorów (nie mają ani odpowiednika w PBN, ani ORCID); uczelnia ma włączone „Wysyłaj prace, gdy autor nie ma identyfikatora w PBN” | w formularzu autora ustaw **Odpowiednik w PBN** albo wpisz **Identyfikator ORCID** i wyślij pracę ponownie. Szczegóły: [Autor bez odpowiednika w PBN i bez ORCID](#autor-bez-identyfikatora) |
 | „Autor … nie ma odpowiednika w PBN — jego oświadczenie zostanie wysłane z identyfikatorem ORCID …” | informacja: autor ma ORCID, ale nie jest powiązany z osobą w PBN | nic; jeśli oświadczenia tej osoby nie widać potem w PBN, ustaw autorowi **Odpowiednik w PBN** |
