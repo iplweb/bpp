@@ -168,7 +168,11 @@ odpięciu dyscyplin albo po porządkach w dyscyplinach autorów.
 ma dyscyplinę, jest ona **przypięta**, autor **afiliuje** do jednostki
 uczelni (nie obcej) i jest powiązany z osobą w PBN (pole **„Odpowiednik
 w PBN”**) albo ma wpisany ORCID. Data oświadczenia jedzie, jeśli jest
-wpisana. Pole „Zatrudniony” nie ma znaczenia — mimo że ramka „Kryteria
+wpisana. Jeżeli autor spełnia pozostałe warunki, ale nie ma **ani**
+odpowiednika w PBN, **ani** ORCID, BPP pomija całą pracę (w logu: błąd
+z listą takich autorów) i nie rusza jej oświadczeń w PBN — zob.
+[Autor bez odpowiednika w PBN i bez ORCID](pbn-wysylka-i-synchronizacja.md#autor-bez-identyfikatora).
+Pole „Zatrudniony” nie ma znaczenia — mimo że ramka „Kryteria
 wyboru publikacji” na stronie wysyłki tak sugeruje.
 
 1. Zaloguj się do PBN: menu **PBN** → **autoryzuj PBN API**
@@ -268,7 +272,8 @@ pełną listę otwiera adres `/pbn-wysylka-oswiadczen/logs/`.
 | Log, błąd: *Dane lokalne wymagaja aktualizacji: Nie jestem w stanie ustalić lokalnie identyfikatora UUID dla publikacji …* | BPP nie zna identyfikatora pracy w profilu instytucji w PBN. | [Pobierz dane z PBN](pbn-wysylka-i-synchronizacja.md#import-pobieranie-komparatory) albo wyślij tę pracę do PBN w całości. |
 | Log, błąd: *HTTP 400: …* | PBN odrzucił oświadczenia — szczegóły w „Odpowiedz z PBN”. | Popraw autora wskazanego w odpowiedzi (np. powiązanie z osobą w PBN, ORCID), wyślij ponownie. |
 | Log, błąd: *Wszystkie proby nieudane (5x): …* | PBN nie odpowiadał (błąd serwera, blokada) mimo ponowień. | **Kontynuuj** później. |
-| Oświadczenia autora nie trafiają do PBN, choć praca się wysłała | Autor nie afiliuje, jest w obcej jednostce albo nie ma ani odpowiednika w PBN, ani ORCID. | Uzupełnij autora; zob. [komunikaty PBN](pbn-wysylka-i-synchronizacja.md#komunikaty). |
+| Log, błąd: *Nie wysłano: oświadczenia nie mogą zostać wysłane, bo autor nie ma ani odpowiednika w PBN, ani ORCID: …* | Autor z przypiętą dyscypliną nie ma ani odpowiednika w PBN, ani ORCID. BPP nie rusza wtedy oświadczeń tej pracy w PBN (niczego nie kasuje ani nie wysyła). | Ustaw autorowi **Odpowiednik w PBN** albo wpisz ORCID i wyślij ponownie; zob. [Autor bez odpowiednika w PBN i bez ORCID](pbn-wysylka-i-synchronizacja.md#autor-bez-identyfikatora). |
+| Oświadczenia autora nie trafiają do PBN, choć praca się wysłała | Autor nie afiliuje albo jest w obcej jednostce. | Popraw afiliację autora w pracy; zob. [komunikaty PBN](pbn-wysylka-i-synchronizacja.md#komunikaty). |
 
 ## Zobacz też {#zobacz-tez}
 
