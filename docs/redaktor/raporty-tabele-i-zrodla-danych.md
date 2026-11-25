@@ -71,6 +71,14 @@ model”. Pole **„Nazwa atrybutu”** kolumny jest sprawdzane względem modelu
 źródła danych, z którym tabela jest użyta w raporcie; dla tabeli, która nie
 jest jeszcze podpięta do żadnego raportu — względem modelu **rekord**.
 
+Kolejność ma znaczenie tylko w jednym, rzadkim przypadku: gdy tabela ma
+służyć źródłu danych o **innym** modelu niż rekord (takie źródła mogły zostać
+z wcześniejszych wersji). Nowa tabela, niepodpięta jeszcze do raportu, jest
+sprawdzana względem rekordu, więc nazwy atrybutów istniejące tylko w tamtym
+modelu zostaną odrzucone. Wtedy: załóż tabelę bez kolumn, wybierz ją w polu
+**Tabela** sekcji raportu korzystającej z tego źródła danych, zapisz raport
+i dopiero potem dodaj kolumny.
+
 Także „Składowe raportu” nie mają pola modelu. Sekcja z **„Dane z”**
 ustawionym na „wszystkie rekordy oprócz pasujących do źródeł danych raportu”
 (w domyślnych raportach „4.3. Inne”) pokazuje po prostu wszystko, czego nie

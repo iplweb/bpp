@@ -13,11 +13,6 @@ from flexible_reports.models import Datasource
 
 from bpp.models.cache import Rekord
 
-pytest.importorskip(
-    "flexible_reports.query_format",
-    reason="wymaga django-flexible-reports >= 0.6.0 (edytor zapytań)",
-)
-
 SCHEMAT = "admin:flexible_reports_datasource_query_editor_schema"
 FORMATUJ = "admin:flexible_reports_datasource_query_editor_format"
 

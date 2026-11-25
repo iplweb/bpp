@@ -6,15 +6,9 @@ Kolorowanie, „Formatuj” i podpowiadanie pól robi ``django-flexible-reports`
 ``charakter_formalny.`` edytor podpowiada pola charakteru formalnego.
 """
 
-import pytest
 from playwright.sync_api import Page, expect
 
 from django_bpp.playwright_util import wait_for_page_load
-
-pytest.importorskip(
-    "flexible_reports.query_format",
-    reason="wymaga django-flexible-reports >= 0.6.0 (edytor zapytań)",
-)
 
 POLE = "#id_dsl_query"
 PODPOWIEDZI = ".djangoql-completion"

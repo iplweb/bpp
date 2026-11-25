@@ -12,11 +12,6 @@ from flexible_reports.models import Column, Datasource, Report, ReportElement, T
 
 from bpp.models.cache import Rekord
 
-pytest.importorskip(
-    "flexible_reports.base_models",
-    reason="wymaga django-flexible-reports >= 0.6.0 (model tabeli ze źródła danych)",
-)
-
 
 def _rekord_ct():
     return ContentType.objects.get_for_model(Rekord)
@@ -89,3 +84,121 @@ def test_fd524_domyslne_raporty_nadal_sie_zakladaja_i_waliduja():
 
     for element in ReportElement.objects.all():
         element.clean()
+
+
+@pytest.mark.django_db
+def test_fd524_seed_nie_zapisuje_modelu_w_sekcji_inne():
+    from flexible_reports.models.report import DATA_FROM_EXCEPT_CATCHALL
+
+    from nowe_raporty.seeding import seed_default_reports
+
+    seed_default_reports()
+
+    inne = ReportElement.objects.filter(data_from=DATA_FROM_EXCEPT_CATCHALL)
+    assert inne.exists()
+    assert not inne.filter(base_model__isnull=False).exists()
+
+
+def _dane_formularza_raportu(raport, **zmiany_w_pierwszej_skladowej):
+    """Dane POST formularza raportu w adminie — tak, jak wysłałaby je
+    przeglądarka (bez pola modelu, którego w formularzu nie ma)."""
+    skladowe = list(raport.reportelement_set.order_by("position", "pk"))
+    dane = {
+        "title": raport.title,
+        "slug": raport.slug,
+        "template": raport.template,
+        "reportelement_set-TOTAL_FORMS": len(skladowe),
+        "reportelement_set-INITIAL_FORMS": len(skladowe),
+        "reportelement_set-MIN_NUM_FORMS": 0,
+        "reportelement_set-MAX_NUM_FORMS": 1000,
+        "_save": "Zapisz",
+    }
+    for nr, skladowa in enumerate(skladowe):
+        pola = {
+            "id": skladowa.pk,
+            "parent": raport.pk,
+            "title": skladowa.title,
+            "slug": skladowa.slug,
+            "data_from": skladowa.data_from,
+            "datasource": skladowa.datasource_id or "",
+            "table": skladowa.table_id,
+            "position": skladowa.position,
+        }
+        if nr == 0:
+            pola.update(zmiany_w_pierwszej_skladowej)
+        dane.update({f"reportelement_set-{nr}-{k}": v for k, v in pola.items()})
+    return dane
+
+
+# ``strict``: po podbiciu django-flexible-reports do 0.6.1 test zacznie
+# przechodzić i ten znacznik zrobi z tego CZERWONY wynik — trzeba go wtedy
+# usunąć (w tym samym commicie co podbicie zależności).
+@pytest.mark.xfail(
+    strict=True,
+    raises=ValueError,
+    reason="błąd 500 w django-flexible-reports 0.6.0, poprawka w 0.6.1 "
+    "(mpasternak/django-flexible-reports#17)",
+)
+@pytest.mark.django_db
+def test_fd524_sekcje_inne_z_zapisanym_modelem_da_sie_przelaczyc_na_zrodlo(
+    admin_client,
+):
+    """Raporty założone przed tą zmianą mają w sekcji „Inne” zapisany model
+    (Rekord), a formularz go już nie pokazuje. Przełączenie takiej sekcji na
+    „źródło danych” kończyło się błędem 500 przy zapisie raportu."""
+    from flexible_reports.models.report import (
+        DATA_FROM_DATASOURCE,
+        DATA_FROM_EXCEPT_CATCHALL,
+    )
+
+    raport = Report.objects.create(title="r", slug="r", template="x")
+    inne = ReportElement.objects.create(
+        parent=raport,
+        title="4.3. Inne",
+        slug="tabela_4_3",
+        data_from=DATA_FROM_EXCEPT_CATCHALL,
+        base_model=_rekord_ct(),
+        table=Table.objects.create(label="t"),
+    )
+    ds = Datasource.objects.create(
+        label="ds", base_model=_rekord_ct(), dsl_query="rok = 2020"
+    )
+
+    odpowiedz = admin_client.post(
+        reverse("admin:flexible_reports_report_change", args=[raport.pk]),
+        _dane_formularza_raportu(
+            raport, data_from=DATA_FROM_DATASOURCE, datasource=ds.pk
+        ),
+    )
+
+    assert odpowiedz.status_code == 302
+    inne.refresh_from_db()
+    assert inne.datasource == ds
+    assert inne.base_model is None
+
+
+@pytest.mark.django_db
+def test_fd524_zapis_raportu_nie_rusza_modelu_starej_sekcji_inne(admin_client):
+    # Strażnik: zwykła edycja raportu (np. tytułu) nie zmienia sekcji „Inne”
+    # zapisanej po staremu, z modelem.
+    from flexible_reports.models.report import DATA_FROM_EXCEPT_CATCHALL
+
+    raport = Report.objects.create(title="r", slug="r", template="x")
+    inne = ReportElement.objects.create(
+        parent=raport,
+        title="4.3. Inne",
+        slug="tabela_4_3",
+        data_from=DATA_FROM_EXCEPT_CATCHALL,
+        base_model=_rekord_ct(),
+        table=Table.objects.create(label="t"),
+    )
+
+    dane = _dane_formularza_raportu(raport)
+    dane["title"] = "po zmianie"
+    odpowiedz = admin_client.post(
+        reverse("admin:flexible_reports_report_change", args=[raport.pk]), dane
+    )
+
+    assert odpowiedz.status_code == 302
+    inne.refresh_from_db()
+    assert inne.base_model == _rekord_ct()
