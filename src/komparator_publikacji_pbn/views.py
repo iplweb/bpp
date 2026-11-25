@@ -1,12 +1,20 @@
 import io
+import logging
+from datetime import timedelta
 
+from celery.result import AsyncResult
+from django.contrib import messages
 from django.contrib.admin.views.decorators import staff_member_required
-from django.core.paginator import Paginator
+from django.core.cache import cache
 from django.db.models import Q
 from django.http import HttpResponse
+from django.shortcuts import redirect, render
+from django.urls import reverse
+from django.utils import timezone
 from django.utils.decorators import method_decorator
 from django.utils.html import strip_tags
 from django.utils.http import urlencode
+from django.views import View
 from django.views.generic import ListView
 from openpyxl import Workbook
 from openpyxl.styles import Alignment, Font, PatternFill
@@ -15,7 +23,11 @@ from bpp.models import Wydawnictwo_Ciagle, Wydawnictwo_Zwarte
 from bpp.util import sanitize_xlsx_row
 from ewaluacja_common.okres import lata_okresu
 from import_common.normalization import normalize_isbn, normalize_issn
+from pbn_api.models import Publication
 from pbn_downloader_app.freshness import is_pbn_publications_data_fresh
+
+from .models import KomparatorPublikacjiMeta, RoznicaPublikacjiPBN
+from .tasks import KLUCZ_POSTEPU
 
 # All available comparison fields
 COMPARISON_FIELDS = {
@@ -40,6 +52,18 @@ COMPARISON_FIELDS = {
 }
 
 
+logger = logging.getLogger(__name__)
+
+#: Rodzaje prac w wynikach → model pracy BPP.
+RODZAJE_PRAC = {
+    RoznicaPublikacjiPBN.TYP_CIAGLE: Wydawnictwo_Ciagle,
+    RoznicaPublikacjiPBN.TYP_ZWARTE: Wydawnictwo_Zwarte,
+}
+
+#: Po tylu godzinach „przeliczanie w toku” uznajemy za porzucone (np. worker
+#: zabity w trakcie) i pozwalamy uruchomić je ponownie.
+PRZELICZANIE_PORZUCONE_PO_GODZINACH = 6
+
 DEFAULT_FIELDS = ["title", "year", "doi", "isbn", "issn", "url", "authors"]
 SESSION_KEY = "komparator_publikacji_filters"
 
@@ -57,6 +81,16 @@ def _get_default_filters(request):
     }
 
 
+def przeliczanie_w_toku(meta):
+    """Czy trwa przeliczenie uruchomione niedawno (nie porzucone)."""
+    if meta.status != KomparatorPublikacjiMeta.STATUS_RUNNING:
+        return False
+    if meta.rozpoczeto is None:
+        return False
+    granica = timezone.now() - timedelta(hours=PRZELICZANIE_PORZUCONE_PO_GODZINACH)
+    return meta.rozpoczeto > granica
+
+
 def _parse_year(value, default):
     """Parse year string to int, returning default on failure."""
     try:
@@ -70,8 +104,8 @@ class PublicationComparisonView(ListView):
     """View for comparing BPP publications with PBN API data."""
 
     template_name = "komparator_publikacji_pbn/comparison_list.html"
-    context_object_name = "comparisons"
-    paginate_by = 5
+    context_object_name = "wiersze"
+    paginate_by = 20
 
     def _get_filters(self):
         """Filtry z parametrów GET albo z sesji (raz na żądanie).
@@ -117,51 +151,78 @@ class PublicationComparisonView(ListView):
         self._filters = filters
         return filters
 
-    def _process_publications(self, queryset, pub_type, enabled_fields, comparisons):
-        """Process publications and add comparisons with differences."""
-        for pub in queryset[:100]:
-            comparison = self._compare_publication(pub, pub_type, enabled_fields)
-            if comparison["has_differences"]:
-                comparisons.append(comparison)
-
-    def get_queryset(self):
-        """Get all publications with pbn_uid_id and compare them."""
-        comparisons = []
+    def _wiersze(self):
+        """Gotowe wyniki ostatniego przeliczenia zawężone filtrami (queryset
+        ``RoznicaPublikacjiPBN``). Porównanie liczy zadanie w tle — tu jest
+        tylko odczyt, więc lista obejmuje wszystkie prace z zakresu lat."""
         filters = self._get_filters()
-
-        query = filters["query"]
-        publication_type = filters["publication_type"]
         okres_od, okres_do = lata_okresu(self.request)
         year_min = _parse_year(filters["year_min"], okres_od)
         year_max = _parse_year(filters["year_max"], okres_do)
-        enabled_fields = filters["enabled_fields"]
 
-        if publication_type in ["all", "ciagle"]:
-            ciagle_qs = Wydawnictwo_Ciagle.objects.filter(
-                pbn_uid_id__isnull=False, rok__gte=year_min, rok__lte=year_max
-            ).select_related("pbn_uid", "zrodlo")
-            if query:
-                ciagle_qs = ciagle_qs.filter(
-                    Q(tytul_oryginalny__icontains=query)
-                    | Q(pbn_uid__title__icontains=query)
-                    | Q(doi__icontains=query)
-                )
-            self._process_publications(ciagle_qs, "ciagle", enabled_fields, comparisons)
+        queryset = RoznicaPublikacjiPBN.objects.filter(
+            przebieg=KomparatorPublikacjiMeta.get_instance().przebieg,
+            rok__gte=year_min,
+            rok__lte=year_max,
+            pola__overlap=filters["enabled_fields"],
+        )
+        if filters["publication_type"] in RODZAJE_PRAC:
+            queryset = queryset.filter(typ=filters["publication_type"])
+        query = filters["query"]
+        if query:
+            warunek = (
+                Q(tytul__icontains=query)
+                | Q(pbn_uid__title__icontains=query)
+                | Q(doi__icontains=query)
+            )
+            if filters["publication_type"] != RoznicaPublikacjiPBN.TYP_CIAGLE:
+                # ISBN mają tylko wydawnictwa zwarte.
+                warunek |= Q(isbn__icontains=query, typ=RoznicaPublikacjiPBN.TYP_ZWARTE)
+            queryset = queryset.filter(warunek)
+        return queryset
 
-        if publication_type in ["all", "zwarte"]:
-            zwarte_qs = Wydawnictwo_Zwarte.objects.filter(
-                pbn_uid_id__isnull=False, rok__gte=year_min, rok__lte=year_max
-            ).select_related("pbn_uid", "wydawca")
-            if query:
-                zwarte_qs = zwarte_qs.filter(
-                    Q(tytul_oryginalny__icontains=query)
-                    | Q(pbn_uid__title__icontains=query)
-                    | Q(doi__icontains=query)
-                    | Q(isbn__icontains=query)
-                )
-            self._process_publications(zwarte_qs, "zwarte", enabled_fields, comparisons)
+    def get_queryset(self):
+        return self._wiersze()
 
-        return comparisons
+    def paginate_queryset(self, queryset, page_size):
+        """Numer strony spoza zakresu (np. po zawężeniu filtrów albo po
+        przeliczeniu) pokazuje ostatnią/pierwszą stronę zamiast błędu 404."""
+        paginator = self.get_paginator(queryset, page_size)
+        page = paginator.get_page(self.request.GET.get("page"))
+        return paginator, page, page.object_list, page.has_other_pages()
+
+    def _porownania(self, wiersze):
+        """Wiersze wyników (jedna strona) jako słowniki dla szablonu, z pracą
+        BPP i kopią PBN dociągniętymi stałą liczbą zapytań. Zostają tylko
+        różnice w polach wybranych w filtrze."""
+        wiersze = list(wiersze)
+        enabled_fields = set(self._get_filters()["enabled_fields"])
+        prace = {}
+        for typ, model in RODZAJE_PRAC.items():
+            pks = [w.rekord_id for w in wiersze if w.typ == typ]
+            if pks:
+                for praca in model.objects.filter(pk__in=pks):
+                    prace[typ, praca.pk] = praca
+        pbn = Publication.objects.in_bulk({w.pbn_uid_id for w in wiersze})
+
+        porownania = []
+        for wiersz in wiersze:
+            praca = prace.get((wiersz.typ, wiersz.rekord_id))
+            if praca is None:
+                continue  # praca skasowana po przeliczeniu
+            differences = [r for r in wiersz.roznice if r["key"] in enabled_fields]
+            porownania.append(
+                {
+                    "bpp_publication": praca,
+                    "pbn_publication": pbn.get(wiersz.pbn_uid_id),
+                    "type": wiersz.typ,
+                    "differences": differences,
+                    "has_differences": bool(differences),
+                    "pbn_id": wiersz.pbn_uid_id,
+                    "bpp_id": wiersz.rekord_id,
+                }
+            )
+        return porownania
 
     def _compare_publication(self, bpp_pub, pub_type, enabled_fields):
         """Compare a BPP publication with its PBN counterpart."""
@@ -402,7 +463,9 @@ class PublicationComparisonView(ListView):
     def _compare_keywords(self, bpp_pub, pbn_pub, differences):
         if not hasattr(bpp_pub, "slowa_kluczowe"):
             return
-        bpp_keywords = bpp_pub.slowa_kluczowe or ""
+        # ``slowa_kluczowe`` to menedżer tagów (django-taggit), nie tekst —
+        # bez tej zamiany porównanie kończyło się błędem (AttributeError).
+        bpp_keywords = ", ".join(tag.name for tag in bpp_pub.slowa_kluczowe.all())
         pbn_keywords = pbn_pub.value_or_none("object", "keywords") or ""
         if isinstance(pbn_keywords, list):
             pbn_keywords = ", ".join(pbn_keywords)
@@ -531,15 +594,14 @@ class PublicationComparisonView(ListView):
             if SESSION_KEY in request.session:
                 del request.session[SESSION_KEY]
             # Redirect to clean URL
-            from django.shortcuts import redirect
-
             return redirect("komparator_publikacji_pbn:comparison_list")
 
         return super().get(request, *args, **kwargs)
 
     def export_xlsx(self):
         """Export comparisons to XLSX file."""
-        comparisons = self.get_queryset()
+        enabled_fields = set(self._get_filters()["enabled_fields"])
+        wiersze = self._wiersze()
 
         # Create workbook
         wb = Workbook()
@@ -570,29 +632,27 @@ class PublicationComparisonView(ListView):
             cell.fill = header_fill
             cell.alignment = Alignment(horizontal="center")
 
-        # Add data
-        row_num = 2
-        for comparison in comparisons:
-            for diff in comparison["differences"]:
+        # Add data: wszystkie prace z wybranego zakresu (nie jedna strona),
+        # prosto z tabeli wyników — bez zapytań na pracę.
+        typy = dict(RoznicaPublikacjiPBN.TYPY)
+        for wiersz in wiersze.iterator(chunk_size=2000):
+            for diff in wiersz.roznice:
+                if diff["key"] not in enabled_fields:
+                    continue
                 ws.append(
                     sanitize_xlsx_row(
                         [
-                            (
-                                "Wydawnictwo ciągłe"
-                                if comparison["type"] == "ciagle"
-                                else "Wydawnictwo zwarte"
-                            ),
-                            comparison["bpp_id"],
-                            comparison["pbn_id"],
-                            comparison["bpp_publication"].tytul_oryginalny[:100],
-                            comparison["bpp_publication"].rok,
+                            typy[wiersz.typ],
+                            wiersz.rekord_id,
+                            wiersz.pbn_uid_id,
+                            wiersz.tytul[:100],
+                            wiersz.rok,
                             diff["field"],
                             diff["bpp_value"],
                             diff["pbn_value"],
                         ]
                     )
                 )
-                row_num += 1
 
         from bpp.util import auto_fit_columns
 
@@ -619,16 +679,13 @@ class PublicationComparisonView(ListView):
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
 
-        # Manual pagination since we're working with a list (porównania są
-        # już policzone w ``get()`` — nie liczymy ich drugi raz).
-        queryset = self.object_list
-        paginator = Paginator(queryset, self.paginate_by)
-        page_number = self.request.GET.get("page")
-        page_obj = paginator.get_page(page_number)
+        # ``ListView`` stronicuje wiersze wyników w bazie; na stronie
+        # zamieniamy je na słowniki z pracą BPP i kopią PBN.
+        context["comparisons"] = self._porownania(context["object_list"])
 
-        context["comparisons"] = page_obj.object_list
-        context["page_obj"] = page_obj
-        context["is_paginated"] = page_obj.has_other_pages()
+        meta = KomparatorPublikacjiMeta.get_instance()
+        context["meta"] = meta
+        context["przeliczanie_w_toku"] = przeliczanie_w_toku(meta)
 
         filters = self._get_filters()
 
@@ -659,3 +716,83 @@ class PublicationComparisonView(ListView):
         context["pbn_last_download"] = pbn_last_download
 
         return context
+
+
+@method_decorator(staff_member_required, name="dispatch")
+class PrzeliczView(View):
+    """Uruchamia przeliczenie komparatora w tle (POST)."""
+
+    http_method_names = ["post"]
+
+    def post(self, request):
+        meta = KomparatorPublikacjiMeta.get_instance()
+        if przeliczanie_w_toku(meta) and meta.task_id:
+            messages.info(request, "Przeliczanie już trwa — poniżej jego postęp.")
+            return redirect(
+                "komparator_publikacji_pbn:task_status", task_id=meta.task_id
+            )
+
+        pbn_data_fresh, pbn_stale_message, _ = is_pbn_publications_data_fresh()
+        if not pbn_data_fresh:
+            messages.error(
+                request,
+                f"Nie można przeliczyć porównania: {pbn_stale_message}. "
+                "Pobierz aktualne dane z PBN.",
+            )
+            return redirect("komparator_publikacji_pbn:comparison_list")
+
+        from .tasks import porownaj_publikacje_task
+
+        meta.status = KomparatorPublikacjiMeta.STATUS_RUNNING
+        meta.rozpoczeto = timezone.now()
+        meta.ostatni_blad = ""
+        meta.task_id = ""
+        meta.save()
+        try:
+            task = porownaj_publikacje_task.delay()
+        except Exception as e:
+            # Np. niedostępny broker: bez tego status „w trakcie” blokowałby
+            # ponowne uruchomienie, choć żadne zadanie nie ruszyło.
+            logger.exception("Nie udało się uruchomić przeliczania komparatora")
+            meta.status = KomparatorPublikacjiMeta.STATUS_ERROR
+            meta.ostatni_blad = f"Nie udało się uruchomić zadania w tle: {e}"
+            meta.save()
+            messages.error(request, meta.ostatni_blad)
+            return redirect("komparator_publikacji_pbn:comparison_list")
+        KomparatorPublikacjiMeta.objects.filter(pk=meta.pk).update(task_id=task.id)
+
+        return redirect("komparator_publikacji_pbn:task_status", task_id=task.id)
+
+
+@method_decorator(staff_member_required, name="dispatch")
+class TaskStatusView(View):
+    """Postęp przeliczania z odświeżaniem HTMX (wzorem komparatora źródeł)."""
+
+    def get(self, request, task_id):
+        task = AsyncResult(task_id)
+        context = {"task_id": task_id, "task_ready": task.ready()}
+
+        if not task.ready():
+            info = task.info if isinstance(task.info, dict) else None
+            # Zapas na wypadek braku backendu wyników: postęp z cache.
+            context["info"] = info or cache.get(KLUCZ_POSTEPU.format(task_id=task_id))
+        elif task.failed():
+            context["error"] = str(task.info)
+        else:
+            stats = (task.result or {}).get("stats", {})
+            messages.success(
+                request,
+                f"Porównywanie zakończone. Porównano prac: "
+                f"{stats.get('processed', 0)}, z różnicami: "
+                f"{stats.get('with_differences', 0)}.",
+            )
+            adres = reverse("komparator_publikacji_pbn:comparison_list")
+            if request.headers.get("HX-Request"):
+                response = HttpResponse(status=200)
+                response["HX-Redirect"] = adres
+                return response
+            return redirect(adres)
+
+        if request.headers.get("HX-Request"):
+            return render(request, "komparator_publikacji_pbn/_progress.html", context)
+        return render(request, "komparator_publikacji_pbn/task_status.html", context)

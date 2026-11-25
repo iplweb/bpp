@@ -92,7 +92,50 @@
 
 <div class="row">
     <div class="large-12 columns">
+        <div class="panel" id="stan-przeliczenia">
+            {% if przeliczanie_w_toku %}
+                <p>
+                    <span class="fi-loop"></span>
+                    <strong>Trwa przeliczanie porównania</strong> (rozpoczęte {{ meta.rozpoczeto|date:"Y-m-d H:i" }}).
+                    {% if meta.ostatnie_uruchomienie %}Poniżej wyniki poprzedniego przeliczenia — stan na {{ meta.ostatnie_uruchomienie|date:"Y-m-d H:i" }}.{% endif %}
+                </p>
+                {% if meta.task_id %}
+                    <a href="{% url 'komparator_publikacji_pbn:task_status' meta.task_id %}" class="button info">
+                        <span class="fi-magnifying-glass"></span> Pokaż postęp
+                    </a>
+                {% endif %}
+            {% else %}
+                {% if meta.ostatnie_uruchomienie %}
+                    <p>
+                        <strong>Stan na {{ meta.ostatnie_uruchomienie|date:"Y-m-d H:i" }}.</strong>
+                        Porównano wszystkie prace powiązane z PBN ({{ meta.liczba_prac }}).
+                        Zmiany w BPP i dane pobrane z PBN po tej chwili będą widoczne po ponownym przeliczeniu.
+                    </p>
+                {% else %}
+                    <p>
+                        <strong>Porównanie nie było jeszcze przeliczane.</strong>
+                        Kliknij „Przelicz porównanie” — BPP porówna w tle wszystkie prace powiązane z PBN
+                        z lokalną kopią danych PBN (nic nie jest wysyłane do PBN).
+                    </p>
+                {% endif %}
+                {% if meta.status == "error" %}
+                    <p class="text-alert">Ostatnie przeliczenie zakończyło się błędem: {{ meta.ostatni_blad }}</p>
+                {% endif %}
+                <form method="post" action="{% url 'komparator_publikacji_pbn:przelicz' %}">
+                    {% csrf_token %}
+                    <button type="submit" class="button alert">
+                        <span class="fi-refresh"></span> Przelicz porównanie
+                    </button>
+                </form>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <div class="large-12 columns">
         {% if comparisons %}
+            <p>Znaleziono: <strong>{{ paginator.count }}</strong> prac z różnicami{% if is_paginated %} (strona {{ page_obj.number }} z {{ paginator.num_pages }}){% endif %}</p>
             <div class="comparisons-list">
                 <h4>Publikacje z różnicami między BPP a PBN</h4>
 
@@ -176,43 +219,7 @@
                 {% endfor %}
             </div>
 
-            {% if is_paginated %}
-                <div class="pagination-centered">
-                    <ul class="pagination">
-                        {% if page_obj.has_previous %}
-                            <li class="arrow">
-                                <a href="?page={{ page_obj.previous_page_number }}">
-                                    &laquo;
-                                </a>
-                            </li>
-                        {% else %}
-                            <li class="arrow unavailable"><a href="">&laquo;</a></li>
-                        {% endif %}
-
-                        {% for num in page_obj.paginator.page_range %}
-                            {% if page_obj.number == num %}
-                                <li class="current"><a href="">{{ num }}</a></li>
-                            {% else %}
-                                <li>
-                                    <a href="?page={{ num }}">
-                                        {{ num }}
-                                    </a>
-                                </li>
-                            {% endif %}
-                        {% endfor %}
-
-                        {% if page_obj.has_next %}
-                            <li class="arrow">
-                                <a href="?page={{ page_obj.next_page_number }}">
-                                    &raquo;
-                                </a>
-                            </li>
-                        {% else %}
-                            <li class="arrow unavailable"><a href="">&raquo;</a></li>
-                        {% endif %}
-                    </ul>
-                </div>
-            {% endif %}
+            {% include "pagination/pagination_with_anchor.html" %}
         {% else %}
             <div class="alert-box info">
                 {% if query or publication_type != 'all' %}

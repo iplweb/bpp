@@ -8,6 +8,7 @@ from openpyxl import load_workbook
 
 from bpp.models import Wydawnictwo_Ciagle
 from ewaluacja_common.okres import okres_domyslny
+from komparator_publikacji_pbn.core import przelicz
 from pbn_api.models import Publication
 
 URL = "/komparator-publikacji-pbn/"
@@ -32,6 +33,7 @@ def prace(db):
             rok=rok,
             pbn_uid=pbn,
         )
+    przelicz()
 
 
 def _lata(response):
@@ -130,14 +132,3 @@ def test_eksport_xlsx_respektuje_okres_i_adres_jest_zakodowany(admin_client, pra
     arkusz = load_workbook(BytesIO(response.content)).active
     lata = {wiersz[4] for wiersz in arkusz.iter_rows(min_row=2, values_only=True)}
     assert lata == {2027}
-
-
-def test_porownania_liczone_raz_na_zadanie(admin_client, prace, mocker):
-    """Lista porównań nie jest liczona dwa razy przy jednym wyświetleniu."""
-    from komparator_publikacji_pbn.views import PublicationComparisonView
-
-    szpieg = mocker.spy(PublicationComparisonView, "get_queryset")
-
-    admin_client.get(URL_OKRESU.format(slug="2026-2030"))
-
-    assert szpieg.call_count == 1

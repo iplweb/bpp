@@ -380,8 +380,16 @@ wypełnione latami wybranego okresu — można wpisać w nie własny zakres.
 Kliknięcie innego okresu na pasku przywraca lata tego okresu i wraca na
 pierwszą stronę listy (pozostałe filtry zostają).
 
-Komparator publikacji przegląda **do 100 prac każdego typu naraz** —
-przy dużej bazie zawęź lata albo wyszukaj po tytule, DOI lub ISBN.
+Komparator publikacji pokazuje **gotowe wyniki ostatniego przeliczenia** —
+nad listą widać „Stan na …” (datę przeliczenia). Przycisk **Przelicz
+porównanie** uruchamia w tle porównanie **wszystkich** prac powiązanych
+z PBN (bez limitu liczby prac) z lokalną kopią danych PBN; na stronie postępu
+widać pasek z liczbą porównanych prac, a po zakończeniu wraca się do listy.
+Do czasu zakończenia lista pokazuje poprzednie wyniki. Zmiany wprowadzone
+w BPP i dane pobrane z PBN po przeliczeniu pojawią się dopiero po kolejnym
+przeliczeniu. Lista jest stronicowana, a filtry (lata, typ, wyszukiwana
+fraza, wybór porównywanych pól) i eksport do XLSX obejmują całość wyników,
+nie jedną stronę. Przeliczenie niczego nie wysyła do PBN.
 Komparatory źródeł i udziałów mają przycisk **Przebuduj** — przelicza
 rozbieżności po pobraniu nowych danych.
 
