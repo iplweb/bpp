@@ -39,6 +39,8 @@ APLIKACJE_W_URL = (
     "pbn-wysylka-oswiadczen/",
     "komparator_pbn/",
     "komparator-zrodel-pbn/",
+    "komparator-pbn-udzialy/",
+    "komparator-publikacji-pbn/",
     "deduplikator_autorow/",
 )
 

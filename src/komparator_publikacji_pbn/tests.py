@@ -1,17 +1,21 @@
 import pytest
 from django.test import Client
-from django.urls import reverse
 from model_bakery import baker
 
 from bpp.models import Wydawnictwo_Ciagle, Wydawnictwo_Zwarte
 from pbn_api.models import Publication
+
+# Komparator w okresie 2022–2025 (okres w adresie URL). Bez okresu w adresie
+# widok bierze okres domyślny (wg bieżącego roku) — patrz
+# ``test_okres_ewaluacji.py``.
+URL_2022_2025 = "/komparator-publikacji-pbn/2022-2025/"
 
 
 @pytest.mark.django_db
 def test_publication_comparison_view_requires_login():
     """Test that the view requires user to be logged in."""
     client = Client()
-    url = reverse("komparator_publikacji_pbn:comparison_list")
+    url = URL_2022_2025
     response = client.get(url)
     assert response.status_code == 302  # Redirect to login
 
@@ -20,7 +24,7 @@ def test_publication_comparison_view_requires_login():
 def test_publication_comparison_view_requires_staff(admin_user, normal_django_user):
     """Test that the view requires staff status."""
     client = Client()
-    url = reverse("komparator_publikacji_pbn:comparison_list")
+    url = URL_2022_2025
 
     # Normal user should be redirected
     client.force_login(normal_django_user)
@@ -39,7 +43,7 @@ def test_publication_comparison_view_empty(admin_user):
     client = Client()
     client.force_login(admin_user)
 
-    url = reverse("komparator_publikacji_pbn:comparison_list")
+    url = URL_2022_2025
     response = client.get(url)
 
     assert response.status_code == 200
@@ -81,7 +85,7 @@ def test_publication_comparison_view_with_matching_data(admin_user):
         pbn_uid=pbn_pub,
     )
 
-    url = reverse("komparator_publikacji_pbn:comparison_list")
+    url = URL_2022_2025
     response = client.get(url)
 
     assert response.status_code == 200
@@ -120,7 +124,7 @@ def test_publication_comparison_view_with_differences(admin_user):
         pbn_uid=pbn_pub,
     )
 
-    url = reverse("komparator_publikacji_pbn:comparison_list")
+    url = URL_2022_2025
     # Test with all fields enabled (default)
     response = client.get(url)
 
@@ -174,7 +178,7 @@ def test_publication_comparison_view_filtering_by_type(admin_user):
     )
 
     # Test filtering for ciągłe only
-    url = reverse("komparator_publikacji_pbn:comparison_list")
+    url = URL_2022_2025
     response = client.get(url, {"type": "ciagle"})
     assert response.status_code == 200
     comparisons = response.context["comparisons"]
@@ -237,7 +241,7 @@ def test_publication_comparison_view_search(admin_user):
         pbn_uid=pbn2,
     )
 
-    url = reverse("komparator_publikacji_pbn:comparison_list")
+    url = URL_2022_2025
 
     # Search by title
     response = client.get(url, {"q": "Searchable"})
@@ -276,7 +280,7 @@ def test_publication_comparison_pagination(admin_user):
             pbn_uid=pbn_pub,
         )
 
-    url = reverse("komparator_publikacji_pbn:comparison_list")
+    url = URL_2022_2025
 
     # First page
     response = client.get(url)
@@ -321,7 +325,7 @@ def test_publication_comparison_isbn_for_books(admin_user):
         pbn_uid=pbn_book,
     )
 
-    url = reverse("komparator_publikacji_pbn:comparison_list")
+    url = URL_2022_2025
     response = client.get(url)
 
     assert response.status_code == 200
@@ -380,7 +384,7 @@ def test_publication_comparison_author_count(admin_user):
         "bpp.Wydawnictwo_Ciagle_Autor", rekord=bpp_pub, autor=autor2, kolejnosc=1
     )
 
-    url = reverse("komparator_publikacji_pbn:comparison_list")
+    url = URL_2022_2025
     response = client.get(url)
 
     assert response.status_code == 200
@@ -417,7 +421,7 @@ def test_year_filtering(admin_user):
             pbn_uid=pbn_pub,
         )
 
-    url = reverse("komparator_publikacji_pbn:comparison_list")
+    url = URL_2022_2025
 
     # Test default filter (2022-2025)
     response = client.get(url)
@@ -463,7 +467,7 @@ def test_field_selection(admin_user):
         pbn_uid=pbn_pub,
     )
 
-    url = reverse("komparator_publikacji_pbn:comparison_list")
+    url = URL_2022_2025
 
     # Test comparing only title
     response = client.get(url, {"fields": ["title"]})
@@ -509,7 +513,7 @@ def test_html_tags_stripped_from_title_comparison(admin_user):
         pbn_uid=pbn_pub,
     )
 
-    url = reverse("komparator_publikacji_pbn:comparison_list")
+    url = URL_2022_2025
     response = client.get(url, {"fields": ["title"]})
 
     assert response.status_code == 200
@@ -543,7 +547,7 @@ def test_html_tags_different_titles_after_stripping(admin_user):
         pbn_uid=pbn_pub,
     )
 
-    url = reverse("komparator_publikacji_pbn:comparison_list")
+    url = URL_2022_2025
     response = client.get(url, {"fields": ["title"]})
 
     assert response.status_code == 200
@@ -581,7 +585,7 @@ def test_xlsx_export(admin_user):
         pbn_uid=pbn_pub,
     )
 
-    url = reverse("komparator_publikacji_pbn:comparison_list")
+    url = URL_2022_2025
     response = client.get(url, {"export": "xlsx"})
 
     assert response.status_code == 200

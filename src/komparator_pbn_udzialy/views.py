@@ -5,7 +5,7 @@ from django.contrib import messages
 from django.contrib.auth.decorators import login_required, permission_required
 from django.contrib.contenttypes.models import ContentType
 from django.db import models
-from django.db.models import Q
+from django.db.models import Count, Q
 from django.http import HttpResponseRedirect, JsonResponse
 from django.shortcuts import render
 from django.urls import reverse
@@ -14,6 +14,7 @@ from django.views import View
 from django.views.generic import DetailView
 
 from bpp.const import GR_WPROWADZANIE_DANYCH
+from ewaluacja_common.okres import lata_okresu
 from komparator_pbn_udzialy.models import (
     BrakAutoraWPublikacji,
     ProblemWrapper,
@@ -22,6 +23,28 @@ from komparator_pbn_udzialy.models import (
 from pbn_downloader_app.freshness import is_pbn_publications_data_fresh
 
 logger = logging.getLogger(__name__)
+
+#: Ścieżka od rekordu problemu do roku publikacji w PBN.
+ROK_PUBLIKACJI_PBN = "oswiadczenie_instytucji__publicationId__year"
+
+
+def _rok(wartosc):
+    """Rok z parametru GET jako ``int`` albo ``None`` (puste pole albo
+    nie-liczba = bez ograniczenia z tej strony)."""
+    try:
+        return int(wartosc)
+    except (ValueError, TypeError):
+        return None
+
+
+def filtruj_lata(queryset, rok_min, rok_max):
+    """Zostaw problemy publikacji PBN z lat ``rok_min``–``rok_max``."""
+    rok_min, rok_max = _rok(rok_min), _rok(rok_max)
+    if rok_min is not None:
+        queryset = queryset.filter(**{f"{ROK_PUBLIKACJI_PBN}__gte": rok_min})
+    if rok_max is not None:
+        queryset = queryset.filter(**{f"{ROK_PUBLIKACJI_PBN}__lte": rok_max})
+    return queryset
 
 
 class ProblemyPBNListView(GroupRequiredMixin, View):
@@ -34,8 +57,10 @@ class ProblemyPBNListView(GroupRequiredMixin, View):
         # Filtry
         search = request.GET.get("search", "")
         filter_type = request.GET.get("filter", "")
-        rok_min = request.GET.get("rok_min", "2022")
-        rok_max = request.GET.get("rok_max", "2025")
+        # Bez ręcznego zakresu: lata okresu ewaluacji z paska okresu.
+        okres_od, okres_do = lata_okresu(request)
+        rok_min = request.GET.get("rok_min", str(okres_od))
+        rok_max = request.GET.get("rok_max", str(okres_do))
 
         # Pobierz rozbieżności
         rozbieznosci = self._get_rozbieznosci(search, filter_type, rok_min, rok_max)
@@ -54,7 +79,7 @@ class ProblemyPBNListView(GroupRequiredMixin, View):
         all_problems.sort(key=lambda x: x.created_at, reverse=True)
 
         # Statystyki
-        stats = self._get_stats()
+        stats = self._get_stats(rok_min, rok_max)
 
         # PBN data freshness check
         pbn_data_fresh, pbn_stale_message, pbn_last_download = (
@@ -90,7 +115,7 @@ class ProblemyPBNListView(GroupRequiredMixin, View):
         # Wyszukiwanie
         if search:
             queryset = queryset.filter(
-                Q(oswiadczenie_instytucji__publicationId__tytul__icontains=search)
+                Q(oswiadczenie_instytucji__publicationId__title__icontains=search)
                 | Q(dyscyplina_bpp__nazwa__icontains=search)
                 | Q(dyscyplina_pbn__nazwa__icontains=search)
             )
@@ -113,26 +138,7 @@ class ProblemyPBNListView(GroupRequiredMixin, View):
             # Filtr dla typu brakującego autora - nie pokazuj rozbieżności
             return []
 
-        # Filtrowanie po roku
-        if rok_min:
-            try:
-                rok_min_int = int(rok_min)
-                queryset = queryset.filter(
-                    oswiadczenie_instytucji__publicationId__year__gte=rok_min_int
-                )
-            except (ValueError, TypeError):
-                pass
-
-        if rok_max:
-            try:
-                rok_max_int = int(rok_max)
-                queryset = queryset.filter(
-                    oswiadczenie_instytucji__publicationId__year__lte=rok_max_int
-                )
-            except (ValueError, TypeError):
-                pass
-
-        return list(queryset)
+        return list(filtruj_lata(queryset, rok_min, rok_max))
 
     def _get_brakujacy(self, search, filter_type, rok_min, rok_max):
         """Pobiera brakujących autorów z uwzględnieniem filtrów."""
@@ -150,7 +156,7 @@ class ProblemyPBNListView(GroupRequiredMixin, View):
             queryset = queryset.filter(
                 Q(pbn_scientist__lastName__icontains=search)
                 | Q(pbn_scientist__name__icontains=search)
-                | Q(oswiadczenie_instytucji__publicationId__tytul__icontains=search)
+                | Q(oswiadczenie_instytucji__publicationId__title__icontains=search)
                 | Q(autor__nazwisko__icontains=search)
             )
 
@@ -165,53 +171,45 @@ class ProblemyPBNListView(GroupRequiredMixin, View):
             # Filtr dla rozbieżności - nie pokazuj brakujących
             return []
 
-        # Filtrowanie po roku
-        if rok_min:
-            try:
-                rok_min_int = int(rok_min)
-                queryset = queryset.filter(
-                    oswiadczenie_instytucji__publicationId__year__gte=rok_min_int
-                )
-            except (ValueError, TypeError):
-                pass
+        return list(filtruj_lata(queryset, rok_min, rok_max))
 
-        if rok_max:
-            try:
-                rok_max_int = int(rok_max)
-                queryset = queryset.filter(
-                    oswiadczenie_instytucji__publicationId__year__lte=rok_max_int
-                )
-            except (ValueError, TypeError):
-                pass
+    def _get_stats(self, rok_min, rok_max):
+        """Statystyki wszystkich typów problemów dla tego samego zakresu lat
+        co lista (inaczej kafelki pokazywałyby inne liczby niż tabela)."""
+        rozbieznosci = filtruj_lata(
+            RozbieznoscDyscyplinPBN.objects.all(), rok_min, rok_max
+        ).aggregate(
+            total=Count("id"),
+            bpp_empty=Count("id", filter=Q(dyscyplina_bpp__isnull=True)),
+            pbn_empty=Count("id", filter=Q(dyscyplina_pbn__isnull=True)),
+            both_present=Count(
+                "id",
+                filter=Q(dyscyplina_bpp__isnull=False, dyscyplina_pbn__isnull=False),
+            ),
+        )
+        rozbieznosci_total = rozbieznosci["total"]
+        bpp_empty = rozbieznosci["bpp_empty"]
+        pbn_empty = rozbieznosci["pbn_empty"]
+        both_present = rozbieznosci["both_present"]
 
-        return list(queryset)
-
-    def _get_stats(self):
-        """Zwraca statystyki dla wszystkich typów problemów."""
-        # Statystyki rozbieżności
-        rozbieznosci_total = RozbieznoscDyscyplinPBN.objects.count()
-        bpp_empty = RozbieznoscDyscyplinPBN.objects.filter(
-            dyscyplina_bpp__isnull=True
-        ).count()
-        pbn_empty = RozbieznoscDyscyplinPBN.objects.filter(
-            dyscyplina_pbn__isnull=True
-        ).count()
-        both_present = RozbieznoscDyscyplinPBN.objects.filter(
-            dyscyplina_bpp__isnull=False,
-            dyscyplina_pbn__isnull=False,
-        ).count()
-
-        # Statystyki brakujących autorów
-        brakujacy_total = BrakAutoraWPublikacji.objects.count()
-        missing_autor = BrakAutoraWPublikacji.objects.filter(
-            typ=BrakAutoraWPublikacji.TYP_BRAK_AUTORA_W_BPP
-        ).count()
-        missing_link = BrakAutoraWPublikacji.objects.filter(
-            typ=BrakAutoraWPublikacji.TYP_BRAK_POWIAZANIA
-        ).count()
-        missing_publication = BrakAutoraWPublikacji.objects.filter(
-            typ=BrakAutoraWPublikacji.TYP_BRAK_PUBLIKACJI
-        ).count()
+        brakujacy = filtruj_lata(
+            BrakAutoraWPublikacji.objects.all(), rok_min, rok_max
+        ).aggregate(
+            total=Count("id"),
+            missing_autor=Count(
+                "id", filter=Q(typ=BrakAutoraWPublikacji.TYP_BRAK_AUTORA_W_BPP)
+            ),
+            missing_link=Count(
+                "id", filter=Q(typ=BrakAutoraWPublikacji.TYP_BRAK_POWIAZANIA)
+            ),
+            missing_publication=Count(
+                "id", filter=Q(typ=BrakAutoraWPublikacji.TYP_BRAK_PUBLIKACJI)
+            ),
+        )
+        brakujacy_total = brakujacy["total"]
+        missing_autor = brakujacy["missing_autor"]
+        missing_link = brakujacy["missing_link"]
+        missing_publication = brakujacy["missing_publication"]
 
         return {
             "total_count": rozbieznosci_total + brakujacy_total,

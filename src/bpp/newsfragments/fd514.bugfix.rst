@@ -1,0 +1,13 @@
+Komparator publikacji PBN i komparator udziałów PBN („Problemy PBN”) nie
+pokazują już domyślnie lat 2022–2025 wpisanych na sztywno. Oba mają teraz
+pod ścieżką nawigacji ten sam pasek „Okres ewaluacji” co komparator PBN
+i komparator źródeł PBN (2022–2025 albo 2026–2030, domyślnie okres bieżący),
+a pola „Rok od” / „Rok do” są domyślnie wypełnione latami wybranego okresu;
+własny zakres lat nadal można wpisać ręcznie. Wybrany zakres lat widać
+w nagłówku strony. W komparatorze publikacji zakres lat zapamiętany w jednym
+okresie nie przenosi się już do drugiego, a link „Eksportuj do XLSX” działa
+także wtedy, gdy wyszukiwana fraza zawiera znak „&”. W „Problemach PBN”
+kafelki „Statystyki” liczą teraz te same lata co tabela poniżej (dotąd
+liczyły wszystkie lata, więc liczby nie zgadzały się z listą), a pole
+„Szukaj” przestało kończyć się błędem serwera — każde wyszukiwanie dawało
+dotąd stronę błędu.

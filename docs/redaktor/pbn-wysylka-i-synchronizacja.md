@@ -362,13 +362,21 @@ ostrzegają).
 
 | Narzędzie (menu PBN) | Na co odpowiada |
 |---|---|
-| **komparator PBN** | przegląd za okres ewaluacji 2022–2025: ile prac **nigdy nie wysłano** do PBN, prace **w PBN nieistniejące w BPP**, prace i autorzy **skasowani w PBN**, a nadal powiązani w BPP, źródła skasowane w PBN, liczba rozbieżności dyscyplin; każdy kafelek ma przycisk **„Pokaż w module redagowania”** z gotową listą |
+| **komparator PBN** | przegląd za wybrany okres ewaluacji: ile prac **nigdy nie wysłano** do PBN, prace **w PBN nieistniejące w BPP**, prace i autorzy **skasowani w PBN**, a nadal powiązani w BPP, źródła skasowane w PBN, liczba rozbieżności dyscyplin; każdy kafelek ma przycisk **„Pokaż w module redagowania”** z gotową listą |
 | **komparator publikacji PBN** | prace powiązane z PBN, których **dane się różnią** (tytuł, rok, DOI, ISBN, ISSN, WWW, liczba autorów; dodatkowe pola do wyboru); tabela „Wartość w BPP / Wartość w PBN”, eksport do XLSX |
 | **komparator źródeł PBN** | czasopisma z inną **punktacją** albo **dyscyplinami** niż w PBN; „Ustaw punkty wg PBN” przepisuje punkty z PBN |
 | **komparator udziałów PBN** („Problemy PBN”) | rozbieżności **dyscyplin** autorów w pracach między BPP a oświadczeniami w PBN oraz oświadczenia z PBN, którym w BPP brakuje autora, powiązania autora z pracą albo samej pracy |
 | **źródła skasowane w PBN** | źródła usunięte w PBN, do przemapowania na aktualne |
 
 ![Komparator PBN: sekcja „Publikacje - rozbieżności między PBN a BPP”](../images/redaktor/pbn-wysylka-i-synchronizacja/12-komparator-pbn.png)
+
+Komparator PBN, komparator publikacji, komparator źródeł i komparator
+udziałów („Problemy PBN”) mają pod ścieżką nawigacji **pasek „Okres
+ewaluacji”** (2022–2025 albo 2026–2030; domyślnie okres bieżący). Wybrany
+okres wyznacza lata, dla których strona liczy dane, jest zapamiętywany
+i widać go w adresie strony, więc link można komuś wysłać. W komparatorze
+publikacji, źródeł i udziałów pola **„Rok od” / „Rok do”** są domyślnie
+wypełnione latami wybranego okresu — można wpisać w nie własny zakres.
 
 Komparator publikacji przegląda **do 100 prac każdego typu naraz** —
 przy dużej bazie zawęź lata albo wyszukaj po tytule, DOI lub ISBN.

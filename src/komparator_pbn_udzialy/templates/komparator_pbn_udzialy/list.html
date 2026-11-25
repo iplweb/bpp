@@ -17,7 +17,7 @@
 
         <!-- Statystyki -->
         <div class="panel">
-            <h4>Statystyki</h4>
+            <h4>Statystyki{% if rok_min or rok_max %} — publikacje z lat {{ rok_min|default:"…" }}–{{ rok_max|default:"…" }}{% endif %}</h4>
 
             <!-- Rozbieżności dyscyplin -->
             <h5>Rozbieżności dyscyplin ({{ rozbieznosci_total }})</h5>
