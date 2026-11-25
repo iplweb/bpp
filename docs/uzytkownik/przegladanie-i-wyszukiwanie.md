@@ -134,7 +134,8 @@ zatrudnienia już zakończone).
 Współautor spoza uczelni — osoba przypisana wyłącznie do *Obcej jednostki* —
 pod tym samym adresem dostaje **prostą stronę informacyjną**: imię i nazwisko,
 komunikat „Autor spoza uczelni” oraz przycisk **Pokaż prace współautorskie**,
-który otwiera listę jego prac w bibliografii. Dotychczasowe linki do takiego
+który otwiera listę jego prac w bibliografii (przycisk nie podaje liczby
+prac). Dotychczasowe linki do takiego
 autora (z opisów prac, wyników wyszukiwania, zakładek) nadal działają.
 Taka strona nie trafia do mapy strony (sitemap) i jest oznaczona dla
 wyszukiwarek internetowych jako nieindeksowana.
@@ -151,8 +152,10 @@ instytucji:
   zalogowanych redaktorów; panel redagowania bez zmian),
 - **ranking autorów** pomija autorów spoza uczelni — na stronie i w eksporcie,
 - w **sieci powiązań** autor spoza uczelni nadal jest węzłem grafu (z liczbą
-  wspólnych prac), ale bez sum IF i punktów — przy rozmiarze kółek wg IF lub
-  punktów jego kółko jest najmniejsze,
+  wspólnych prac na powiązaniach), ale bez liczby wszystkich prac, sum IF
+  i punktów — jego kółko ma stały, neutralny rozmiar niezależnie od
+  wybranej metryki, a podpis w widoku 3D zamiast liczby prac mówi „autor
+  spoza uczelni”,
 - w **eksporcie XLSX** prac takiego autora arkusz „Podsumowanie” zawiera
   tylko liczbę prac w latach, bez sum punktów, IF i slotów.
 

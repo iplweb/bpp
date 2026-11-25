@@ -209,9 +209,11 @@ def _autor_dict(autor, pbn_root, shared=None, metryki=None, spoza_uczelni=False)
     bez dodatkowego żądania.
 
     `spoza_uczelni` (FD#640): autor spoza uczelni zostaje w grafie (węzeł,
-    krawędzie, liczba prac), ale bez sumarycznej punktacji — ``if_sum``
-    i ``pk_sum`` są ``null`` (UI rysuje wtedy najmniejsze kółko). Sum
-    punktów obcego autora nie liczymy w publicznej części serwisu.
+    krawędzie, liczba wspólnych prac na krawędzi), ale bez żadnych
+    statystyk dorobku — ``total_works``, ``if_sum`` i ``pk_sum`` są
+    ``null`` (UI rysuje wtedy kółko w neutralnym, najmniejszym rozmiarze
+    i nie pokazuje liczby prac). Jego dorobek w NASZEJ bazie nic nie mówi
+    o jego twórczości, więc nie pokazujemy go w publicznej części serwisu.
     """
     m = metryki or {}
     dane = {
@@ -228,6 +230,7 @@ def _autor_dict(autor, pbn_root, shared=None, metryki=None, spoza_uczelni=False)
         "spoza_uczelni": spoza_uczelni,
     }
     if spoza_uczelni:
+        dane["total_works"] = None
         dane["if_sum"] = None
         dane["pk_sum"] = None
     if shared is not None:

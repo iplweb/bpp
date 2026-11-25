@@ -522,17 +522,13 @@ class AutorView(RekordUsunietyDetailMixin, DetailView):
         Zostaje nazwisko, informacja, że autor jest spoza uczelni, i przycisk
         do jego prac w bibliografii (z natury współautorskich z autorami
         uczelni). Stary URL działa dalej.
+
+        Bez liczby prac — nawet na przycisku: liczba prac obcego autora
+        w NASZEJ bazie nic nie mówi o jego dorobku, a wyglądałaby jak
+        statystyka jego twórczości.
         """
         self.autor_spoza_uczelni = True
-        request = getattr(self, "request", None)
-        context = super().get_context_data(
-            liczby_prac=liczby_prac_autora(
-                self.object,
-                uczelnia,
-                zalogowany=request is not None and request.user.is_authenticated,
-            ),
-            **kwargs,
-        )
+        context = super().get_context_data(**kwargs)
         if uczelnia is not None:
             context["uczelnia"] = uczelnia
         return context

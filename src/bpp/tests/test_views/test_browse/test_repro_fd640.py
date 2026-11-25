@@ -11,7 +11,7 @@ import pytest
 from django.urls import reverse
 from model_bakery import baker
 
-from bpp.models import Autor, Autor_Jednostka, Jednostka
+from bpp.models import Autor, Autor_Jednostka, Jednostka, Wydawnictwo_Ciagle
 
 PROFIL = 'class="autor-page__pasy"'
 STRONA_OBCEGO = "Autor spoza uczelni."
@@ -42,6 +42,23 @@ def test_fd640_autor_obcy_dostaje_prosta_strone(client, autor_obcy):
     assert PROFIL not in tresc
     assert "Pokaż prace współautorskie" in tresc
     assert '<meta name="robots" content="noindex"/>' in tresc
+
+
+@pytest.mark.django_db
+def test_fd640_strona_obcego_bez_liczby_prac(
+    client, autor_obcy, obca_jednostka, typy_odpowiedzialnosci
+):
+    """Przycisk do prac obcego autora nie podaje ich liczby — liczba prac
+    w naszej bazie wyglądałaby jak statystyka jego dorobku."""
+    for _ in range(3):
+        praca = baker.make(Wydawnictwo_Ciagle, rok=2022)
+        praca.dodaj_autora(autor_obcy, obca_jednostka, afiliuje=False)
+
+    res = client.get(reverse("bpp:browse_autor", args=(autor_obcy.slug,)))
+    assert "liczby_prac" not in res.context
+    tresc = res.content.decode("utf-8")
+    assert "Pokaż prace współautorskie" in tresc
+    assert "Pokaż prace współautorskie (" not in tresc
 
 
 @pytest.mark.django_db

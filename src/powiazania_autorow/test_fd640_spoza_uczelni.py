@@ -1,5 +1,6 @@
 """FD#640 — sieć powiązań: autor spoza uczelni zostaje w grafie (węzeł,
-krawędzie, liczba prac), ale bez sumarycznej punktacji (Σ IF, Σ PK)."""
+krawędzie, liczba wspólnych prac), ale bez statystyk dorobku (liczba prac,
+Σ IF, Σ PK)."""
 
 import pytest
 from django.urls import reverse
@@ -33,7 +34,7 @@ def para_autorow(
 
 
 @pytest.mark.django_db
-def test_fd640_dane_json_obcy_sasiad_bez_sum(client, para_autorow):
+def test_fd640_dane_json_obcy_sasiad_bez_statystyk(client, para_autorow):
     nasz, obcy = para_autorow
     url = reverse("bpp:browse_autor_powiazania_dane", args=[nasz.pk])
     data = client.get(url).json()
@@ -43,19 +44,21 @@ def test_fd640_dane_json_obcy_sasiad_bez_sum(client, para_autorow):
     assert sasiad["spoza_uczelni"] is True
     assert sasiad["if_sum"] is None
     assert sasiad["pk_sum"] is None
-    # struktura grafu zostaje: liczba wspólnych prac i liczba prac
+    # struktura grafu zostaje (liczba wspólnych prac), ale bez liczby
+    # wszystkich prac obcego autora
     assert sasiad["shared"] == 1
-    assert sasiad["total_works"] == 1
+    assert sasiad["total_works"] is None
 
     # strażnik: autor uczelni (centrum) z sumami jak dotąd
     centrum = data["center"]
     assert centrum["spoza_uczelni"] is False
+    assert centrum["total_works"] == 1
     assert centrum["pk_sum"] == 100
     assert centrum["if_sum"] == 2.5
 
 
 @pytest.mark.django_db
-def test_fd640_dane_json_obcy_jako_centrum_bez_sum(client, para_autorow):
+def test_fd640_dane_json_obcy_jako_centrum_bez_statystyk(client, para_autorow):
     nasz, obcy = para_autorow
     url = reverse("bpp:browse_autor_powiazania_dane", args=[obcy.pk])
     resp = client.get(url)
@@ -63,12 +66,14 @@ def test_fd640_dane_json_obcy_jako_centrum_bez_sum(client, para_autorow):
     data = resp.json()
     assert data["center"]["pk_sum"] is None
     assert data["center"]["if_sum"] is None
+    assert data["center"]["total_works"] is None
     assert data["neighbors"][0]["id"] == nasz.pk
+    assert data["neighbors"][0]["total_works"] == 1
     assert data["neighbors"][0]["pk_sum"] == 100
 
 
 @pytest.mark.django_db
-def test_fd640_siec_json_obcy_wezel_bez_sum(client, para_autorow):
+def test_fd640_siec_json_obcy_wezel_bez_statystyk(client, para_autorow):
     nasz, obcy = para_autorow
     url = reverse("bpp:browse_autor_powiazania_siec", args=[nasz.pk])
     data = client.get(url).json()
@@ -76,7 +81,8 @@ def test_fd640_siec_json_obcy_wezel_bez_sum(client, para_autorow):
     wezly = {n["id"]: n for n in data["nodes"]}
     assert wezly[obcy.pk]["pk_sum"] is None
     assert wezly[obcy.pk]["if_sum"] is None
-    assert wezly[obcy.pk]["total_works"] == 1
+    assert wezly[obcy.pk]["total_works"] is None
+    assert wezly[nasz.pk]["total_works"] == 1
     assert wezly[nasz.pk]["pk_sum"] == 100
     assert wezly[nasz.pk]["if_sum"] == 2.5
     assert data["edges"] == [{"source": nasz.pk, "target": obcy.pk, "shared": 1}]
