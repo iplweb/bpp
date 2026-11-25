@@ -80,6 +80,7 @@ def test_akcja_ukrywa_tylko_nieuzywane_jezyki(admin_client):
         {
             "action": "ukryj_nieuzywane",
             "_selected_action": [uzywany.pk, wolny.pk],
+            "potwierdzam": "1",
         },
         follow=True,
     )
@@ -109,6 +110,7 @@ def test_akcja_ustawia_ukryty_dla_charakteru_formalnego(admin_client):
         {
             "action": "ukryj_nieuzywane",
             "_selected_action": [uzywany.pk, wolny.pk],
+            "potwierdzam": "1",
         },
     )
 
@@ -126,7 +128,12 @@ def test_akcja_ustawia_ukryty_dla_charakteru_formalnego(admin_client):
 def test_changelist_z_filtrem_nieuzywane_dziala(admin_client, nazwa):
     res = admin_client.get(reverse(f"admin:{nazwa}_changelist"), {"uzywane": "nie"})
     assert res.status_code == 200
-    for akcja in (b"ukryj_nieuzywane", b"ukryj_zaznaczone", b"pokaz_zaznaczone"):
+    for akcja in (
+        b"ukryj_wszystkie_nieuzywane",
+        b"ukryj_nieuzywane",
+        b"ukryj_zaznaczone",
+        b"pokaz_zaznaczone",
+    ):
         assert b'value="' + akcja + b'"' in res.content
     # Usuwanie dalej tylko dla grupy „administracja”.
     assert b'value="delete_selected"' not in res.content

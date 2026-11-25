@@ -15,16 +15,32 @@ jakikolwiek rekord jej używa.
 
 Akcja zawsze chowa **wyłącznie** nieużywane spośród zaznaczonych — nawet
 przy „zaznacz wszystkie” nie ukryje pozycji, której używa istniejący
-rekord (przy ``limit_choices_to`` takiego rekordu nie dałoby się potem
-zapisać w adminie).
+rekord.
+
+Obie akcje chowające nieużywane („Ukryj nieużywane” dla zaznaczonych
+i „Ukryj wszystkie nieużywane” bez zaznaczania) najpierw pokazują stronę
+z podglądem: co zostanie ukryte, a co pominięte jako używane (FD#513).
+Zmiana następuje dopiero po potwierdzeniu.
 """
 
 import operator
 from functools import reduce
 
 from django.contrib import admin, messages
+from django.contrib.admin import helpers as admin_helpers
 from django.contrib.admin.filters import SimpleListFilter
-from django.db.models import BLANK_CHOICE_DASH, Exists, ManyToManyRel, OuterRef, Q
+from django.db.models import (
+    BLANK_CHOICE_DASH,
+    BooleanField,
+    Exists,
+    ExpressionWrapper,
+    ManyToManyRel,
+    OuterRef,
+    Q,
+    Value,
+)
+from django.http import HttpResponseRedirect
+from django.template.response import TemplateResponse
 from django.utils.translation import ngettext
 
 from bpp.admin.actions import (
@@ -36,6 +52,10 @@ from bpp.admin.actions import (
 KOMUNIKAT_UKRYTO_NIEUZYWANE = "Ukryto nieużywaną pozycję słownika (akcja masowa)"
 KOMUNIKAT_UKRYTO = "Ukryto pozycję słownika (akcja masowa)"
 KOMUNIKAT_POKAZANO = "Pokazano pozycję słownika (akcja masowa)"
+
+AKCJA_WSZYSTKIE = "ukryj_wszystkie_nieuzywane"
+POLE_POTWIERDZENIA = "potwierdzam"
+SZABLON_PODGLADU = "admin/bpp/ukryj_nieuzywane_podglad.html"
 
 
 def relacje_wskazujace(model):
@@ -108,13 +128,38 @@ def pole_ukrycia(model):
     raise ValueError(f"{model._meta.label} nie ma pola widoczny ani ukryty")
 
 
-@zapisuje_historie
-def ukryj_nieuzywane(modeladmin, request, queryset):
+def _widoczne(queryset):
+    """Pozycje, które dziś SĄ na listach wyboru (jeszcze nieukryte)."""
+    pole, wartosc_ukryty = pole_ukrycia(queryset.model)
+    return queryset.exclude(**{pole: wartosc_ukryty})
+
+
+def _podglad_ukrywania(modeladmin, request, queryset, akcja, tytul):
+    """Strona pośrednia: co zostanie ukryte, co pominięte. Nic nie zmienia."""
+    do_ukrycia = _widoczne(nieuzywane(queryset))
+    pominiete = _widoczne(uzywane(queryset))
+    context = {
+        **modeladmin.admin_site.each_context(request),
+        "title": tytul,
+        "opts": queryset.model._meta,
+        "do_ukrycia": list(do_ukrycia),
+        "pominiete": list(pominiete),
+        "akcja": akcja,
+        "pole_potwierdzenia": POLE_POTWIERDZENIA,
+        "wybrane_pk": request.POST.getlist(admin_helpers.ACTION_CHECKBOX_NAME),
+        "action_checkbox_name": admin_helpers.ACTION_CHECKBOX_NAME,
+        "select_across": request.POST.get("select_across", "0"),
+    }
+    return TemplateResponse(request, SZABLON_PODGLADU, context)
+
+
+def _ukryj_nieuzywane_po_potwierdzeniu(modeladmin, request, queryset):
     model = queryset.model
     pole, wartosc = pole_ukrycia(model)
-    zaznaczone = queryset.count()
+    # Używane liczymy w chwili zatwierdzenia, nie podglądu — pozycja, która
+    # w międzyczasie trafiła do jakiegoś rekordu, zostaje widoczna.
     do_ukrycia = nieuzywane(queryset)
-    pominiete_uzywane = zaznaczone - do_ukrycia.count()
+    pominiete_uzywane = _widoczne(uzywane(queryset)).count()
 
     updated = zmien_hurtowo_z_historia(
         request, do_ukrycia, {pole: wartosc}, KOMUNIKAT_UKRYTO_NIEUZYWANE
@@ -132,11 +177,48 @@ def ukryj_nieuzywane(modeladmin, request, queryset):
             f"{ngettext('używaną', 'używanych', pominiete_uzywane)} — "
             f"wskazują na nie istniejące rekordy."
         )
+    if updated:
+        komunikat += (
+            " Aby to cofnąć, wybierz filtr pokazujący ukryte pozycje, zaznacz "
+            "je i użyj akcji „Pokaż zaznaczone”."
+        )
     modeladmin.message_user(request, komunikat, messages.SUCCESS)
 
 
-ukryj_nieuzywane.short_description = "Ukryj nieużywane"
+@zapisuje_historie
+def ukryj_nieuzywane(modeladmin, request, queryset):
+    if request.POST.get(POLE_POTWIERDZENIA) != "1":
+        return _podglad_ukrywania(
+            modeladmin,
+            request,
+            queryset,
+            "ukryj_nieuzywane",
+            "Ukryj nieużywane spośród zaznaczonych",
+        )
+    return _ukryj_nieuzywane_po_potwierdzeniu(modeladmin, request, queryset)
+
+
+ukryj_nieuzywane.short_description = "Ukryj nieużywane spośród zaznaczonych…"
 ukryj_nieuzywane.allowed_permissions = ("change",)
+
+
+@zapisuje_historie
+def ukryj_wszystkie_nieuzywane(modeladmin, request, queryset):
+    """Jak ``ukryj_nieuzywane``, ale dla CAŁEGO słownika — zaznaczenie na
+    liście jest ignorowane (akcję można uruchomić bez zaznaczania, patrz
+    ``UkryjNieuzywaneMixin.changelist_view``)."""
+    queryset = modeladmin.model._default_manager.all()
+    if request.POST.get(POLE_POTWIERDZENIA) != "1":
+        return _podglad_ukrywania(
+            modeladmin, request, queryset, AKCJA_WSZYSTKIE, "Ukryj wszystkie nieużywane"
+        )
+    return _ukryj_nieuzywane_po_potwierdzeniu(modeladmin, request, queryset)
+
+
+ukryj_wszystkie_nieuzywane.short_description = (
+    "Ukryj wszystkie nieużywane (bez zaznaczania)…"
+)
+ukryj_wszystkie_nieuzywane.allowed_permissions = ("change",)
 
 
 def _ustaw_ukrycie(modeladmin, request, queryset, ukryj, komentarz):
@@ -191,11 +273,31 @@ pokaz_zaznaczone.allowed_permissions = ("change",)
 
 
 class UkryjNieuzywaneMixin:
-    """Dokłada do admina słownika filtr „używane” i akcje „Ukryj nieużywane”,
-    „Ukryj zaznaczone”, „Pokaż zaznaczone”.
+    """Dokłada do admina słownika filtr „używane”, kolumnę „Używane”
+    i akcje „Ukryj nieużywane”, „Ukryj wszystkie nieużywane”, „Ukryj
+    zaznaczone”, „Pokaż zaznaczone”.
 
     Model musi mieć pole ``widoczny`` albo ``ukryty``.
     """
+
+    def get_queryset(self, request):
+        warunek = warunek_uzywane(self.model)
+        wyrazenie = (
+            Value(False)
+            if warunek is None
+            else ExpressionWrapper(warunek, output_field=BooleanField())
+        )
+        return super().get_queryset(request).annotate(_uzywane=wyrazenie)
+
+    @admin.display(description="Używane", boolean=True, ordering="_uzywane")
+    def uzywane_w_rekordach(self, obj):
+        return obj._uzywane
+
+    def get_list_display(self, request):
+        kolumny = list(super().get_list_display(request))
+        if "uzywane_w_rekordach" not in kolumny:
+            kolumny.append("uzywane_w_rekordach")
+        return kolumny
 
     def get_list_filter(self, request):
         return (*super().get_list_filter(request), UzywaneFilter)
@@ -212,6 +314,35 @@ class UkryjNieuzywaneMixin:
     def get_actions(self, request):
         actions = super().get_actions(request)
         if self.has_change_permission(request):
-            for akcja in (ukryj_nieuzywane, ukryj_zaznaczone, pokaz_zaznaczone):
+            for akcja in (
+                ukryj_wszystkie_nieuzywane,
+                ukryj_nieuzywane,
+                ukryj_zaznaczone,
+                pokaz_zaznaczone,
+            ):
                 actions[akcja.__name__] = self.get_action(akcja)
         return actions
+
+    def _wybrano_akcje_wszystkie(self, request):
+        if request.method != "POST":
+            return False
+        akcje = request.POST.getlist("action")
+        try:
+            wybrana = akcje[int(request.POST.get("index", 0))]
+        except (ValueError, IndexError):
+            # Niepoprawny formularz akcji — niech obsłuży go Django.
+            return False
+        return wybrana == AKCJA_WSZYSTKIE
+
+    def changelist_view(self, request, extra_context=None):
+        # „Ukryj wszystkie nieużywane” nie wymaga zaznaczenia czegokolwiek,
+        # a Django odrzuca akcję bez zaznaczonych wierszy („Items must be
+        # selected”) — dlatego obsługujemy ją, zanim trafi do Django.
+        if self._wybrano_akcje_wszystkie(request) and self.has_change_permission(
+            request
+        ):
+            odpowiedz = ukryj_wszystkie_nieuzywane(
+                self, request, self.get_queryset(request)
+            )
+            return odpowiedz or HttpResponseRedirect(request.get_full_path())
+        return super().changelist_view(request, extra_context)

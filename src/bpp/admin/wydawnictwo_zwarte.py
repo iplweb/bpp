@@ -72,6 +72,10 @@ from .helpers.mixins import (
     OptionalPBNSaveMixin,
     RestrictDeletionWhenPBNUIDSetMixin,
 )
+from .helpers.ukryte_slowniki import (
+    FormularzZUkrytymiSlownikami,
+    ZachowajUkrytaPozycjeSlownikaMixin,
+)
 from .helpers.wersje import HistoriaWersjiMixin
 from .nagroda import NagrodaInline
 
@@ -84,6 +88,7 @@ from .zglos_publikacje_helpers import UzupelniajWstepneDanePoNumerzeZgloszeniaMi
 
 class Wydawnictwo_Zwarte_TytulInline(admin.StackedInline):
     model = Wydawnictwo_Zwarte_Tytul
+    form = FormularzZUkrytymiSlownikami
     extra = 0
     fields = ["jezyk", "kod_jezyka_pbn", "tytul"]
 
@@ -92,6 +97,7 @@ class Wydawnictwo_Zwarte_StreszczenieInline(
     KorzystaZCrossRefAPIStreszczenieInlineMixin, admin.StackedInline
 ):
     model = Wydawnictwo_Zwarte_Streszczenie
+    form = FormularzZUkrytymiSlownikami
     extra = 0
     fields = ["jezyk_streszczenia", "streszczenie"]
 
@@ -210,6 +216,7 @@ class Wydawnictwo_ZwarteAdmin_Baza(
 
 
 class Wydawnictwo_ZwarteForm(
+    ZachowajUkrytaPozycjeSlownikaMixin,
     OpenAccessDataUdostepnieniaFormMixin,
     helpers.mixins.Wycinaj_W_z_InformacjiMixin,
     CleanDOIWWWPublicWWWMixin,

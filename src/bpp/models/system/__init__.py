@@ -2,10 +2,12 @@
 Małe klasy pomocnicze dla całego systemu
 """
 
+from django.core.validators import RegexValidator
 from django.db import models
-from django.db.models import CASCADE
+from django.db.models import CASCADE, Q
 
 from bpp import const
+from bpp.kody_jezykow import WZORZEC_KODU, podtag_podstawowy
 from bpp.models.abstract import ModelZNazwa, NazwaISkrot
 
 from .charakter_formalny import *  # noqa
@@ -58,18 +60,23 @@ class Typ_Odpowiedzialnosci(NazwaISkrot):
 
 
 class Jezyk(NazwaISkrot):
-    class SKROT_CROSSREF(models.TextChoices):
-        en = "en", "en - angielski"
-        es = "es", "es - hiszpański"
-        pl = "pl", "pl - polski"
-
     skrot_crossref = models.CharField(
         max_length=10,
         verbose_name="Skrót nazwy języka wg API CrossRef",
-        choices=SKROT_CROSSREF.choices,
         blank=True,
         null=True,
         unique=True,
+        validators=[
+            RegexValidator(
+                WZORZEC_KODU,
+                "Podaj kod języka małymi literami, np. „en”, „de”, „uk” "
+                "(ISO 639-1), ewentualnie z regionem, np. „en-GB”.",
+            )
+        ],
+        help_text="Kod języka, pod jakim CrossRef opisuje publikacje w tym "
+        "języku, np. „en”, „de”, „uk”. Wypełnij tylko wtedy, gdy różni się "
+        "od pola „Kod języka wg BCP 47” — gdy to pole jest puste, język "
+        "publikacji z CrossRef jest dopasowywany po kodzie BCP 47.",
     )
 
     pbn_uid = models.ForeignKey(
@@ -100,6 +107,39 @@ class Jezyk(NazwaISkrot):
             return self.skrot_dla_pbn
 
         return self.skrot
+
+    @classmethod
+    def dla_kodu(cls, kod):
+        """Język słownika dla kodu języka z CrossRef (albo z autodetekcji).
+
+        Kolejność: „Skrót CrossRef” (jawna decyzja redakcji), potem „Kod
+        języka wg BCP 47”. Region jest pomijany po obu stronach (``en-GB`` ↔
+        ``en``). Gdy kod BCP 47 ma kilka języków, pierwszeństwo ma widoczny
+        (ukryty nie przeszedłby walidacji formularza nowego rekordu), potem
+        niższe ``pk`` — żeby wynik był deterministyczny. Brak → ``None``.
+        """
+        if not kod:
+            return None
+        kod = str(kod).strip()
+        podtag = podtag_podstawowy(kod)
+        if not podtag:
+            return None
+
+        jezyk = (
+            cls.objects.filter(Q(skrot_crossref=kod) | Q(skrot_crossref__iexact=podtag))
+            .order_by("-widoczny", "pk")
+            .first()
+        )
+        if jezyk is not None:
+            return jezyk
+
+        return (
+            cls.objects.filter(
+                Q(kod_bcp47__iexact=podtag) | Q(kod_bcp47__istartswith=f"{podtag}-")
+            )
+            .order_by("-widoczny", "pk")
+            .first()
+        )
 
 
 class Typ_KBN(NazwaISkrot):

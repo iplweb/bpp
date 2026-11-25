@@ -41,6 +41,7 @@ from .helpers.mixins import (
     DomyslnyStatusKorektyMixin,
     Wycinaj_W_z_InformacjiMixin,
 )
+from .helpers.ukryte_slowniki import ZachowajUkrytaPozycjeSlownikaMixin
 from .helpers.wersje import HistoriaWersjiMixin
 from .wydawnictwo_ciagle import CleanDOIWWWPublicWWWMixin
 from .xlsx_export import resources
@@ -137,7 +138,10 @@ class Praca_Doktorska_Habilitacyjna_Admin_Base(
 
 
 class Praca_DoktorskaForm(
-    Wycinaj_W_z_InformacjiMixin, CleanDOIWWWPublicWWWMixin, forms.ModelForm
+    ZachowajUkrytaPozycjeSlownikaMixin,
+    Wycinaj_W_z_InformacjiMixin,
+    CleanDOIWWWPublicWWWMixin,
+    forms.ModelForm,
 ):
     autor = forms.ModelChoiceField(
         queryset=Autor.objects.all(),

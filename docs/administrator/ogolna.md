@@ -247,29 +247,73 @@ alternatywny” czy „Język oryginalny”), patent, praca dyplomowa, rekord
 w koszu, konfiguracja itp. Podrzędne pozycje w drzewie charakterów
 formalnych nie czynią nadrzędnej „używaną”.
 
-Na tych listach są trzy akcje:
+Te same informacje widać od razu w kolumnie **„Używane”** (można po niej
+sortować). Słownik języków ma dodatkowo kolumnę **„Liczba publikacji”** —
+ile wydawnictw ciągłych, zwartych, prac doktorskich i habilitacyjnych
+wskazuje na język polem „Język”, „Język alternatywny” lub „Język
+oryginalny” (także rekordy w koszu). Kliknij nagłówek, żeby posortować
+języki od najczęściej albo najrzadziej używanych. Język może mieć
+0 publikacji i nadal być „używany” — np. jako język źródła, streszczenia
+albo dodatkowego tytułu.
 
-- **„Ukryj nieużywane”** — chowa z list wyboru **tylko nieużywane**
-  spośród zaznaczonych: odznacza „Widoczny” (języki) albo zaznacza „Ukryj
-  na listach wyboru” (pozostałe słowniki). Można bezpiecznie zaznaczyć
-  całą listę; używane pozycje zostaną pominięte, a komunikat poda, ile ich
-  było. Najwygodniej: wybierz filtr „nieużywane”, zaznacz wszystko,
-  uruchom akcję,
-- **„Ukryj zaznaczone”** — chowa wszystkie zaznaczone, także używane.
-  Jeśli wśród nich są używane, komunikat to zaznaczy: rekord z ukrytym
-  językiem może nie dać się zapisać w formularzu, dopóki nie wybierze się
-  w nim innego języka,
+Na tych listach są cztery akcje:
+
+- **„Ukryj wszystkie nieużywane (bez zaznaczania)…”** — najprostsza droga:
+  wybierz ją z listy akcji i kliknij „Wykonaj”, nie zaznaczając żadnego
+  wiersza. System pokaże **podgląd**: listę pozycji, które zostaną ukryte
+  (żaden rekord na nie nie wskazuje), oraz tych, które pozostaną widoczne,
+  bo są używane. Nic się nie zmienia, dopóki nie klikniesz „Tak, ukryj”.
+- **„Ukryj nieużywane spośród zaznaczonych…”** — to samo, ale tylko dla
+  zaznaczonych wierszy; także z podglądem i potwierdzeniem. Można
+  bezpiecznie zaznaczyć całą listę — używane pozycje zostaną pominięte.
+- **„Ukryj zaznaczone”** — chowa wszystkie zaznaczone, także używane (bez
+  podglądu). Jeśli wśród nich są używane, komunikat to zaznaczy.
 - **„Pokaż zaznaczone”** — z powrotem pokazuje zaznaczone pozycje na
-  listach wyboru.
+  listach wyboru. Tak cofa się każde ukrycie: wybierz filtr „Widoczny:
+  Nie” (języki) albo „Ukryj na listach wyboru: Tak” (pozostałe słowniki),
+  zaznacz pozycje i uruchom tę akcję.
 
-Ukryta pozycja znika z list wyboru przy wprowadzaniu nowych rekordów,
-ale zostaje w bazie. Każda zmiana trafia do „Historii” pozycji (przycisk
-„Historia” w formularzu słownika) z wpisem „Ukryto nieużywaną pozycję
-słownika (akcja masowa)”, „Ukryto pozycję słownika (akcja masowa)” albo
-„Pokazano pozycję słownika (akcja masowa)” — z nazwą użytkownika i datą.
-Słowniki nie mają zapisywanych wersji, więc pomyłkę cofa się akcją
-„Pokaż zaznaczone”, nie przyciskiem przywracania. Akcje wymagają
-uprawnienia do edycji danego słownika.
+Ukrycie odznacza „Widoczny” (języki) albo zaznacza „Ukryj na listach
+wyboru” (pozostałe słowniki). Ukryta pozycja znika z list wyboru przy
+wprowadzaniu i redagowaniu rekordów, ale zostaje w bazie i **nie psuje
+istniejących rekordów**: rekord, który już ma ukryty język (albo ukryty typ
+MNiSW), nadal pokazuje go w formularzu i daje się zapisać bez zmiany tej
+wartości. Ukryta pozycja jest wtedy na liście wyboru tylko w tym jednym
+rekordzie. Dotyczy to pól „Język”, „Język alternatywny”, „Język
+oryginalny”, języka streszczenia i dodatkowego tytułu oraz języka źródła.
+
+Każda zmiana trafia do „Historii” pozycji (przycisk „Historia”
+w formularzu słownika) z wpisem „Ukryto nieużywaną pozycję słownika (akcja
+masowa)”, „Ukryto pozycję słownika (akcja masowa)” albo „Pokazano pozycję
+słownika (akcja masowa)” — z nazwą użytkownika i datą. Słowniki nie mają
+zapisywanych wersji, więc pomyłkę cofa się akcją „Pokaż zaznaczone”, nie
+przyciskiem przywracania. Akcje wymagają uprawnienia do edycji danego
+słownika.
+
+Administrator serwera może ukryć nieużywane języki także z wiersza poleceń:
+`manage.py ukryj_nieuzywane_jezyki` (z `--dry-run` tylko wypisuje, co
+zostałoby ukryte). Polecenie stosuje tę samą definicję „nieużywanego”
+języka co akcja w panelu.
+
+## Kody języków a pobieranie danych z CrossRef
+
+Gdy BPP pobiera opis publikacji z CrossRef (formularz „Dodaj z CrossRef
+API”, importer publikacji), język pracy przychodzi jako kod, np. `en`,
+`de`, `uk`. BPP szuka go w słowniku **Dane systemowe → Języki** w dwóch
+polach, w tej kolejności:
+
+1. **„Skrót nazwy języka wg API CrossRef”** — dowolny poprawny kod języka
+   (małe litery, np. `de`; dawniej dało się tu wybrać tylko `en`, `es`
+   albo `pl`). Wypełnij tylko wtedy, gdy ma być inny niż kod BCP 47.
+2. **„Kod języka wg BCP 47”** — np. `pl`, `en`, `en-GB`. Region jest
+   pomijany, więc `en-GB` pasuje do `en`.
+
+Jeśli kilka języków ma ten sam kod, wybierany jest widoczny. Przy
+aktualizacji BPP kod BCP 47 został uzupełniony dla języków o typowych
+polskich nazwach („niemiecki”, „ukraiński”, „czeski”…), o ile pole było
+puste. Języki, których BPP nie potrafi dopasować do CrossRef, pokaże filtr
+**„kod dla CrossRef: nieustawiony”** na liście języków — wystarczy wpisać
+im kod w polu „Kod języka wg BCP 47”.
 
 ## Sposób kalkulacji dyscyplin
 
