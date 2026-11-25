@@ -21,7 +21,7 @@ from django.core.exceptions import ValidationError
 from django.urls import reverse
 
 from bpp.models import Patent
-from bpp.models.patent import TypPatentu
+from bpp.models.patent import TypPatentu, _Patent_PropertyCache
 
 #: ``search_index`` wypełnia trigger bazy, nie formularz.
 BEZ_INDEKSU = ["search_index"]
@@ -43,7 +43,14 @@ def patent_z_autorem(patent, autor_jan_kowalski, jednostka):
     patent.informacje = ""
     patent.szczegoly = ""
     patent.uwagi = ""
-    return patent
+    # ``Patent.jezyk`` siedzi w cache na cały proces workera (i w instancji,
+    # która mogła go odczytać przy zapisie). Wpis zapamiętany przez wcześniejszy
+    # test (np. po flushu, bez ``kod_bcp47``) zgubiłby ``<span lang="pl">``
+    # w opisie — czytamy język świeżo z bazy tego testu.
+    _Patent_PropertyCache.__dict__.pop("jezyk", None)
+    patent.__dict__.pop("jezyk", None)
+    yield patent
+    _Patent_PropertyCache.__dict__.pop("jezyk", None)
 
 
 def wypelnij(patent):
