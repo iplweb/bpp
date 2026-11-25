@@ -17,10 +17,6 @@ from bpp.views.api.crossref import (
     UstawStronyView,
     UstawTomView,
 )
-from bpp.views.api.pbn_get_by_parameter import (
-    GetPBNPublicationsByDOI,
-    GetPBNPublicationsByISBN,
-)
 from bpp.views.api.pbn_odpowiednik import (
     PobierzOdpowiednikAutoraView,
     PobierzOdpowiednikPublikacjiView,
@@ -269,16 +265,6 @@ urlpatterns = [
         r"^api/pubmed-id/$",
         GetPubmedIDView.as_view(),
         name="api_pubmed_id",
-    ),
-    url(
-        r"^api/get-pbn-publications-by-isbn/$",
-        GetPBNPublicationsByISBN.as_view(),
-        name="api_get_pbn_by_isbn",
-    ),
-    url(
-        r"^api/get-pbn-publications-by-doi/$",
-        GetPBNPublicationsByDOI.as_view(),
-        name="api_get_pbn_by_doi",
     ),
     url(
         r"^api/pobierz-z-pbn/publikacja/$",

@@ -31,8 +31,8 @@ from pbn_client.const import DELETED
 from bpp.models import Autor, Uczelnia
 from bpp.views.api.pbn_get_by_parameter import (
     MAX_KANDYDATOW,
-    GetPBNPublicationsByDOI,
-    GetPBNPublicationsByISBN,
+    SzukaczDOI,
+    SzukaczISBN,
 )
 from bpp.zglaszanie_bledow import capture_exception
 from pbn_api.exceptions import (
@@ -121,8 +121,8 @@ class SzukaczWWW:
         return
 
 
-SZUKACZ_DOI = GetPBNPublicationsByDOI()
-SZUKACZ_ISBN = GetPBNPublicationsByISBN()
+SZUKACZ_DOI = SzukaczDOI()
+SZUKACZ_ISBN = SzukaczISBN()
 SZUKACZ_WWW = SzukaczWWW()
 
 
@@ -169,6 +169,15 @@ def _zawez_po_tytule(uidy, tytul):
         return []
     tytuly = dict(Publication.objects.filter(pk__in=uidy).values_list("pk", "title"))
     return [uid for uid in uidy if _norm_tytul(tytuly.get(uid)) == wzorzec]
+
+
+def _inne_zapisy(szukacz, wartosc):
+    """Dopisek z pozostałymi zapisami identyfikatora, o które pytamy PBN
+    (ISBN-10/13, z myślnikami i bez; DOI małymi literami)."""
+    if szukacz is SZUKACZ_WWW:
+        return ""
+    inne = [forma for forma in szukacz.formy(wartosc) if forma != wartosc]
+    return f" (także: {', '.join(inne)})" if inne else ""
 
 
 class SerwerPBN:
@@ -263,7 +272,7 @@ def znajdz_odpowiednik_publikacji(
             continue
         widziane.add(klucz)
         opis = f"{szukacz.nazwa_identyfikatora} {wartosc}"
-        wynik.sprawdzono.append(opis)
+        wynik.sprawdzono.append(opis + _inne_zapisy(szukacz, wartosc))
 
         uidy = szukacz.szukaj_lokalnie(wartosc) or _szukaj_na_serwerze(
             serwer, szukacz, wartosc
@@ -380,6 +389,12 @@ class PobierzOdpowiednikPublikacjiView(PobierzZPBNBase):
             klient=self.klient(),
         )
         publikacje = Publication.objects.in_bulk(wynik.uidy)
+        uidy = [uid for uid in wynik.uidy if uid in publikacje]
+        rok = self.pole("rok")
+        if wynik.status == DO_WYBORU and rok.isdigit():
+            # Rekordy z rokiem z formularza na początek; poza tym kolejność
+            # wyszukiwania (``sorted`` jest stabilne). Rok niczego nie zawęża.
+            uidy = sorted(uidy, key=lambda uid: publikacje[uid].year != int(rok))
         kandydaci = [
             {
                 "id": uid,
@@ -393,9 +408,10 @@ class PobierzOdpowiednikPublikacjiView(PobierzZPBNBase):
                     )
                     if x
                 ),
+                "typ": publikacje[uid].type(),
+                "rok": publikacje[uid].year,
             }
-            for uid in wynik.uidy
-            if uid in publikacje
+            for uid in uidy
         ]
         uwaga = wynik.bez_serwera if wynik.status in (BRAK, DO_WYBORU) else ""
         return _odpowiedz(wynik.status, wynik.komunikat, kandydaci, uwaga)

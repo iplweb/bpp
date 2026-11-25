@@ -1,4 +1,4 @@
-"""FD#622 — „Pobierz po ISBN" / „Pobierz po DOI" nie znajdowały rekordu,
+"""FD#622 — szukanie odpowiednika po ISBN / DOI nie znajdowało rekordu,
 który w PBN istnieje (PBN przy wysyłce: „Publikacja o identycznym ISBN lub
 ISMN już istnieje").
 
@@ -7,6 +7,12 @@ z ISBN-em książki. PBN ma rekord KSIĄŻKI z tym ISBN-em — inny tytuł, czę
 inny rok. Stary kod pytał PBN o jedną formę ISBN-u z filtrem roku, odrzucał
 rekordy, których nie umiał automatycznie dopasować do pracy w BPP (tytuł +
 rok), a lokalnie szukał po dokładnym ISBN-ie i roku — więc nie znajdował nic.
+
+Od FD#515 osobne adresy „Pobierz po ISBN" / „Pobierz po DOI" nie istnieją —
+te same zachowania pilnowane są na jednym widoku przycisku „Pobierz z PBN"
+(``api_get_pbn_by_identifiers``). Różnica względem pierwotnych asercji:
+rekord znaleziony po samym ISBN-ie przy innym tytule nie trafia do pola
+automatycznie (brak ``id``), tylko na listę kandydatów do wyboru.
 """
 
 import json
@@ -14,9 +20,11 @@ import json
 import pytest
 from django.urls import reverse
 
-from bpp.views.api.pbn_get_by_parameter import (
-    GetPBNPublicationsByDOI,
-    GetPBNPublicationsByISBN,
+from bpp.views.api.pbn_odpowiednik import (
+    BRAK,
+    DO_WYBORU,
+    PEWNY,
+    PobierzOdpowiednikPublikacjiView,
 )
 from fixtures.pbn_api import pbn_general_json
 from pbn_api.models import Publication
@@ -81,11 +89,17 @@ def rozdzial_w_bpp(wydawnictwo_zwarte):
     return wydawnictwo_zwarte
 
 
-def _post(rf, view_cls, user, uczelnia, t, rok="2021"):
-    req = rf.post("/", data={"t": t, "rok": rok})
+def _post(rf, pole, user, uczelnia, t, rok="2021", tytul=""):
+    """Żądanie przycisku „Pobierz z PBN" z jednym wypełnionym polem
+    identyfikatora (``isbn`` albo ``doi``)."""
+    req = rf.post("/", data={pole: t, "rok": rok, "tytul_oryginalny": tytul})
     req.user = user
     req._uczelnia = uczelnia
-    return json.loads(view_cls(request=req).post(req).content)
+    return json.loads(PobierzOdpowiednikPublikacjiView.as_view()(req).content)
+
+
+def _kandydaci(res):
+    return [k["id"] for k in res["kandydaci"]]
 
 
 def _podepnij_pbn(mocker, pbn_client, fake, *rekordy):
@@ -105,11 +119,12 @@ def test_fd622_isbn_rozdzialu_znajduje_ksiazke_w_pbn(
     fake = FakePBNSearch(_ksiazka_json(), "isbn", ISBN)
     _podepnij_pbn(mocker, pbn_client, fake, _ksiazka_json())
 
-    res = _post(
-        rf, GetPBNPublicationsByISBN, admin_user, pbn_uczelnia, rozdzial_w_bpp.isbn
-    )
+    res = _post(rf, "isbn", admin_user, pbn_uczelnia, rozdzial_w_bpp.isbn)
 
-    assert res.get("id") == UID_KSIAZKI, res
+    # Pokazany do wyboru — inny tytuł, więc nie jest wstawiany sam.
+    assert res["status"] == DO_WYBORU, res
+    assert _kandydaci(res) == [UID_KSIAZKI]
+    assert "id" not in res
     assert res["kandydaci"][0]["typ"] == "BOOK"
     # Rekord został zapisany lokalnie, żeby wyszukiwarka pola go pokazała.
     assert Publication.objects.filter(pk=UID_KSIAZKI).exists()
@@ -128,8 +143,9 @@ def test_fd622_bez_automatycznego_wiazania(
     fake = FakePBNSearch(_ksiazka_json(), "isbn", ISBN)
     _podepnij_pbn(mocker, pbn_client, fake, _ksiazka_json())
 
-    res = _post(rf, GetPBNPublicationsByISBN, admin_user, pbn_uczelnia, ISBN, "2020")
+    res = _post(rf, "isbn", admin_user, pbn_uczelnia, ISBN, "2020", tytul=TYTUL_KSIAZKI)
 
+    assert res["status"] == PEWNY, res
     assert res.get("id") == UID_KSIAZKI, res
     ksiazka_w_bpp.refresh_from_db()
     rozdzial_w_bpp.refresh_from_db()
@@ -145,9 +161,9 @@ def test_fd622_pbn_odpowiada_tylko_na_isbn_z_myslnikami(
     fake = FakePBNSearch(_ksiazka_json(), "isbn", ISBN_Z_MYSLNIKAMI)
     _podepnij_pbn(mocker, pbn_client, fake, _ksiazka_json())
 
-    res = _post(rf, GetPBNPublicationsByISBN, admin_user, pbn_uczelnia, ISBN)
+    res = _post(rf, "isbn", admin_user, pbn_uczelnia, ISBN)
 
-    assert res.get("id") == UID_KSIAZKI, res
+    assert _kandydaci(res) == [UID_KSIAZKI], res
     assert [z["isbn"] for z in fake.zapytania][:1] == [ISBN]
 
 
@@ -158,9 +174,9 @@ def test_fd622_isbn10_znajduje_rekord_z_isbn13(
     fake = FakePBNSearch(_ksiazka_json(), "isbn", ISBN)
     _podepnij_pbn(mocker, pbn_client, fake, _ksiazka_json())
 
-    res = _post(rf, GetPBNPublicationsByISBN, admin_user, pbn_uczelnia, "0-12-819517-7")
+    res = _post(rf, "isbn", admin_user, pbn_uczelnia, "0-12-819517-7")
 
-    assert res.get("id") == UID_KSIAZKI, res
+    assert _kandydaci(res) == [UID_KSIAZKI], res
 
 
 @pytest.mark.django_db
@@ -175,15 +191,14 @@ def test_fd622_najpierw_lokalnie_bez_pytania_pbn(
     zapisz_mongodb(_rozdzial_json(), Publication)
     search = mocker.patch.object(pbn_client, "search_publications")
 
-    res = _post(
-        rf, GetPBNPublicationsByISBN, admin_user, pbn_uczelnia, ISBN_Z_MYSLNIKAMI
-    )
+    res = _post(rf, "isbn", admin_user, pbn_uczelnia, ISBN_Z_MYSLNIKAMI)
 
     search.assert_not_called()
-    # Dwa rekordy → do wyszukiwarki pola trafia ISBN, a pierwszy na liście
-    # jest rekord z rokiem z formularza (rozdział, 2021).
-    assert res["id"] == ISBN
-    assert [k["id"] for k in res["kandydaci"]] == [UID_ROZDZIALU, UID_KSIAZKI]
+    # Dwa rekordy → lista do wyboru (nic nie jest wstawiane samo),
+    # a pierwszy na liście jest rekord z rokiem z formularza (rozdział, 2021).
+    assert res["status"] == DO_WYBORU
+    assert "id" not in res
+    assert _kandydaci(res) == [UID_ROZDZIALU, UID_KSIAZKI]
 
 
 @pytest.mark.django_db
@@ -198,12 +213,10 @@ def test_fd622_lokalnie_przez_rekord_bpp_z_odpowiednikiem(
     zwarte_maker(tytul_oryginalny=TYTUL_KSIAZKI, rok=2020, isbn=ISBN, pbn_uid=pub)
     search = mocker.patch.object(pbn_client, "search_publications")
 
-    res = _post(
-        rf, GetPBNPublicationsByISBN, admin_user, pbn_uczelnia, ISBN_Z_MYSLNIKAMI
-    )
+    res = _post(rf, "isbn", admin_user, pbn_uczelnia, ISBN_Z_MYSLNIKAMI)
 
     search.assert_not_called()
-    assert res.get("id") == UID_KSIAZKI, res
+    assert _kandydaci(res) == [UID_KSIAZKI], res
 
 
 @pytest.mark.django_db
@@ -219,7 +232,7 @@ def test_fd622_doi_lokalnie_bez_wzgledu_na_wielkosc_liter(
 
     res = _post(
         rf,
-        GetPBNPublicationsByDOI,
+        "doi",
         admin_user,
         pbn_uczelnia,
         "https://doi.org/" + DOI_ROZDZIALU.lower(),
@@ -240,7 +253,7 @@ def test_fd622_doi_w_pbn_w_oryginalnej_wielkosci_liter(
 
     res = _post(
         rf,
-        GetPBNPublicationsByDOI,
+        "doi",
         admin_user,
         pbn_uczelnia,
         "https://doi.org/" + DOI_ROZDZIALU,
@@ -257,11 +270,12 @@ def test_fd622_nic_nie_znaleziono_podaje_sprawdzone_formy(
     fake = FakePBNSearch(_ksiazka_json(), "isbn", "nigdy")
     _podepnij_pbn(mocker, pbn_client, fake)
 
-    res = _post(rf, GetPBNPublicationsByISBN, admin_user, pbn_uczelnia, ISBN)
+    res = _post(rf, "isbn", admin_user, pbn_uczelnia, ISBN)
 
-    assert "error" in res
-    assert ISBN in res["error"]
-    assert ISBN_Z_MYSLNIKAMI in res["error"]
+    assert res["status"] == BRAK
+    assert res["kandydaci"] == []
+    assert ISBN in res["komunikat"]
+    assert ISBN_Z_MYSLNIKAMI in res["komunikat"]
 
 
 def test_fd622_formy_isbn():
@@ -316,6 +330,7 @@ def test_fd622_smieci_zamiast_isbn_nie_lapia_przypadkowych_rekordow(
     fake = FakePBNSearch(_ksiazka_json(), "isbn", "nigdy")
     _podepnij_pbn(mocker, pbn_client, fake)
 
-    res = _post(rf, GetPBNPublicationsByISBN, admin_user, pbn_uczelnia, "83")
+    res = _post(rf, "isbn", admin_user, pbn_uczelnia, "83")
 
-    assert "error" in res, res
+    assert res["status"] == BRAK, res
+    assert res["kandydaci"] == []
