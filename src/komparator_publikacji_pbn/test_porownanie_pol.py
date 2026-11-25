@@ -410,19 +410,23 @@ def test_jezyk_spoza_slownika_bpp(para_ciagle):
 
 def test_streszczenie(para_ciagle):
     """BYŁO: streszczenia nie były porównywane wcale (kod szukał w rekordzie
-    pola, którego nie ma). JEST: porównanie ze streszczeniami rekordu."""
+    pola, którego nie ma). JEST: porównanie ze streszczeniami rekordu, osobno
+    dla każdego języka z PBN (etykieta z nazwą języka)."""
     rekord, ustaw = para_ciagle
     tekst = "Bardzo długie streszczenie pracy."
+    etykieta = "Streszczenie (polski)"
     # Tylko w PBN.
-    assert _roznice(ustaw(abstracts={"pol": tekst}), "ciagle")["Streszczenie"] == (
-        "",
-        tekst,
+    assert _roznice(ustaw(abstracts={"pol": tekst}), "ciagle")[etykieta] == ("", tekst)
+    rekord.streszczenia.create(
+        streszczenie=f"<p>{tekst}</p>", jezyk_streszczenia=rekord.jezyk
     )
-    rekord.streszczenia.create(streszczenie=f"<p>{tekst}</p>")
     # To samo po obu stronach (znaczniki bez znaczenia).
-    assert "Streszczenie" not in _roznice(ustaw(abstracts={"pol": tekst}), "ciagle")
-    # Inne.
-    assert "Streszczenie" in _roznice(ustaw(abstracts={"pol": "Inne."}), "ciagle")
+    assert etykieta not in _roznice(ustaw(abstracts={"pol": tekst}), "ciagle")
+    # Inne w tym samym języku.
+    assert _roznice(ustaw(abstracts={"pol": "Inne."}), "ciagle")[etykieta] == (
+        f"<p>{tekst}</p>",
+        "Inne.",
+    )
     # Tylko w BPP.
     assert _roznice(ustaw(), "ciagle")["Streszczenie"] == (f"<p>{tekst}</p>", "")
 
@@ -490,8 +494,8 @@ def test_porownanie_wielu_prac_bez_zapytan_na_prace(
     (relacje złączeniem, autorzy / słowa kluczowe / streszczenia jednym
     zapytaniem na paczkę) porównanie pól nie robi zapytań na pracę ani nie
     łączy się z PBN — działa na lokalnej kopii. Jedyne zapytania to
-    wyszukanie języka dla kodu, raz na kod (tu: jeden nieznany kod — 4
-    zapytania łącznie na 5 prac i wszystkie pola)."""
+    wyszukanie języka dla kodu, raz na kod (tu: dwa kody — języka pracy
+    i streszczenia — po 4 zapytania, łącznie 8 na 5 prac i wszystkie pola)."""
     from bpp.models import Wydawnictwo_Ciagle
 
     for nr in range(5):
@@ -522,11 +526,105 @@ def test_porownanie_wielu_prac_bez_zapytan_na_prace(
     assert len(prace) == 5
     komparator = PublicationComparisonView()
 
-    with django_assert_num_queries(4):
+    with django_assert_num_queries(8):
         for praca in prace:
             # Pole po polu — tak woła porównanie przeliczanie w tle.
             for pole in WSZYSTKIE_POLA:
                 komparator._compare_publication(praca, "ciagle", [pole])
+
+
+def _prace_z_roznicami(wzor, ile):
+    from bpp.models import Wydawnictwo_Ciagle
+
+    for nr in range(ile):
+        pbn = _pbn(
+            title=f"Inny tytuł {nr}",
+            year=2023,
+            mainLanguage="eng",
+            pagesFromTo="1-2",
+            keywords={"pol": ["a"]},
+            abstracts={"pol": "Streszczenie z PBN."},
+            authors={"a" * 24: {"lastName": "Kowalski", "name": "Jan"}},
+        )
+        praca = Wydawnictwo_Ciagle.objects.create(
+            tytul_oryginalny=f"Praca {nr}",
+            rok=2023,
+            zrodlo=wzor.zrodlo,
+            jezyk=wzor.jezyk,
+            charakter_formalny=wzor.charakter_formalny,
+            typ_kbn=wzor.typ_kbn,
+            status_korekty=wzor.status_korekty,
+            pbn_uid=pbn,
+        )
+        praca.slowa_kluczowe.add("b")
+        praca.streszczenia.create(streszczenie="Streszczenie z BPP.")
+
+
+def test_widok_nie_robi_zapytan_na_prace(admin_client, wydawnictwo_ciagle):
+    """Wejście w WIDOK komparatora ze wszystkimi polami: liczba zapytań nie
+    rośnie z liczbą prac (relacje dociągane z góry zależnie od wybranych
+    pól, porównania liczone raz na żądanie)."""
+    from django.db import connection
+    from django.test.utils import CaptureQueriesContext
+    from django.urls import reverse
+
+    url = reverse("komparator_publikacji_pbn:comparison_list")
+    parametry = {
+        "fields": WSZYSTKIE_POLA,
+        "year_min": "2023",
+        "year_max": "2023",
+        "type": "ciagle",
+    }
+
+    def zapytania(ile):
+        _prace_z_roznicami(wydawnictwo_ciagle, ile)
+        admin_client.get(url, parametry)  # rozgrzanie pamięci podręcznych
+        with CaptureQueriesContext(connection) as ctx:
+            res = admin_client.get(url, parametry)
+        assert res.status_code == 200
+        return len(ctx), res.context["paginator"].count
+
+    # Strona pokazuje 5 prac; porównywane są wszystkie z zakresu. Szablon
+    # robi własne zapytania na WYŚWIETLONY wiersz (odnośnik do PBN) — przy
+    # pełnej stronie w obu pomiarach jest ich tyle samo.
+    przy_pieciu, ile_a = zapytania(5)
+    przy_dwunastu, ile_b = zapytania(7)
+
+    assert (ile_a, ile_b) == (5, 12)
+    assert przy_dwunastu == przy_pieciu
+
+
+def test_adres_tylko_w_polu_wolnego_dostepu_gdy_pbn_nie_ma_adresu(para_ciagle):
+    """Zachowanie poprzedniego komparatora utrzymane: PBN bez adresu, BPP
+    z adresem wyłącznie w polu wolnego dostępu — to różnica."""
+    rekord, ustaw = para_ciagle
+    rekord.www = ""
+    rekord.public_www = "https://repozytorium.example/praca"
+    assert _roznice(ustaw(), "ciagle")["URL/WWW"] == (
+        "https://repozytorium.example/praca",
+        "",
+    )
+
+
+def test_streszczenia_w_kilku_jezykach(para_ciagle):
+    """PBN ma streszczenie polskie (jest w BPP) i angielskie (nie ma) —
+    brak angielskiego jest zgłaszany, z nazwą języka w etykiecie."""
+    rekord, ustaw = para_ciagle
+    rekord.streszczenia.create(
+        streszczenie="Po polsku.", jezyk_streszczenia=rekord.jezyk
+    )
+    roznice = _roznice(
+        ustaw(abstracts={"pol": "Po polsku.", "eng": "In English."}),
+        "ciagle",
+        ["abstract"],
+    )
+    assert roznice == {"Streszczenie (eng)": ("", "In English.")}
+
+
+def test_encje_html_w_tytule_nie_sa_roznica(para_ciagle):
+    rekord, ustaw = para_ciagle
+    rekord.tytul_oryginalny = "Badania & rozwój"
+    assert "Tytuł" not in _roznice(ustaw(title="Badania &amp; rozwój"), "ciagle")
 
 
 # --- Pola spoza silnika wzbogacania: porównywane jak dotąd ------------------

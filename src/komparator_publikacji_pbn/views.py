@@ -81,6 +81,38 @@ ETYKIETY_SILNIKA = {
 MAKSYMALNA_DLUGOSC_WARTOSCI = 300
 
 
+#: Relacje pracy czytane przy porównaniu danego pola: klucz pola →
+#: (złączenia ``select_related``, dociągnięcia ``prefetch_related``).
+RELACJE_POL = {
+    "language": (("jezyk",), ()),
+    "conference": (("konferencja",), ()),
+    "series": (("seria_wydawnicza",), ()),
+    "publisher": (("wydawca",), ()),
+    "authors": ((), ("autorzy_set",)),
+    "keywords": ((), ("slowa_kluczowe",)),
+    "abstract": ((), ("streszczenia",)),
+}
+
+
+def _z_relacjami(queryset, enabled_fields):
+    """Dociągnij z góry relacje potrzebne wybranym polom — inaczej każde
+    takie pole robi zapytanie na pracę (język, słowa kluczowe, streszczenia,
+    liczba autorów). Relacje, których dany model nie ma, są pomijane."""
+    pola_modelu = {f.name for f in queryset.model._meta.get_fields()}
+    zlaczenia, dociagniecia = [], []
+    for pole in enabled_fields:
+        select, prefetch = RELACJE_POL.get(pole, ((), ()))
+        zlaczenia += [r for r in select if r in pola_modelu]
+        dociagniecia += [
+            r for r in prefetch if r in pola_modelu or hasattr(queryset.model, r)
+        ]
+    if zlaczenia:
+        queryset = queryset.select_related(*dict.fromkeys(zlaczenia))
+    if dociagniecia:
+        queryset = queryset.prefetch_related(*dict.fromkeys(dociagniecia))
+    return queryset
+
+
 def _wartosc(tekst):
     """Wartość pola do wyniku: pusty tekst dla braku, długie skrócone."""
     if tekst == PUSTE:
@@ -145,6 +177,7 @@ class PublicationComparisonView(ListView):
 
     def _process_publications(self, queryset, pub_type, enabled_fields, comparisons):
         """Process publications and add comparisons with differences."""
+        queryset = _z_relacjami(queryset, enabled_fields)
         for pub in queryset[:100]:
             comparison = self._compare_publication(pub, pub_type, enabled_fields)
             if comparison["has_differences"]:
@@ -476,8 +509,9 @@ class PublicationComparisonView(ListView):
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
 
-        # Manual pagination since we're working with a list
-        queryset = self.get_queryset()
+        # Manual pagination since we're working with a list (porównania są
+        # już policzone w ``get()`` — nie liczymy ich drugi raz).
+        queryset = self.object_list
         paginator = Paginator(queryset, self.paginate_by)
         page_number = self.request.GET.get("page")
         page_obj = paginator.get_page(page_number)
