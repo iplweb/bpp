@@ -120,7 +120,42 @@ def _auto_match_single_author(session, author_data, order, year):
         pbn_uid=pbn_uid,
         typ_ogolny=typ_ogolny,
         zapisany_jako=f"{family} {given}".strip()[:512],
+        # FD#512: z której pracy w PBN (albo z CrossRef) są identyfikatory.
+        pochodzenie=dict(author_data.get("pochodzenie") or {}),
     )
+    return _dopasuj_wiersz(imported, author_data, year)
+
+
+def _dopasuj_ponownie(imported, year):
+    """Dopasuj od nowa wiersz, którego identyfikatory się zmieniły (FD#512:
+    redaktor zmienił albo usunął odpowiednik pracy w PBN).
+
+    Tylko dla dopasowań automatycznych — ręczny wybór redaktora zostaje.
+    Poprzednie dopasowanie, kandydaci i dyscyplina są zerowane: opierały
+    się na identyfikatorach, których wiersz już nie ma.
+    """
+    imported.candidates.all().delete()
+    imported.match_status = ImportedAuthor.MatchStatus.UNMATCHED
+    imported.matched_autor = None
+    imported.matched_jednostka = None
+    imported.matched_dyscyplina = None
+    imported.dyscyplina_source = ""
+    imported.pbn_uwagi = ""
+    return _dopasuj_wiersz(
+        imported,
+        {
+            "family": imported.family_name,
+            "given": imported.given_name,
+            "orcid": imported.orcid,
+            "pbn_uid": imported.pbn_uid,
+        },
+        year,
+    )
+
+
+def _dopasuj_wiersz(imported, author_data, year):
+    """Znajdź autora BPP dla istniejącego wiersza i zapisz wynik."""
+    pbn_uid = imported.pbn_uid
 
     # Identyfikator osoby w PBN to najmocniejszy klucz (FD#510): jeśli
     # dokładnie jeden autor BPP jest z nią powiązany, to jest to ta osoba —

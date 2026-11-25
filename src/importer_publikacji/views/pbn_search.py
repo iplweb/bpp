@@ -21,6 +21,8 @@ mieć tysiące pozycji).
 import itertools
 import logging
 
+from pbn_client.const import DELETED
+
 from import_common.normalization import normalize_doi
 
 logger = logging.getLogger(__name__)
@@ -99,6 +101,11 @@ def _extract_object(elem):
     return elem
 
 
+def _usunieta_w_pbn(elem) -> bool:
+    """Czy odpowiedź PBN opisuje pracę oznaczoną jako usunięta."""
+    return isinstance(elem, dict) and elem.get("status") == DELETED
+
+
 def _result_from_search_elem(elem, axis, uczelnia):
     """Znormalizuj element z ``search_publications`` do wspólnej struktury."""
     obj = _extract_object(elem)
@@ -155,6 +162,8 @@ def _search_pbn_server(client, axis, key, value, uczelnia):
     results = [
         _result_from_search_elem(elem, axis, uczelnia)
         for elem in itertools.islice(resource, MAX_RESULTS_PER_AXIS)
+        # Praca usunięta w PBN nie może być odpowiednikiem (FD#512).
+        if not _usunieta_w_pbn(elem)
     ]
     return _dedup_by_mongo_id(results)
 
@@ -186,7 +195,9 @@ def _search_pbn_local_www(url, uczelnia):
         return []
     from pbn_api.models import Publication
 
-    qs = Publication.objects.filter(publicUri__icontains=norm)[:MAX_RESULTS_PER_AXIS]
+    qs = Publication.objects.filter(publicUri__icontains=norm).exclude(status=DELETED)[
+        :MAX_RESULTS_PER_AXIS
+    ]
     return _dedup_by_mongo_id(
         [_result_from_publication(pub, AXIS_WWW, uczelnia) for pub in qs]
     )
@@ -302,11 +313,17 @@ def _select_pbn_equivalent(session, user, mongo_id):
         # Rekord mógł już istnieć lokalnie (np. z osi WWW) — spróbuj mimo to.
         from pbn_api.models import Publication
 
-        if not Publication.objects.filter(pk=mongo_id).exists():
+        if not Publication.objects.filter(pk=mongo_id).exclude(status=DELETED).exists():
             return False
         session.matched_data["pbn_mongo_id"] = mongo_id
         session.save(update_fields=["matched_data"])
         return True
+
+    if _usunieta_w_pbn(data):
+        logger.warning(
+            "Rekord PBN %s jest usunięty — nie może być odpowiednikiem", mongo_id
+        )
+        return False
 
     from pbn_api.models import Publication
     from pbn_integrator.utils import zapisz_mongodb

@@ -5,6 +5,8 @@ Authors → Review → Create → Done) plus boczne akcje na autorach i
 anulowanie sesji.
 """
 
+import uuid
+
 from django.http import (
     HttpResponse,
     HttpResponseBadRequest,
@@ -322,9 +324,13 @@ def _start_import_session(
         zgloszenie=zgloszenie,
         powrot_do_zgloszen=powrot_do_zgloszen,
     )
-    task = fetch_session_task.delay(session.pk, request.user.pk)
-    session.celery_task_id = task.id
+    # Identyfikator zadania zapisujemy PRZED wysłaniem (FD#512): zadanie
+    # sprawdza po nim, czy wciąż jest zadaniem tej sesji.
+    session.celery_task_id = str(uuid.uuid4())
     session.save(update_fields=["celery_task_id"])
+    fetch_session_task.apply_async(
+        args=[session.pk, request.user.pk], task_id=session.celery_task_id
+    )
     return session
 
 
@@ -1054,6 +1060,37 @@ class PbnCheckView(ImporterPermissionMixin, View):
         return _render_review_step(request, session)
 
 
+def _po_zmianie_odpowiednika(request, session, poprzedni):
+    """FD#512: przelicz sesję po zmianie/usunięciu odpowiednika w PBN.
+
+    Dane autorów wzięte z poprzedniej pracy w PBN są wycofywane (patrz
+    ``zrodla.po_zmianie_odpowiednika``). Jeśli przez to któryś autor
+    przestał być dopasowany, sesja wraca do kroku „Dopasowanie autorów” —
+    niedopasowany autor zostałby przy tworzeniu rekordu po cichu pominięty.
+    Zwraca odpowiedź z krokiem autorów albo ``None``.
+    """
+    from ..zrodla import po_zmianie_odpowiednika
+
+    if not po_zmianie_odpowiednika(session, request.user, poprzedni):
+        return None
+    niedopasowani = session.authors.filter(matched_autor=None).count()
+    if not niedopasowani:
+        return None
+    session.status = ImportSession.Status.SOURCE_MATCHED
+    session.modified_by = request.user
+    session.save(update_fields=["status", "modified_by", "modified"])
+    return _render_authors_step(
+        request,
+        session,
+        error=(
+            "Po zmianie odpowiednika w PBN wycofano dane wzięte z poprzedniej "
+            f"pracy. Autorów do ponownego dopasowania: {niedopasowani} — "
+            "importer rozpoznał ich wcześniej po identyfikatorze osoby z tamtej "
+            "pracy. Dopasuj ich i potwierdź autorów jeszcze raz."
+        ),
+    )
+
+
 class PbnSelectView(ImporterPermissionMixin, View):
     """Wybierz rekord PBN jako odpowiednik importowanej pracy."""
 
@@ -1067,7 +1104,11 @@ class PbnSelectView(ImporterPermissionMixin, View):
         from .pbn_search import _select_pbn_equivalent
         from .steps import _render_pbn_step as _render
 
+        poprzedni = session.matched_data.get("pbn_mongo_id")
         _select_pbn_equivalent(session, request.user, mongo_id)
+        wymaga_autorow = _po_zmianie_odpowiednika(request, session, poprzedni)
+        if wymaga_autorow is not None:
+            return wymaga_autorow
         # Nie ponawiamy wyszukiwania — pokazujemy wynik wyboru.
         return _render(request, session, do_search=False)
 
@@ -1083,7 +1124,11 @@ class PbnClearView(ImporterPermissionMixin, View):
 
         from .pbn_search import _clear_pbn_equivalent
 
+        poprzedni = session.matched_data.get("pbn_mongo_id")
         _clear_pbn_equivalent(session)
+        wymaga_autorow = _po_zmianie_odpowiednika(request, session, poprzedni)
+        if wymaga_autorow is not None:
+            return wymaga_autorow
         return _render_pbn_step(request, session)
 
 

@@ -18,9 +18,16 @@
                 {% for z in zrodla %}
                     <li class="zrodlo-{{ z.stan }}">
                         <strong>{{ z.zrodlo|capfirst }}</strong>
-                        {% if z.stan == "znaleziono" %}
+                        {% if z.wycofano %}
+                            &mdash; praca{% if z.url %}
+                                (<a href="{{ z.url }}" target="_blank" rel="noopener">pokaż w PBN</a>){% endif %}
+                            odrzucona jako odpowiednik w kroku „Sprawdź w PBN”.
+                            Dane wzięte z tej pracy (pola publikacji,
+                            identyfikatory osób, numery ORCID, dyscypliny
+                            z oświadczeń) zostały wycofane.
+                        {% elif z.stan == "znaleziono" %}
                             {% if z.zrodlo == "PBN" %}
-                                &mdash; praca jest w PBN (znaleziona po {{ z.po }}){% if z.url %},
+                                &mdash; {% if z.reczny %}praca wskazana przez redaktora w kroku „Sprawdź w PBN”{% else %}praca jest w PBN (znaleziona po {{ z.po }}){% endif %}{% if z.url %},
                                     <a href="{{ z.url }}" target="_blank" rel="noopener">pokaż w PBN</a>{% endif %}.
                                 {# Stan bieżący: redaktor mógł zmienić wybór w kroku „Sprawdź w PBN” #}
                                 {% if z.identyfikator != session.matched_data.pbn_mongo_id %}

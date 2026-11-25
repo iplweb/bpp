@@ -77,7 +77,7 @@
 
     <div class="callout secondary">
         <h6>
-            Dane z {{ session.provider_name }}{% for z in session.normalized_data.zrodla_dodatkowe %}{% if z.stan == "znaleziono" and z.pola %}, uzupełnione z: {{ z.zrodlo }}{% endif %}{% endfor %}
+            Dane z {{ session.provider_name }}{% for z in session.normalized_data.zrodla_dodatkowe %}{% if z.stan == "znaleziono" and z.pola and not z.wycofano %}, uzupełnione z: {{ z.zrodlo }}{% endif %}{% endfor %}
         </h6>
         <table>
             <tr>

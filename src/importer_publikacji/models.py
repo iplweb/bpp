@@ -468,6 +468,15 @@ class ImportedAuthor(models.Model):
     pbn_uwagi = models.CharField(
         "uwagi o odpowiedniku w PBN", max_length=512, blank=True, default=""
     )
+    # Skąd przyszły wartości dociągnięte z drugiego źródła (FD#512):
+    # ``{"pbn_uid": <id pracy w PBN>, "orcid": <id pracy w PBN albo
+    # "CrossRef">, "dyscyplina": <id pracy w PBN>}``. Gdy redaktor zmieni
+    # lub usunie odpowiednik pracy w PBN, wartości pochodzące z poprzedniej
+    # pracy są wycofywane — inaczej zostałyby w rekordzie dane z pracy,
+    # którą redaktor odrzucił.
+    pochodzenie = models.JSONField(
+        "pochodzenie wartości z innych źródeł", default=dict, blank=True
+    )
     # Pełen zapis "tak jak ma figurować w publikacji" — domyślnie
     # tworzony z family_name+given_name dostawcy, ale edytowalny w UI
     # (autor mógł podpisać się inaczej, np. panieńskim). Przy tworzeniu

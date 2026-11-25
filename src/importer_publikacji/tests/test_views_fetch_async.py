@@ -41,8 +41,11 @@ def test_fetch_view_post_creates_session_with_fetching_status(authed_client):
     assert sessions.count() == 1
     session = sessions.first()
     assert session.status == ImportSession.Status.FETCHING
-    assert session.celery_task_id == "task-uuid"
-    mock_task.delay.assert_called_once_with(session.pk, user.pk)
+    # FD#512: identyfikator zadania jest nadawany i zapisywany przed wysłaniem.
+    assert session.celery_task_id
+    mock_task.apply_async.assert_called_once_with(
+        args=[session.pk, user.pk], task_id=session.celery_task_id
+    )
     assert response.status_code in (200, 302)
 
 
@@ -82,7 +85,7 @@ def test_fetch_view_post_does_not_call_provider_fetch_inline(authed_client):
         )
 
     mock_provider.return_value.fetch.assert_not_called()
-    mock_task.delay.assert_called_once()
+    mock_task.apply_async.assert_called_once()
 
 
 @pytest.mark.django_db

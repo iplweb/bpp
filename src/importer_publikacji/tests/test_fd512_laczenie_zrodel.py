@@ -823,16 +823,19 @@ def test_redaktor_zalogowany_do_pbn_odswieza_oswiadczenia(sesja_z_oswiadczeniem)
     with patch.object(type(s.sesja.uczelnia), "pbn_client", return_value=client):
         wpis = dolacz_profil_instytucji(s.sesja, uzytkownik)
 
-    client.download_statements_of_publication.assert_called_once()
-    assert client.download_statements_of_publication.call_args.args[0].pk == PRACA_PBN
+    pobranie = client.get_institution_statements_of_single_publication
+    pobranie.assert_called_once_with(PRACA_PBN)
     assert wpis["oswiadczenia"] == "pobrane z PBN"
+    # PBN nie podał żadnego oświadczenia — lokalna kopia jest podmieniona.
+    assert wpis["dyscypliny"] == 0
+    assert not OswiadczenieInstytucji.objects.filter(publicationId_id=PRACA_PBN)
 
 
 @pytest.mark.django_db
 def test_blad_pbn_przy_oswiadczeniach_zostawia_lokalna_kopie(sesja_z_oswiadczeniem):
     s = sesja_z_oswiadczeniem
     client = MagicMock()
-    client.download_statements_of_publication.side_effect = HttpException(
+    client.get_institution_statements_of_single_publication.side_effect = HttpException(
         403, "/api/v1/institutionProfile/", "Forbidden"
     )
     uzytkownik = MagicMock(pbn_token="token")

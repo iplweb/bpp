@@ -14,6 +14,7 @@ konkretnie ``zgloszenie`` dopisywane gałęzią idempotency w ``FetchView``
 
 import logging
 import traceback
+from contextlib import contextmanager
 
 from celery import shared_task
 from django.contrib.auth import get_user_model
@@ -58,28 +59,53 @@ class ZadanieZastapione(Exception):
     """
 
 
+def _jest_wlascicielem(task, stan) -> bool:
+    """Czy ``stan`` = (status, celery_task_id) sesji pozwala temu zadaniu
+    pisać. Puste ``celery_task_id`` dopuszczamy: tak wygląda sesja, której
+    zadanie uruchomiono bezpośrednio (testy, zadania wysłane przed FD#512);
+    widoki zapisują identyfikator przed wysłaniem zadania, a strażnik
+    i „Ponów” zmieniają status albo identyfikator."""
+    moje_id = task.request.id
+    return (
+        stan is not None
+        and stan[0] == ImportSession.Status.FETCHING
+        and not (stan[1] and moje_id and stan[1] != moje_id)
+    )
+
+
 def _znak_zycia(task, session):
     """Sprawdź, że to wciąż zadanie tej sesji, i odśwież jej ``modified``.
 
-    Wołane przed każdą dłuższą operacją (zapytania do PBN i CrossRef) i przed
-    zapisami. ``modified`` odsuwa próg strażnika ``is_stalled`` — wolne, ale
-    żywe pobieranie nie jest brane za martwe. Rzuca ``ZadanieZastapione``,
-    gdy sesja wyszła ze stanu pobierania albo przejęło ją inne zadanie.
+    Wołane przed każdą dłuższą operacją (zapytania do PBN i CrossRef).
+    ``modified`` odsuwa próg strażnika ``is_stalled`` — wolne, ale żywe
+    pobieranie nie jest brane za martwe. Rzuca ``ZadanieZastapione``, gdy
+    sesja wyszła ze stanu pobierania albo przejęło ją inne zadanie.
     """
-    stan = (
-        ImportSession.objects.filter(pk=session.pk)
-        .values_list("status", "celery_task_id")
-        .first()
-    )
-    moje_id = task.request.id
-    if (
-        stan is None
-        or stan[0] != ImportSession.Status.FETCHING
-        # Puste pole = widok jeszcze nie zapisał identyfikatora zadania.
-        or (stan[1] and moje_id and stan[1] != moje_id)
-    ):
-        raise ZadanieZastapione(session.pk)
-    ImportSession.objects.filter(pk=session.pk).update(modified=timezone.now())
+    with _jako_wlasciciel(task, session):
+        pass
+
+
+@contextmanager
+def _jako_wlasciciel(task, session):
+    """Blok zapisów stanu sesji wykonywany TYLKO przez jej aktualne zadanie.
+
+    Blokuje wiersz sesji (``SELECT … FOR UPDATE``), sprawdza własność
+    i trzyma blokadę do końca bloku — „Ponów” (które też blokuje wiersz)
+    nie wejdzie w środek zapisu. Zadanie zastąpione dostaje
+    ``ZadanieZastapione`` i nie zapisuje niczego. W bloku nie wolno robić
+    zapytań sieciowych: blokada wstrzymuje widoki tej sesji.
+    """
+    with transaction.atomic():
+        stan = (
+            ImportSession.objects.select_for_update()
+            .filter(pk=session.pk)
+            .values_list("status", "celery_task_id")
+            .first()
+        )
+        if not _jest_wlascicielem(task, stan):
+            raise ZadanieZastapione(session.pk)
+        yield
+        ImportSession.objects.filter(pk=session.pk).update(modified=timezone.now())
 
 
 @shared_task(bind=True)
@@ -91,31 +117,60 @@ def fetch_session_task(self, session_id, request_user_id):
     Wszystkie wyjątki: zapisz user-safe message + traceback na sesji,
     raise (globalny @task_failure.connect zgłosi do monitoringu).
 
+    Każdy zapis stanu sesji idzie przez ``_jako_wlasciciel`` — zadanie,
+    które przestało być zadaniem tej sesji (strażnik, „Ponów”), wycofuje
+    się bez zapisu (FD#512). Zapytania sieciowe są poza tymi blokami.
+
     Args:
         session_id: ImportSession.pk
         request_user_id: User who initiated the task. Jego osobisty token
             PBN służy do pobrania oświadczeń z profilu instytucji (FD#512).
     """
+    from .providers.pbn import pobierz_brakujace_osoby
+    from .views.authors import (
+        _auto_match_single_author,
+        _prefill_dyscypliny_z_zgloszen,
+    )
+    from .zgloszenia import zwiaz_automatycznie
+    from .zrodla import (
+        KLUCZ_ZRODEL,
+        jedna_szybka_proba,
+        odswiez_oswiadczenia_profilu,
+        polacz_zrodla,
+        zastosuj_profil_instytucji,
+    )
+
     session = ImportSession.objects.get(pk=session_id)
-    try:
+
+    def znak_zycia():
         _znak_zycia(self, session)
+
+    try:
+        znak_zycia()
         report_progress(self, "provider_fetch", stages=FETCH_STAGES)
         provider = get_provider(session.provider_name, uczelnia=session.uczelnia)
         result = provider.fetch(session.identifier)
-        _znak_zycia(self, session)
         if result is None:
             # Oczekiwany failure: dostawca nie zna identyfikatora.
             # NIE jest to bug naszego kodu — nie raise, żeby Celery nie
             # logował ERROR-a ani @task_failure.connect nie zgłaszał do
             # Rollbara. Status sesji wystarczy do pokazania user-owi
             # komunikatu w widoku statusu.
-            session.status = ImportSession.Status.IMPORT_FAILED
-            session.last_failed_stage = "fetch"
-            session.last_error_message = user_safe_message(
-                ProviderReturnedNothing(), task_kind="fetch"
-            )[:255]
-            session.celery_task_id = ""
-            session.save(update_fields=_POLA_BLEDU)
+            powod = getattr(provider, "powod_braku", None)
+            with _jako_wlasciciel(self, session):
+                session.status = ImportSession.Status.IMPORT_FAILED
+                session.last_failed_stage = "fetch"
+                session.last_error_message = (
+                    f"Problem dostawcy: {powod}"
+                    if isinstance(powod, str) and powod
+                    else user_safe_message(ProviderReturnedNothing(), task_kind="fetch")
+                )[
+                    # Dostawca wie, dlaczego odmawia (np. praca usunięta
+                    # w PBN) — to lepsze niż ogólne „sprawdź identyfikator”.
+                    :255
+                ]
+                session.celery_task_id = ""
+                session.save(update_fields=_POLA_BLEDU)
             return
 
         report_progress(self, "create_session", stages=FETCH_STAGES)
@@ -123,29 +178,31 @@ def fetch_session_task(self, session_id, request_user_id):
         # dla importu spoza PBN, CrossRef dla importu spoza CrossRef)
         # i uzupełnij to, czego dostawca nie podał. Bez nowego etapu paska
         # postępu — ``report_progress`` zna tylko etapy z FETCH_STAGES.
-        from .zrodla import KLUCZ_ZRODEL, dolacz_profil_instytucji, polacz_zrodla
-
-        zrodla = polacz_zrodla(
-            session, result, znak_zycia=lambda: _znak_zycia(self, session)
-        )
-        _znak_zycia(self, session)
-        _store_normalized_data(session, result)
-        session.normalized_data[KLUCZ_ZRODEL] = zrodla
-        session.save(
-            update_fields=["raw_data", "normalized_data", "matched_data", "modified"]
-        )
+        zrodla = polacz_zrodla(session, result, znak_zycia=znak_zycia)
+        with _jako_wlasciciel(self, session):
+            _store_normalized_data(session, result)
+            session.normalized_data[KLUCZ_ZRODEL] = zrodla
+            session.save(
+                update_fields=[
+                    "raw_data",
+                    "normalized_data",
+                    "matched_data",
+                    "modified",
+                ]
+            )
 
         report_progress(self, "match_type_lang", stages=FETCH_STAGES)
         _auto_match_type_and_language(session, result)
-        session.save(
-            update_fields=[
-                "rodzaj_rekordu",
-                "charakter_formalny",
-                "jest_wydawnictwem_zwartym",
-                "jezyk",
-                "modified",
-            ]
-        )
+        with _jako_wlasciciel(self, session):
+            session.save(
+                update_fields=[
+                    "rodzaj_rekordu",
+                    "charakter_formalny",
+                    "jest_wydawnictwem_zwartym",
+                    "jezyk",
+                    "modified",
+                ]
+            )
 
         report_progress(
             self,
@@ -154,11 +211,9 @@ def fetch_session_task(self, session_id, request_user_id):
             sub_total=max(len(result.authors), 1),
             stages=FETCH_STAGES,
         )
-        from .views.authors import _auto_match_single_author
-
         for i, author_data in enumerate(result.authors):
-            _znak_zycia(self, session)
-            _auto_match_single_author(session, author_data, i, result.year)
+            with _jako_wlasciciel(self, session):
+                _auto_match_single_author(session, author_data, i, result.year)
             report_progress(
                 self,
                 "match_authors",
@@ -169,60 +224,61 @@ def fetch_session_task(self, session_id, request_user_id):
 
         # Import z PBN podaje identyfikatory osób. Dla autorów, których
         # trzeba będzie utworzyć, dociągamy dane osoby — inaczej nowy autor
-        # nie miałby odpowiednika w PBN (FD#510).
-        from .providers.pbn import pobierz_brakujace_osoby
-        from .zrodla import jedna_szybka_proba
-
-        _znak_zycia(self, session)
+        # nie miałby odpowiednika w PBN (FD#510). Zapisuje tylko lokalną
+        # kopię danych PBN, nie stan sesji — stąd bez blokady.
+        znak_zycia()
         pobierz_brakujace_osoby(
             session.uczelnia,
-            session.authors.filter(matched_autor__isnull=True)
-            .exclude(pbn_uid="")
-            .values_list("pbn_uid", flat=True),
-            # Import spoza PBN nie może czekać na PBN (FD#512); import
-            # z PBN zachowuje dotychczasowe, cierpliwe zachowanie klienta.
-            przygotuj_klienta=(
-                None if session.provider_name == "PBN" else jedna_szybka_proba
+            list(
+                session.authors.filter(matched_autor__isnull=True)
+                .exclude(pbn_uid="")
+                .values_list("pbn_uid", flat=True)
             ),
+            # Dociąganie osób to dodatek — krótki timeout, bez ponowień
+            # (FD#512): jedna osoba na zwykłym kliencie PBN potrafiłaby
+            # trwać dłużej niż próg strażnika sesji.
+            przygotuj_klienta=jedna_szybka_proba,
+            znak_zycia=znak_zycia,
         )
 
         # FD#512: praca jest w PBN — dyscypliny z oświadczeń w profilu
-        # instytucji. Przed zgłoszeniami: te uzupełniają tylko puste pola.
-        _znak_zycia(self, session)
-        profil = dolacz_profil_instytucji(
+        # instytucji. Najpierw sieć (odświeżenie lokalnej kopii oświadczeń),
+        # potem — już jako właściciel — zapis dyscyplin autorom. Przed
+        # zgłoszeniami: te uzupełniają tylko puste pola.
+        znak_zycia()
+        skad = odswiez_oswiadczenia_profilu(
             session, get_user_model().objects.filter(pk=request_user_id).first()
         )
-        if profil is not None:
-            session.normalized_data[KLUCZ_ZRODEL] = zrodla + [profil]
-            session.save(update_fields=["normalized_data", "modified"])
 
         report_progress(self, "prefill_zgl", stages=FETCH_STAGES)
-        from .views.authors import _prefill_dyscypliny_z_zgloszen
-        from .zgloszenia import zwiaz_automatycznie
+        with _jako_wlasciciel(self, session):
+            profil = zastosuj_profil_instytucji(session, skad)
+            if profil is not None:
+                session.normalized_data[KLUCZ_ZRODEL] = zrodla + [profil]
+                session.save(update_fields=["normalized_data", "modified"])
 
-        # Ścieżka B (FD#443): auto-wiązanie po DOI, gdy kandydat jest
-        # dokładnie jeden. Świadomie reużywamy istniejący etap paska
-        # postępu — ``report_progress`` rzuca ValueError na nieznanej
-        # nazwie etapu, a wagi FETCH_STAGES sumują się do 100.
-        # Kolejność: najpierw wiązanie, potem prefill — dzięki temu
-        # prefill dyscyplin korzysta z jawnie związanego zgłoszenia,
-        # zamiast z heurystyki po tytule.
-        #
-        # ``zgloszenie`` czytamy ŚWIEŻO z bazy: jawne wiązanie (ścieżka A)
-        # mógł dopisać widok JUŻ PO wczytaniu sesji przez ten task —
-        # ``FetchView`` robi to gałęzią idempotency (double-click), nie
-        # startując nowej sesji. Bez tego odczytu auto-wiązanie po DOI
-        # przestemplowałoby jawny wybór operatora.
-        session.refresh_from_db(fields=["zgloszenie"])
-        if not session.zgloszenie_id:
-            zwiaz_automatycznie(session)
+            # Ścieżka B (FD#443): auto-wiązanie po DOI, gdy kandydat jest
+            # dokładnie jeden. Świadomie reużywamy istniejący etap paska
+            # postępu — ``report_progress`` rzuca ValueError na nieznanej
+            # nazwie etapu, a wagi FETCH_STAGES sumują się do 100.
+            # Kolejność: najpierw wiązanie, potem prefill — dzięki temu
+            # prefill dyscyplin korzysta z jawnie związanego zgłoszenia,
+            # zamiast z heurystyki po tytule.
+            #
+            # ``zgloszenie`` czytamy ŚWIEŻO z bazy: jawne wiązanie (ścieżka A)
+            # mógł dopisać widok JUŻ PO wczytaniu sesji przez ten task —
+            # ``FetchView`` robi to gałęzią idempotency (double-click), nie
+            # startując nowej sesji. Bez tego odczytu auto-wiązanie po DOI
+            # przestemplowałoby jawny wybór operatora.
+            session.refresh_from_db(fields=["zgloszenie"])
+            if not session.zgloszenie_id:
+                zwiaz_automatycznie(session)
 
-        _prefill_dyscypliny_z_zgloszen(session)
+            _prefill_dyscypliny_z_zgloszen(session)
 
-        _znak_zycia(self, session)
-        session.status = ImportSession.Status.FETCHED
-        session.celery_task_id = ""
-        session.save(update_fields=["status", "celery_task_id", "modified"])
+            session.status = ImportSession.Status.FETCHED
+            session.celery_task_id = ""
+            session.save(update_fields=["status", "celery_task_id", "modified"])
     except ZadanieZastapione:
         # Nie zapisujemy NICZEGO i nie zgłaszamy błędu: stan sesji należy
         # już do strażnika albo do nowego zadania.
@@ -233,12 +289,26 @@ def fetch_session_task(self, session_id, request_user_id):
             self.request.id,
         )
     except Exception as exc:
-        session.status = ImportSession.Status.IMPORT_FAILED
-        session.last_failed_stage = "fetch"
-        session.last_error_message = user_safe_message(exc, task_kind="fetch")[:255]
-        session.last_error_traceback = traceback.format_exc()
-        session.celery_task_id = ""
-        session.save(update_fields=_POLA_BLEDU)
+        # Błąd zadania, które przestało być zadaniem tej sesji, nie może
+        # nadpisać stanu nowego zadania — zgłaszamy go (raise), ale sesji
+        # nie ruszamy.
+        try:
+            with _jako_wlasciciel(self, session):
+                session.status = ImportSession.Status.IMPORT_FAILED
+                session.last_failed_stage = "fetch"
+                session.last_error_message = user_safe_message(exc, task_kind="fetch")[
+                    :255
+                ]
+                session.last_error_traceback = traceback.format_exc()
+                session.celery_task_id = ""
+                session.save(update_fields=_POLA_BLEDU)
+        except ZadanieZastapione:
+            logger.warning(
+                "Sesja importu %s: błąd zastąpionego zadania pobierania %s — "
+                "stan sesji bez zmian.",
+                session_id,
+                self.request.id,
+            )
         raise
 
 

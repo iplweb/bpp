@@ -24,4 +24,9 @@ Jeśli praca znaleziona w PBN jest już powiązana z innym rekordem w BPP,
 kreator pokazuje ostrzeżenie „Odpowiednik w PBN jest już zajęty”
 z odnośnikiem do tego rekordu. Niedostępność PBN lub CrossRef nie
 wstrzymuje importu — dodatkowe źródło dostaje jedną krótką próbę, a ramka
-podaje, że go nie sprawdzono. Krok „Sprawdź w PBN” wyszukuje też po ISBN.
+podaje, że go nie sprawdzono. Krok „Sprawdź w PBN” wyszukuje też po ISBN
+i nie pozwala wybrać pracy usuniętej w PBN. Po zmianie albo usunięciu
+odpowiednika w tym kroku importer wycofuje dane wzięte z poprzedniej pracy
+w PBN (pola publikacji, identyfikatory osób, numery ORCID, dyscypliny
+z oświadczeń), pobiera dane nowo wskazanej pracy i — jeśli trzeba — wraca
+do kroku „Dopasowanie autorów”; ręczne decyzje redaktora zostają.

@@ -46,14 +46,17 @@ def test_retry_fetch_clears_state_and_enqueues_fetch_task(authed_client):
     assert response.status_code == 302
     assert "task-status" in response["Location"]
     assert session.status == ImportSession.Status.FETCHING
-    assert session.celery_task_id == "new-task-id"
+    # FD#512: identyfikator zadania jest nadawany i zapisywany przed wysłaniem.
+    assert session.celery_task_id
     assert session.last_error_message == ""
     assert session.last_error_traceback == ""
     assert session.last_failed_stage == ""
     assert session.raw_data == {} or session.raw_data is None
     assert session.normalized_data == {} or session.normalized_data is None
     assert session.authors.count() == 0
-    mock_task.delay.assert_called_once_with(session.pk, user.pk)
+    mock_task.apply_async.assert_called_once_with(
+        args=[session.pk, user.pk], task_id=session.celery_task_id
+    )
 
 
 @pytest.mark.django_db

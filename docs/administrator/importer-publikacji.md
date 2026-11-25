@@ -175,11 +175,32 @@ danych dostawcy wybranego przez operatora nie nadpisuje.
   `IMPORTER_DRUGIE_ZRODLO_TIMEOUT` (liczba sekund albo para
   `(połączenie, odpowiedź)`). Synchronizacja z PBN w innych modułach
   zachowuje dotychczasowe, dłuższe limity.
-- Praca oznaczona w PBN jako usunięta (`DELETED`) nie jest wiązana.
+- Praca oznaczona w PBN jako usunięta (`DELETED`) nie jest wiązana — ani
+  automatycznie, ani przy ręcznym wyborze w kroku „Sprawdź w PBN”; import
+  takiej pracy bezpośrednio z PBN kończy się komunikatem, że praca jest
+  usunięta.
+- Autorów z dwóch źródeł system łączy po ORCID, a potem po nazwisku
+  i imieniu — wyłącznie jednoznacznie. Dwa różne numery ORCID oznaczają
+  dwie różne osoby i wykluczają połączenie po nazwisku.
+- System zapamiętuje, z której pracy w PBN pochodzą dociągnięte wartości
+  (identyfikator osoby, ORCID, dyscyplina). Po zmianie albo usunięciu
+  odpowiednika w kroku „Sprawdź w PBN” wartości z poprzedniej pracy są
+  wycofywane, a dane nowej — dociągane; automatyczne dopasowania autorów
+  oparte na wycofanych identyfikatorach są liczone od nowa, ręczne decyzje
+  operatora zostają.
+- Oświadczenia pobrane z PBN zastępują lokalną kopię tylko w komplecie:
+  jeśli któregoś nie udało się zapisać (np. PBN zwraca błąd przy pobieraniu
+  osoby), lokalna kopia zostaje bez zmian, a ramka podaje „z lokalnej kopii
+  danych PBN”.
+- Zadanie pobierania zapisuje stan sesji tylko wtedy, gdy nadal jest jej
+  zadaniem: po „Ponów” albo po uznaniu sesji za zawieszoną poprzednie
+  zadanie wycofuje się bez zapisu.
 - Gdy odpowiednik w PBN jest już przypisany do innego rekordu BPP, kreator
   pokazuje czerwone ostrzeżenie z odnośnikiem do tego rekordu (kroki
   weryfikacji, autorów, „Sprawdź w PBN” i przegląd); utworzony rekord nie
-  zostanie wtedy powiązany z PBN.
+  zostanie wtedy powiązany z PBN. Dotyczy każdego rodzaju rekordu: praca
+  w PBN powiązana z wydawnictwem ciągłym nie zostanie drugi raz powiązana
+  z wydawnictwem zwartym.
 - Patenty nie są sprawdzane w żadnym dodatkowym źródle.
 - Przycisk „Pobierz z CrossRef” w kroku weryfikacji (zastępuje całą sesję
   danymi z CrossRef) pozostaje dla importów spoza CrossRef: łączenie źródeł

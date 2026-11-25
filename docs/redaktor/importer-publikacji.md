@@ -336,6 +336,17 @@ Importer otworzysz na dwa sposoby:
     kroku nie ma — odpowiednik jest znany od początku i utworzony rekord
     jest z nim powiązany.
 
+    **Zmiana lub usunięcie odpowiednika.** Gdy wyczyścisz wybór albo
+    wskażesz inną pracę, importer wycofuje wszystko, co wziął z poprzedniej
+    pracy w PBN: uzupełnione pola publikacji, identyfikatory osób, numery
+    ORCID i dyscypliny z oświadczeń. Dla nowo wskazanej pracy pobiera te
+    dane od nowa. Twoje własne decyzje zostają — ręcznie dopasowani autorzy
+    i ręcznie wybrane dyscypliny nie są ruszane. Jeśli któryś autor był
+    rozpoznany wyłącznie po identyfikatorze osoby z poprzedniej pracy,
+    importer wróci do kroku „Dopasowanie autorów” z komunikatem, ilu
+    autorów trzeba dopasować ponownie. Prac oznaczonych w PBN jako usunięte
+    nie da się wybrać na odpowiednik.
+
     ![Krok „Sprawdź w PBN”: przyciski „Zaloguj się do PBN” i „Pomiń”](../images/redaktor/importer-publikacji/14-pbn-sprawdz.png)
 
 11. **Przegląd końcowy.** Sprawdź podsumowanie: dane publikacji, źródło

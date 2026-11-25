@@ -23,6 +23,7 @@ Błąd drugiego źródła nigdy nie przerywa importu — wpis dostaje stan
 
 import itertools
 import logging
+from types import SimpleNamespace
 
 import requests
 from django.conf import settings
@@ -140,13 +141,16 @@ def _jezyk_rozpoznawalny(kod) -> bool:
     return _resolve_jezyk(kod) is not None
 
 
-def uzupelnij_brakujace_pola(glowne, dodatkowe) -> list[str]:
+def uzupelnij_brakujace_pola(glowne, dodatkowe, klucze=None) -> list[str]:
     """Przenieś z ``dodatkowe`` pola, których ``glowne`` nie ma.
 
     Zwraca nazwy uzupełnionych pól (do pokazania redaktorowi). Niczego nie
-    nadpisuje.
+    nadpisuje. Do listy ``klucze`` (jeśli podana) dopisuje nazwy pól
+    w danych sesji — po nich da się uzupełnienie wycofać, gdy redaktor
+    odrzuci pracę, z której pochodzi.
     """
     uzupelnione = []
+    klucze = klucze if klucze is not None else []
     for pole, etykieta in POLA_DO_UZUPELNIENIA:
         if not _puste(getattr(glowne, pole, None)):
             continue
@@ -157,12 +161,14 @@ def uzupelnij_brakujace_pola(glowne, dodatkowe) -> list[str]:
             continue
         setattr(glowne, pole, wartosc)
         uzupelnione.append(etykieta)
+        klucze.append(pole)
 
     for klucz, etykieta in POLA_EXTRA_DO_UZUPELNIENIA:
         wartosc = dodatkowe.extra.get(klucz)
         if _puste(glowne.extra.get(klucz)) and not _puste(wartosc):
             glowne.extra[klucz] = wartosc
             uzupelnione.append(etykieta)
+            klucze.append(klucz)
     return uzupelnione
 
 
@@ -221,25 +227,41 @@ def _rola(osoba):
     return osoba.get("typ_ogolny", const.TO_AUTOR)
 
 
+def _orcid(osoba) -> str:
+    return (osoba.get("orcid") or "").strip().upper()
+
+
+def _orcidy_sprzeczne(a, b) -> bool:
+    """Dwa różne, niepuste numery ORCID = na pewno dwie różne osoby."""
+    return bool(_orcid(a) and _orcid(b) and _orcid(a) != _orcid(b))
+
+
 def _ta_sama_osoba(osoba, po_orcid, obcy_po_nazwisku, glowni_po_nazwisku):
     """Znajdź w drugim źródle osobę odpowiadającą ``osoba`` albo ``None``.
 
     Kolejność: ORCID, potem nazwisko z imieniem (``_imiona_zgodne``;
-    identyczny zapis ma pierwszeństwo). Po nazwisku łączymy tylko
-    jednoznacznie w OBIE strony: jedna osoba w drugim źródle i jeden wiersz
-    w źródle głównym. Przy dwóch „Kowalskich J.” albo dwóch różnych osobach
-    zapisanych identycznie wolimy nie uzupełnić nic, niż przypisać
-    identyfikator PBN nie tej osobie.
+    identyczny zapis ma pierwszeństwo). Łączymy tylko jednoznacznie w OBIE
+    strony: jedna osoba w drugim źródle i jeden wiersz w źródle głównym.
+    Przy dwóch „Kowalskich J.” albo dwóch różnych osobach zapisanych
+    identycznie wolimy nie uzupełnić nic, niż przypisać identyfikator PBN
+    nie tej osobie.
+
+    Sprzeczne numery ORCID wykluczają dopasowanie po nazwisku: „Jan
+    Kowalski” z innym ORCID-em to inny Jan Kowalski — a identyfikator osoby
+    z PBN ma potem pierwszeństwo przy wyborze autora w BPP, więc pomyłka
+    przypisałaby publikację komuś innemu.
     """
-    orcid = (osoba.get("orcid") or "").strip().upper()
+    orcid = _orcid(osoba)
     if orcid and orcid in po_orcid:
-        return po_orcid[orcid]
+        # Ten sam ORCID u kilku różnych osób w drugim źródle to błąd danych
+        # — nie zgadujemy, której dotyczy.
+        return _jedyna_osoba(po_orcid[orcid])
 
     nazwisko, imiona = _klucz_osoby(osoba)
     zgodni = [
         (i, o)
         for i, o in obcy_po_nazwisku.get(nazwisko, [])
-        if _imiona_zgodne(imiona, i)
+        if _imiona_zgodne(imiona, i) and not _orcidy_sprzeczne(osoba, o)
     ]
     identyczni = [(i, o) for i, o in zgodni if i == imiona]
     druga = _jedyna_osoba([o for _, o in identyczni or zgodni])
@@ -252,17 +274,43 @@ def _ta_sama_osoba(osoba, po_orcid, obcy_po_nazwisku, glowni_po_nazwisku):
     wiersze = [
         o
         for i, o in glowni_po_nazwisku.get(nazwisko, [])
-        if _rola(o) == _rola(osoba) and _imiona_zgodne(i, imiona_drugiej)
+        if _rola(o) == _rola(osoba)
+        and _imiona_zgodne(i, imiona_drugiej)
+        and not _orcidy_sprzeczne(o, druga)
     ]
     return druga if len(wiersze) == 1 else None
 
 
-def uzupelnij_autorow(glowne, dodatkowe) -> dict:
+def _oznacz_pochodzenie(osoby, znacznik):
+    """Zapisz przy osobach wziętych w całości z drugiego źródła, skąd są
+    ich identyfikatory."""
+    if znacznik:
+        for osoba in osoby:
+            osoba["pochodzenie"] = {
+                k: znacznik for k in ("pbn_uid", "orcid") if osoba.get(k)
+            }
+    return osoby
+
+
+def _indeks_orcid(osoby):
+    wynik = {}
+    for osoba in osoby:
+        if _orcid(osoba):
+            wynik.setdefault(_orcid(osoba), []).append(osoba)
+    return wynik
+
+
+def uzupelnij_autorow(glowne, dodatkowe, znacznik=None) -> dict:
     """Uzupełnij autorom identyfikatory osób w PBN i numery ORCID.
 
     Lista osób zostaje taka, jak w źródle głównym (kolejność, role, zapis
     nazwisk) — drugie źródło dokłada tylko identyfikatory. Wyjątek: gdy
     źródło główne nie podało ŻADNEJ osoby, bierzemy całą listę z drugiego.
+
+    ``znacznik`` — skąd są dopisywane wartości (identyfikator pracy w PBN
+    albo nazwa źródła); trafia do ``osoba["pochodzenie"]`` i dalej do
+    ``ImportedAuthor.pochodzenie``, żeby dało się je wycofać po zmianie
+    odpowiednika w PBN.
 
     Zwraca ``{"pbn_uid": n, "orcid": n, "dodani": n}``.
     """
@@ -272,13 +320,11 @@ def uzupelnij_autorow(glowne, dodatkowe) -> dict:
         return wynik
 
     if not glowne.authors:
-        glowne.authors = obcy
+        glowne.authors = _oznacz_pochodzenie(obcy, znacznik)
         wynik["dodani"] = len(obcy)
         return wynik
 
-    po_orcid = {
-        (o.get("orcid") or "").strip().upper(): o for o in obcy if o.get("orcid")
-    }
+    po_orcid = _indeks_orcid(obcy)
     obcy_po_nazwisku = _po_nazwisku(obcy)
     glowni_po_nazwisku = _po_nazwisku(glowne.authors)
 
@@ -290,12 +336,18 @@ def uzupelnij_autorow(glowne, dodatkowe) -> dict:
             if not osoba.get(klucz) and druga.get(klucz):
                 osoba[klucz] = druga[klucz]
                 wynik[klucz] += 1
+                if znacznik:
+                    osoba.setdefault("pochodzenie", {})[klucz] = znacznik
     return wynik
 
 
 def _polacz(glowne, dodatkowe, wpis) -> dict:
-    wpis["pola"] = uzupelnij_brakujace_pola(glowne, dodatkowe)
-    wpis["autorzy"] = uzupelnij_autorow(glowne, dodatkowe)
+    wpis["klucze"] = []
+    wpis["pola"] = uzupelnij_brakujace_pola(glowne, dodatkowe, wpis["klucze"])
+    # Dla PBN znacznikiem jest identyfikator pracy (wycofujemy dane
+    # konkretnej pracy), dla pozostałych źródeł — nazwa źródła.
+    znacznik = wpis["identyfikator"] if wpis["zrodlo"] == ZRODLO_PBN else wpis["zrodlo"]
+    wpis["autorzy"] = uzupelnij_autorow(glowne, dodatkowe, znacznik)
     return wpis
 
 
@@ -594,6 +646,53 @@ def polacz_zrodla(session, result, znak_zycia=None) -> list[dict]:
 # --- Profil instytucji w PBN: dyscypliny z oświadczeń -------------------------
 
 
+class NiekompletneOswiadczenia(Exception):
+    """PBN podał oświadczenia, których nie udało się zapisać w komplecie."""
+
+
+def _pobierz_oswiadczenia_pracy(client, pub, uczelnia) -> int:
+    """Podmień lokalną kopię oświadczeń instytucji dla jednej pracy.
+
+    Robi to samo, co ``download_statements_of_publication`` klienta PBN, ale
+    z kontrolą kompletności: zapis pojedynczego oświadczenia potrafi zostać
+    PO CICHU pominięty (PBN zwraca błąd 500 przy pobieraniu osoby, pracy
+    albo instytucji, której nie ma w lokalnej kopii). Tamta funkcja
+    zatwierdziłaby wtedy usunięcie starego zestawu i zostawiła niepełny
+    nowy. Tu niepełny wynik wycofuje całą podmianę — lepsza nieświeża
+    kopia niż dziurawa. Zwraca liczbę oświadczeń.
+    """
+    from django.db import transaction
+
+    from pbn_api.models import OswiadczenieInstytucji
+    from pbn_integrator.utils import zapisz_oswiadczenie_instytucji
+
+    elementy = [
+        dict(e) for e in client.get_institution_statements_of_single_publication(pub.pk)
+    ]
+
+    def lokalne():
+        # Multi-hosted: tylko oświadczenia instytucji tej uczelni — jak
+        # w ``download_statements_of_publication``.
+        qs = OswiadczenieInstytucji.objects.filter(publicationId_id=pub.pk)
+        if uczelnia is not None and uczelnia.pbn_uid_id is not None:
+            qs = qs.filter(institutionId_id=uczelnia.pbn_uid_id)
+        return qs
+
+    with transaction.atomic():
+        lokalne().delete()
+        for element in elementy:
+            # ``zapisz_…`` zmienia słownik w miejscu — dajemy mu kopię.
+            zapisz_oswiadczenie_instytucji(dict(element), None, client=client)
+        oczekiwane = len({e.get("id") for e in elementy})
+        zapisane = lokalne().count()
+        if zapisane < oczekiwane:
+            raise NiekompletneOswiadczenia(
+                f"praca {pub.pk}: PBN podał {oczekiwane} oświadczeń, "
+                f"zapisano {zapisane}"
+            )
+    return zapisane
+
+
 def _odswiez_oswiadczenia(session, user, mongo_id) -> str:
     """Pobierz z PBN aktualne oświadczenia instytucji dla tej pracy.
 
@@ -611,7 +710,7 @@ def _odswiez_oswiadczenia(session, user, mongo_id) -> str:
 
     from .views.pbn_search import _operator_pbn_logged_in
 
-    lokalne = "z lokalnej kopii danych PBN"
+    lokalne = OSWIADCZENIA_LOKALNE
     if session.uczelnia is None or not _operator_pbn_logged_in(user):
         return lokalne
     pub = Publication.objects.filter(pk=mongo_id).first()
@@ -619,12 +718,13 @@ def _odswiez_oswiadczenia(session, user, mongo_id) -> str:
         return lokalne
     try:
         client = jedna_szybka_proba(session.uczelnia.pbn_client(user.pbn_token))
-        client.download_statements_of_publication(pub)
+        _pobierz_oswiadczenia_pracy(client, pub, session.uczelnia)
     except (
         HttpException,
         AccessDeniedException,
         PraceSerwisoweException,
         WillNotExportError,
+        NiekompletneOswiadczenia,
         requests.RequestException,
     ) as e:
         logger.warning("PBN: nie udało się pobrać oświadczeń pracy %s: %s", mongo_id, e)
@@ -667,7 +767,9 @@ def _dyscyplina_z_pbn(po_osobie, imported):
     """Dyscyplina z oświadczenia autora w PBN albo ``None``."""
     if imported.matched_autor is None:
         return None
-    osoba = imported.pbn_uid or imported.matched_autor.pbn_uid_id
+    # Dopasowany autor BPP jest pewniejszy niż identyfikator z danych
+    # dostawcy: przy ręcznym wyborze redaktora mogą wskazywać różne osoby.
+    osoba = imported.matched_autor.pbn_uid_id or imported.pbn_uid
     oswiadczenie = po_osobie.get((osoba, _TYP_OSWIADCZENIA.get(imported.typ_ogolny)))
     if oswiadczenie is None:
         return None
@@ -732,6 +834,7 @@ def zastosuj_dyscypliny_z_profilu(session, tylko=None) -> dict:
     if not po_osobie:
         return wynik
 
+    mongo_id = session.matched_data["pbn_mongo_id"]
     rok = (session.normalized_data or {}).get("year")
     Zrodlo = ImportedAuthor.DyscyplinaSource
     licznik = {INNE_PRZYPISANIE: "pominiete", SPOZA_UCZELNI: "pominiete_spoza"}
@@ -752,9 +855,64 @@ def zastosuj_dyscypliny_z_profilu(session, tylko=None) -> dict:
             continue
         imported.matched_dyscyplina = dyscyplina
         imported.dyscyplina_source = Zrodlo.PBN_PROFIL
-        imported.save(update_fields=["matched_dyscyplina", "dyscyplina_source"])
+        imported.pochodzenie = {**imported.pochodzenie, "dyscyplina": mongo_id}
+        imported.save(
+            update_fields=["matched_dyscyplina", "dyscyplina_source", "pochodzenie"]
+        )
         wynik["dyscypliny"] += 1
     return wynik
+
+
+OSWIADCZENIA_LOKALNE = "z lokalnej kopii danych PBN"
+
+
+def _odpowiednik_do_profilu(session):
+    """Identyfikator pracy w PBN, dla której czytamy profil instytucji."""
+    mongo_id = (session.matched_data or {}).get("pbn_mongo_id")
+    if not mongo_id or session.rodzaj_rekordu == ImportSession.RodzajRekordu.PATENT:
+        return None
+    return mongo_id
+
+
+def odswiez_oswiadczenia_profilu(session, user) -> str | None:
+    """Część sieciowa: pobierz z PBN aktualne oświadczenia tej pracy.
+
+    Zwraca opis, skąd są oświadczenia, albo ``None``, gdy praca nie ma
+    odpowiednika w PBN. Zmienia wyłącznie lokalną kopię danych PBN — stanu
+    sesji nie dotyka, więc zadanie pobierania może ją wołać bez blokady.
+    """
+    mongo_id = _odpowiednik_do_profilu(session)
+    if mongo_id is None:
+        return None
+    try:
+        return _odswiez_oswiadczenia(session, user, mongo_id)
+    except Exception:
+        # Jak w ``polacz_zrodla``: dodatek nie może wywrócić importu.
+        # Nieudane odświeżenie nie rusza lokalnej kopii (podmiana jest
+        # atomowa), więc dyscypliny bierzemy z niej.
+        logger.exception(
+            "Sesja importu %s: błąd pobierania oświadczeń z profilu instytucji",
+            session.pk,
+        )
+        capture_exception()
+        return OSWIADCZENIA_LOKALNE
+
+
+def zastosuj_profil_instytucji(session, skad) -> dict | None:
+    """Część zapisująca stan sesji: dyscypliny z oświadczeń → autorzy.
+
+    ``skad`` — wynik ``odswiez_oswiadczenia_profilu``. Zwraca wpis dla
+    ``normalized_data[KLUCZ_ZRODEL]`` (``None`` bez odpowiednika w PBN).
+    """
+    if _odpowiednik_do_profilu(session) is None:
+        return None
+    wynik = zastosuj_dyscypliny_z_profilu(session)
+    return _wpis(
+        ZRODLO_PROFIL,
+        STAN_ZNALEZIONO if wynik["dyscypliny"] else STAN_BRAK,
+        oswiadczenia=skad or OSWIADCZENIA_LOKALNE,
+        **wynik,
+    )
 
 
 def dolacz_profil_instytucji(session, user) -> dict | None:
@@ -762,31 +920,8 @@ def dolacz_profil_instytucji(session, user) -> dict | None:
 
     ``None``, gdy praca nie ma odpowiednika w PBN (nie ma czego sprawdzać).
     """
-    mongo_id = (session.matched_data or {}).get("pbn_mongo_id")
-    if not mongo_id or session.rodzaj_rekordu == ImportSession.RodzajRekordu.PATENT:
-        return None
-
-    lokalne = "z lokalnej kopii danych PBN"
-    try:
-        skad = _odswiez_oswiadczenia(session, user, mongo_id)
-    except Exception:
-        # Jak w ``polacz_zrodla``: dodatek nie może wywrócić importu.
-        # Nieudane odświeżenie nie rusza lokalnej kopii (pobieranie jest
-        # atomowe), więc dyscypliny bierzemy z niej.
-        logger.exception(
-            "Sesja importu %s: błąd pobierania oświadczeń z profilu instytucji",
-            session.pk,
-        )
-        capture_exception()
-        skad = lokalne
-
-    wynik = zastosuj_dyscypliny_z_profilu(session)
-    return _wpis(
-        ZRODLO_PROFIL,
-        STAN_ZNALEZIONO if wynik["dyscypliny"] else STAN_BRAK,
-        oswiadczenia=skad,
-        **wynik,
-    )
+    skad = odswiez_oswiadczenia_profilu(session, user)
+    return zastosuj_profil_instytucji(session, skad)
 
 
 def _dyscypliny_ze_zgloszenia(session) -> dict:
@@ -881,3 +1016,218 @@ def uwagi_o_dyscyplinach(session) -> dict:
         if len(uwaga) > 3:
             uwagi[imported.pk] = uwaga
     return uwagi
+
+
+# --- Zmiana odpowiednika w kroku „Sprawdź w PBN” ------------------------------
+
+
+class _DaneSesji:
+    """``normalized_data`` sesji widziane jak ``FetchedPublication`` — żeby
+    uzupełnianie brakujących pól działało też po pobraniu danych."""
+
+    def __init__(self, dane):
+        object.__setattr__(self, "_dane", dane)
+
+    def __getattr__(self, nazwa):
+        return self._dane.get(nazwa)
+
+    def __setattr__(self, nazwa, wartosc):
+        self._dane[nazwa] = wartosc
+
+    @property
+    def extra(self):
+        return self._dane
+
+
+def _wycofaj_pola_pracy(dane, mongo_id):
+    """Oznacz wpis pracy jako wycofany i usuń pola, które z niej przyszły."""
+    for wpis in dane.get(KLUCZ_ZRODEL) or []:
+        if (
+            wpis.get("zrodlo") != ZRODLO_PBN
+            or wpis.get("identyfikator") != mongo_id
+            or wpis.get("wycofano")
+        ):
+            continue
+        wpis["wycofano"] = True
+        for klucz in wpis.get("klucze") or []:
+            # Rok redaktor potwierdza w kroku weryfikacji — to już jego dana.
+            if klucz == "year":
+                continue
+            dane[klucz] = [] if klucz == "keywords" else None
+            if klucz == "abstract":
+                dane["abstracts"] = []
+
+
+def _wycofaj_wartosci_autora(imported, mongo_id) -> bool:
+    """Zabierz wierszowi autora wartości pochodzące z pracy ``mongo_id``.
+
+    Zwraca ``True``, gdy zabrano identyfikator osoby albo ORCID (dopasowanie
+    automatyczne trzeba wtedy policzyć od nowa).
+    """
+    pochodzenie = dict(imported.pochodzenie or {})
+    zabrano_identyfikator = False
+    for pole in ("pbn_uid", "orcid"):
+        if pochodzenie.get(pole) == mongo_id:
+            setattr(imported, pole, "")
+            del pochodzenie[pole]
+            zabrano_identyfikator = True
+    if pochodzenie.get("dyscyplina") == mongo_id:
+        del pochodzenie["dyscyplina"]
+        # Dyscyplinę zmienioną potem ręcznie (inne źródło) zostawiamy.
+        if imported.dyscyplina_source == ImportedAuthor.DyscyplinaSource.PBN_PROFIL:
+            imported.matched_dyscyplina = None
+            imported.dyscyplina_source = ""
+    imported.pochodzenie = pochodzenie
+    imported.save()
+    return zabrano_identyfikator
+
+
+def _wycofaj_prace(session, mongo_id) -> set:
+    """Wycofaj z sesji wszystko, co przyszło z pracy ``mongo_id`` w PBN.
+
+    Zwraca identyfikatory wierszy autorów, którym zabrano identyfikator
+    osoby albo ORCID (ich automatyczne dopasowanie trzeba policzyć od nowa).
+    Jawne decyzje redaktora zostają: ręczne dopasowanie autora i ręcznie
+    wybrana dyscyplina nie są ruszane.
+    """
+    _wycofaj_pola_pracy(session.normalized_data, mongo_id)
+    return {
+        imported.pk
+        for imported in session.authors.all()
+        if mongo_id in (imported.pochodzenie or {}).values()
+        and _wycofaj_wartosci_autora(imported, mongo_id)
+    }
+
+
+def _dolacz_wybrana_prace(session, mongo_id) -> set:
+    """Dociągnij dane pracy wskazanej przez redaktora jako odpowiednik.
+
+    Czyta lokalną kopię pracy (wybór w kroku „Sprawdź w PBN” właśnie ją
+    zapisał). Uzupełnia brakujące pola i identyfikatory osób — tak jak przy
+    pobieraniu danych. Zwraca identyfikatory wierszy autorów, którym coś
+    dopisano.
+    """
+    from pbn_api.models import Publication
+
+    from .providers.pbn import publikacja_z_danych_pbn
+    from .views.pbn_search import _pbn_url
+
+    pub = Publication.objects.filter(pk=mongo_id).first()
+    z_pbn = (
+        publikacja_z_danych_pbn(
+            {"mongoId": mongo_id, "versions": pub.versions}, mongo_id
+        )
+        if pub is not None and isinstance(pub.versions, list)
+        else None
+    )
+    wpis = _wpis(
+        ZRODLO_PBN,
+        STAN_ZNALEZIONO,
+        reczny=True,
+        identyfikator=mongo_id,
+        url=_pbn_url(session.uczelnia, mongo_id) or "",
+        klucze=[],
+        pola=[],
+        autorzy={"pbn_uid": 0, "orcid": 0, "dodani": 0},
+    )
+    session.normalized_data.setdefault(KLUCZ_ZRODEL, []).append(wpis)
+    if z_pbn is None:
+        return set()
+
+    dane = session.normalized_data
+    wpis["pola"] = uzupelnij_brakujace_pola(_DaneSesji(dane), z_pbn, wpis["klucze"])
+    if "abstract" in wpis["klucze"] and not dane.get("abstracts"):
+        dane["abstracts"] = [{"text": dane["abstract"], "language": None}]
+
+    wiersze = list(session.authors.all())
+    if not wiersze:
+        return set()
+    osoby = [
+        {
+            "family": w.family_name,
+            "given": w.given_name,
+            "orcid": w.orcid,
+            "pbn_uid": w.pbn_uid,
+            "typ_ogolny": w.typ_ogolny,
+        }
+        for w in wiersze
+    ]
+    wpis["autorzy"] = uzupelnij_autorow(
+        SimpleNamespace(authors=osoby), z_pbn, znacznik=mongo_id
+    )
+    zmienione = set()
+    for imported, osoba in zip(wiersze, osoby, strict=True):
+        dopisane = osoba.get("pochodzenie")
+        if not dopisane:
+            continue
+        for pole in dopisane:
+            setattr(imported, pole, osoba[pole][: 32 if pole == "pbn_uid" else 50])
+        imported.pochodzenie = {**(imported.pochodzenie or {}), **dopisane}
+        imported.save()
+        zmienione.add(imported.pk)
+    return zmienione
+
+
+def po_zmianie_odpowiednika(session, user, poprzedni) -> bool:
+    """Przelicz sesję po zmianie albo usunięciu odpowiednika pracy w PBN.
+
+    Wołane z kroku „Sprawdź w PBN”, gdy ``matched_data["pbn_mongo_id"]``
+    ma już nową wartość, a ``poprzedni`` to wartość sprzed zmiany. Bez tego
+    w sesji zostawały dane autorów z pracy, którą redaktor odrzucił:
+    identyfikatory osób (i oparte na nich dopasowania), numery ORCID,
+    dyscypliny z oświadczeń — i trafiały do rekordu oraz kartotek autorów.
+
+    Kolejność: wycofaj dane poprzedniej pracy → dociągnij dane nowej →
+    dopasuj od nowa autorów, których identyfikatory się zmieniły (tylko
+    dopasowania automatyczne) → dyscypliny z oświadczeń nowej pracy →
+    uzupełnienie ze zgłoszenia publikacji. Zwraca ``True``, gdy cokolwiek
+    przeliczono.
+    """
+    from django.db import transaction
+
+    from .views.authors import (
+        _apply_dyscyplina,
+        _dopasuj_ponownie,
+        _prefill_dyscypliny_z_zgloszen,
+    )
+
+    nowy = (session.matched_data or {}).get("pbn_mongo_id")
+    if nowy == poprzedni:
+        return False
+
+    rok = (session.normalized_data or {}).get("year")
+    Status = ImportedAuthor.MatchStatus
+    with transaction.atomic():
+        zmienione = _wycofaj_prace(session, poprzedni) if poprzedni else set()
+        if nowy:
+            zmienione |= _dolacz_wybrana_prace(session, nowy)
+
+        for imported in session.authors.filter(pk__in=zmienione).exclude(
+            match_status=Status.MANUAL
+        ):
+            _dopasuj_ponownie(imported, rok)
+
+        # Autor, któremu zabrano dyscyplinę z oświadczenia, wraca do tego,
+        # co importer wie sam (jedyna dyscyplina na rok pracy).
+        for imported in session.authors.filter(
+            matched_autor__isnull=False,
+            matched_dyscyplina__isnull=True,
+            dyscyplina_source="",
+        ).exclude(match_status=Status.MANUAL):
+            _apply_dyscyplina(imported, imported.matched_autor, rok)
+            if imported.matched_dyscyplina_id:
+                imported.save()
+
+        dane = session.normalized_data
+        dane[KLUCZ_ZRODEL] = [
+            w for w in dane.get(KLUCZ_ZRODEL) or [] if w.get("zrodlo") != ZRODLO_PROFIL
+        ]
+        session.save(update_fields=["normalized_data", "modified"])
+
+    # Sieć (oświadczenia nowej pracy) poza transakcją.
+    profil = dolacz_profil_instytucji(session, user)
+    if profil is not None:
+        session.normalized_data[KLUCZ_ZRODEL].append(profil)
+        session.save(update_fields=["normalized_data", "modified"])
+    _prefill_dyscypliny_z_zgloszen(session)
+    return True

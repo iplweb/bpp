@@ -123,7 +123,9 @@ def rekord_z_odpowiednikiem_pbn(session):
     zostałby powiązany (``_link_pbn_uid`` pomija powiązanie); redaktor ma
     to zobaczyć przed utworzeniem. Rekord utworzony przez tę sesję nie jest
     „cudzy”. Wynik liczymy raz na renderowanie."""
-    from bpp.models import Wydawnictwo_Ciagle, Wydawnictwo_Zwarte
+    from importer_publikacji.views.pbn_check import (
+        rekord_z_odpowiednikiem_pbn as rekord_bpp,
+    )
 
     if not hasattr(session, "matched_data"):
         # Szablon wyrenderowany bez obiektu sesji (np. test samego szablonu).
@@ -131,17 +133,15 @@ def rekord_z_odpowiednikiem_pbn(session):
     if hasattr(session, "_fd512_zajety_odpowiednik"):
         return session._fd512_zajety_odpowiednik
 
-    zajety = None
-    mongo_id = (session.matched_data or {}).get("pbn_mongo_id")
-    if mongo_id:
-        for model in (Wydawnictwo_Ciagle, Wydawnictwo_Zwarte):
-            rekord = model.objects.filter(pbn_uid_id=mongo_id).first()
-            if rekord is not None and not (
-                session.created_record_id == rekord.pk
-                and session.created_record_content_type is not None
-                and session.created_record_content_type.model_class() is model
-            ):
-                zajety = rekord
-                break
+    # Ta sama reguła, co przy zapisie (``_link_pbn_uid``). Rekord utworzony
+    # przez tę sesję nie jest „cudzy”.
+    zajety = rekord_bpp((session.matched_data or {}).get("pbn_mongo_id"))
+    if (
+        zajety is not None
+        and session.created_record_id == zajety.pk
+        and session.created_record_content_type is not None
+        and session.created_record_content_type.model_class() is type(zajety)
+    ):
+        zajety = None
     session._fd512_zajety_odpowiednik = zajety
     return zajety

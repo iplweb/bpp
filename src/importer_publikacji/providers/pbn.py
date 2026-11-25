@@ -1,5 +1,8 @@
 import logging
 import re
+import time
+
+from pbn_client.const import DELETED
 
 from pbn_api.exceptions import (
     AccessDeniedException,
@@ -127,8 +130,19 @@ def _extract_authors(obj: dict, key: str = "authors") -> list[dict]:
 #: każda to osobne zapytanie do PBN, a praca może mieć setki autorów.
 LIMIT_DOCIAGANYCH_OSOB = 50
 
+#: Ile najwyżej sekund łącznie trwa dociąganie osób przy jednym imporcie.
+#: Autor, którego danych nie zdążono pobrać, powstanie bez odpowiednika
+#: w PBN — krok „Autorzy” pokazuje to wprost.
+LIMIT_CZASU_DOCIAGANIA_OSOB = 60
 
-def pobierz_brakujace_osoby(uczelnia, identyfikatory, przygotuj_klienta=None) -> int:
+
+def pobierz_brakujace_osoby(
+    uczelnia,
+    identyfikatory,
+    przygotuj_klienta=None,
+    znak_zycia=None,
+    limit_czasu=None,
+) -> int:
     """Pobierz z PBN osoby, których nie ma w lokalnej kopii danych PBN.
 
     Bez lokalnego wpisu osoby nowo tworzony autor nie może dostać
@@ -138,6 +152,11 @@ def pobierz_brakujace_osoby(uczelnia, identyfikatory, przygotuj_klienta=None) ->
 
     ``przygotuj_klienta`` — opcjonalna funkcja dostrajająca klienta PBN
     (import spoza PBN przekazuje tu krótki timeout bez ponowień, FD#512).
+    ``znak_zycia`` — wołane przed każdą osobą; zadanie pobierania odświeża
+    nim sesję, żeby wolny PBN nie wyglądał jak zawieszone zadanie.
+    ``limit_czasu`` — łączny limit w sekundach (domyślnie
+    ``LIMIT_CZASU_DOCIAGANIA_OSOB``); po jego przekroczeniu pozostałe osoby
+    są pomijane.
     """
     import requests
 
@@ -162,8 +181,21 @@ def pobierz_brakujace_osoby(uczelnia, identyfikatory, przygotuj_klienta=None) ->
     if przygotuj_klienta is not None:
         client = przygotuj_klienta(client)
 
+    if limit_czasu is None:
+        limit_czasu = LIMIT_CZASU_DOCIAGANIA_OSOB
+    start = time.monotonic()
     pobrane = 0
     for identyfikator in brakujace:
+        if time.monotonic() - start > limit_czasu:
+            logger.warning(
+                "PBN: dociąganie osób trwa ponad %s s — pomijam pozostałe (%s z %s)",
+                limit_czasu,
+                len(brakujace) - pobrane,
+                len(brakujace),
+            )
+            break
+        if znak_zycia is not None:
+            znak_zycia()
         try:
             pobierz_i_zapisz_dane_jednej_osoby(
                 client, identyfikator, from_institution_api=False
@@ -284,6 +316,10 @@ def _save_to_pbn_publication(pbn_uid: str, data: dict):
 
 @register_provider
 class PBNProvider(DataProvider):
+    #: Czytelny powód, dla którego ``fetch`` zwrócił ``None`` (np. praca
+    #: usunięta w PBN); zadanie pobierania pokazuje go redaktorowi.
+    powod_braku = None
+
     @property
     def name(self) -> str:
         return "PBN"
@@ -350,6 +386,14 @@ class PBNProvider(DataProvider):
             return None
 
         if data is None:
+            return None
+
+        if data.get("status") == DELETED:
+            # Rekord BPP wskazywałby na pracę, której w PBN już nie ma.
+            self.powod_braku = (
+                "ta praca jest oznaczona jako usunięta w PBN — nie można "
+                "jej zaimportować."
+            )
             return None
 
         # Zapisz do lokalnej bazy PBN
