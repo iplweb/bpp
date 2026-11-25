@@ -361,7 +361,7 @@ def test_migracja_oznacza_patenty_do_przeliczenia_opisu(patent):
     ct = ContentType.objects.get_for_model(Patent)
     DirtyInstance.objects.filter(content_type=ct).delete()
 
-    mod = importlib.import_module("bpp.migrations.0530_patent_pola_fd449")
+    mod = importlib.import_module("bpp.migrations.0532_patent_pola_fd449")
     mod.przelicz_opisy_patentow(None, None)
 
     assert DirtyInstance.objects.filter(content_type=ct, object_id=patent.pk).exists()

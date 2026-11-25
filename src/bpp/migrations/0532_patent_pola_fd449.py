@@ -17,7 +17,7 @@ def przelicz_opisy_patentow(apps, schema_editor):
 
 class Migration(migrations.Migration):
     dependencies = [
-        ("bpp", "0529_motyw_zapisany"),
+        ("bpp", "0531_eksport_autora_z_sumami_punktacji"),
     ]
 
     operations = [
