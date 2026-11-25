@@ -17,7 +17,7 @@ Do rankingu autorów **nie** wchodzą:
   rankingu autorów dla tej jednostki”**,
 - koła naukowe i inne rodzaje jednostek wyłączone z rankingu — gdy uczelnia
   ma włączoną opcję rankingu bez kół naukowych,
-- rodzaje prac (charakter formalny, typ MNiSW/MEiN), którym redakcja
+- rodzaje prac (charakter formalny, typ MNiSW), którym redakcja
   wyłączyła liczenie do rankingu,
 - prace ze statusem korekty ukrytym przez uczelnię w rankingach,
 - autorzy, którzy w wybranych latach mają zero punktów, zero IF i zero

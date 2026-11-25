@@ -35,7 +35,7 @@ wszystkie prace autora z tych lat.
 | Spójnik | Pole | Operator | Wartość |
 |---|---|---|---|
 | | Jednostka | równa | Katedra i Zakład Smoków i Draconidów |
-| i | Punkty MNiSW/MEiN | większy lub równy | 100 |
+| i | Punkty MNiSW | większy lub równy | 100 |
 
 Dla całego wydziału z katedrami wybierz wydział i operator
 **„równa+podrzędne”**. Do sprawdzenia sum punktów przełącz **Raport**

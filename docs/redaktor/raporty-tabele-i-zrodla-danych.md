@@ -19,7 +19,7 @@ Definicje raportów może zmieniać superużytkownik oraz osoby z grupy
 
 1. Moduł redagowania → **Raporty** → **Tabele** → wybierz tabelę.
 2. W sekcji **Kolumny** zmień pole **Etykieta** wybranej kolumny (np.
-   z „Typ MNiSW/MEiN” na „Typ pracy”) i zapisz tabelę.
+   z „Typ MNiSW” na „Typ pracy”) i zapisz tabelę.
 
 Nowa etykieta jest widoczna od razu — przy najbliższym wygenerowaniu raportu,
 bez restartu serwera — w nagłówku tabeli na ekranie oraz w plikach pobranych

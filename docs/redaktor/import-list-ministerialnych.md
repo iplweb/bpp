@@ -183,7 +183,7 @@ Wartości trafiają do formularza źródła (**redagowanie** → **Źródło** �
 czasopismo):
 
 - punkty — sekcja **„Punktacja źródła”**, wiersz z podanym **Rokiem**,
-  kolumna **„Punkty MNiSW/MEiN”** (pozostałe kolumny, np. Impact Factor,
+  kolumna **„Punkty MNiSW”** (pozostałe kolumny, np. Impact Factor,
   import zostawia bez zmian; nowy wiersz dostaje w nich zera),
 - dyscypliny — sekcja **„Przypisanie dyscyplin do źródła”** (domyślnie
   zwinięta; kliknij nagłówek, żeby ją rozwinąć).

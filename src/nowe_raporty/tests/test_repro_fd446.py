@@ -1,6 +1,6 @@
 """FD#446: zmiana etykiety kolumny w „Tabele” nie docierała do raportu.
 
-Redaktor zmieniał etykietę kolumny (np. „Typ MNiSW/MEiN” na „Typ pracy”), a raport
+Redaktor zmieniał etykietę kolumny (np. „Typ MNiSW” na „Typ pracy”), a raport
 — na ekranie i w eksportach — dalej pokazywał stary nagłówek, aż do restartu
 serwera. Przyczyna leżała w ``django-flexible-reports`` < 0.4.0: klasa tabeli
 była cache'owana per ``Table.pk`` na cały czas życia procesu.
@@ -22,7 +22,7 @@ from model_bakery import baker
 from bpp.models import Autor, Jednostka, Wydawnictwo_Ciagle
 from nowe_raporty.seeding import definicje, seed_default_reports
 
-STARA = "Typ MNiSW/MEiN"
+STARA = "Typ MNiSW"
 NOWA = "Typ pracy"
 
 

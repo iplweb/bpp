@@ -3,7 +3,7 @@
 Skoroszyt ma dwa arkusze (dla autora spoza uczelni — tylko pierwszy):
 
 - „Publikacje” — wiersz na pracę: rok, tytuł, autorzy, źródło, charakter,
-  typ MNiSW/MEiN, IF, PK, dyscyplina autora w pracy oraz (opcjonalnie)
+  typ MNiSW, IF, PK, dyscyplina autora w pracy oraz (opcjonalnie)
   punktacja autora z cache slotów: PKdAut i slot,
 - „Podsumowanie” — sumy w latach (liczba prac, Σ PK, Σ IF, opcjonalnie
   Σ PKdAut i Σ slotów). Autor spoza uczelni (FD#640) nie dostaje tego
@@ -24,7 +24,7 @@ NAGLOWKI_PUBLIKACJE = (
     "Autorzy",
     "Źródło",
     "Charakter formalny",
-    "Typ MNiSW/MEiN",
+    "Typ MNiSW",
     "Impact Factor",
     "PK",
     "Dyscyplina autora",

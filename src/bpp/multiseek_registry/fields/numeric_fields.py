@@ -61,7 +61,7 @@ class PunktacjaWewnetrznaQueryObject(
 
 # More simple decimal query objects created with factory functions
 PunktacjaSNIP = create_decimal_query_object("Punktacja SNIP", "punktacja_snip")
-PunktyKBNQueryObject = create_decimal_query_object("Punkty MNiSW/MEiN", "punkty_kbn")
+PunktyKBNQueryObject = create_decimal_query_object("Punkty MNiSW", "punkty_kbn")
 
 
 class IndexCopernicusQueryObject(BppMultiseekVisibilityMixin, SafeDecimalQueryObject):

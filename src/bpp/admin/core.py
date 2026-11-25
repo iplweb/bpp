@@ -478,7 +478,7 @@ class KolumnyZeSkrotamiMixin:
     def typ_kbn__skrot(self, obj):
         return obj.typ_kbn.skrot
 
-    typ_kbn__skrot.short_description = "typ MNiSW/MEiN"
+    typ_kbn__skrot.short_description = "typ MNiSW"
     typ_kbn__skrot.admin_order_field = "typ_kbn__skrot"
 
 

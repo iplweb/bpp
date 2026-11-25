@@ -138,7 +138,7 @@ class RankingAutorowTable(Table):
     )
 
     autor = Column(order_by=("autor__nazwisko", "autor__imiona"))
-    punkty_kbn_sum = Column("Punkty MNiSW/MEiN", "punkty_kbn_sum")
+    punkty_kbn_sum = Column("Punkty MNiSW", "punkty_kbn_sum")
     impact_factor_sum = Column("Impact Factor", "impact_factor_sum")
     liczba_cytowan_sum = Column("Liczba cytowań", "liczba_cytowan_sum")
 

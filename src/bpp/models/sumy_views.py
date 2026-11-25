@@ -43,7 +43,7 @@ class Nowe_Sumy_View(ModelZLiczbaCytowan, ModelPunktowany, models.Model):
         DO_NOTHING,
         null=True,
         blank=True,
-        verbose_name="typ MNiSW/MEiN",
+        verbose_name="typ MNiSW",
     )
 
     objects = Nowe_SumyQuerySet.as_manager()

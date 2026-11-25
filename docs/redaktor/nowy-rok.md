@@ -169,7 +169,7 @@ czasopism można też uzgodnić z PBN w **PBN → komparator źródeł PBN**.
 1. W module redagowania **Wprowadzanie danych → Źródła**, otwórz
    czasopismo.
 2. Sekcja **„Punktacja źródła”**: w pustym wierszu wpisz **Rok** i **Punkty
-   MNiSW/MEiN** (oraz inne wskaźniki, jeśli je prowadzicie).
+   MNiSW** (oraz inne wskaźniki, jeśli je prowadzicie).
 
     ![Sekcja „Punktacja źródła”: wiersze 2024–2026 i nowy wiersz na 2027](../images/redaktor/nowy-rok/07-zrodlo-punktacja.png)
 
@@ -241,7 +241,7 @@ okres ewaluacji 2022–2025 — prac z 2026 r. i późniejszych tam nie ma.
 | *Brak przypisania dla roku 2027* na liście dyscyplin przy autorze | Autor nie ma dyscypliny na ten rok. | Dodaj dyscyplinę autorowi (POL-on, ręcznie lub import dyscyplin). |
 | Przy zapisie rekordu, przy dyscyplinie autora: *Autor nie ma przypisania na dany rok do takiej dyscypliny.* | Dyscyplina wybrana w pracy nie jest dyscypliną autora w roku pracy (np. zmieniono rok rekordu). | Popraw dyscyplinę w pracy albo dyscypliny autora na ten rok. |
 | Okienko: *Brak danych o punktacji tego źródła dla wpisanego roku.* | Czasopismo nie ma punktacji na rok rekordu. | Import wykazu ministerialnego albo punktacja wpisana przy źródle. |
-| Po zapisie rekordu: *Nie można obliczyć punktów dla dyscyplin dla "…": punkty MNiSW/MEiN rekordu (…) i rok (…) nie pozwalają na dopasowanie tego rekordu do jakiejkolwiek grupy* | Punkty w rekordzie nie pasują do progów punktowych (np. zostały 0 lub puste). | Wpisz punkty (przycisk **„Uzupełnij punktację”**). |
+| Po zapisie rekordu: *Nie można obliczyć punktów dla dyscyplin dla "…": punkty MNiSW rekordu (…) i rok (…) nie pozwalają na dopasowanie tego rekordu do jakiejkolwiek grupy* | Punkty w rekordzie nie pasują do progów punktowych (np. zostały 0 lub puste). | Wpisz punkty (przycisk **„Uzupełnij punktację”**). |
 | Dyscyplina przypisana, punkty są, ale slotów brak | Autor nie ma na ten rok **rodzaju autora** N/B/D (częste po imporcie dyscyplin z pliku), nie afiliuje albo dyscyplina jest odpięta. | Uzupełnij rodzaj autora w „Powiązania autor-dyscyplina”, zapisz rekord. |
 | W raporcie slotów: *Upewnij się, że ta wartość jest mniejsza lub równa 2026.* | Raporty slotów nie przyjmują lat spoza obsługiwanego zakresu. | Jak w pierwszym wierszu — aktualizacja BPP. |
 | Brak ikony drukarki (oświadczenia) na stronie pracy | Praca nie ma policzonych slotów. | Usuń przyczynę braku slotów (wiersze wyżej). |

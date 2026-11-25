@@ -137,4 +137,4 @@ OpenaccessCzasPublikacjiQueryObject = create_valuelist_query_object(
     "openaccess_czas_publikacji",
     Czas_Udostepnienia_OpenAccess,
 )
-TypKBNQueryObject = create_valuelist_query_object("Typ MNiSW/MEiN", "typ_kbn", Typ_KBN)
+TypKBNQueryObject = create_valuelist_query_object("Typ MNiSW", "typ_kbn", Typ_KBN)

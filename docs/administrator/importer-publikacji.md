@@ -151,7 +151,7 @@ W tym kroku użytkownik weryfikuje i ewentualnie koryguje:
 - **Charakter formalny** -- typ publikacji w systemie BPP (np. artykuł
   w czasopiśmie, książka, rozdział). Jeśli dostępne jest mapowanie CrossRef,
   pole jest wstępnie wypełnione.
-- **Typ MNiSW/MEiN** -- klasyfikacja ministerialna (dawniej „typ KBN”).
+- **Typ MNiSW** -- klasyfikacja ministerialna (dawniej „typ KBN”).
 - **Język** -- język publikacji.
 - **Rodzaj rekordu** -- czy jest to wydawnictwo zwarte (książka/rozdział),
   ciągłe (artykuł w czasopiśmie) czy patent. Podpowiadany z typu publikacji

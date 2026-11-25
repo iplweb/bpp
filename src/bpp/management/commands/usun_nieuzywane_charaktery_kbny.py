@@ -7,7 +7,9 @@ from bpp.util import usun_nieuzywany_typ_charakter
 
 
 class Command(BaseCommand):
-    help = "Usuwa nieuzywane charaktery formalne i typy MNiSW/MEiN (stosuj po imporcie z DBF)"
+    help = (
+        "Usuwa nieuzywane charaktery formalne i typy MNiSW (stosuj po imporcie z DBF)"
+    )
 
     def add_arguments(self, parser):
         parser.add_argument("--dry-run", action=argparse.BooleanOptionalAction)

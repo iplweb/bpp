@@ -48,7 +48,7 @@ def test_raport_slotow_ewaluacja_xlsx_typ_kbn_i_funkcja_fd473(
     assert res.status_code == 200
     rows = list(load_workbook(BytesIO(res.content)).active.iter_rows(values_only=True))
     headers = next(row for row in rows if "Autor ewaluowany" in row)
-    assert "Typ MNiSW/MEiN" in headers
+    assert "Typ MNiSW" in headers
     assert "Funkcja" in headers
     values = {value for row in rows for value in row if value is not None}
     assert typ_kbn in values
