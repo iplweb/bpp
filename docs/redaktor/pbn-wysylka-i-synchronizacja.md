@@ -375,6 +375,30 @@ przy dużej bazie zawęź lata albo wyszukaj po tytule, DOI lub ISBN.
 Komparatory źródeł i udziałów mają przycisk **Przebuduj** — przelicza
 rozbieżności po pobraniu nowych danych.
 
+### Komparator publikacji PBN — jak porównywane są pola {#komparator-publikacji-pola}
+
+Komparator publikacji porównuje pola tak samo jak
+[„Wzbogać z PBN”](wzbogacanie-rekordu.md) w formularzu rekordu — to jedna
+reguła porównywania, więc oba narzędzia pokazują te same różnice. Dla
+pojedynczej pracy z listy wygodniej użyć „Wzbogać z PBN”: tam wybrane pola
+można od razu przenieść do BPP.
+
+| Pole | Co jest różnicą, a co nie |
+|---|---|
+| Tytuł | znaczniki HTML i podwójne odstępy nie są różnicą (po żadnej stronie); wielkość liter jest |
+| Rok, Tom, Numer zeszytu | różnicą jest także wartość wpisana tylko po jednej stronie; tom jest porównywany także dla wydawnictw zwartych |
+| DOI | liczy się sam numer — adres `https://doi.org/…` i wielkość liter nie są różnicą |
+| Strony | zakres stron z PBN; półpauza zamiast łącznika i odstępy wokół niego nie są różnicą |
+| ISSN, ISBN | kreski i odstępy nie są różnicą; numer wpisany w BPP w polu e-ISSN / e-ISBN (albo odwrotnie) jest zgodny; numer, który ma tylko jedna strona, jest różnicą — osobno dla „ISSN” i „e-ISSN”, „ISBN” i „e-ISBN” |
+| URL/WWW | adres z PBN wpisany w BPP w którymkolwiek z pól adresu (płatny / wolny dostęp) jest zgodny; końcowy „/” nie jest różnicą |
+| Język | kod języka z PBN jest zamieniany na język ze słownika BPP (język powiązany z językiem PBN w „Dane systemowe → Języki”); kod spoza słownika jest pokazany wprost |
+| Słowa kluczowe | porównywane są zbiory słów — kolejność i wielkość liter nie mają znaczenia; słowa polskie i angielskie rekordu liczą się razem |
+| Streszczenie | zgodne, gdy streszczenie z PBN jest wśród streszczeń rekordu (znaczniki HTML bez znaczenia) |
+
+Liczba autorów, wydawca, konferencja, miejsce wydania, seria i punkty są
+porównywane jak wcześniej. Wartości dłuższe niż 300 znaków (streszczenia)
+są na liście skracane.
+
 ## Komunikat → co zrobić {#komunikaty}
 
 Najczęstsze komunikaty z formularza pracy i z kolejki eksportu (w kolejce

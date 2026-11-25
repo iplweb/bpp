@@ -11,7 +11,8 @@ from openpyxl.styles import Alignment, Font, PatternFill
 
 from bpp.models import Wydawnictwo_Ciagle, Wydawnictwo_Zwarte
 from bpp.util import sanitize_xlsx_row
-from import_common import porownanie_pol as reguly
+from importer_publikacji.providers.pbn import publikacja_z_obiektu_wersji
+from importer_publikacji.wzbogacanie.pola import PUSTE, ZGODNE, porownaj
 from pbn_downloader_app.freshness import is_pbn_publications_data_fresh
 
 # Default year range for evaluation period
@@ -39,6 +40,53 @@ COMPARISON_FIELDS = {
     "series": "Seria wydawnicza",
     "points": "Punkty",
 }
+
+
+#: Pola porównywane silnikiem wzbogacania rekordu (FD#517): klucz pola
+#: komparatora → pola silnika (``importer_publikacji.wzbogacanie.pola.POLA``).
+POLA_SILNIKA = {
+    "title": ("tytul_oryginalny",),
+    "year": ("rok",),
+    "doi": ("doi",),
+    "isbn": ("isbn", "e_isbn"),
+    "issn": ("issn", "e_issn"),
+    "url": ("www",),
+    "volume": ("tom",),
+    "pages": ("strony",),
+    "issue": ("nr_zeszytu",),
+    "keywords": ("slowa_kluczowe",),
+    "abstract": ("streszczenie",),
+    "language": ("jezyk",),
+}
+
+#: Etykiety różnic — jak dotąd w komparatorze (pola silnika → etykieta).
+ETYKIETY_SILNIKA = {
+    "tytul_oryginalny": "Tytuł",
+    "rok": "Rok",
+    "doi": "DOI",
+    "isbn": "ISBN",
+    "e_isbn": "e-ISBN",
+    "issn": "ISSN",
+    "e_issn": "e-ISSN",
+    "www": "URL/WWW",
+    "tom": "Tom",
+    "strony": "Strony",
+    "nr_zeszytu": "Numer zeszytu",
+    "slowa_kluczowe": "Słowa kluczowe",
+    "jezyk": "Język",
+}
+
+#: Dłuższe wartości (streszczenia) są w wynikach skracane.
+MAKSYMALNA_DLUGOSC_WARTOSCI = 300
+
+
+def _wartosc(tekst):
+    """Wartość pola do wyniku: pusty tekst dla braku, długie skrócone."""
+    if tekst == PUSTE:
+        return ""
+    if len(tekst) > MAKSYMALNA_DLUGOSC_WARTOSCI:
+        return tekst[:MAKSYMALNA_DLUGOSC_WARTOSCI] + "..."
+    return tekst
 
 
 DEFAULT_FIELDS = ["title", "year", "doi", "isbn", "issn", "url", "authors"]
@@ -144,33 +192,26 @@ class PublicationComparisonView(ListView):
         pbn_pub = bpp_pub.pbn_uid
         differences = []
 
-        comparers = [
-            ("title", self._compare_title),
-            ("year", self._compare_year),
-            ("doi", self._compare_doi),
-            ("isbn", lambda b, p, d: self._compare_isbn(b, p, pub_type, d)),
-            ("url", self._compare_url),
-            ("authors", self._compare_authors),
-            ("volume", lambda b, p, d: self._compare_volume(b, p, pub_type, d)),
-            ("pages", lambda b, p, d: self._compare_pages(b, p, pub_type, d)),
-            ("publisher", lambda b, p, d: self._compare_publisher(b, p, pub_type, d)),
-            ("issn", self._compare_issn),
-            ("issue", lambda b, p, d: self._compare_issue(b, p, pub_type, d)),
-            ("conference", self._compare_conference),
-            ("keywords", self._compare_keywords),
-            ("abstract", self._compare_abstract),
-            ("language", self._compare_language),
-            (
-                "publication_place",
-                lambda b, p, d: self._compare_publication_place(b, p, pub_type, d),
+        # Pola, których silnik wzbogacania nie zna — porównywane po staremu.
+        comparers = {
+            "authors": self._compare_authors,
+            "publisher": lambda b, p, d: self._compare_publisher(b, p, pub_type, d),
+            "conference": self._compare_conference,
+            "publication_place": lambda b, p, d: self._compare_publication_place(
+                b, p, pub_type, d
             ),
-            ("series", self._compare_series),
-            ("points", self._compare_points),
-        ]
+            "series": self._compare_series,
+            "points": self._compare_points,
+        }
 
-        for field_name, comparer in comparers:
-            if field_name in enabled_fields:
-                comparer(bpp_pub, pbn_pub, differences)
+        # Kolejność różnic jak kolejność pól na liście wyboru.
+        for field_name in COMPARISON_FIELDS:
+            if field_name not in enabled_fields:
+                continue
+            if field_name in POLA_SILNIKA:
+                differences.extend(self._roznice_silnika(bpp_pub, pbn_pub, field_name))
+            else:
+                comparers[field_name](bpp_pub, pbn_pub, differences)
 
         return {
             "bpp_publication": bpp_pub,
@@ -182,75 +223,46 @@ class PublicationComparisonView(ListView):
             "bpp_id": bpp_pub.pk,
         }
 
-    def _compare_title(self, bpp_pub, pbn_pub, differences):
-        bpp_title = bpp_pub.tytul_oryginalny or ""
-        pbn_title = pbn_pub.title or pbn_pub.value_or_none("object", "title") or ""
-        if reguly.tytul_bpp_zastany(bpp_title) != reguly.tekst_zastany(pbn_title):
-            differences.append(
-                {
-                    "field": "Tytuł",
-                    "bpp_value": bpp_title[:100]
-                    + ("..." if len(bpp_title) > 100 else ""),
-                    "pbn_value": pbn_title[:100]
-                    + ("..." if len(pbn_title) > 100 else ""),
-                }
-            )
-
-    def _compare_year(self, bpp_pub, pbn_pub, differences):
-        bpp_year = bpp_pub.rok
-        pbn_year = pbn_pub.year or pbn_pub.value_or_none("object", "year")
-        if bpp_year and pbn_year and str(bpp_year) != str(pbn_year):
-            differences.append(
-                {
-                    "field": "Rok",
-                    "bpp_value": str(bpp_year),
-                    "pbn_value": str(pbn_year),
-                }
-            )
-
-    def _compare_doi(self, bpp_pub, pbn_pub, differences):
-        bpp_doi = bpp_pub.doi or ""
-        pbn_doi = pbn_pub.doi or pbn_pub.value_or_none("object", "doi") or ""
-        if reguly.doi_zastane(bpp_doi) != reguly.doi_zastane(pbn_doi):
-            differences.append(
-                {"field": "DOI", "bpp_value": bpp_doi, "pbn_value": pbn_doi}
-            )
-
-    def _compare_isbn(self, bpp_pub, pbn_pub, pub_type, differences):
-        if pub_type != "zwarte" or not hasattr(bpp_pub, "isbn"):
-            return
-        bpp_isbn_raw = bpp_pub.isbn or ""
-        pbn_isbn_raw = pbn_pub.isbn or pbn_pub.value_or_none("object", "isbn") or ""
-        bpp_isbn_normalized = reguly.numer(bpp_isbn_raw)
-        pbn_isbn_normalized = reguly.numer(pbn_isbn_raw)
-
-        if bpp_isbn_normalized == pbn_isbn_normalized:
-            return
-
-        if hasattr(bpp_pub, "e_isbn") and bpp_pub.e_isbn:
-            bpp_e_isbn_normalized = reguly.numer(bpp_pub.e_isbn)
-            if bpp_e_isbn_normalized == pbn_isbn_normalized:
-                return
-
-        differences.append(
-            {"field": "ISBN", "bpp_value": bpp_isbn_raw, "pbn_value": pbn_isbn_raw}
+    def _dane_pbn(self, pbn_pub):
+        """Dane bieżącej wersji publikacji z LOKALNEJ kopii PBN, w postaci
+        używanej przez importer i wzbogacanie (bez łączenia z PBN). Ostatnia
+        publikacja jest pamiętana — porównanie bywa wołane pole po polu."""
+        ostatnia = getattr(self, "_ostatnie_dane_pbn", None)
+        if ostatnia is not None and ostatnia[0] is pbn_pub:
+            return ostatnia[1]
+        wersja = pbn_pub.current_version or {}
+        dane = publikacja_z_obiektu_wersji(
+            {"versions": pbn_pub.versions}, wersja.get("object") or {}, pbn_pub.pk
         )
+        self._ostatnie_dane_pbn = (pbn_pub, dane)
+        return dane
 
-    def _compare_url(self, bpp_pub, pbn_pub, differences):
-        bpp_www = (
-            getattr(bpp_pub, "public_www", None) or getattr(bpp_pub, "www", "") or ""
+    def _jezyk_dla_kodu(self, kod):
+        """Język BPP dla kodu z PBN — jedno wyszukiwanie na kod, nie na pracę."""
+        from importer_publikacji.wzbogacanie.pola import _znajdz_jezyk
+
+        pamiec = self.__dict__.setdefault("_jezyki_wg_kodu", {})
+        if kod not in pamiec:
+            pamiec[kod] = _znajdz_jezyk(kod)
+        return pamiec[kod]
+
+    def _roznice_silnika(self, bpp_pub, pbn_pub, field_name):
+        """Różnice jednego pola wg reguł wzbogacania rekordu (FD#517) —
+        tych samych, których używa „Wzbogać z PBN”."""
+        wiersze = porownaj(
+            bpp_pub,
+            self._dane_pbn(pbn_pub),
+            pola=POLA_SILNIKA[field_name],
+            znajdz_jezyk=self._jezyk_dla_kodu,
         )
-        pbn_uri = (
-            pbn_pub.publicUri or pbn_pub.value_or_none("object", "publicUri") or ""
-        )
-        if reguly.tekst_zastany(bpp_www) != reguly.tekst_zastany(pbn_uri):
-            differences.append(
-                {
-                    "field": "URL/WWW",
-                    "bpp_value": bpp_www[:80] + ("..." if len(bpp_www) > 80 else ""),
-                    "pbn_value": pbn_uri[:80] + ("..." if len(pbn_uri) > 80 else ""),
-                }
-            )
+        for wiersz in wiersze:
+            if wiersz.status == ZGODNE:
+                continue
+            yield {
+                "field": ETYKIETY_SILNIKA.get(wiersz.klucz, wiersz.etykieta),
+                "bpp_value": _wartosc(wiersz.bpp),
+                "pbn_value": _wartosc(wiersz.zrodlo),
+            }
 
     def _compare_authors(self, bpp_pub, pbn_pub, differences):
         bpp_authors_count = bpp_pub.autorzy_set.count()
@@ -264,34 +276,6 @@ class PublicationComparisonView(ListView):
                     "bpp_value": str(bpp_authors_count),
                     "pbn_value": str(pbn_authors_count),
                 }
-            )
-
-    def _compare_volume(self, bpp_pub, pbn_pub, pub_type, differences):
-        if pub_type != "ciagle":
-            return
-        bpp_tom = bpp_pub.tom if hasattr(bpp_pub, "tom") else ""
-        pbn_volume = pbn_pub.volume() if hasattr(pbn_pub, "volume") else ""
-        if (
-            bpp_tom
-            and pbn_volume
-            and reguly.tekst_zastany(bpp_tom) != reguly.tekst_zastany(pbn_volume)
-        ):
-            differences.append(
-                {
-                    "field": "Tom",
-                    "bpp_value": str(bpp_tom),
-                    "pbn_value": str(pbn_volume),
-                }
-            )
-
-    def _compare_pages(self, bpp_pub, pbn_pub, pub_type, differences):
-        if pub_type != "ciagle" or not hasattr(bpp_pub, "strony"):
-            return
-        bpp_pages = bpp_pub.strony or ""
-        pbn_pages = pbn_pub.value_or_none("object", "pages") or ""
-        if reguly.tekst_zastany(bpp_pages) != reguly.tekst_zastany(pbn_pages):
-            differences.append(
-                {"field": "Strony", "bpp_value": bpp_pages, "pbn_value": pbn_pages}
             )
 
     def _compare_publisher(self, bpp_pub, pbn_pub, pub_type, differences):
@@ -314,54 +298,6 @@ class PublicationComparisonView(ListView):
                 }
             )
 
-    def _compare_issn(self, bpp_pub, pbn_pub, differences):
-        if not hasattr(bpp_pub, "issn"):
-            return
-        bpp_issn_raw = bpp_pub.issn or ""
-        pbn_issn_raw = (
-            pbn_pub.value_or_none("object", "issn")
-            or pbn_pub.value_or_none("object", "journal", "issn")
-            or ""
-        )
-        bpp_issn_normalized = reguly.numer(bpp_issn_raw)
-        pbn_issn_normalized = reguly.numer(pbn_issn_raw)
-
-        if bpp_issn_normalized == pbn_issn_normalized:
-            return
-
-        pbn_eissn = pbn_pub.value_or_none("object", "journal", "eissn") or ""
-        pbn_eissn_normalized = reguly.numer(pbn_eissn)
-
-        if bpp_issn_normalized == pbn_eissn_normalized:
-            return
-
-        if hasattr(bpp_pub, "e_issn") and bpp_pub.e_issn:
-            bpp_e_issn_normalized = reguly.numer(bpp_pub.e_issn)
-            if (
-                bpp_e_issn_normalized == pbn_issn_normalized
-                or bpp_e_issn_normalized == pbn_eissn_normalized
-            ):
-                return
-
-        differences.append(
-            {"field": "ISSN", "bpp_value": bpp_issn_raw, "pbn_value": pbn_issn_raw}
-        )
-
-    def _compare_issue(self, bpp_pub, pbn_pub, pub_type, differences):
-        if pub_type != "ciagle":
-            return
-        bpp_issue = bpp_pub.nr_zeszytu if hasattr(bpp_pub, "nr_zeszytu") else ""
-        bpp_issue = bpp_issue or ""
-        pbn_issue = pbn_pub.value_or_none("object", "issue") or ""
-        if reguly.tekst_zastany(bpp_issue) != reguly.tekst_zastany(pbn_issue):
-            differences.append(
-                {
-                    "field": "Numer zeszytu",
-                    "bpp_value": bpp_issue,
-                    "pbn_value": pbn_issue,
-                }
-            )
-
     def _compare_conference(self, bpp_pub, pbn_pub, differences):
         if not hasattr(bpp_pub, "konferencja"):
             return
@@ -375,65 +311,6 @@ class PublicationComparisonView(ListView):
                     + ("..." if len(bpp_conference) > 100 else ""),
                     "pbn_value": pbn_conference[:100]
                     + ("..." if len(pbn_conference) > 100 else ""),
-                }
-            )
-
-    def _compare_keywords(self, bpp_pub, pbn_pub, differences):
-        if not hasattr(bpp_pub, "slowa_kluczowe"):
-            return
-        bpp_keywords = bpp_pub.slowa_kluczowe or ""
-        pbn_keywords = pbn_pub.value_or_none("object", "keywords") or ""
-        if isinstance(pbn_keywords, list):
-            pbn_keywords = ", ".join(pbn_keywords)
-        if bpp_keywords.strip() != pbn_keywords.strip():
-            differences.append(
-                {
-                    "field": "Słowa kluczowe",
-                    "bpp_value": bpp_keywords[:200]
-                    + ("..." if len(bpp_keywords) > 200 else ""),
-                    "pbn_value": pbn_keywords[:200]
-                    + ("..." if len(pbn_keywords) > 200 else ""),
-                }
-            )
-
-    def _compare_abstract(self, bpp_pub, pbn_pub, differences):
-        if not hasattr(bpp_pub, "streszczenie"):
-            return
-        bpp_abstract = bpp_pub.streszczenie or ""
-        pbn_abstract = pbn_pub.value_or_none("object", "abstract") or ""
-        bpp_has_abstract = len(bpp_abstract.strip()) > 10
-        pbn_has_abstract = len(pbn_abstract.strip()) > 10
-
-        if bpp_has_abstract != pbn_has_abstract:
-            differences.append(
-                {
-                    "field": "Streszczenie",
-                    "bpp_value": "Tak" if bpp_has_abstract else "Brak",
-                    "pbn_value": "Tak" if pbn_has_abstract else "Brak",
-                }
-            )
-        elif bpp_has_abstract and pbn_has_abstract:
-            len_diff = abs(len(bpp_abstract) - len(pbn_abstract))
-            if len_diff > max(len(bpp_abstract), len(pbn_abstract)) * 0.3:
-                differences.append(
-                    {
-                        "field": "Streszczenie (długość)",
-                        "bpp_value": f"{len(bpp_abstract)} znaków",
-                        "pbn_value": f"{len(pbn_abstract)} znaków",
-                    }
-                )
-
-    def _compare_language(self, bpp_pub, pbn_pub, differences):
-        if not hasattr(bpp_pub, "jezyk"):
-            return
-        bpp_language = bpp_pub.jezyk.nazwa if bpp_pub.jezyk else ""
-        pbn_language = pbn_pub.value_or_none("object", "language") or ""
-        if bpp_language.strip().lower() != pbn_language.strip().lower():
-            differences.append(
-                {
-                    "field": "Język",
-                    "bpp_value": bpp_language,
-                    "pbn_value": pbn_language,
                 }
             )
 

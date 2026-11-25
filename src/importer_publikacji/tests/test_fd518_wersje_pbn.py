@@ -283,3 +283,32 @@ def test_blad_pbn_nie_wywraca_podgladu(admin_client, rekord, mocker):
     tresc = res.content.decode()
     assert "Nie udało się pobrać aktualnych danych z PBN" in tresc
     assert "Wersje tej publikacji w PBN" in tresc
+
+
+def test_e_issn_z_bpp_podany_w_pbn_jako_issn_nie_jest_brakiem(rekord, uczelnia):
+    """PBN podaje jeden numer (jako ISSN), BPP ma go w polu e-ISSN — żadne
+    z dwóch pól nie jest wtedy „różne” ani „brakujące”."""
+    rekord.issn = ""
+    rekord.e_issn = "1234-5678"
+    rekord.save()
+    dane = zrodla.pobierz_z_pbn(rekord, uczelnia, odswiez=False)
+
+    w = {x.klucz: x for x in porownaj(rekord, dane.publikacja)}
+
+    assert w["issn"].status == ZGODNE
+    assert w["e_issn"].status == ZGODNE
+    assert "ISSN" in w["e_issn"].uwaga
+
+
+def test_issn_z_obiektu_publikacji_pbn():
+    """ISSN bywa w PBN wprost przy publikacji (książka w serii), nie przy
+    czasopiśmie."""
+    from importer_publikacji.providers.pbn import publikacja_z_obiektu_wersji
+
+    obiekt = {"title": "Książka", "type": "BOOK", "issn": "1111-2222"}
+
+    assert publikacja_z_obiektu_wersji({}, obiekt, UID).issn == "1111-2222"
+    obiekt["journal"] = {"issn": "3333-4444"}
+    assert publikacja_z_obiektu_wersji({}, obiekt, UID).issn == "1111-2222"
+    del obiekt["issn"]
+    assert publikacja_z_obiektu_wersji({}, obiekt, UID).issn == "3333-4444"

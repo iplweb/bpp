@@ -290,7 +290,8 @@ def publikacja_z_obiektu_wersji(data: dict, obj: dict, uid: str) -> FetchedPubli
             PBN_TYPE_MAP.get(obj.get("type", "")),
         ),
         source_title=journal.get("title"),
-        issn=_extract_issn(journal.get("issn")),
+        # ISSN bywa też wprost w obiekcie publikacji (książki w serii).
+        issn=_extract_issn(obj.get("issn") or journal.get("issn")),
         e_issn=_extract_issn(journal.get("eissn")),
         isbn=_extract_isbn(obj),
         publisher=journal.get("publisher"),

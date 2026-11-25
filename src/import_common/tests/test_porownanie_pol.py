@@ -1,5 +1,5 @@
 """Reguły porównywania wartości pól publikacji (``import_common.
-porownanie_pol``) — wspólne dla wzbogacania rekordu i komparatora PBN."""
+porownanie_pol``) — jedne dla wzbogacania rekordu i komparatora PBN."""
 
 import pytest
 
@@ -35,18 +35,10 @@ def test_doi_sam_numer(wartosc):
     assert reguly.doi(wartosc) == "10.1/abc"
 
 
-def test_doi_zastane_nie_usuwa_adresu():
-    assert reguly.doi_zastane(" 10.1/ABC ") == "10.1/abc"
-    assert reguly.doi_zastane("https://doi.org/10.1/abc") != "10.1/abc"
-    assert reguly.doi_zastane(None) == ""
-
-
-def test_tekst_i_reguly_zastane():
+def test_tekst_bez_znacznikow_i_nadmiarowych_odstepow():
     assert reguly.tekst(" <i>Tytuł</i>   pracy ") == "Tytuł pracy"
-    assert reguly.tytul_bpp_zastany(" <i>Tytuł</i>   pracy ") == "Tytuł   pracy"
-    assert reguly.tekst_zastany(" <i>Tytuł</i> ") == "<i>Tytuł</i>"
-    assert reguly.tekst_zastany(None) == ""
-    assert reguly.tekst_zastany(7) == "7"
+    assert reguly.tekst(None) == ""
+    assert reguly.odstepy(" a \n b ") == "a b"
 
 
 @pytest.mark.parametrize("wartosc", ["10-20", "10–20", "10 — 20", " 10 - 20 "])

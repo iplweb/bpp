@@ -118,6 +118,7 @@ def _wiersz_prosty(
     normalizuj=reguly.tekst,
     do_zapisu=reguly.odstepy,
     alternatywa=None,
+    wartosc_alternatywy=None,
     walidatory=(),
     pomin_gdy_brak_w_zrodle=False,
 ):
@@ -140,12 +141,17 @@ def _wiersz_prosty(
         zrodlo=reguly.odstepy(wartosc) or PUSTE,
         bpp=reguly.odstepy(obecna) or PUSTE,
     )
+    pole_alt = _pole(rekord, alternatywa) if alternatywa else None
     if not z:
+        # Wartość z BPP źródło podaje w polu bliźniaczym (np. e-ISSN z BPP
+        # to w źródle ISSN) — to nie jest brak.
+        if pole_alt is not None and normalizuj(wartosc_alternatywy) == b:
+            wiersz.uwaga = f"W źródle ta wartość jest w polu „{_etykieta(pole_alt)}”."
+            return wiersz
         wiersz.status = BRAK_W_ZRODLE
         return wiersz
     if z == b:
         return wiersz
-    pole_alt = _pole(rekord, alternatywa) if alternatywa else None
     if pole_alt is not None and normalizuj(getattr(rekord, alternatywa)) == z:
         wiersz.uwaga = f"W BPP ta wartość jest w polu „{_etykieta(pole_alt)}”."
         return wiersz
@@ -222,6 +228,10 @@ def _znajdz_licencje(adres):
     return Komparator.porownaj_license({"URL": adres}).rekord_po_stronie_bpp
 
 
+#: Limit długości jednego słowa kluczowego (``taggit.Tag.name``).
+MAKSYMALNA_DLUGOSC_SLOWA = 100
+
+
 def _slowa(lista):
     return {reguly.odstepy(s).casefold() for s in lista if reguly.odstepy(s)}
 
@@ -230,7 +240,16 @@ def _wiersz_slow_kluczowych(rekord, slowa):
     if not hasattr(rekord, "slowa_kluczowe"):
         return None
     slowa = [reguly.odstepy(s) for s in slowa or [] if reguly.odstepy(s)]
-    obecne = sorted(rekord.slowa_kluczowe.names(), key=str.casefold)
+    # ``.all()``, nie ``.names()`` — korzysta z ``prefetch_related`` (komparator
+    # porównuje tysiące prac). Słowa angielskie rekord trzyma w osobnym polu;
+    # źródła podają wszystkie języki razem.
+    obecne = sorted(
+        {
+            *(tag.name for tag in rekord.slowa_kluczowe.all()),
+            *(getattr(rekord, "slowa_kluczowe_eng", None) or ()),
+        },
+        key=str.casefold,
+    )
     if not slowa and not obecne:
         return None
     wiersz = Wiersz(
@@ -251,6 +270,14 @@ def _wiersz_slow_kluczowych(rekord, slowa):
     if wiersz.status == ROZNE:
         wiersz.uwaga = "Przeniesienie zastąpi słowa kluczowe rekordu tymi ze źródła."
 
+    za_dlugie = [x for x in slowa if len(x) > MAKSYMALNA_DLUGOSC_SLOWA]
+    if za_dlugie:
+        wiersz.uwaga = (
+            "Tych słów kluczowych nie da się zapisać w BPP — najdłuższe ma "
+            f"ponad {MAKSYMALNA_DLUGOSC_SLOWA} znaków."
+        )
+        return wiersz
+
     def zastosuj(r, slowa=slowa):
         r.slowa_kluczowe.set(slowa)
 
@@ -258,7 +285,7 @@ def _wiersz_slow_kluczowych(rekord, slowa):
     return wiersz
 
 
-def _wiersze_streszczen(rekord, publikacja):
+def _wiersze_streszczen(rekord, publikacja, znajdz_jezyk):
     """Po wierszu na każde streszczenie ze źródła, którego rekord nie ma.
     Przeniesienie DODAJE streszczenie — istniejących nie rusza."""
     from ..views.helpers import _detect_language
@@ -301,69 +328,116 @@ def _wiersze_streszczen(rekord, publikacja):
                 )
 
             def zastosuj(r, tekst=tekst, kod_jezyka=kod_jezyka):
-                jezyk = _znajdz_jezyk(kod_jezyka or _detect_language(tekst))
+                jezyk = znajdz_jezyk(kod_jezyka or _detect_language(tekst))
                 r.streszczenia.create(streszczenie=tekst, jezyk_streszczenia=jezyk)
 
             wiersz.zastosuj = zastosuj
         yield wiersz
 
 
-def porownaj(rekord, publikacja) -> list[Wiersz]:
-    """Wiersze porównania rekordu BPP z danymi ze źródła (``publikacja``)."""
-    p = publikacja
-    kandydaci = [
-        _wiersz_prosty(rekord, "tytul_oryginalny", p.title),
-        _wiersz_prosty(
+def _prosty(nazwa, wartosc, blizniacze=None, **opcje):
+    """``blizniacze`` — wartość ze źródła dla pola ``alternatywa``."""
+
+    def wiersz(rekord, p, _jezyk):
+        return _wiersz_prosty(
             rekord,
-            "tytul",
-            p.extra.get("original_title"),
-            pomin_gdy_brak_w_zrodle=True,
-        ),
-        _wiersz_prosty(rekord, "rok", p.year, normalizuj=reguly.rok, do_zapisu=int),
-        _wiersz_prosty(
-            rekord, "doi", p.doi, normalizuj=reguly.doi, do_zapisu=reguly.doi
-        ),
-        _wiersz_prosty(rekord, "tom", p.volume),
-        _wiersz_prosty(rekord, "nr_zeszytu", p.issue),
-        _wiersz_prosty(rekord, "strony", p.pages, normalizuj=reguly.strony),
-        _wiersz_prosty(
-            rekord, "issn", p.issn, normalizuj=reguly.numer, alternatywa="e_issn"
-        ),
-        _wiersz_prosty(
-            rekord, "e_issn", p.e_issn, normalizuj=reguly.numer, alternatywa="issn"
-        ),
-        _wiersz_prosty(
-            rekord, "isbn", p.isbn, normalizuj=reguly.numer, alternatywa="e_isbn"
-        ),
-        _wiersz_prosty(
-            rekord, "e_isbn", p.e_isbn, normalizuj=reguly.numer, alternatywa="isbn"
-        ),
-        _wiersz_prosty(
-            rekord,
-            "www",
-            p.url,
-            normalizuj=reguly.adres,
-            alternatywa="public_www",
-            walidatory=(nie_zawiera_adresu_doi_org,),
-        ),
-        _wiersz_slownikowy(
-            rekord,
-            "jezyk",
-            p.language,
-            _znajdz_jezyk,
-            "Tego języka nie ma w słowniku języków BPP (Dane systemowe → Języki).",
-        ),
-        _wiersz_slownikowy(
-            rekord,
-            "openaccess_licencja",
-            p.license_url,
-            _znajdz_licencje,
-            "Tej licencji nie ma w słowniku licencji otwartego dostępu BPP.",
-        ),
-        _wiersz_slow_kluczowych(rekord, p.keywords),
-        *_wiersze_streszczen(rekord, p),
-    ]
-    return [w for w in kandydaci if w is not None]
+            nazwa,
+            wartosc(p),
+            wartosc_alternatywy=blizniacze(p) if blizniacze else None,
+            **opcje,
+        )
+
+    return wiersz
+
+
+#: Pola porównania w kolejności wyświetlania: nazwa → funkcja
+#: ``(rekord, publikacja, znajdz_jezyk)`` zwracająca wiersz, listę wierszy
+#: albo ``None`` (pole nie dotyczy rekordu / puste po obu stronach).
+POLA = {
+    "tytul_oryginalny": _prosty("tytul_oryginalny", lambda p: p.title),
+    "tytul": _prosty(
+        "tytul",
+        lambda p: p.extra.get("original_title"),
+        pomin_gdy_brak_w_zrodle=True,
+    ),
+    "rok": _prosty("rok", lambda p: p.year, normalizuj=reguly.rok, do_zapisu=int),
+    "doi": _prosty("doi", lambda p: p.doi, normalizuj=reguly.doi, do_zapisu=reguly.doi),
+    "tom": _prosty("tom", lambda p: p.volume),
+    "nr_zeszytu": _prosty("nr_zeszytu", lambda p: p.issue),
+    "strony": _prosty("strony", lambda p: p.pages, normalizuj=reguly.strony),
+    "issn": _prosty(
+        "issn",
+        lambda p: p.issn,
+        blizniacze=lambda p: p.e_issn,
+        normalizuj=reguly.numer,
+        alternatywa="e_issn",
+    ),
+    "e_issn": _prosty(
+        "e_issn",
+        lambda p: p.e_issn,
+        blizniacze=lambda p: p.issn,
+        normalizuj=reguly.numer,
+        alternatywa="issn",
+    ),
+    "isbn": _prosty(
+        "isbn",
+        lambda p: p.isbn,
+        blizniacze=lambda p: p.e_isbn,
+        normalizuj=reguly.numer,
+        alternatywa="e_isbn",
+    ),
+    "e_isbn": _prosty(
+        "e_isbn",
+        lambda p: p.e_isbn,
+        blizniacze=lambda p: p.isbn,
+        normalizuj=reguly.numer,
+        alternatywa="isbn",
+    ),
+    "www": _prosty(
+        "www",
+        lambda p: p.url,
+        normalizuj=reguly.adres,
+        alternatywa="public_www",
+        walidatory=(nie_zawiera_adresu_doi_org,),
+    ),
+    "jezyk": lambda rekord, p, jezyk: _wiersz_slownikowy(
+        rekord,
+        "jezyk",
+        p.language,
+        jezyk,
+        "Tego języka nie ma w słowniku języków BPP (Dane systemowe → Języki).",
+    ),
+    "openaccess_licencja": lambda rekord, p, _jezyk: _wiersz_slownikowy(
+        rekord,
+        "openaccess_licencja",
+        p.license_url,
+        _znajdz_licencje,
+        "Tej licencji nie ma w słowniku licencji otwartego dostępu BPP.",
+    ),
+    "slowa_kluczowe": lambda rekord, p, _jezyk: _wiersz_slow_kluczowych(
+        rekord, p.keywords
+    ),
+    "streszczenie": lambda rekord, p, jezyk: list(
+        _wiersze_streszczen(rekord, p, jezyk)
+    ),
+}
+
+
+def porownaj(rekord, publikacja, pola=None, znajdz_jezyk=None) -> list[Wiersz]:
+    """Wiersze porównania rekordu BPP z danymi ze źródła (``publikacja``).
+
+    ``pola`` — nazwy z ``POLA`` (domyślnie wszystkie); liczone są tylko one.
+    ``znajdz_jezyk`` — funkcja „kod języka → język BPP”; wołający, który
+    porównuje wiele rekordów naraz, podaje wersję z pamięcią podręczną."""
+    znajdz_jezyk = znajdz_jezyk or _znajdz_jezyk
+    wiersze = []
+    for nazwa in pola if pola is not None else POLA:
+        wynik = POLA[nazwa](rekord, publikacja, znajdz_jezyk)
+        if isinstance(wynik, list):
+            wiersze.extend(wynik)
+        elif wynik is not None:
+            wiersze.append(wynik)
+    return wiersze
 
 
 def zastosuj(rekord, wiersze, wybrane):
