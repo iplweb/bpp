@@ -342,36 +342,46 @@ class PBNProvider(DataProvider):
         # Zapisz do lokalnej bazy PBN
         _save_to_pbn_publication(uid, data)
 
-        obj = _get_current_version_object(data)
-        if obj is None:
-            return None
+        return publikacja_z_danych_pbn(data, uid)
 
-        journal = obj.get("journal") or {}
 
-        return FetchedPublication(
-            raw_data=data,
-            title=obj.get("title", ""),
-            doi=obj.get("doi"),
-            year=_extract_year(obj),
-            # Redaktorzy książki redagowanej (PBN ``editors``) — FD#619.
-            authors=dolacz_redaktorow(
-                _extract_authors(obj),
-                _extract_authors(obj, "editors"),
-                PBN_TYPE_MAP.get(obj.get("type", "")),
-            ),
-            source_title=journal.get("title"),
-            issn=_extract_issn(journal.get("issn")),
-            e_issn=_extract_issn(journal.get("eissn")),
-            isbn=_extract_isbn(obj),
-            publisher=journal.get("publisher"),
-            publication_type=PBN_TYPE_MAP.get(obj.get("type", "")),
-            language=obj.get("mainLanguage"),
-            abstract=_extract_abstract(obj),
-            volume=obj.get("volume"),
-            issue=obj.get("issue"),
-            pages=obj.get("pagesFromTo"),
-            url=obj.get("publicUri"),
-            license_url=_extract_license_url(obj),
-            keywords=_extract_keywords(obj),
-            extra={"pbn_uid": uid},
-        )
+def publikacja_z_danych_pbn(data: dict, uid: str) -> FetchedPublication | None:
+    """Zamień odpowiedź PBN (publikacja z wersjami) na dane importera.
+
+    Wydzielone z ``PBNProvider.fetch``, bo tych samych danych używa łączenie
+    źródeł (FD#512): import zaczęty od DOI dociąga z PBN to, czego nie ma
+    w CrossRef. ``None``, gdy publikacja nie ma bieżącej wersji.
+    """
+    obj = _get_current_version_object(data)
+    if obj is None:
+        return None
+
+    journal = obj.get("journal") or {}
+
+    return FetchedPublication(
+        raw_data=data,
+        title=obj.get("title", ""),
+        doi=obj.get("doi"),
+        year=_extract_year(obj),
+        # Redaktorzy książki redagowanej (PBN ``editors``) — FD#619.
+        authors=dolacz_redaktorow(
+            _extract_authors(obj),
+            _extract_authors(obj, "editors"),
+            PBN_TYPE_MAP.get(obj.get("type", "")),
+        ),
+        source_title=journal.get("title"),
+        issn=_extract_issn(journal.get("issn")),
+        e_issn=_extract_issn(journal.get("eissn")),
+        isbn=_extract_isbn(obj),
+        publisher=journal.get("publisher"),
+        publication_type=PBN_TYPE_MAP.get(obj.get("type", "")),
+        language=obj.get("mainLanguage"),
+        abstract=_extract_abstract(obj),
+        volume=obj.get("volume"),
+        issue=obj.get("issue"),
+        pages=obj.get("pagesFromTo"),
+        url=obj.get("publicUri"),
+        license_url=_extract_license_url(obj),
+        keywords=_extract_keywords(obj),
+        extra={"pbn_uid": uid},
+    )

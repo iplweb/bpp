@@ -99,6 +99,31 @@ Importer otworzysz na dwa sposoby:
     **„Pobierz z CrossRef (…)”**. Kliknij ją, gdy dane z BibTeX-a są
     niepełne — bieżący import zostanie wtedy zastąpiony danymi z CrossRef.
 
+    **Źródła danych.** Zaraz po pobraniu danych importer sam sprawdza
+    drugie źródło i w niebieskiej ramce **„Źródła danych”** pokazuje, co
+    z niego wziął:
+
+    - przy imporcie po DOI, z BibTeX-a, ze strony WWW i z repozytorium —
+      szuka pracy **w PBN** po numerze DOI, a książki także po ISBN. Jeśli
+      ją znajdzie, rekord zostanie powiązany z tym **odpowiednikiem
+      w PBN** (odnośnik „pokaż w PBN”), a autorzy dostaną identyfikatory
+      osób z PBN — dzięki temu importer rozpozna ich w BPP nawet przy
+      innym zapisie nazwiska;
+    - przy imporcie **z PBN** — pobiera dane **z CrossRef** po numerze DOI
+      i uzupełnia np. streszczenie, strony, licencję i numery ORCID autorów;
+    - gdy praca jest w PBN — odczytuje **oświadczenia z profilu instytucji
+      w PBN** i podpowiada z nich dyscypliny autorów (patrz krok
+      „Dopasowanie autorów”).
+
+    Z drugiego źródła importer bierze **tylko to, czego brakuje** — danych
+    ze źródła, które wybrałeś, nie nadpisuje. Wiersz „Uzupełniono: …”
+    wymienia pola pochodzące z drugiego źródła. Jeśli drugiego źródła nie
+    dało się sprawdzić (np. PBN nie odpowiada albo uczelnia nie ma
+    skonfigurowanego dostępu), ramka podaje powód, a import działa dalej
+    na danych pierwszego źródła. Gdy w PBN jest kilka książek o tym samym
+    ISBN albo książka o innym tytule, importer niczego nie wiąże sam —
+    wskażesz właściwą pracę w kroku „Sprawdź w PBN”.
+
 4. **Dopasowanie źródła** (ekran „Krok 3: Dopasowanie źródła”). Dla
    artykułu importer szuka w BPP czasopisma o **podobnej nazwie** do tej
    z danych źródłowych (widać ją w ramce „Źródło w danych dostawcy”).
@@ -196,6 +221,18 @@ Importer otworzysz na dwa sposoby:
     („otwórz w module redagowania”, „otwórz stronę autora”, „strona
     w PBN”) pomagają upewnić się, że to ta osoba.
 
+    **Skąd dopasowanie i dyscyplina.** Pod etykietą dopasowania
+    („dokładne”, „luźne”) importer podaje, po czym rozpoznał autora:
+    *„po identyfikatorze PBN”*, *„po ORCID”* albo *„po imieniu
+    i nazwisku”*. Kolumna ze źródłem dyscypliny pokazuje **„Z oświadczenia
+    w profilu instytucji w PBN”**, gdy dyscyplina pochodzi z oświadczenia
+    autora dla tej pracy w PBN. Takie oświadczenie rozstrzyga np. autora
+    z dwiema dyscyplinami; importer pomija je, gdy autor ma na rok pracy
+    przypisanie do innej dyscypliny (ramka „Źródła danych” podaje wtedy
+    liczbę pominiętych oświadczeń). Aktualne oświadczenia importer pobiera
+    z PBN, jeśli jesteś zalogowany do PBN; w przeciwnym razie korzysta
+    z kopii danych PBN zapisanej w BPP.
+
 7. **Autor, którego nie ma w BPP.** Otwórz **„Edytuj”** przy autorze
    „niedopasowanym” i kliknij **„Utwórz nowego autora”**. Nowa osoba
    powstanie w BPP z imieniem i nazwiskiem z danych źródłowych
@@ -259,12 +296,16 @@ Importer otworzysz na dwa sposoby:
 
     ![Krok „Punktacja”: sugerowana punktacja i pole „Punkty MNiSW”](../images/redaktor/importer-publikacji/13-punktacja.png)
 
-10. **Sprawdź w PBN** (krok opcjonalny). Importer może wyszukać tę pracę
-    w PBN po DOI, tytule i adresie WWW, żeby powiązać rekord z jej
-    odpowiednikiem i nie tworzyć w PBN duplikatu. Wymaga to zalogowania
-    do PBN (**„Zaloguj się do PBN”**). Jeśli nie chcesz tego robić,
-    kliknij **„Pomiń”** albo **„Dalej”**. Przy imporcie z PBN tego kroku
-    nie ma — odpowiednik jest znany od początku.
+10. **Sprawdź w PBN** (krok opcjonalny). Jeśli importer znalazł pracę
+    w PBN już przy pobieraniu danych, zobaczysz ją tu jako **„Wybrany
+    odpowiednik PBN”** — możesz ją zostawić albo kliknąć **„Wyczyść
+    wybór”**. Poza tym importer może wyszukać pracę w PBN po DOI, tytule,
+    ISBN (książki) i adresie WWW, żeby powiązać rekord z jej
+    odpowiednikiem i nie tworzyć w PBN duplikatu. Wyszukiwanie wymaga
+    zalogowania do PBN (**„Zaloguj się do PBN”**). Jeśli nie chcesz tego
+    robić, kliknij **„Pomiń”** albo **„Dalej”**. Przy imporcie z PBN tego
+    kroku nie ma — odpowiednik jest znany od początku i utworzony rekord
+    jest z nim powiązany.
 
     ![Krok „Sprawdź w PBN”: przyciski „Zaloguj się do PBN” i „Pomiń”](../images/redaktor/importer-publikacji/14-pbn-sprawdz.png)
 

@@ -439,6 +439,8 @@ class ImportedAuthor(models.Model):
             "zgloszenie",
             "Z aplikacji zgłoszeń publikacji",
         )
+        # FD#512: dyscyplina z oświadczenia autora w profilu instytucji w PBN.
+        PBN_PROFIL = "pbn_profil", "Z oświadczenia w profilu instytucji w PBN"
         MANUAL = "manual", "Wybór użytkownika"
 
     session = models.ForeignKey(

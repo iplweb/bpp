@@ -30,6 +30,13 @@
         {% else %}
             <span class="label alert">niedopasowany</span>
         {% endif %}
+        {# FD#512: po czym importer rozpoznał autora #}
+        {% with podstawa=author|podstawa_dopasowania %}
+            {% if podstawa %}
+                <br>
+                <small class="podstawa-dopasowania">{{ podstawa }}</small>
+            {% endif %}
+        {% endwith %}
     </td>
     <td>
         {% if author.matched_autor %}

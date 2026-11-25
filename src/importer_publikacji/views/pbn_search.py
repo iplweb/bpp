@@ -1,9 +1,10 @@
 """Wyszukiwanie odpowiednika publikacji w PBN dla kroku „Sprawdź w PBN".
 
-Trzy niezależne osie wyszukiwania (każda ≤ ``MAX_RESULTS_PER_AXIS`` pozycji):
+Cztery niezależne osie wyszukiwania (każda ≤ ``MAX_RESULTS_PER_AXIS`` pozycji):
 
 * **DOI** — serwer PBN (``search_publications(doi=…)``),
 * **tytuł** — serwer PBN (``search_publications(title=…)``),
+* **ISBN** — serwer PBN (``search_publications(isbn=…)``, FD#512),
 * **strona WWW** — lokalny cache ``pbn_api.Publication`` po ``publicUri``
   (PBN API nie udostępnia wyszukiwania po adresie URL publikacji).
 
@@ -29,6 +30,7 @@ MAX_RESULTS_PER_AXIS = 10
 
 AXIS_DOI = "DOI"
 AXIS_TITLE = "tytuł"
+AXIS_ISBN = "ISBN"
 AXIS_WWW = "strona WWW"
 
 
@@ -157,6 +159,26 @@ def _search_pbn_server(client, axis, key, value, uczelnia):
     return _dedup_by_mongo_id(results)
 
 
+def _search_pbn_isbn(client, isbny, uczelnia):
+    """Wyszukaj na serwerze PBN po numerach ISBN (≤ MAX_RESULTS_PER_AXIS).
+
+    PBN nie normalizuje zapytania i nie przelicza ISBN-10 na ISBN-13, więc
+    pytamy o każdy wariant w formie kanonicznej (``warianty_isbn``).
+    """
+    from bpp.util.isbn import warianty_isbn
+
+    warianty = []
+    for isbn in isbny:
+        for wariant in warianty_isbn(isbn):
+            if wariant not in warianty:
+                warianty.append(wariant)
+
+    results = []
+    for wariant in warianty:
+        results.extend(_search_pbn_server(client, AXIS_ISBN, "isbn", wariant, uczelnia))
+    return _dedup_by_mongo_id(results)[:MAX_RESULTS_PER_AXIS]
+
+
 def _search_pbn_local_www(url, uczelnia):
     """Dopasuj po stronie WWW w lokalnym cache ``pbn_api.Publication``."""
     norm = _normalize_www(url)
@@ -171,10 +193,11 @@ def _search_pbn_local_www(url, uczelnia):
 
 
 def _search_pbn_equivalents(session, user) -> dict:
-    """Wyszukaj odpowiedniki pracy w PBN po DOI / tytule / stronie WWW.
+    """Wyszukaj odpowiedniki pracy w PBN po DOI / tytule / ISBN / stronie WWW.
 
     Zwraca dict:
-    ``{"by_doi", "by_title", "by_www", "total_unique", "error", "needs_auth"}``.
+    ``{"by_doi", "by_title", "by_isbn", "by_www", "total_unique", "error",
+    "needs_auth"}``.
     Osie serwerowe (DOI, tytuł) wymagają klienta PBN; oś WWW działa zawsze
     (lokalny cache). Błędy PBN degradują do komunikatu / needs_auth — bez
     wywalania kroku.
@@ -189,6 +212,7 @@ def _search_pbn_equivalents(session, user) -> dict:
     result = {
         "by_doi": [],
         "by_title": [],
+        "by_isbn": [],
         "by_www": [],
         "total_unique": 0,
         "error": None,
@@ -220,12 +244,19 @@ def _search_pbn_equivalents(session, user) -> dict:
         axes = [
             (AXIS_DOI, "doi", normalized_doi, "by_doi"),
             (AXIS_TITLE, "title", title, "by_title"),
+            # FD#512: książka w PBN często nie ma DOI — szukamy też po ISBN.
+            (AXIS_ISBN, "isbn", [nd.get("isbn"), nd.get("e_isbn")], "by_isbn"),
         ]
         for axis, key, value, bucket in axes:
             if not value:
                 continue
             try:
-                result[bucket] = _search_pbn_server(client, axis, key, value, uczelnia)
+                if axis == AXIS_ISBN:
+                    result[bucket] = _search_pbn_isbn(client, value, uczelnia)
+                else:
+                    result[bucket] = _search_pbn_server(
+                        client, axis, key, value, uczelnia
+                    )
             except (
                 NeedsPBNAuthorisationException,
                 AccessDeniedException,
@@ -240,7 +271,7 @@ def _search_pbn_equivalents(session, user) -> dict:
 
     unique_ids = {
         r["mongo_id"]
-        for bucket in ("by_doi", "by_title", "by_www")
+        for bucket in ("by_doi", "by_title", "by_isbn", "by_www")
         for r in result[bucket]
         if r.get("mongo_id")
     }

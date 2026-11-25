@@ -44,6 +44,8 @@
         </div>
     {% endif %}
 
+    {% include "importer_publikacji/partials/_zrodla_danych.html" %}
+
     {% if suggest_crossref %}
         <div class="callout warning">
             <span class="fi-info"></span>
@@ -73,7 +75,9 @@
     {% endif %}
 
     <div class="callout secondary">
-        <h6>Dane z {{ session.provider_name }}</h6>
+        <h6>
+            Dane z {{ session.provider_name }}{% for z in session.normalized_data.zrodla_dodatkowe %}{% if z.stan == "znaleziono" and z.pola %}, uzupełnione z: {{ z.zrodlo }}{% endif %}{% endfor %}
+        </h6>
         <table>
             <tr>
                 <th>Tytuł</th>

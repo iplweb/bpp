@@ -16,6 +16,7 @@ import logging
 import traceback
 
 from celery import shared_task
+from django.contrib.auth import get_user_model
 from django.contrib.contenttypes.models import ContentType
 from django.db import transaction
 
@@ -57,10 +58,8 @@ def fetch_session_task(self, session_id, request_user_id):
 
     Args:
         session_id: ImportSession.pk
-        request_user_id: User who initiated the task. Currently unused in
-            this body but kept for signature symmetry with
-            create_publication_task (Task 8) and potential retry-audit
-            usage in ImportTaskRetryView (Task 10).
+        request_user_id: User who initiated the task. Jego osobisty token
+            PBN służy do pobrania oświadczeń z profilu instytucji (FD#512).
     """
     session = ImportSession.objects.get(pk=session_id)
     try:
@@ -83,8 +82,18 @@ def fetch_session_task(self, session_id, request_user_id):
             return
 
         report_progress(self, "create_session", stages=FETCH_STAGES)
+        # FD#512: zanim cokolwiek dopasujemy, sprawdź drugie źródło (PBN dla
+        # importu zaczętego od DOI, CrossRef dla importu z PBN) i uzupełnij
+        # to, czego dostawca nie podał. Bez nowego etapu paska postępu —
+        # ``report_progress`` zna tylko etapy z FETCH_STAGES.
+        from .zrodla import KLUCZ_ZRODEL, dolacz_profil_instytucji, polacz_zrodla
+
+        zrodla = polacz_zrodla(session, result)
         _store_normalized_data(session, result)
-        session.save(update_fields=["raw_data", "normalized_data", "modified"])
+        session.normalized_data[KLUCZ_ZRODEL] = zrodla
+        session.save(
+            update_fields=["raw_data", "normalized_data", "matched_data", "modified"]
+        )
 
         report_progress(self, "match_type_lang", stages=FETCH_STAGES)
         _auto_match_type_and_language(session, result)
@@ -128,6 +137,15 @@ def fetch_session_task(self, session_id, request_user_id):
             .exclude(pbn_uid="")
             .values_list("pbn_uid", flat=True),
         )
+
+        # FD#512: praca jest w PBN — dyscypliny z oświadczeń w profilu
+        # instytucji. Przed zgłoszeniami: te uzupełniają tylko puste pola.
+        profil = dolacz_profil_instytucji(
+            session, get_user_model().objects.filter(pk=request_user_id).first()
+        )
+        if profil is not None:
+            session.normalized_data[KLUCZ_ZRODEL] = zrodla + [profil]
+            session.save(update_fields=["normalized_data", "modified"])
 
         report_progress(self, "prefill_zgl", stages=FETCH_STAGES)
         from .views.authors import _prefill_dyscypliny_z_zgloszen
@@ -277,8 +295,6 @@ def create_publication_task(self, session_id, request_user_id, also_pbn):
     więc wpis w kolejce dostaje WŁAŚCIWĄ uczelnię (multi-hosted) — bez
     zgadywania ``get_default()``.
     """
-    from django.contrib.auth import get_user_model
-
     session = ImportSession.objects.get(pk=session_id)
     user_model = get_user_model()
     request_user = user_model.objects.get(pk=request_user_id)

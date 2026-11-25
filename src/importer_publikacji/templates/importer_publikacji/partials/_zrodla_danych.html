@@ -1,0 +1,80 @@
+{# FD#512: skąd pochodzą dane tej sesji — źródło wybrane przez redaktora #}
+{# oraz źródła sprawdzone przez importer samodzielnie po pobraniu danych. #}
+{% with zrodla=session.normalized_data.zrodla_dodatkowe %}
+    {% if zrodla %}
+        <div class="callout primary zrodla-danych">
+            <h6>
+                <span class="fi-database"></span>
+                Źródła danych
+            </h6>
+            <p style="margin-bottom:.5rem">
+                Dane podstawowe pochodzą ze źródła
+                <strong>{{ session.provider_name }}</strong>.
+                Importer sprawdził też inne źródła i uzupełnił z nich
+                wyłącznie to, czego brakowało.
+            </p>
+            <ul style="margin-bottom:0">
+                {% for z in zrodla %}
+                    <li class="zrodlo-{{ z.stan }}">
+                        <strong>{{ z.zrodlo|capfirst }}</strong>
+                        {% if z.stan == "znaleziono" %}
+                            {% if z.zrodlo == "PBN" %}
+                                &mdash; praca jest w PBN (znaleziona po {{ z.po }}){% if z.url %},
+                                    <a href="{{ z.url }}" target="_blank" rel="noopener">pokaż w PBN</a>{% endif %}.
+                                Rekord zostanie powiązany z tym odpowiednikiem w PBN.
+                            {% elif z.zrodlo == "CrossRef" %}
+                                &mdash; praca jest w CrossRef (znaleziona po {{ z.po }}){% if z.url %},
+                                    <a href="{{ z.url }}" target="_blank" rel="noopener">{{ z.identyfikator }}</a>{% endif %}.
+                            {% else %}
+                                &mdash; dyscypliny z oświadczeń ustawiono
+                                {{ z.dyscypliny }} autorom (oświadczenia {{ z.oswiadczenia }}).
+                            {% endif %}
+                            {% if z.pola %}
+                                <br>
+                                Uzupełniono: {{ z.pola|join:", " }}.
+                            {% endif %}
+                            {% if z.autorzy.dodani %}
+                                <br>
+                                Lista autorów ({{ z.autorzy.dodani }}) pochodzi z tego źródła.
+                            {% endif %}
+                            {% if z.autorzy.pbn_uid %}
+                                <br>
+                                Identyfikatory osób w PBN uzupełniono {{ z.autorzy.pbn_uid }} autorom.
+                            {% endif %}
+                            {% if z.autorzy.orcid %}
+                                <br>
+                                Numery ORCID uzupełniono {{ z.autorzy.orcid }} autorom.
+                            {% endif %}
+                            {% if z.autorzy and not z.pola and not z.autorzy.dodani and not z.autorzy.pbn_uid and not z.autorzy.orcid %}
+                                <br>
+                                Nie było czego uzupełniać — dane podstawowe są kompletne.
+                            {% endif %}
+                        {% elif z.stan == "brak" %}
+                            {% if z.zrodlo == "PBN" %}
+                                &mdash; nie znaleziono tej pracy w PBN.
+                            {% elif z.zrodlo == "CrossRef" %}
+                                &mdash; CrossRef nie zna numeru DOI tej pracy.
+                            {% else %}
+                                &mdash; brak oświadczeń do wykorzystania dla
+                                dopasowanych autorów (oświadczenia {{ z.oswiadczenia }}).
+                            {% endif %}
+                        {% elif z.stan == "niejednoznaczne" %}
+                            &mdash; {{ z.komunikat }}
+                            {% if z.url %}
+                                <a href="{{ z.url }}" target="_blank" rel="noopener">Pokaż w PBN</a>
+                            {% endif %}
+                        {% else %}
+                            &mdash; nie sprawdzono. {{ z.komunikat }}
+                        {% endif %}
+                        {% if z.pominiete %}
+                            <br>
+                            Pominięto oświadczenia {{ z.pominiete }} autorów: dyscyplina
+                            z PBN nie zgadza się z przypisaniem dyscyplin autora w BPP
+                            na rok pracy.
+                        {% endif %}
+                    </li>
+                {% endfor %}
+            </ul>
+        </div>
+    {% endif %}
+{% endwith %}

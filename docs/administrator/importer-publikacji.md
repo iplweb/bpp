@@ -60,7 +60,8 @@ Dostawca **PBN** pobiera publikację z Polskiej Bibliografii Naukowej.
   `EDITED_BOOK`, `CHAPTER`) są mapowane na typy CrossRef, licencje Open Access
   na adresy Creative Commons.
 - Odpowiednik w PBN jest wtedy znany z góry, więc krok
-  [„Sprawdź w PBN”](#krok-6-sprawdź-w-pbn) jest pomijany.
+  [„Sprawdź w PBN”](#krok-6-sprawdź-w-pbn) jest pomijany, a utworzony
+  rekord zostaje powiązany z pracą w PBN.
 
 ### BibTeX
 
@@ -144,6 +145,32 @@ się od `http://` (bez numeru portu) jest automatycznie zamieniany na
 Na stronie głównej importera widoczna jest także lista ostatnich sesji importu
 danego użytkownika, umożliwiając kontynuację przerwanych importów.
 
+### Łączenie źródeł danych
+
+W ramach pobierania danych (to samo zadanie w tle, bez osobnego kroku)
+system sprawdza drugie źródło i uzupełnia z niego wyłącznie brakujące pola;
+danych dostawcy wybranego przez operatora nie nadpisuje.
+
+| Import zaczęty od | Sprawdzane dodatkowo | Co jest dociągane |
+|---|---|---|
+| CrossRef, BibTeX, DSpace, strona WWW | PBN: po DOI, a dla książek (typy `book`, `edited-book`, `monograph` itp.) także po ISBN | odpowiednik pracy w PBN, identyfikatory osób w PBN i ORCID autorów, brakujące pola (np. streszczenie, licencja, ISBN) |
+| PBN | CrossRef po DOI | brakujące pola (np. streszczenie, strony, licencja, tytuł źródła), ORCID autorów |
+| dowolnego źródła, gdy praca ma odpowiednik w PBN | oświadczenia z profilu instytucji w PBN | dyscypliny dopasowanych autorów |
+
+- Zapytania do PBN o pracę (DOI, ISBN) idą danymi aplikacji z rekordu
+  uczelni, tylko do odczytu. Bez skonfigurowanego dostępu do PBN
+  sprawdzenie jest pomijane, a import działa jak dotąd.
+- Oświadczenia z profilu instytucji wymagają osobistego tokenu PBN
+  operatora. Gdy operator jest zalogowany do PBN, system pobiera aktualne
+  oświadczenia tej jednej pracy (odświeżając lokalną kopię); w przeciwnym
+  razie korzysta z lokalnej kopii danych PBN.
+- Po ISBN system wiąże pracę automatycznie tylko wtedy, gdy PBN zwraca
+  dokładnie jedną książkę o zgodnym tytule. W pozostałych przypadkach
+  operator wskazuje odpowiednik w kroku „Sprawdź w PBN”.
+- Błąd drugiego źródła nie przerywa importu — ramka „Źródła danych”
+  w krokach weryfikacji i autorów podaje wtedy powód.
+- Patenty nie są sprawdzane w żadnym dodatkowym źródle.
+
 ### Krok 2: Weryfikacja typu publikacji
 
 W tym kroku użytkownik weryfikuje i ewentualnie koryguje:
@@ -218,6 +245,11 @@ o jej pochodzeniu:
   na rok publikacji w tabeli `Autor_Dyscyplina`.
 - *(Z aplikacji zgłoszeń publikacji)* -- dyscyplina pochodzi z pasującego
   zgłoszenia publikacji (moduł "Zgłoś publikację").
+- *(Z oświadczenia w profilu instytucji w PBN)* -- praca jest w PBN,
+  a autor ma dla niej oświadczenie w profilu instytucji. Ma pierwszeństwo
+  przed „jedyną dyscypliną autora” i przed zgłoszeniem publikacji; jest
+  pomijane, gdy autor ma na rok pracy przypisanie do innej dyscypliny albo
+  nie jest autorem uczelni.
 - *(Wybór użytkownika)* -- dyscyplina została wybrana ręcznie.
 
 **Tworzenie autorów dla niedopasowanych**
@@ -262,10 +294,12 @@ monografii).
 ### Krok 6: Sprawdź w PBN
 
 Krok opcjonalny, dla wszystkich dostawców **poza PBN**. System szuka
-importowanej pracy w PBN po DOI, tytule i adresie WWW, żeby od razu
+importowanej pracy w PBN po DOI, tytule, ISBN i adresie WWW, żeby od razu
 wskazać jej odpowiednik i nie utworzyć w PBN duplikatu. Wybrany
-odpowiednik można otworzyć w PBN albo wyczyścić. Krok wymaga zalogowania
-do PBN; bez tego można go pominąć.
+odpowiednik można otworzyć w PBN albo wyczyścić. Odpowiednik znaleziony
+automatycznie przy pobieraniu danych (patrz
+[Łączenie źródeł danych](#łączenie-źródeł-danych)) jest tu już wybrany.
+Wyszukiwanie wymaga zalogowania do PBN; bez tego krok można pominąć.
 
 ### Krok 7: Przegląd końcowy
 

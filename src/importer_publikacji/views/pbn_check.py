@@ -5,7 +5,7 @@ Logika podzielona na małe funkcje, żeby ułatwić mockowanie w testach.
 
 import logging
 
-from django.db import IntegrityError
+from django.db import IntegrityError, transaction
 
 from import_common.normalization import normalize_doi
 
@@ -154,13 +154,21 @@ def _link_pbn_uid(session, record):
             mongoId=pbn_mongo_id,
         )
         record.pbn_uid = pbn_pub
-        record.save(update_fields=["pbn_uid_id"])
+        # Własny savepoint: tworzenie rekordu biegnie w transakcji, a błąd
+        # unikalności bez savepointu unieważniłby ją całą — import padłby,
+        # zamiast tylko pominąć powiązanie (FD#512: odpowiednik w PBN jest
+        # teraz ustawiany automatycznie, więc ten przypadek jest częstszy).
+        with transaction.atomic():
+            record.save(update_fields=["pbn_uid_id"])
     except Publication.DoesNotExist:
         logger.info(
             "Rekord PBN %s nie istnieje lokalnie — pominięto linkowanie",
             pbn_mongo_id,
         )
     except IntegrityError:
+        # Niezapisane powiązanie nie może zostać na obiekcie — kolejny
+        # zapis rekordu ponowiłby ten sam błąd.
+        record.pbn_uid = None
         logger.warning(
             "PBN UID %s jest już powiązany z innym rekordem BPP",
             pbn_mongo_id,

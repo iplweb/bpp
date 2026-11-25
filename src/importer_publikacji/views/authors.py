@@ -492,6 +492,7 @@ def _create_unmatched_authors(session, obca, user=None):
     # rozpoznać i utworzyłby dwa identyczne rekordy ``Autor``; drugi wiersz
     # dostaje więc rekord utworzony dla pierwszego.
     utworzeni = {}
+    wiersze = list(unmatched.values_list("pk", flat=True))
     for imported in unmatched.order_by("order"):
         klucz = (
             imported.orcid.strip()
@@ -508,3 +509,9 @@ def _create_unmatched_authors(session, obca, user=None):
         imported.matched_jednostka = obca
         imported.match_status = ImportedAuthor.MatchStatus.MANUAL
         imported.save()
+
+    # FD#512: nowo utworzeni autorzy z odpowiednikiem w PBN mogą mieć
+    # oświadczenie w profilu instytucji — podpowiedz im dyscyplinę.
+    from ..zrodla import zastosuj_dyscypliny_z_profilu
+
+    zastosuj_dyscypliny_z_profilu(session, tylko=wiersze)

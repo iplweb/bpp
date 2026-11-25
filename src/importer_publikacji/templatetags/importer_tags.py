@@ -75,3 +75,26 @@ def dyscyplina_do_przypisania(author, session):
         )
         session._fd620_autorzy_z_przypisaniem = z_przypisaniem
     return author.matched_autor_id not in z_przypisaniem
+
+
+@register.filter(name="podstawa_dopasowania")
+def podstawa_dopasowania(author):
+    """FD#512: po czym importer rozpoznał autora — identyfikator osoby
+    w PBN, ORCID czy imię i nazwisko.
+
+    Liczone z bieżącego stanu wiersza: dostawca podał identyfikator i ten
+    sam ma dopasowany autor BPP. Dla wyboru ręcznego i braku dopasowania
+    — pusty tekst (podstawą jest decyzja redaktora)."""
+    from importer_publikacji.models import ImportedAuthor
+
+    autor = author.matched_autor
+    if autor is None or author.match_status not in (
+        ImportedAuthor.MatchStatus.AUTO_EXACT,
+        ImportedAuthor.MatchStatus.AUTO_LOOSE,
+    ):
+        return ""
+    if author.pbn_uid and autor.pbn_uid_id == author.pbn_uid:
+        return "po identyfikatorze PBN"
+    if author.orcid and (autor.orcid or "").strip().upper() == author.orcid.upper():
+        return "po ORCID"
+    return "po imieniu i nazwisku"
