@@ -1,0 +1,24 @@
+Patenty: nowe pola i pełniejszy opis bibliograficzny (FD#449). W formularzu
+patentu (Redagowanie → Patenty) doszły pola: „Uprawnieni” (podmioty uprawnione
+z patentu, także spoza uczelni — tekst wpisany tak, jak ma się pojawić
+w opisie), „Typ patentu” (``polski`` / ``zagraniczny``), „Kraj” (pokazuje się
+po wybraniu typu ``zagraniczny``; wpisanie kraju przy innym typie formularz
+odrzuca) oraz „Data opublikowania” — osobna, obok dotychczasowej daty decyzji,
+która dostała etykietę „Data decyzji”. Opis bibliograficzny patentu zawiera
+teraz, oprócz tytułu, twórców, „Informacji”, „Szczegółów” i „Uwag”, także:
+numer prawa wyłącznego (na początku opisu), uprawnionych (po tytule), strony,
+numer zgłoszenia, datę zgłoszenia, datę decyzji, datę opublikowania oraz adres
+WWW poprzedzony słowami ``Opublikowano w:``, np. ``PL123456. Tytuł.
+Uniwersytet X. [AUT.] JAN KOWALSKI. W: WUP 06/25. Nr zgłoszenia: P.654321,
+Data zgłoszenia: 14.06.2022, Data decyzji: 13.11.2024, Data opublikowania:
+10.02.2025. Opublikowano w: https://…``. Pole puste nie zostawia w opisie
+ani etykiety, ani przecinka; jeśli strony są już wpisane w „Szczegółach”, nie
+są powtarzane. Nowe pola widać też na stronie rekordu (ramka „Patent” w karcie
+„Informacje dodatkowe” — tylko gdy są wypełnione), w API (``/api/v1/patent/``)
+i w wyszukiwaniu po numerze zgłoszenia, numerze prawa i uprawnionych na liście
+patentów w module redagowania. Czego zmiana nie rusza: patent bez wypełnionych
+pól patentowych i bez adresu WWW ma opis identyczny jak dotąd; słownik „Rodzaj
+prawa patentowego” i pole „Wydzial” zostają bez zmian; typ patentu, kraj
+i rodzaj prawa nie wchodzą do opisu bibliograficznego; uczelnie z własnym
+szablonem opisu przypisanym do patentów zachowują swój szablon. Po aktualizacji
+opisy istniejących patentów przeliczają się same (w tle).

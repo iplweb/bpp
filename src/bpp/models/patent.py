@@ -1,5 +1,6 @@
 from denorm import denormalized, depend_on_fields, depend_on_related
 from django.contrib.postgres.fields import ArrayField
+from django.core.exceptions import ValidationError
 from django.db import models
 from django.db.models import CASCADE, PROTECT, SET_NULL, JSONField, Q
 from django.utils.functional import cached_property
@@ -74,6 +75,14 @@ class _Patent_PropertyCache:
 _Patent_PropertyCache = _Patent_PropertyCache()
 
 
+class TypPatentu(models.TextChoices):
+    """Klasyfikacja niezależna od słownika „Rodzaj prawa patentowego”
+    (patent / wzór użytkowy / wzór przemysłowy)."""
+
+    POLSKI = "polski", "polski"
+    ZAGRANICZNY = "zagraniczny", "zagraniczny"
+
+
 class Patent(
     BppPublikacjaSoftDeleteMixin,
     RekordBPPBaza,
@@ -104,7 +113,15 @@ class Patent(
         blank=True,
     )
 
-    data_decyzji = models.DateField(null=True, blank=True)
+    data_decyzji = models.DateField("Data decyzji", null=True, blank=True)
+
+    data_opublikowania = models.DateField(
+        "Data opublikowania",
+        null=True,
+        blank=True,
+        help_text="Data ogłoszenia o udzieleniu prawa, np. w „Wiadomościach "
+        "Urzędu Patentowego”. Niezależna od daty decyzji.",
+    )
 
     numer_prawa_wylacznego = models.CharField(  # noqa: DJ001
         # legacy null=True (jest na produkcji); zmiana wymagałaby migracji.
@@ -121,6 +138,36 @@ class Patent(
     wdrozenie = models.BooleanField("Wdrożenie", null=True, blank=True, default=None)
 
     wydzial = models.ForeignKey("bpp.Jednostka", SET_NULL, null=True, blank=True)
+
+    uprawnieni = models.TextField(
+        "Uprawnieni",
+        blank=True,
+        default="",
+        help_text="Podmioty uprawnione z patentu — także spoza uczelni — "
+        "wpisane tak, jak mają się pojawić w opisie bibliograficznym, np. "
+        "„Politechnika X, Uniwersytet Y, Warszawa”. "
+        "Powiązanie z jednostką uczelni (do raportów) wybierz w polu "
+        "„Wydzial”.",
+    )
+
+    typ_patentu = models.CharField(
+        "Typ patentu",
+        max_length=16,
+        choices=TypPatentu.choices,
+        blank=True,
+        default="",
+        help_text="Polski albo zagraniczny. Rodzaj prawa (patent, wzór "
+        "użytkowy…) wybierz w polu „Rodzaj prawa”.",
+    )
+
+    kraj = models.CharField(
+        "Kraj",
+        max_length=100,
+        blank=True,
+        default="",
+        help_text="Kraj, w którym udzielono prawa. Wypełnij tylko dla "
+        "patentu zagranicznego.",
+    )
 
     autor_rekordu_klass = Patent_Autor
     autorzy = models.ManyToManyField(Autor, through=autor_rekordu_klass)
@@ -154,6 +201,52 @@ class Patent(
         # DwaTytuly.clean() w wydaniu jedno-tytułowym...
         self.tytul_oryginalny = safe_tytul_html(self.tytul_oryginalny)
         ModelZeSzczegolami.clean(self)
+
+        self.uprawnieni = (self.uprawnieni or "").strip()
+        self.kraj = (self.kraj or "").strip()
+        if self.kraj and self.typ_patentu != TypPatentu.ZAGRANICZNY:
+            raise ValidationError(
+                {
+                    "kraj": "Kraj podaje się tylko dla patentu zagranicznego "
+                    "— ustaw „Typ patentu” na „zagraniczny” albo wyczyść "
+                    "to pole."
+                }
+            )
+
+    def typ_patentu_z_krajem(self):
+        """„zagraniczny / Kanada”, „polski” albo pusty napis."""
+        typ = self.get_typ_patentu_display() if self.typ_patentu else ""
+        return " / ".join(x for x in (typ, self.kraj) if x)
+
+    def adres_publikacji_dla_opisu(self):
+        return self.public_www or self.www or ""
+
+    def ma_dane_patentowe_w_opisie(self):
+        return bool(
+            self.dane_patentowe_dla_opisu() or self.adres_publikacji_dla_opisu()
+        )
+
+    def dane_patentowe_dla_opisu(self):
+        """Pary (etykieta, wartość) dopisywane do opisu bibliograficznego.
+
+        Zwraca WYŁĄCZNIE pola wypełnione — szablon łączy je przecinkami, więc
+        puste pole nie zostawia po sobie ani etykiety, ani separatora.
+        """
+        ret = []
+        strony = (self.strony or "").strip()
+        # „Strony” bywały dotąd wpisywane do „Szczegółów” — nie powtarzaj.
+        if strony and strony not in (self.szczegoly or ""):
+            ret.append(("s.", strony))
+        if self.numer_zgloszenia:
+            ret.append(("Nr zgłoszenia:", self.numer_zgloszenia))
+        for etykieta, data in (
+            ("Data zgłoszenia:", self.data_zgloszenia),
+            ("Data decyzji:", self.data_decyzji),
+            ("Data opublikowania:", self.data_opublikowania),
+        ):
+            if data:
+                ret.append((etykieta, data.strftime("%d.%m.%Y")))
+        return ret
 
     def save(self, *args, **kwargs):
         # Egzekwuj sanityzację tytułu także na ścieżce objects.create()/import,

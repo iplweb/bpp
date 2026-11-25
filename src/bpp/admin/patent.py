@@ -70,15 +70,20 @@ class Patent_Form(Wycinaj_W_z_InformacjiMixin, forms.ModelForm):
             "data_zgloszenia",
             "numer_zgloszenia",
             "data_decyzji",
+            "data_opublikowania",
             "numer_prawa_wylacznego",
             "rodzaj_prawa",
+            "typ_patentu",
+            "kraj",
             "wdrozenie",
             "wydzial",
+            "uprawnieni",
             "slowa_kluczowe",
         ]
 
         widgets = {
             "slowa_kluczowe": TextareaTagWidget(attrs={"rows": 2}),
+            "uprawnieni": forms.Textarea(attrs={"rows": 2}),
         }
 
 
@@ -103,6 +108,11 @@ class Patent_Admin(
     djangoql_completion_enabled_by_default = False
     djangoql_completion = True
 
+    class Media:
+        # FD#449: wiersz „Kraj” widoczny tylko dla patentu zagranicznego.
+        # Warstwa wyłącznie wizualna — regułę egzekwuje Patent.clean().
+        js = ["/static/bpp/js/patent-typ-kraj.js"]
+
     resource_classes = [PatentResource]
     bibtex_resource_class = resources.PatentBibTeXResource
 
@@ -123,6 +133,9 @@ class Patent_Admin(
         "slowa_kluczowe__name",
         "rok",
         "adnotacje",
+        "numer_zgloszenia",
+        "numer_prawa_wylacznego",
+        "uprawnieni",
         "id",
     ]
 
@@ -132,6 +145,7 @@ class Patent_Admin(
         "rok",
         "wydzial",
         "rodzaj_prawa",
+        "typ_patentu",
         "wdrozenie",
         "weryfikacja_punktacji",
         "nie_eksportuj_przez_api",
@@ -149,10 +163,14 @@ class Patent_Admin(
                 + MODEL_ZE_SZCZEGOLAMI
                 + (
                     "wydzial",
+                    "uprawnieni",
                     "rodzaj_prawa",
+                    "typ_patentu",
+                    "kraj",
                     "data_zgloszenia",
                     "numer_zgloszenia",
                     "data_decyzji",
+                    "data_opublikowania",
                     "numer_prawa_wylacznego",
                     "wdrozenie",
                 )
