@@ -632,6 +632,17 @@ class Uczelnia(
         help_text="Umożliwiaj wysyłanie prac bez oświadczeń do PBN. Domyślnie wyłączone.",
     )
 
+    pbn_wysylaj_bez_identyfikatora_autora = models.BooleanField(
+        default=False,
+        verbose_name="Wysyłaj prace, gdy autor nie ma identyfikatora w PBN",
+        help_text="Domyślnie wyłączone: praca, w której autor z przypiętą "
+        "dyscypliną nie ma ani odpowiednika w PBN, ani ORCID, nie jest "
+        "wysyłana do PBN, dopóki ktoś nie uzupełni danych autora. Po "
+        "włączeniu taka praca jest wysyłana, ale BEZ oświadczenia tego "
+        "autora — przy wysyłce pojawia się ostrzeżenie z liczbą oświadczeń, "
+        "które trafią do PBN, i listą pominiętych autorów.",
+    )
+
     pbn_api_root = models.URLField(
         "Adres API w PBN", default="https://pbn-micro-alpha.opi.org.pl"
     )

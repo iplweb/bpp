@@ -585,6 +585,20 @@ Inicjalizacja i filtry: `src/bpp/sentry_config.py` — wyciszenia z
 `django_bpp.rollbar_filters` (np. `DJANGO_BPP_ROLLBAR_IGNORE_SMTP_AUTH_ERRORS`)
 obowiązują oba backendy. Front-end (Rollbar JS) na razie zostaje bez zmian.
 
+Dane osobowe w zdarzeniach Sentry czyszczą dwie warstwy: `EventScrubber`
+z SDK (po nazwie klucza: hasła, tokeny, ciasteczka) i silnik Relay z Sentry
+(pakiet `sentry-relay`, w procesie, bez osobnej usługi) — po **wartości**:
+e-maile, adresy IP, PESEL, numery kont (także `PL61 1090 …` ze spacjami),
+karty, tokeny `Bearer`, hasła w URL-ach, klucze PEM. Działa też na zmiennych
+lokalnych ramek (`repr` obiektów), komunikatach wyjątków i breadcrumbs;
+kodu źródłowego ramek i ścieżek plików celowo nie rusza. Reguły:
+`KONFIGURACJA_PII` w `sentry_config.py`. Relay po cichu ignoruje nieznaną
+nazwę reguły, a błędny selektor wyłącza całe czyszczenie — każda reguła ma
+przypadek w `test_sentry_dane_osobowe.py` (tam też lista identyfikatorów,
+które muszą przejść nietknięte: ORCID, DOI, ISBN, ISSN, id PBN). Gdy Relay
+się wysypie, zdarzenie i tak idzie (oczyszczone samą warstwą 1) z tagiem
+`bpp_pii_relay=blad` — szukaj go w GlitchTipie po aktualizacji pakietu.
+
 ---
 
 ## Quick Reference

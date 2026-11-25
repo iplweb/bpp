@@ -329,6 +329,20 @@
             {% endif %}
             Możesz zmienić poniżej.
         </div>
+    {% elif auto_tylko_rodzaj %}
+        <div class="callout secondary small">
+            <span class="fi-info"></span>
+            Na podstawie typu <strong>
+            {{ session.normalized_data.publication_type }}
+            </strong> zaznaczono rodzaj rekordu:
+            {% if auto_zwarte %}
+                wydawnictwo zwarte.
+            {% else %}
+                wydawnictwo ciągłe.
+            {% endif %}
+            Charakter formalny wybierz poniżej — ten typ nie ma go
+            przypisanego w mapowaniu typów CrossRef na BPP.
+        </div>
     {% endif %}
 
     {% load bpp_formdefaults %}

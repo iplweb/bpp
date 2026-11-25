@@ -171,6 +171,31 @@ dla **rzadszych przypadków**: testy z `PYTEST_TESTCONTAINERS_DISABLE=1`
 albo gdy potrzebujesz długożyjącej bazy niezależnie od `run-site`.
 Do oglądania samej strony — używaj `run-site`.
 
+## Testowanie PBN lokalnie (kopia bazy klienta)
+
+Token PBN na lokalnej instancji: `uv run bin/run-site-z-backupu.py <backup>
+--get-pbn-token-from LOGIN@HOST`, potem `uv run bin/pbn-zaloguj-lokalnie.py
+--user LOGIN [--uczelnia SKROT]`. Szczegóły:
+[docs/deweloper/testowanie-pbn-lokalnie.md](docs/deweloper/testowanie-pbn-lokalnie.md).
+
+- **Lokalna instancja nie wysyła do PBN sama z siebie**: `settings/local.py`
+  ustawia `DJANGO_BPP_PBN_WSTRZYMAJ_AUTOMATY=1` (testy: `False` w
+  `settings/test.py`). Nowy automat wysyłający do PBN bez jawnego „wyślij
+  ten rekord” musi sprawdzać `pbn_export_queue.bezpiecznik.automaty_wstrzymane()`.
+  Odblokowanie: strona kolejki eksportu albo `run-site run --pbn-automaty
+  wlacz` (stan w constance; klucz tylko w `local.py` — na produkcji
+  przełącznik nie istnieje).
+- **Nie uruchamiaj tej ścieżki z `--no-celery`** — pobieranie/import z PBN
+  idą przez workera; bezpiecznik wystarcza przy działającym workerze.
+- `manage.py` na bazie działającego run-site: `uv run bin/run-site-manage.py
+  <komenda>` (`.run-site-env.sh` nie ustawia `DJANGO_BPP_DB_*`).
+- Backup `db-backup-*.tar.gz` (katalog `pg_dump -Fd`) podawaj przez
+  `bin/run-site-z-backupu.py`, nie wprost do `--from-dump` (run-site
+  potrzebowałby klienta PostgreSQL na hoście).
+- Powrót z PBN przechwytuje CDP `Fetch`, **nie** `context.route()`
+  Playwrighta — `route()` nie widzi skoków przekierowania i żądanie dotarłoby
+  do serwera klienta (pilnuje tego test e2e na atrapie PBN).
+
 ## Testowanie pull requestów z GitHuba
 
 Gdy user prosi „przetestuj / odpal / pokaż PR #N", **nie przełączaj gałęzi

@@ -1,10 +1,13 @@
 from django import forms
 from django.contrib import admin
+from django.http import HttpResponseRedirect
+from flexible_reports.admin.datasource import DatasourceAdmin
 from flexible_reports.admin.report import ReportAdmin
-from flexible_reports.models import Report
+from flexible_reports.models import Datasource, Report
 
 from . import ikony
 from .models import DefinicjaRaportu, utworz_definicje_dla
+from .powrot import adres_powrotu
 
 
 class WyborIkonyWidget(forms.RadioSelect):
@@ -55,6 +58,41 @@ class BppReportAdmin(ReportAdmin):
 
 admin.site.unregister(Report)
 admin.site.register(Report, BppReportAdmin)
+
+
+class BppDatasourceAdmin(DatasourceAdmin):
+    """„Źródła danych” z powrotem do raportu, z którego przyszedł redaktor.
+
+    Otwarty raport linkuje tu z parametrem ``powrot`` (FD#448). Po „Zapisz”
+    wracamy pod ten adres zamiast na listę źródeł danych — raport generuje się
+    od nowa, więc od razu widać efekt zmiany zapytania. Bez parametru formularz
+    zachowuje się jak dotąd.
+    """
+
+    change_form_template = "admin/nowe_raporty/datasource_change_form.html"
+
+    def change_view(self, request, object_id, form_url="", extra_context=None):
+        extra_context = {
+            **(extra_context or {}),
+            "powrot_url": adres_powrotu(request),
+        }
+        return super().change_view(request, object_id, form_url, extra_context)
+
+    def response_change(self, request, obj):
+        # ``super()`` zawsze: to ono dodaje komunikat „zmieniono pomyślnie”.
+        response = super().response_change(request, obj)
+        powrot = adres_powrotu(request)
+        if powrot is None:
+            return response
+        # „Zapisz i kontynuuj edycję" zostaje w formularzu (parametr powrotu
+        # przenosi samo Django), „…i dodaj nowy" idzie do pustego formularza.
+        if any(k in request.POST for k in ("_continue", "_addanother", "_saveasnew")):
+            return response
+        return HttpResponseRedirect(powrot)
+
+
+admin.site.unregister(Datasource)
+admin.site.register(Datasource, BppDatasourceAdmin)
 
 
 @admin.register(DefinicjaRaportu)

@@ -292,6 +292,7 @@ def _patent_note(patent) -> str | None:
         ("numer_prawa_wylacznego", "Numer prawa wyłącznego"),
         ("data_zgloszenia", "Data zgłoszenia"),
         ("data_decyzji", "Data decyzji"),
+        ("data_opublikowania", "Data opublikowania"),
     ):
         value = _attr(patent, attr_name)
         if value:

@@ -111,6 +111,7 @@ MODELE_BEZ_HISTORII = {
     "deduplikator_autorow.logscalania": "log scalania autorów",
     "easyaudit.crudevent": "dziennik audytu",
     "easyaudit.loginevent": "dziennik audytu",
+    "historia_zmian.archiwalnyplik": "archiwum plików (tylko do odczytu)",
     "historia_zmian.zrodlozmiany": "sama historia zmian",
     "pbn_import.importinconsistency": "log importu z PBN",
     "pbn_import.importlog": "log importu z PBN",

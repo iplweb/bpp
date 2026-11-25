@@ -112,6 +112,11 @@ class BazaModeluOdpowiedzialnosciAutorow(models.Model):
     def __str__(self):
         return str(self.autor) + " - " + str(self.jednostka.skrot)
 
+    # Czy zapis autorstwa zakłada autorowi powiązanie z jednostką
+    # (``Autor_Jednostka``), gdy go brak. Wyłączają to modele, których dane
+    # nie są zweryfikowane przez redakcję (zgłoszenia prac, FD#640).
+    dodawaj_jednostke_autorowi_przy_zapisie = True
+
     def save(self, *args, **kw):
         if "__disable_bmoa_clean_method" in kw:
             del kw["__disable_bmoa_clean_method"]
@@ -120,7 +125,8 @@ class BazaModeluOdpowiedzialnosciAutorow(models.Model):
         from bpp.models import Autor_Jednostka
 
         if (
-            getattr(settings, "BPP_DODAWAJ_JEDNOSTKE_PRZY_ZAPISIE_PRACY", True)
+            self.dodawaj_jednostke_autorowi_przy_zapisie
+            and getattr(settings, "BPP_DODAWAJ_JEDNOSTKE_PRZY_ZAPISIE_PRACY", True)
             and not Autor_Jednostka.objects.filter(
                 autor_id=self.autor_id, jednostka_id=self.jednostka_id
             ).exists()

@@ -15,7 +15,10 @@ from dspace_api.admin_mixins import DSpaceLinkAdminMixin
 from ..models import Autor, Jednostka, Praca_Doktorska
 from .actions import ustaw_po_korekcie, ustaw_przed_korekta, ustaw_w_trakcie_korekty
 from .core import BaseBppAdminMixin
-from .element_repozytorium import Element_RepozytoriumInline
+from .element_repozytorium import (
+    Element_RepozytoriumInline,
+    Element_RepozytoriumKoszInline,
+)
 from .filters import OstatnioZmienionePrzezFilter, UtworzonePrzezFilter
 from .grant import Grant_RekorduInline
 from .helpers.constance_field_mixin import ConstanceScoringFieldsMixin
@@ -245,6 +248,7 @@ class Praca_DoktorskaAdmin(
     inlines = (
         Grant_RekorduInline,
         Element_RepozytoriumInline,
+        Element_RepozytoriumKoszInline,
     )
 
 

@@ -611,22 +611,7 @@
                 </h3>
                 <div class="praca-mono__additional-content">
                     <table class="praca-mono__table">
-                        {% if praca.charakter_formalny.skrot == "PAT" %}
-                            <tr>
-                                <td colspan="2" class="praca-mono__patent-cell">
-                                    <strong>Patent:</strong><br/>
-                                    <div class="praca-mono__patent-details">
-                                        <b>Numer zgłoszenia:</b> {{ praca.numer_zgloszenia|default:"brak" }}<br/>
-                                        <b>Wydział:</b> {{ praca.wydzial|default:"brak" }}<br/>
-                                        <b>Rodzaj prawa:</b> {{ praca.rodzaj_prawa|default:"brak" }}<br/>
-                                        <b>Data zgłoszenia:</b> {{ praca.data_zgloszenia|default:"brak" }}<br/>
-                                        <b>Data decyzji:</b> {{ praca.data_decyzji|default:"brak" }}<br/>
-                                        <b>Numer prawa wyłącznego:</b> {{ praca.numer_prawa_wylacznego|default:"brak" }}<br/>
-                                        <b>Wdrożenie:</b> {% if praca.wdrozenie %}tak{% else %}nie{% endif %}
-                                    </div>
-                                </td>
-                            </tr>
-                        {% endif %}
+                        {% include "browse/_patent_informacje.html" %}
 
                         {% if praca.liczba_znakow_wydawniczych %}
                             <tr>
@@ -849,22 +834,7 @@
                 </h3>
                 <div class="praca-mono__additional-content">
                     <table class="praca-mono__table">
-                        {% if praca.charakter_formalny.skrot == "PAT" %}
-                            <tr>
-                                <td colspan="2" class="praca-mono__patent-cell">
-                                    <strong>Patent:</strong><br/>
-                                    <div class="praca-mono__patent-details">
-                                        <b>Numer zgłoszenia:</b> {{ praca.numer_zgloszenia|default:"brak" }}<br/>
-                                        <b>Wydział:</b> {{ praca.wydzial|default:"brak" }}<br/>
-                                        <b>Rodzaj prawa:</b> {{ praca.rodzaj_prawa|default:"brak" }}<br/>
-                                        <b>Data zgłoszenia:</b> {{ praca.data_zgloszenia|default:"brak" }}<br/>
-                                        <b>Data decyzji:</b> {{ praca.data_decyzji|default:"brak" }}<br/>
-                                        <b>Numer prawa wyłącznego:</b> {{ praca.numer_prawa_wylacznego|default:"brak" }}<br/>
-                                        <b>Wdrożenie:</b> {% if praca.wdrozenie %}tak{% else %}nie{% endif %}
-                                    </div>
-                                </td>
-                            </tr>
-                        {% endif %}
+                        {% include "browse/_patent_informacje.html" %}
 
                         {% if praca.liczba_znakow_wydawniczych %}
                             <tr>

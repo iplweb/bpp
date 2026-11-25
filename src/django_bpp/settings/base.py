@@ -839,10 +839,22 @@ CELERY_RESULT_BACKEND = (
 )
 BROKER_URL = CELERY_BROKER_URL  # legacy alias for any third-party code
 
-CELERY_BROKER_TRANSPORT_OPTIONS = {
-    # Redis re-delivers in-flight task after this timeout if worker dies;
-    # must exceed longest job (PBN export, POLON import).
-    "visibility_timeout": 3600 * 6,
+# UWAGA NA NAZWĘ: aplikacja Celery ładuje ustawienia bez ``namespace``
+# (``config_from_object`` w celery_tasks.py), więc rozpoznaje stare nazwy
+# (``BROKER_TRANSPORT_OPTIONS``, ``CELERY_ROUTES``…), a ``CELERY_BROKER_*``
+# pomija BEZ OSTRZEŻENIA. Pod nazwą ``CELERY_BROKER_TRANSPORT_OPTIONS`` to
+# ustawienie nie działało i obowiązywała domyślna 1 godzina. Pilnuje tego
+# test src/django_bpp/tests/test_celery_visibility_timeout.py.
+#
+# Po tym czasie Redis uznaje zadanie POBRANE, ale NIEPOTWIERDZONE za zgubione
+# i wystawia je ponownie. Zadanie już wykonywane jest potwierdzone (nie ma
+# ``acks_late``), więc jego czas trwania nie ma tu znaczenia. Niepotwierdzone
+# są zadania czekające w rezerwie workera oraz odroczone (``countdown``/
+# ``eta``) — jeśli czekają dłużej niż ten limit, wykonają się w kilku
+# kopiach. Wartość musi więc przekraczać najdłuższe odroczenie: ponowienia
+# kolejki eksportu PBN sięgają 6 godzin (pbn_export_queue).
+BROKER_TRANSPORT_OPTIONS = {
+    "visibility_timeout": 3600 * 8,
 }
 
 CELERY_RESULT_EXTENDED = False
@@ -986,6 +998,15 @@ CELERYBEAT_SCHEDULE = {
         "task": "oauth_mcp.tasks.usun_osierocone_aplikacje_oauth",
         "schedule": crontab(hour=1, minute=45),  # Daily at 1:45 AM
     },
+    # Siatka bezpieczeństwa dla importu POLON/absencji z pliku zabezpieczonego
+    # hasłem: odszyfrowaną kopię kasuje sam przebieg importu, ale nie gdy
+    # import anulowano przed startem, worker zginął twardo albo kasowanie
+    # się nie udało. Co 15 minut kasujemy pliki zakończonych importów oraz
+    # niezakończonych starszych niż doba.
+    "import-polon-usun-zalegle-pliki-z-haslem": {
+        "task": "import_polon.tasks.usun_zalegle_pliki_z_haslem_importu_polon",
+        "schedule": crontab(minute="*/15"),
+    },
     # Typowe dyscypliny uczelni (najczęściej przypisywane w pracach z ostatnich
     # lat) — podpowiedź w importerze i formularzu zgłoszeń, gdy autor nie ma
     # dyscypliny na rok pracy (FD#620). Wynik siedzi w cache na dobę; przy
@@ -1082,6 +1103,16 @@ FIELD_ENCRYPTION_KEY = env("DJANGO_BPP_FIELD_ENCRYPTION_KEY", default="")
 # Dawna nazwa klucza — nadal obsługiwana (odczyt; szyfruje, gdy brak
 # DJANGO_BPP_FIELD_ENCRYPTION_KEY).
 DSPACE_CREDENTIALS_KEY = env("DSPACE_CREDENTIALS_KEY", default="")
+
+# Bezpiecznik „lokalna kopia produkcji": wstrzymuje AUTOMATY wysyłające do PBN
+# (ponowienie kolejki po zalogowaniu, watchdog, łańcuch „następny z kolejki",
+# wycofanie/wysyłka zlecane przez kosz). Ręczna wysyłka rekordu działa dalej.
+# Produkcja: wyłączone. ``settings/local.py`` włącza to domyślnie — deweloper
+# z kopią bazy klienta i prawdziwym tokenem nie może niczego wysłać do PBN
+# przypadkiem. Patrz ``pbn_export_queue/bezpiecznik.py``.
+PBN_WSTRZYMAJ_AUTOMATY = env(
+    "DJANGO_BPP_PBN_WSTRZYMAJ_AUTOMATY", default=False, cast=bool
+)
 
 SENDFILE_URL = MEDIA_URL
 
@@ -1992,6 +2023,10 @@ ROLLBAR_SCRUB_FIELDS = [
     "orcid_client_secret",
     "dspace_api_password",
     "clarivate_password",
+    # hasło do zaszyfrowanego pliku Excel w imporcie POLON/absencji (pole
+    # formularza ``haslo_do_pliku`` + zmienna lokalna ``haslo`` w ramkach):
+    "haslo_do_pliku",
+    "haslo",
 ]
 
 ROLLBAR = {

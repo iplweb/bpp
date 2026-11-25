@@ -59,6 +59,64 @@ mają w tym polu wpisany miesiąc i rok (bez zmyślonego dnia). Jeśli PBN
 podaje sam rok, BPP nie wpisuje daty — uzupełnij ją ręcznie przed wysyłką
 do PBN (raport kompletności danych POL-on pokaże taki brak).
 
+## Patenty — pola i opis bibliograficzny {#patenty}
+
+Formularz patentu (**Redagowanie → Patenty**) ma, obok pól wspólnych
+z innymi rekordami, pola właściwe tylko patentom:
+
+| Pole | Do czego służy |
+|---|---|
+| „Numer zgłoszenia”, „Data zgłoszenia” | dane zgłoszenia patentowego |
+| „Numer prawa wyłącznego” | numer patentu (np. `PL123456`) |
+| „Data decyzji” | data decyzji o udzieleniu prawa |
+| „Data opublikowania” | data ogłoszenia o udzieleniu prawa, np. w „Wiadomościach Urzędu Patentowego”; niezależna od daty decyzji |
+| „Rodzaj prawa” | słownik: patent, wzór użytkowy, wzór przemysłowy… |
+| „Typ patentu” | `polski` albo `zagraniczny` — klasyfikacja niezależna od rodzaju prawa |
+| „Kraj” | kraj udzielenia prawa; pojawia się w formularzu po wybraniu typu `zagraniczny` |
+| „Wydzial” | jednostka uczelni, z którą patent jest powiązany (m.in. do raportów) |
+| „Uprawnieni” | podmioty uprawnione z patentu, także spoza uczelni — wpisane tak, jak mają się pojawić w opisie |
+| „Strony” | zakres stron w publikatorze |
+
+Wszystkie pola patentowe są opcjonalne. „Kraj” można wypełnić wyłącznie
+przy typie `zagraniczny` — w innym wypadku formularz zgłosi błąd przy tym polu.
+
+### Opis bibliograficzny patentu
+
+Opis bibliograficzny patentu składa się z pól w takiej kolejności:
+
+1. „Numer prawa wyłącznego”,
+2. tytuł,
+3. „Uprawnieni”,
+4. twórcy,
+5. „Informacje”, „Szczegóły”, „Uwagi” — jak w pozostałych rekordach,
+6. „Strony” (z przedrostkiem `s.`), „Numer zgłoszenia”, „Data zgłoszenia”,
+   „Data decyzji”, „Data opublikowania”,
+7. adres WWW, poprzedzony słowami `Opublikowano w:` (jeśli wypełniono
+   zarówno „Adres WWW (płatny dostęp)”, jak i „Adres WWW (wolny dostęp)”,
+   w opisie jest ten drugi).
+
+Przykład:
+
+> PL123456. **Sposób otrzymywania związku chemicznego.** Uniwersytet X,
+> Warszawa, PL. [AUT.] ANNA KOWALSKA,
+> JAN NOWAK. W: WUP 06/25. Nr zgłoszenia: P.654321, Data zgłoszenia:
+> 14.06.2022, Data decyzji: 13.11.2024, Data opublikowania: 10.02.2025.
+> Opublikowano w: https://example.com/wup06_2025.pdf
+
+Pole niewypełnione nie zostawia w opisie żadnego śladu — ani etykiety, ani
+przecinka. Patent, w którym nie wypełniono żadnego z pól patentowych ani
+adresu WWW, ma opis taki jak dotąd (tytuł, twórcy, „Informacje”,
+„Szczegóły”, „Uwagi”). Jeśli zakres stron jest już wpisany w „Szczegółach”,
+nie jest powtarzany z pola „Strony”.
+
+„Typ patentu”, „Kraj” i „Rodzaj prawa” nie wchodzą do opisu
+bibliograficznego — są widoczne na stronie rekordu, w ramce „Patent” karty
+„Informacje dodatkowe”, razem z pozostałymi danymi patentowymi.
+
+Uczelnia, która ma własny szablon opisu bibliograficznego przypisany do
+patentów (albo do wszystkich rekordów), zachowuje swój szablon — opisana
+wyżej zmiana dotyczy szablonu domyślnego.
+
 ## Historia zmian i przywracanie poprzedniej wersji {#historia-zmian}
 
 Każda zmiana rekordu publikacji (wydawnictwa ciągłego, zwartego, patentu,
@@ -110,8 +168,15 @@ Uwagi:
   przed pierwszą zmianą (komentarz „Stan sprzed pierwszej zarejestrowanej
   zmiany”) — dzięki temu i tę zmianę można cofnąć. Starsze zmiany widać
   w tabeli **„Wcześniejsza historia”** (kto i kiedy, bez przywracania).
-- Przywrócenie wersji z plikiem w repozytorium przywraca wpis o pliku,
-  ale nie treść pliku usuniętego z serwera.
+- Przywrócenie wersji **nie wyjmuje niczego z kosza**. Pliki repozytorium
+  usunięte po tej wersji zostają w koszu — podgląd wersji wymienia je
+  osobno („Nie zostaną przywrócone — są w koszu”), a przywraca się je
+  w formularzu rekordu (patrz [Pliki w repozytorium](#pliki-repozytorium)).
+- Wersji nie da się przywrócić, gdy jej stan nie pasuje do dzisiejszych
+  danych — np. pozycja z listy należy teraz do innego rekordu albo dawna
+  jednostka nadrzędna jest dziś podjednostką przywracanej jednostki.
+  Podgląd wersji wyjaśnia wtedy, co poprawić, i nie pokazuje przycisku
+  przywracania.
 - Historia jest przechowywana bez limitu czasu.
 - Historię i porównanie wersji rekordu z kosza można oglądać, ale
   przywrócić wersję da się dopiero po wyjęciu rekordu z kosza — strona
@@ -125,6 +190,30 @@ Uwagi:
 - Przywrócenie wersji jednego rekordu nigdy nie zmienia innych rekordów —
   także po akcji masowej (np. zmianie statusu korekty wielu prac) każdy
   rekord ma własną wersję.
+
+## Pliki w repozytorium — kosz i archiwum plików {#pliki-repozytorium}
+
+Pliki dodane do rekordu (sekcja **„elementy repozytorium”** w formularzu
+publikacji), pliki i załączniki zgłoszeń publikacji **nigdy nie są
+kasowane z serwera**.
+
+- **Usunięcie pliku w formularzu** (pole „Usunąć?” przy pliku i zapis
+  rekordu) przenosi go do kosza. Pliki z kosza są widoczne w tym samym
+  formularzu, w sekcji **„pliki repozytorium w koszu”**. Aby przywrócić
+  plik, zaznacz przy nim **„♻️ Przywróć z kosza”** i zapisz rekord.
+- **Archiwum plików** (moduł redagowania → **Historia zmian → Archiwum
+  plików**) zbiera pliki, które straciły powiązanie z rekordem: rekord
+  usunięty trwale z kosza (razem z jego plikami), usunięty załącznik
+  zgłoszenia, plik podmieniony na inny albo usunięty z pola. Przy każdym
+  wpisie widać, do czego plik należał, kto i kiedy go odpiął, a plik
+  można pobrać (⬇️). Archiwum widzą członkowie grup „wprowadzanie
+  danych” i „zgłoszenia publikacji” (oraz superużytkownik), ale każdy
+  tylko pliki z rekordów, do których ma dostęp — np. załączniki zgłoszeń
+  wyłącznie osoby z uprawnieniami do zgłoszeń.
+- Pliki leżą w chronionym katalogu serwera — nie da się ich pobrać
+  bezpośrednim adresem, tylko przez BPP po zalogowaniu.
+- Przywrócić plik z kosza może osoba z uprawnieniem do usuwania plików
+  repozytorium (jak w przypadku kosza rekordów).
 
 ## Dlaczego nie można usunąć pracy z wpisanym „Odpowiednikiem w PBN"
 

@@ -20,6 +20,19 @@ Co Sentry łapie (dobrane tak, by odpowiadało temu, co dziś trafia do Rollbara
 
 Filtry wyjątków (``django_bpp.rollbar_filters``) obowiązują oba backendy:
 ``before_send`` czyta tę samą listę z ``settings.ROLLBAR``.
+
+Dane osobowe czyścimy dwiema warstwami:
+
+1. ``EventScrubber`` z SDK — po NAZWIE klucza (hasła, tokeny, ciasteczka),
+2. silnik Relay z Sentry (pakiet ``sentry-relay``, ten sam kod w Ruście,
+   którego używa sentry.io) — po WARTOŚCI: e-maile, adresy IP, PESEL,
+   numery kart, IBAN, tokeny ``Bearer``, hasła w URL-ach, klucze PEM. Działa
+   także na zmiennych lokalnych ramek (``repr`` obiektów), komunikatach
+   wyjątków i breadcrumbs — zmienne lokalne zostają włączone celowo.
+
+Relay działa w procesie (nie jako osobna usługa). Jeśli się wysypie,
+zdarzenie idzie dalej oczyszczone tylko warstwą 1 i z tagiem
+``bpp_pii_relay=blad`` — gubienie zgłoszeń błędów byłoby gorsze.
 """
 
 import logging
@@ -29,16 +42,123 @@ import sentry_sdk
 from django.conf import settings
 from sentry_sdk.integrations.celery import CeleryIntegration
 from sentry_sdk.integrations.django import DjangoIntegration
-from sentry_sdk.integrations.logging import LoggingIntegration
+from sentry_sdk.integrations.logging import LoggingIntegration, ignore_logger
 from sentry_sdk.scrubber import DEFAULT_DENYLIST, EventScrubber
 
 from bpp.zglaszanie_bledow import POZIOMY_SENTRY
 from django_bpp.version import VERSION
 
+try:
+    from sentry_relay.processing import pii_strip_event
+except ImportError:  # brak wheela dla platformy — działamy bez warstwy 2
+    pii_strip_event = None
+
+logger = logging.getLogger(__name__)
+# Komunikaty tego modułu NIE mogą wracać do Sentry: błąd w before_send
+# zgłoszony przez handler ``sentry`` znów przeszedłby przez before_send.
+ignore_logger(__name__)
+
 #: Zamiennik zamazanej wartości w query stringach (jak w pyrollbarze).
 ZAMAZANE = "********"
 
+#: Gdzie NIE szukamy danych osobowych po wartości: kod źródłowy, ścieżki
+#: plików i metadane SDK. Tam ich nie ma, a reguła ``@ip`` cięłaby numery
+#: wersji, czyniąc traceback i opis środowiska mylącymi.
+_POZA_DANYMI = (
+    "debug_meta.** || $frame.filename || $frame.abs_path || $frame.module"
+    " || $frame.function || $frame.context_line || $frame.pre_context.**"
+    " || $frame.post_context.** || $sdk.** || modules.** || release"
+)
+
+#: Konfiguracja Relaya (format ``piiConfig`` z Sentry). Reguły ``@…`` są
+#: wbudowane w Relay; ``pesel`` i ``nrb`` są nasze:
+#:
+#: * PESEL łapiemy samym wzorcem 11 cyfr (Relay nie sprawdzi sumy
+#:   kontrolnej) — zamaże też np. numer telefonu z prefiksem 48, co
+#:   z punktu widzenia RODO jest w porządku,
+#: * ``@iban`` nie łapie numeru konta zapisanego w grupach ze spacjami
+#:   (``PL61 1090 1014 …``), czyli tak, jak wpisują go ludzie.
+#:
+#: UWAGA: nieznana nazwa reguły przechodzi w Relayu po cichu i po prostu
+#: nic nie czyści, a błędny selektor wywraca całe czyszczenie (zdarzenie
+#: idzie wtedy z tagiem ``bpp_pii_relay=blad``) — każda reguła musi mieć
+#: przypadek w ``test_sentry_dane_osobowe.py``.
+KONFIGURACJA_PII = {
+    "rules": {
+        "pesel": {
+            "type": "pattern",
+            "pattern": r"\b\d{11}\b",
+            "redaction": {"method": "replace", "text": "[pesel]"},
+        },
+        "nrb": {
+            "type": "pattern",
+            "pattern": r"\b(?:PL ?)?\d{2}(?: ?\d{4}){6}\b",
+            "redaction": {"method": "replace", "text": "[nrb]"},
+        },
+    },
+    "applications": {
+        f"$string && !({_POZA_DANYMI})": [
+            "@email:replace",
+            "@ip:replace",
+            "@creditcard:replace",
+            "@iban:replace",
+            "@bearer:replace",
+            "@urlauth:replace",
+            "@pemkey:replace",
+            "nrb",
+            "pesel",
+        ],
+    },
+}
+
 _initialized = False
+
+
+def wyczysc_dane_osobowe(event, konfiguracja=None):
+    """Czyści dane osobowe po wartości silnikiem Relay (warstwa 2).
+
+    Nigdy nie gubi zdarzenia: gdy Relay jest niedostępny albo się wysypie,
+    zwraca zdarzenie bez tej warstwy (``EventScrubber`` już przeszedł),
+    z tagiem ``bpp_pii_relay``, żeby było to widać w GlitchTipie.
+    """
+    if konfiguracja is None:
+        konfiguracja = KONFIGURACJA_PII
+
+    if pii_strip_event is None:
+        _oznacz(event, "brak")
+        return event
+
+    try:
+        wynik = pii_strip_event(konfiguracja, event)
+    except Exception:
+        # Celowo szeroko: biblioteka w Ruście rzuca własne wyjątki, a błąd
+        # serializacji też ma nie zabić zgłoszenia. Logujemy z tracebackiem
+        # (logger wyłączony z Sentry — patrz ignore_logger wyżej).
+        logger.exception(
+            "Czyszczenie danych osobowych (Relay) nie powiodło się; "
+            "zdarzenie idzie bez tej warstwy"
+        )
+        _oznacz(event, "blad")
+        return event
+
+    # _meta to adnotacje Relaya „co wycięto” — GlitchTip ich nie pokazuje.
+    wynik.pop("_meta", None)
+    # Relay normalizuje tagi do listy par; reszta BPP (i testy) zakłada
+    # słownik, który SDK wysyła zawsze — wracamy do tej postaci.
+    tagi = wynik.get("tags")
+    if isinstance(tagi, list):
+        wynik["tags"] = {
+            para[0]: para[1]
+            for para in tagi
+            if isinstance(para, list) and len(para) == 2
+        }
+    return wynik
+
+
+def _oznacz(event, stan):
+    tagi = event.setdefault("tags", {})
+    if isinstance(tagi, dict):
+        tagi["bpp_pii_relay"] = stan
 
 
 def lista_pol_do_zamazania():
@@ -133,7 +253,7 @@ def zbuduj_before_send(filtry, pola, hostname):
             event["tags"].setdefault("DJANGO_BPP_HOSTNAME", hostname)
 
         _zamaz_request(event.get("request"), pola)
-        return event
+        return wyczysc_dane_osobowe(event)
 
     return before_send
 

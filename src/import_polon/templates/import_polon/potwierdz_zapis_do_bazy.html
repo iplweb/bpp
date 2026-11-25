@@ -1,15 +1,22 @@
 {% extends "base.html" %}
 
 {% block extratitle %}
-    Zapis importu do bazy danych - {{ object.plik.name }}
+    Zapis importu do bazy danych - {{ object.nazwa_pliku }}
 {% endblock %}
 
 {% block content %}
     <h1>Zapisać import do bazy danych?</h1>
 
+    {% if object.blokada_ponownego_przebiegu %}
+    <div class="panel callout alert">
+        <p>{{ object.komunikat_braku_pliku }}</p>
+    </div>
+    <a href="{{ object.get_absolute_url }}" class="button secondary">Wróć</a>
+    {% else %}
+
     <div class="panel callout warning">
         <p>Zaraz zapiszesz do bazy danych wynik importu z pliku
-            <strong>{{ object.plik.name }}</strong>.</p>
+            <strong>{{ object.nazwa_pliku }}</strong>.</p>
         <p>Import zostanie uruchomiony <strong>ponownie</strong>, tym razem
             <strong>ze zmianami zapisywanymi do bazy danych</strong>.
             Ta operacja modyfikuje bazę danych i w praktyce jest nieodwracalna.</p>
@@ -22,4 +29,5 @@
         </button>
         <a href="{{ object.get_absolute_url }}" class="button secondary">Anuluj</a>
     </form>
+    {% endif %}
 {% endblock %}

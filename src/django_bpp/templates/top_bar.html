@@ -19,7 +19,9 @@
 
 <div class="top-bar stacked-for-medium hide-for-print" id="example-menu">
     <div class="top-bar-left">
-        <ul class="dropdown menu" data-dropdown-menu>
+        {# data-force-follow="false": na dotyku ponowne stuknięcie pozycji zamyka podmenu #}
+        {# (domyślnie Foundation „idzie za linkiem” — tu href="#", czyli skok na górę strony). #}
+        <ul class="dropdown menu" data-dropdown-menu data-force-follow="false">
             <li>
                 {# Logo i napis może ukryć/podmienić motyw z konfiguratora wyglądu — stąd stała nazwa linku dla czytników ekranu. #}
                 <a href="/" class="bpp-strona-glowna" aria-label="Strona główna">
@@ -319,127 +321,6 @@
                     </ul>
             </li>
             <!-- djlint:enable=H025 -->
-
-                <script type="text/javascript">
-                    // Auto-position two-column menus to prevent viewport overflow
-                    document.addEventListener('DOMContentLoaded', function() {
-                        var hasSubmenus = document.querySelectorAll('li.has-submenu');
-
-                        hasSubmenus.forEach(function(li) {
-                            var menu = li.querySelector('.menu-columns-wrapper');
-                            if (!menu) return;
-
-                            li.addEventListener('mouseenter', function() {
-                                // Reset position first
-                                li.classList.remove('opens-left');
-                                menu.style.left = '';
-                                menu.style.right = '';
-
-                                // Temporarily make menu measurable (visible layout but hidden visually)
-                                var originalVisibility = menu.style.visibility;
-                                var originalDisplay = menu.style.display;
-                                menu.style.visibility = 'hidden';
-                                menu.style.display = 'flex';
-
-                                var menuRect = menu.getBoundingClientRect();
-                                var liRect = li.getBoundingClientRect();
-                                var viewportWidth = window.innerWidth;
-
-                                // Calculate overflow for both directions
-                                // Case 1: Open to right (left: 0) - menu left edge at li left edge
-                                var menuRightIfOpenRight = liRect.left + menuRect.width;
-                                var overflowRight = Math.max(0, menuRightIfOpenRight - viewportWidth);
-
-                                // Case 2: Open to left (right: 0) - menu right edge at li right edge
-                                var menuLeftIfOpenLeft = liRect.right - menuRect.width;
-                                var overflowLeft = Math.max(0, -menuLeftIfOpenLeft);
-
-                                // Restore original styles (CSS hover will take over)
-                                menu.style.visibility = originalVisibility;
-                                menu.style.display = originalDisplay;
-
-                                // Choose direction with less overflow
-                                if (overflowLeft < overflowRight) {
-                                    li.classList.add('opens-left');
-                                    menu.style.left = 'auto';
-                                    menu.style.right = '0';
-                                } else {
-                                    menu.style.left = '0';
-                                    menu.style.right = '';
-                                }
-                            });
-                        });
-                    });
-                </script>
-
-                <script type="text/javascript">
-                    // Menu closing with 500ms delay - JavaScript controls visibility completely
-                    // CSS :hover is NOT used for show/hide - only JS inline styles
-                    document.addEventListener('DOMContentLoaded', function() {
-                        var menuItems = document.querySelectorAll('.dropdown.menu > li');
-                        var CLOSING_TIME = 500; // ms
-
-                        menuItems.forEach(function(li) {
-                            var closeTimeout = null;
-                            var submenu = li.querySelector('.menu.vertical, .menu-columns-wrapper');
-                            if (!submenu) return;
-
-                            function showSubmenu() {
-                                submenu.style.visibility = 'visible';
-                                submenu.style.opacity = '1';
-                                submenu.style.maxHeight = '800px';
-                                submenu.style.transform = 'translateY(0) scaleY(1)';
-                            }
-
-                            function hideSubmenu() {
-                                submenu.style.visibility = 'hidden';
-                                submenu.style.opacity = '0';
-                                submenu.style.maxHeight = '0';
-                                submenu.style.transform = 'translateY(-20px) scaleY(0.8)';
-                            }
-
-                            // Mouseenter: show immediately, cancel own timeout, close others
-                            li.addEventListener('mouseenter', function() {
-                                if (closeTimeout) {
-                                    clearTimeout(closeTimeout);
-                                    closeTimeout = null;
-                                }
-
-                                // JavaScript SHOWS menu, not CSS :hover
-                                showSubmenu();
-
-                                // Close OTHER menus immediately
-                                menuItems.forEach(function(otherLi) {
-                                    if (otherLi !== li) {
-                                        if (otherLi._closeTimeout) {
-                                            clearTimeout(otherLi._closeTimeout);
-                                            otherLi._closeTimeout = null;
-                                        }
-                                        var otherSubmenu = otherLi.querySelector('.menu.vertical, .menu-columns-wrapper');
-                                        if (otherSubmenu) {
-                                            otherSubmenu.style.visibility = 'hidden';
-                                            otherSubmenu.style.opacity = '0';
-                                            otherSubmenu.style.maxHeight = '0';
-                                            otherSubmenu.style.transform = 'translateY(-20px) scaleY(0.8)';
-                                        }
-                                    }
-                                });
-                            });
-
-                            // Mouseleave: 500ms timeout before hiding
-                            li.addEventListener('mouseleave', function(e) {
-                                var goingToMenu = e.relatedTarget && e.relatedTarget.closest('.dropdown.menu > li');
-                                if (goingToMenu) return;
-
-                                closeTimeout = setTimeout(function() {
-                                    hideSubmenu();
-                                    closeTimeout = null;
-                                }, CLOSING_TIME);
-                                li._closeTimeout = closeTimeout;
-                            });
-                        });
-                    });
-                </script>
 
                 <!-- Hidden logout form -->
                 <form id="logout-form" action="{% url "logout" %}" method="post" class="hidden-logout-form">
