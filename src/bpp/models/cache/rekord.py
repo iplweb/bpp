@@ -27,7 +27,10 @@ from bpp.models.abstract import (
     ModelZRokiem,
     ModelZWWW,
 )
-from bpp.models.abstract.aliasy_mnisw import AliasyMNiSWQuerySetMixin
+from bpp.models.abstract.aliasy_mnisw import (
+    AliasyMNiSWQuerySetMixin,
+    SkrotyDSLZAliasami,
+)
 from bpp.models.fields import TupleField
 from bpp.models.util import ModelZOpisemBibliograficznym
 from bpp.util import FulltextSearchMixin
@@ -275,17 +278,19 @@ class RekordBase(
 
     # Skróty dla django-dsl
 
-    django_dsl_shortcuts = {
-        "charakter": "charakter_formalny__skrot",
-        "typ_kbn": "typ_kbn__skrot",
-        # FD#527: nowe nazwy obok dawnych (kolumny w bazie bez zmian).
-        "typ_mnisw": "typ_kbn__skrot",
-        "punkty_mnisw": "punkty_kbn",
-        "typ_odpowiedzialnosci": "autorzy__typ_odpowiedzialnosci__skrot",
-        "autor": "autorzy__autor_id",
-        "jednostka": "autorzy__jednostka__pk",
-        "wydzial": "autorzy__jednostka__wydzial__pk",
-    }
+    django_dsl_shortcuts = SkrotyDSLZAliasami(
+        {
+            "charakter": "charakter_formalny__skrot",
+            "typ_kbn": "typ_kbn__skrot",
+            # FD#527: nowe nazwy obok dawnych (kolumny w bazie bez zmian).
+            "typ_mnisw": "typ_kbn__skrot",
+            "punkty_mnisw": "punkty_kbn",
+            "typ_odpowiedzialnosci": "autorzy__typ_odpowiedzialnosci__skrot",
+            "autor": "autorzy__autor_id",
+            "jednostka": "autorzy__jednostka__pk",
+            "wydzial": "autorzy__jednostka__wydzial__pk",
+        }
+    )
 
     class Meta:
         abstract = True

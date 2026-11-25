@@ -218,7 +218,7 @@ EXAMPLES = [
                 "items": [
                     (
                         "Wysoko punktowane prace ostatnich trzech lat",
-                        "rok >= 2022 and punkty_kbn >= 100",
+                        "rok >= 2022 and punkty_mnisw >= 100",
                     ),
                     (
                         "Wysoki Impact Factor z zakresu lat",
@@ -226,7 +226,7 @@ EXAMPLES = [
                     ),
                     (
                         "Brak DOI mimo wysokiej punktacji (do uzupełnienia)",
-                        'punkty_kbn >= 70 and doi = ""',
+                        'punkty_mnisw >= 70 and doi = ""',
                     ),
                     (
                         "Często cytowane, ale nierecenzowane",
@@ -234,8 +234,8 @@ EXAMPLES = [
                     ),
                     (
                         "Konkretny charakter + zakres punktów",
-                        'charakter_formalny.skrot = "AC" and punkty_kbn >= 40 '
-                        "and punkty_kbn <= 100",
+                        'charakter_formalny.skrot = "AC" and punkty_mnisw >= 40 '
+                        "and punkty_mnisw <= 100",
                     ),
                     (
                         "Konkretne źródło + lata",
@@ -308,7 +308,7 @@ EXAMPLES = [
                         "Grupowanie (rok OR + charakter OR) × punktacja",
                         "(rok = 2024 or rok = 2025) and "
                         '(charakter_formalny.skrot = "AC" or '
-                        'charakter_formalny.skrot = "AOR") and punkty_kbn >= 100',
+                        'charakter_formalny.skrot = "AOR") and punkty_mnisw >= 100',
                     ),
                     (
                         "Negacja: wszystko poza artykułami z czasopism, IF>=3, od 2023",
@@ -325,7 +325,7 @@ EXAMPLES = [
                         "Wydawcy Elsevier/Springer/Wiley + przedział punktów",
                         '(wydawca.nazwa ~ "Elsevier" or wydawca.nazwa ~ "Springer" '
                         'or wydawca.nazwa ~ "Wiley") and rok >= 2022 '
-                        "and punkty_kbn >= 70 and punkty_kbn <= 200",
+                        "and punkty_mnisw >= 70 and punkty_mnisw <= 200",
                     ),
                     (
                         "Hot & trending: cytowane >50 razy w okresie, IF>5",
@@ -349,7 +349,7 @@ EXAMPLES = [
                     (
                         "Wielowarunkowa granica IF + zakres punktow + minimum cytowan",
                         "impact_factor >= 5 and impact_factor <= 10 and "
-                        "punkty_kbn >= 100 and liczba_cytowan >= 5",
+                        "punkty_mnisw >= 100 and liczba_cytowan >= 5",
                     ),
                 ],
             },
@@ -402,7 +402,7 @@ def przyklady_okresow_ewaluacji():
             f"w okresie {okres}, min. 70 pkt",
             'recenzowana = True and doi != "" and '
             f"rok in ({', '.join(str(rok) for rok in okres.lata)}) "
-            "and punkty_kbn >= 70",
+            "and punkty_mnisw >= 70",
         )
         for okres in OkresEwaluacji.objects.all()
     ]

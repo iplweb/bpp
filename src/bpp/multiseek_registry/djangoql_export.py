@@ -36,7 +36,7 @@ from multiseek.logic import (
     STARTS_WITH,
 )
 
-from bpp.djangoql_schema import BppQLSchemaOgraniczony
+from bpp.djangoql_schema import BppQLSchemaOgraniczony, nazwa_z_aliasem
 from bpp.models import Rekord
 from bpp.multiseek_registry.dawne_etykiety import aktualna_etykieta
 
@@ -104,8 +104,12 @@ def render_value(value):
 
 
 def _orm_path_to_djangoql(field_name):
-    """field_name multiseek (ORM, '__') -> sciezka DjangoQL ('.')."""
-    return field_name.replace("__", ".")
+    """field_name multiseek (ORM, '__') -> sciezka DjangoQL ('.').
+
+    FD#527: pola punktów i typu MNiSW wychodzą pod nowymi nazwami
+    (``punkty_mnisw``, ``typ_mnisw``) — w interfejsie nie pokazujemy już
+    ``…_kbn``; schemat rozumie obie formy."""
+    return (nazwa_z_aliasem(field_name) or field_name).replace("__", ".")
 
 
 def is_valid_rekord_djangoql(fragment):

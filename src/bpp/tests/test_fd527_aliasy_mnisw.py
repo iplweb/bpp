@@ -247,3 +247,128 @@ def test_fd527_importer_i_formularz_raportu_zostaja_przy_mnisw():
     assert "Pkt. MNiSW" in [kolumna["label"] for kolumna in definicje.KOLUMNY]
     etykiety = [str(p.label) for p in BaseRaportForm.base_fields.values()]
     assert "Tylko prace punktowane (pkt MNiSW > 0)" in etykiety
+
+
+@pytest.mark.parametrize(
+    "zapytanie,w_komunikacie,nie_w_komunikacie",
+    [
+        # pickera ``__rel`` nie ma w schemacie API — błąd ma mówić o tym,
+        # co wpisał użytkownik, nie o nazwie po podmianie aliasu
+        ('typ_mnisw__rel = "x"', "typ_mnisw__rel", "typ_kbn__rel"),
+        ("punkty_mnisw__rel > 1", "punkty_mnisw__rel", "punkty_kbn__rel"),
+    ],
+)
+def test_fd527_blad_pokazuje_nazwe_wpisana_przez_uzytkownika(
+    db, zapytanie, w_komunikacie, nie_w_komunikacie
+):
+    from djangoql.exceptions import DjangoQLSchemaError
+
+    with pytest.raises(DjangoQLSchemaError) as blad:
+        apply_search(Rekord.objects.all(), zapytanie, schema=RekordLLMSchema)
+    assert w_komunikacie in str(blad.value)
+    assert nie_w_komunikacie not in str(blad.value)
+    assert blad.value.value == w_komunikacie
+
+
+def test_fd527_blad_ze_stara_nazwa_bez_zmian(db):
+    """Strażnik: kto wpisał dawną nazwę, widzi w błędzie dawną nazwę."""
+    from djangoql.exceptions import DjangoQLSchemaError
+
+    with pytest.raises(DjangoQLSchemaError) as blad:
+        apply_search(Rekord.objects.all(), 'typ_kbn__rel = "x"', schema=RekordLLMSchema)
+    assert "typ_kbn__rel" in str(blad.value)
+    assert "mnisw" not in str(blad.value)
+
+
+def test_fd527_schemat_dlugowieczny_nie_miesza_zapytan(prace):
+    """Instancja schematu bywa singletonem (eksport multiseek→DjangoQL):
+    aliasy z jednego zapytania nie mogą przeciekać do błędu następnego."""
+    from djangoql.exceptions import DjangoQLSchemaError
+    from djangoql.parser import DjangoQLParser
+
+    schemat = RekordLLMSchema(Rekord)
+    schemat.validate(DjangoQLParser().parse("punkty_mnisw > 1"))
+    with pytest.raises(DjangoQLSchemaError) as blad:
+        schemat.validate(DjangoQLParser().parse('typ_kbn__rel = "x"'))
+    assert "typ_kbn__rel" in str(blad.value)
+
+
+def test_fd527_eksport_multiseek_do_djangoql_uzywa_nowych_nazw(prace):
+    from bpp.multiseek_registry import registry
+    from bpp.multiseek_registry.djangoql_export import multiseek_form_to_djangoql
+
+    punkty = registry.get_field_by_name("Punkty MNiSW")
+    typ = registry.get_field_by_name("Typ MNiSW")
+    formularz = {
+        "form_data": [
+            None,
+            {
+                "field": "Punkty MNiSW",
+                "operator": str(punkty.ops[0]),
+                "value": 140,
+                "prev_op": None,
+            },
+            {
+                "field": "Typ MNiSW",
+                "operator": str(typ.ops[0]),
+                "value": "Typ A",
+                "prev_op": "and",
+            },
+        ]
+    }
+    wynik = multiseek_form_to_djangoql(formularz, registry)
+
+    assert "punkty_mnisw" in wynik.query
+    assert "typ_mnisw" in wynik.query
+    assert "kbn" not in wynik.query
+    # Wygenerowane zapytanie działa i daje to, co wersja na dawnych nazwach.
+    nowe = _tytuly(Rekord, wynik.query, BppQLSchemaOgraniczony)
+    stare = _tytuly(
+        Rekord,
+        wynik.query.replace("punkty_mnisw", "punkty_kbn").replace(
+            "typ_mnisw", "typ_kbn"
+        ),
+        BppQLSchemaOgraniczony,
+    )
+    assert nowe == stare == ["FD527 wysoka"]
+
+
+def test_fd527_przyklady_w_pomocy_szukaj_zapytaniem_bez_kbn(db):
+    from bpp.views import zapytanie
+
+    teksty = repr(zapytanie.examples_z_okresami())
+    assert "punkty_mnisw" in teksty
+    assert "kbn" not in teksty.lower()
+
+
+@pytest.mark.parametrize(
+    "stare,nowe",
+    [
+        ('typ_kbn__nazwa = "Typ A"', 'typ_mnisw__nazwa = "Typ A"'),
+        ('typ_kbn__skrot = "TA"', 'typ_mnisw__skrot = "TA"'),
+        ("punkty_kbn__gte = 100", "punkty_mnisw__gte = 100"),
+        ("punkty_kbn >= 100", "punkty_mnisw >= 100"),
+        # samodzielny skrót zachowuje znaczenie „po skrócie typu”
+        ('typ_kbn = "TA"', 'typ_mnisw = "TA"'),
+        (
+            'punkty_kbn__gte = 100 AND NOT typ_kbn__nazwa = "Typ B"',
+            'punkty_mnisw__gte = 100 AND NOT typ_mnisw__nazwa = "Typ B"',
+        ),
+    ],
+)
+def test_fd527_django_dsl_alias_na_poczatku_sciezki(prace, stare, nowe):
+    qs = Rekord.objects.filter(tytul_oryginalny__startswith="FD527")
+    backend = BppDSLQueryBackend()
+    backend.validate(stare, Rekord)
+    backend.validate(nowe, Rekord)
+    wynik_stary = [r.tytul_oryginalny for r in backend.filter_queryset(qs, stare)]
+    wynik_nowy = [r.tytul_oryginalny for r in backend.filter_queryset(qs, nowe)]
+    assert wynik_nowy == wynik_stary == ["FD527 wysoka"]
+
+
+def test_fd527_django_dsl_literowka_nadal_odrzucana(prace):
+    from django.core.exceptions import ValidationError
+
+    for zle in ('typ_mniswx__nazwa = "a"', "punkty_mnisw__nie_ma = 1"):
+        with pytest.raises(ValidationError):
+            BppDSLQueryBackend().validate(zle, Rekord)

@@ -82,3 +82,23 @@ class AliasyMNiSWQuerySetMixin:
 
     def order_by(self, *field_names):
         return super().order_by(*[_bez_aliasu_w_sortowaniu(f) for f in field_names])
+
+
+class SkrotyDSLZAliasami(dict):
+    """Skróty django-dsl (``django_dsl_shortcuts``) rozumiejące aliasy także
+    na początku ścieżki.
+
+    django-dsl podstawia skrót tylko za CAŁY identyfikator, więc sam wpis
+    ``"typ_mnisw": "typ_kbn__skrot"`` obsługuje ``typ_mnisw = "PW"``, ale nie
+    ``typ_mnisw__nazwa = "…"`` ani ``punkty_mnisw__gte = 5`` (dawne nazwy
+    działają tam jako zwykłe ścieżki ORM). Brakujący klucz zaczynający się od
+    aliasu tłumaczymy więc na tę samą ścieżkę z prawdziwą nazwą pola;
+    samodzielny skrót zachowuje swoje znaczenie, a nieznane nazwy dalej
+    kończą się ``KeyError`` (django-dsl bierze wtedy identyfikator dosłownie).
+    """
+
+    def __missing__(self, klucz):
+        rdzen, separator, reszta = klucz.partition("__")
+        if separator and rdzen in ALIASY_MNISW:
+            return ALIASY_MNISW[rdzen] + separator + reszta
+        raise KeyError(klucz)

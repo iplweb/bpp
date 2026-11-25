@@ -24,6 +24,7 @@ from django.core.exceptions import FieldDoesNotExist
 from django.db import models
 from django.db.models import Q
 from django.utils.html import strip_tags
+from djangoql.exceptions import DjangoQLSchemaError
 from djangoql.extras import AutocompleteField, ExtrasSchema
 from djangoql.schema import DjangoQLField
 
@@ -374,7 +375,7 @@ def _bez_aliasu(nazwa):
     return ALIASY_POL.get(rdzen, rdzen) + separator + reszta
 
 
-def _z_aliasem(nazwa):
+def nazwa_z_aliasem(nazwa):
     """Odwrotność :func:`_bez_aliasu`: nazwa-alias dla pola albo ``None``."""
     rdzen, separator, reszta = nazwa.partition("__")
     for alias, pole in ALIASY_POL.items():
@@ -383,15 +384,40 @@ def _z_aliasem(nazwa):
     return None
 
 
-def _zamien_aliasy_w_drzewie(node):
+def _zamien_aliasy_w_nazwie(name, uzyte):
+    """Podmienia aliasy w częściach nazwy (w miejscu); do ``uzyte`` dopisuje
+    ``{prawdziwa nazwa: to, co wpisał użytkownik}``."""
+    for i, czesc in enumerate(name.parts):
+        prawdziwa = _bez_aliasu(czesc)
+        if prawdziwa != czesc:
+            uzyte[prawdziwa] = czesc
+            name.parts[i] = prawdziwa
+
+
+def _zamien_aliasy_w_drzewie(node, uzyte):
     """Podmienia aliasy w nazwach pól całego drzewa zapytania (w miejscu)."""
     from djangoql.ast import Logical, Name
 
     if isinstance(node.operator, Logical):
-        _zamien_aliasy_w_drzewie(node.left)
-        _zamien_aliasy_w_drzewie(node.right)
+        _zamien_aliasy_w_drzewie(node.left, uzyte)
+        _zamien_aliasy_w_drzewie(node.right, uzyte)
     elif isinstance(node.left, Name):
-        node.left.parts[:] = [_bez_aliasu(p) for p in node.left.parts]
+        _zamien_aliasy_w_nazwie(node.left, uzyte)
+
+
+def _blad_z_nazwami_uzytkownika(blad, uzyte):
+    """Ten sam błąd schematu, ale z nazwami pól w postaci wpisanej przez
+    użytkownika (``typ_mnisw__rel``, nie ``typ_kbn__rel``)."""
+    if not uzyte:
+        return blad
+    wzorzec = re.compile(
+        r"(?<![\w.])(" + "|".join(re.escape(n) for n in uzyte) + r")(?![\w])"
+    )
+    komunikat = wzorzec.sub(lambda m: uzyte[m.group(1)], str(blad))
+    if komunikat == str(blad):
+        return blad
+    wartosc = getattr(blad, "value", None)
+    return type(blad)(komunikat, value=uzyte.get(wartosc, wartosc))
 
 
 class AliasyPolSchemaMixin:
@@ -410,14 +436,36 @@ class AliasyPolSchemaMixin:
 
     aliasy_w_podpowiedziach = True
 
+    def __init__(self, model):
+        # Przed ``super()``: konstruktor bazy robi introspekcję schematu.
+        self._aliasy_uzyte = {}
+        self._glebokosc_validate_aliasow = 0
+        super().__init__(model)
+
     def validate(self, node):
-        _zamien_aliasy_w_drzewie(node)
-        return super().validate(node)
+        # ``validate()`` rekuruje po sobie; aliasy z zapytania zbieramy na
+        # węźle najwyższym (instancja schematu bywa długowieczna, więc słownik
+        # jest zerowany przy każdym nowym zapytaniu).
+        self._glebokosc_validate_aliasow += 1
+        try:
+            if self._glebokosc_validate_aliasow == 1:
+                self._aliasy_uzyte = {}
+                _zamien_aliasy_w_drzewie(node, self._aliasy_uzyte)
+            return super().validate(node)
+        except DjangoQLSchemaError as e:
+            if self._glebokosc_validate_aliasow != 1:
+                raise
+            poprawiony = _blad_z_nazwami_uzytkownika(e, self._aliasy_uzyte)
+            if poprawiony is e:
+                raise
+            raise poprawiony from e
+        finally:
+            self._glebokosc_validate_aliasow -= 1
 
     def resolve_name(self, name):
         # ``djangoql.breakdown`` woła ``build_filter`` z pominięciem
         # ``validate()`` — stąd podmiana także tutaj.
-        name.parts[:] = [_bez_aliasu(p) for p in name.parts]
+        _zamien_aliasy_w_nazwie(name, self._aliasy_uzyte)
         return super().resolve_name(name)
 
     def get_fields(self, model):
@@ -426,7 +474,7 @@ class AliasyPolSchemaMixin:
             return fields
         aliasy = []
         for field in fields:
-            alias = _z_aliasem(_field_name(field))
+            alias = nazwa_z_aliasem(_field_name(field))
             if alias is None:
                 continue
             if not isinstance(field, DjangoQLField):
