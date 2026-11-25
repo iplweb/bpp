@@ -558,23 +558,32 @@ def _obsluz_confirm(request, zrodlo, form):
             )
 
             prace = Wydawnictwo_Ciagle.objects.filter(zrodlo=zrodlo)
+            # Wpis w historii każdej pracy: kto, kiedy, z jakiego źródła na
+            # jakie — z UID-em skasowanego czasopisma PBN i numerem operacji,
+            # po którym da się trafić do logu przemapowań (FD#508).
+            komentarz = (
+                f"Przemapowano źródło skasowane w PBN „{zrodlo}” "
+                f"(UID {zrodlo.pbn_uid_id}) → „{zrodlo_nowe}”"
+            )
             with zmiany_rekordow(
                 request.user,
                 Wydawnictwo_Ciagle,
                 list(prace.values_list("pk", flat=True)),
-                f"Przemapowano źródło skasowane w PBN „{zrodlo}” → "
-                f"„{zrodlo_nowe}” (przemapowanie źródeł PBN).",
-            ):
+                komentarz + " (przemapowanie źródeł PBN).",
+            ) as zmiana:
                 liczba_rekordow_updated = prace.update(zrodlo=zrodlo_nowe)
 
                 # Zapisz log operacji
-                PrzeMapowanieZrodla.objects.create(
+                operacja = PrzeMapowanieZrodla.objects.create(
                     zrodlo_skasowane_pbn_uid=zrodlo.pbn_uid,
                     zrodlo_stare=zrodlo,
                     zrodlo_nowe=zrodlo_nowe,
                     liczba_rekordow=liczba_rekordow_updated,
                     utworzono_przez=request.user,
                     rekordy_historia=rekordy_historia,
+                )
+                zmiana.komentarz = (
+                    f"{komentarz} (przemapowanie źródeł PBN nr {operacja.pk})."
                 )
 
             sukces_pbn, bledy_pbn = _dodaj_rekordy_do_kolejki_pbn(

@@ -1,5 +1,7 @@
 from django.contrib import admin
 
+from bpp.admin.helpers.przemapowane_rekordy import przemapowane_publikacje_html
+
 from .models import PrzeMapowanieZrodla
 
 
@@ -22,8 +24,17 @@ class PrzeMapowanieZrodlaAdmin(admin.ModelAdmin):
         "utworzono",
         "utworzono_przez",
         "liczba_rekordow",
-        "rekordy_historia",
+        "przemapowane_rekordy",
     ]
+    exclude = ["rekordy_historia"]
+
+    @admin.display(description="Przemapowane rekordy")
+    def przemapowane_rekordy(self, obj):
+        # W logu klucz rekordu to para (content_type_id, object_id) z widoku
+        # ``Rekord``; źródło mają tylko wydawnictwa ciągłe.
+        return przemapowane_publikacje_html(
+            (r["id"][1], r.get("tytul", ""), r.get("rok")) for r in obj.rekordy_historia
+        )
 
     def has_add_permission(self, request):
         # Nie pozwalaj na ręczne dodawanie - tylko przez formularz

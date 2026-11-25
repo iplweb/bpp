@@ -2,6 +2,8 @@ from django.contrib import admin
 from django.urls import reverse
 from django.utils.html import format_html
 
+from bpp.admin.helpers.przemapowane_rekordy import przemapowane_publikacje_html
+
 from .models import PrzemapowaZrodla
 
 
@@ -38,10 +40,17 @@ class PrzemapowaZrodlaAdmin(admin.ModelAdmin):
         "utworzono",
         "utworzono_przez",
         "liczba_publikacji",
-        "publikacje_historia",
+        "przemapowane_publikacje",
         "cofnieto",
         "cofnieto_przez",
     ]
+    exclude = ["publikacje_historia"]
+
+    @admin.display(description="Przemapowane publikacje")
+    def przemapowane_publikacje(self, obj):
+        return przemapowane_publikacje_html(
+            (p["id"], p.get("tytul", ""), p.get("rok")) for p in obj.publikacje_historia
+        )
 
     def has_add_permission(self, request):
         """Nie pozwalaj na ręczne dodawanie - tylko przez formularz."""

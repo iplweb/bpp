@@ -63,6 +63,7 @@ zalogowaniu.
 - [Eksportowanie do DSpace](redaktor/eksportowanie-do-dspace.md)
 - [Dwudyscyplinowcy](redaktor/dwudyscyplinowcy.md)
 - [Przemapowanie prac autora](redaktor/przemapowanie-prac-autora.md)
+- [Przemapowanie źródeł](redaktor/przemapowanie-zrodel.md)
 - [Duplikaty publikacji](redaktor/duplikaty-publikacji.md)
 
 ### 🛠️ Instrukcja administratora
