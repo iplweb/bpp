@@ -49,7 +49,8 @@ class PrzemapowaZrodlaAdmin(admin.ModelAdmin):
     @admin.display(description="Przemapowane publikacje")
     def przemapowane_publikacje(self, obj):
         return przemapowane_publikacje_html(
-            (p["id"], p.get("tytul", ""), p.get("rok")) for p in obj.publikacje_historia
+            (p.get("id"), p.get("tytul", ""), p.get("rok"))
+            for p in obj.publikacje_historia
         )
 
     def has_add_permission(self, request):
@@ -61,44 +62,27 @@ class PrzemapowaZrodlaAdmin(admin.ModelAdmin):
         return request.user.is_superuser
 
     def has_change_permission(self, request, obj=None):
-        """Nie pozwalaj na edycję - tylko przeglądanie."""
-        return True
+        """Log jest tylko do odczytu; podgląd daje uprawnienie ``view``
+        (grupa „wprowadzanie danych”)."""
+        return False
 
     def akcje(self, obj):
         """Kolumna z przyciskami akcji."""
         if obj.mozna_cofnac:
-            url = reverse("przemapuj_zrodlo:cofnij", args=[obj.pk])
+            # Tekst potwierdzenia idzie w atrybucie ``data-*``, a klik
+            # obsługuje ``admin_cofnij.js``. Nazwa źródła NIE może trafić do
+            # inline JS: przeglądarka dekoduje encje HTML przed wykonaniem
+            # ``onclick``, więc apostrof w nazwie psuł potwierdzenie
+            # (i pozwalał wstrzyknąć kod).
+            nazwa = obj.zrodlo_z.nazwa if obj.zrodlo_z else "[usunięte]"
             return format_html(
-                '<a href="{}" '
-                'class="admin-action-btn--warning" '
-                'onclick="'
-                "if (!confirm('Czy na pewno chcesz cofnąć to przemapowanie?\\n\\n"
-                "Przywróci to {} publikacji do źródła \\'{}\\'.')) return false; "
-                "if (this.getAttribute('data-clicked')) return false; "
-                "this.setAttribute('data-clicked', 'true'); "
-                "var form = document.createElement('form'); "
-                "form.method = 'POST'; "
-                "form.action = this.href; "
-                "var csrf = document.createElement('input'); "
-                "csrf.type = 'hidden'; "
-                "csrf.name = 'csrfmiddlewaretoken'; "
-                "function getCookie(name) {{ "
-                "  var value = '; ' + document.cookie; "
-                "  var parts = value.split('; ' + name + '='); "
-                "  if (parts.length === 2) return parts.pop().split(';').shift(); "
-                "}} "
-                "var csrfFromCookie = getCookie('csrftoken'); "
-                "var csrfFromInput = document.querySelector('[name=csrfmiddlewaretoken]'); "
-                "csrf.value = csrfFromInput ? csrfFromInput.value : csrfFromCookie; "
-                "form.appendChild(csrf); "
-                "document.body.appendChild(form); "
-                "form.submit(); "
-                'return false;">'
-                '<span class="fi-refresh"></span> Cofnij'
-                "</a>",
-                url,
-                obj.liczba_publikacji,
-                obj.zrodlo_z.nazwa if obj.zrodlo_z else "[usunięte]",
+                '<a href="{}" class="admin-action-btn--warning '
+                'przemapowanie-cofnij" data-potwierdzenie="{}">'
+                '<span class="fi-refresh"></span> Cofnij</a>',
+                reverse("przemapuj_zrodlo:cofnij", args=[obj.pk]),
+                "Czy na pewno chcesz cofnąć to przemapowanie?\n\n"
+                f"Przywróci to {obj.liczba_publikacji} publikacji "
+                f"do źródła „{nazwa}”.",
             )
         elif obj.jest_cofniete:
             return format_html(
@@ -118,3 +102,4 @@ class PrzemapowaZrodlaAdmin(admin.ModelAdmin):
         # i szablony admina. Wcześniej był tu URL do cdnjs: zewnętrzna zależność
         # sieciowa przy każdym otwarciu ekranu.
         css = {"all": ("foundation-datepicker/foundation/fonts/foundation-icons.css",)}
+        js = ("przemapuj_zrodlo/admin_cofnij.js",)

@@ -2,6 +2,7 @@ import logging
 import sys
 
 from django.contrib import messages
+from django.contrib.contenttypes.models import ContentType
 from django.contrib.postgres.search import TrigramSimilarity
 from django.db import models, transaction
 from django.db.models import Count, ProtectedError, Q
@@ -19,6 +20,7 @@ from bpp.wersjonowanie import (
 from bpp.zglaszanie_bledow import capture_exception
 from pbn_api.models import Journal
 from pbn_export_queue.models import PBN_Export_Queue
+from przemapuj_zrodlo.historia import opis_zrodla
 
 from .forms import PrzeMapowanieZrodlaForm
 from .models import PrzeMapowanieZrodla
@@ -490,20 +492,31 @@ def _utworz_zrodlo_z_journala(request, journal_docelowy):
 
 
 def _zbierz_rekordy_do_przemapowania(zrodlo):
-    """Zbierz historię i oryginalne rekordy przed przemapowaniem źródła."""
-    rekordy_historia = []
-    rekordy_do_wyslania = []
-    for rekord in Rekord.objects.filter(zrodlo=zrodlo):
-        rekordy_historia.append(
-            {
-                "id": list(rekord.pk),
-                "tytul": rekord.tytul_oryginalny,
-                "rok": rekord.rok,
-                "opis_bibliograficzny": rekord.opis_bibliograficzny_cache or "",
-            }
-        )
-        rekordy_do_wyslania.append(rekord.original)
-    return rekordy_historia, rekordy_do_wyslania
+    """Zablokuj publikacje źródła i zwróć (log, publikacje).
+
+    Blokada (``SELECT … FOR UPDATE``) jest po to, żeby aktualizacja, log
+    operacji i historia objęły TEN SAM zestaw rekordów — bez niej drugi
+    redaktor mógłby w międzyczasie przenieść publikację gdzie indziej,
+    a ona i tak trafiłaby do logu i historii. Źródło mają tylko wydawnictwa
+    ciągłe; klucz w logu zostaje w formacie widoku ``Rekord``
+    (``[content_type_id, object_id]``).
+    """
+    ct_id = ContentType.objects.get_for_model(Wydawnictwo_Ciagle).pk
+    prace = list(
+        Wydawnictwo_Ciagle.objects.select_for_update(of=("self",))
+        .filter(zrodlo=zrodlo)
+        .order_by("pk")
+    )
+    rekordy_historia = [
+        {
+            "id": [ct_id, praca.pk],
+            "tytul": praca.tytul_oryginalny,
+            "rok": praca.rok,
+            "opis_bibliograficzny": praca.opis_bibliograficzny_cache or "",
+        }
+        for praca in prace
+    ]
+    return rekordy_historia, prace
 
 
 def _dodaj_rekordy_do_kolejki_pbn(request, rekordy_do_wyslania):
@@ -557,21 +570,24 @@ def _obsluz_confirm(request, zrodlo, form):
                 zrodlo
             )
 
-            prace = Wydawnictwo_Ciagle.objects.filter(zrodlo=zrodlo)
+            prace_pks = [praca.pk for praca in rekordy_do_wyslania]
             # Wpis w historii każdej pracy: kto, kiedy, z jakiego źródła na
-            # jakie — z UID-em skasowanego czasopisma PBN i numerem operacji,
-            # po którym da się trafić do logu przemapowań (FD#508).
+            # jakie — z identyfikatorami obu źródeł, UID-em skasowanego
+            # czasopisma PBN i numerem operacji, po którym da się trafić do
+            # logu przemapowań (FD#508).
             komentarz = (
-                f"Przemapowano źródło skasowane w PBN „{zrodlo}” "
-                f"(UID {zrodlo.pbn_uid_id}) → „{zrodlo_nowe}”"
+                f"Przemapowano źródło skasowane w PBN "
+                f"{opis_zrodla(zrodlo, pbn_uid=True)} → {opis_zrodla(zrodlo_nowe)}"
             )
             with zmiany_rekordow(
                 request.user,
                 Wydawnictwo_Ciagle,
-                list(prace.values_list("pk", flat=True)),
+                prace_pks,
                 komentarz + " (przemapowanie źródeł PBN).",
             ) as zmiana:
-                liczba_rekordow_updated = prace.update(zrodlo=zrodlo_nowe)
+                liczba_rekordow_updated = Wydawnictwo_Ciagle.objects.filter(
+                    pk__in=prace_pks
+                ).update(zrodlo=zrodlo_nowe)
 
                 # Zapisz log operacji
                 operacja = PrzeMapowanieZrodla.objects.create(

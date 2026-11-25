@@ -94,7 +94,11 @@ To pole nie daje innych uprawnień. Szczegóły:
       autorów, przemapowania źródeł i prac autora (oraz ich cofnięcia),
       aktualizacje z importu pracowników, POLON-u i importu dyscyplin,
       ustawienia z porównania z CrossRef i modułu rozbieżności, powiązania
-      z PBN — mają wpis „zmieniono” z opisem operacji. W modelach
+      z PBN — mają wpis „zmieniono” z opisem operacji. Logi
+      przemapowań źródeł (menu **Wprowadzanie danych → „Przemapowania
+      źródeł”** i **„Przemapowania źródeł PBN”**) może oglądać grupa
+      „wprowadzanie danych”; są tylko do odczytu
+      (zob. [Przemapowanie źródeł](../redaktor/przemapowanie-zrodel.md#log)). W modelach
       z historią wersji (m.in. autorzy, publikacje) taka zmiana zapisuje
       też wersję, więc można ją cofnąć przyciskiem „Historia”. Usunięcie duplikatu przy scalaniu zostawia wpis
       „usunięto”.

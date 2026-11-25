@@ -68,11 +68,12 @@ def test_przemapowanie_zrodla_pbn_w_historii_kazdej_pracy(przemapowanie_pbn, red
         wpis = _wpisy("wydawnictwo_ciagle", praca.pk).get()
         assert wpis.action_flag == CHANGE
         assert wpis.user == redaktor
-        assert "Stara gazeta" in wpis.change_message
-        assert "Nowa gazeta" in wpis.change_message
-        # UID skasowanego czasopisma i numer operacji — po nim redaktor
-        # trafia do logu przemapowań.
-        assert f"UID {przemapowanie_pbn['skasowany'].pk}" in wpis.change_message
+        # Nazwa i identyfikator BPP obu źródeł, a przy skasowanym — także
+        # UID czasopisma w PBN.
+        stare, nowe = operacja.zrodlo_stare, operacja.zrodlo_nowe
+        uid = przemapowanie_pbn["skasowany"].pk
+        assert f"„Stara gazeta” (ID {stare.pk}, PBN UID {uid})" in wpis.change_message
+        assert f"„Nowa gazeta” (ID {nowe.pk})" in wpis.change_message
         assert f"nr {operacja.pk}" in wpis.change_message
 
 
@@ -145,3 +146,44 @@ def test_strona_historia_pracy_pokazuje_przemapowanie(przemapowanie_pbn, admin_c
     assert "Przemapowano źródło skasowane w PBN" in tresc
     assert f"przemapowanie źródeł PBN nr {operacja.pk}" in tresc
     assert "redaktor-przemapuj" in tresc
+
+
+@pytest.mark.django_db
+def test_przemapowanie_pbn_blokuje_publikacje_i_aktualizuje_ten_sam_zestaw(
+    client, redaktor
+):
+    """Jak w zwykłym przemapowaniu: ``FOR UPDATE`` + ``UPDATE`` po kluczach."""
+    from django.db import connection
+    from django.test.utils import CaptureQueriesContext
+
+    client.force_login(redaktor)
+    skasowany = _journal(status="DELETED", title="Stara", issn="1234-5678")
+    zrodlo_stare = baker.make(
+        Zrodlo, nazwa="Stara", pbn_uid=skasowany, issn="1234-5678"
+    )
+    aktywny = _journal(
+        status="ACTIVE", title="Stara Nowa", issn="1234-5678", mniswId=999
+    )
+    zrodlo_nowe = baker.make(
+        Zrodlo, nazwa="Stara Nowa", pbn_uid=aktywny, issn="1234-5678"
+    )
+    praca = baker.make(Wydawnictwo_Ciagle, zrodlo=zrodlo_stare)
+
+    with CaptureQueriesContext(connection) as zapytania:
+        client.post(
+            reverse(
+                "przemapuj_zrodla_pbn:przemapuj_zrodlo",
+                kwargs={"zrodlo_id": zrodlo_stare.pk},
+            ),
+            {"typ_wyboru": "zrodlo", "zrodlo_docelowe": zrodlo_nowe.pk, "confirm": "1"},
+        )
+
+    sql = [q["sql"] for q in zapytania if "bpp_wydawnictwo_ciagle" in q["sql"]]
+    assert any(s.startswith("SELECT") and "FOR UPDATE" in s for s in sql)
+    aktualizacje = [s for s in sql if s.startswith("UPDATE") and '"zrodlo_id" =' in s]
+    assert aktualizacje
+    assert all('"id" IN' in s.split("WHERE")[1] for s in aktualizacje)
+    praca.refresh_from_db()
+    assert praca.zrodlo == zrodlo_nowe
+    operacja = PrzeMapowanieZrodla.objects.get()
+    assert [r["id"][1] for r in operacja.rekordy_historia] == [praca.pk]

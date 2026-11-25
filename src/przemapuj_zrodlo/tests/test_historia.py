@@ -29,8 +29,10 @@ def test_przemapowanie_i_cofniecie_zrodla_w_historii_prac(admin_client, admin_us
         wpis = _wpisy(praca).get()
         assert wpis.action_flag == CHANGE
         assert wpis.user == admin_user
-        assert "Stare czasopismo" in wpis.change_message
-        assert "Nowe czasopismo" in wpis.change_message
+        # Nazwa i identyfikator obu źródeł — dwa źródła mogą nazywać się
+        # tak samo (scalanie duplikatów).
+        assert f"„Stare czasopismo” (ID {zrodlo_z.pk})" in wpis.change_message
+        assert f"„Nowe czasopismo” (ID {zrodlo_do.pk})" in wpis.change_message
 
     from przemapuj_zrodlo.models import PrzemapowaZrodla
 
@@ -41,6 +43,8 @@ def test_przemapowanie_i_cofniecie_zrodla_w_historii_prac(admin_client, admin_us
         wpisy = list(_wpisy(praca))
         assert len(wpisy) == 2
         assert wpisy[1].change_message.startswith("Cofnięto przemapowanie")
+        assert f"(ID {zrodlo_z.pk})" in wpisy[1].change_message
+        assert f"(ID {zrodlo_do.pk})" in wpisy[1].change_message
 
 
 @pytest.mark.django_db
@@ -61,7 +65,7 @@ def test_strona_przemapowania_linkuje_do_publikacji(admin_client):
     )
     przemapowanie = PrzemapowaZrodla.objects.get()
     usunieta_pk = usunieta.pk
-    Wydawnictwo_Ciagle.objects.filter(pk=usunieta_pk).delete()
+    usunieta.hard_delete()
 
     resp = admin_client.get(
         reverse(

@@ -154,6 +154,12 @@ REDAKTOR_MENU = [
         "/admin/ewaluacja_liczba_n/iloscudzialowdlaautorazarok/",
     ),
     ("Źródła", "/admin/bpp/zrodlo/"),
+    # Logi przemapowań źródeł — tylko do odczytu (FD#508).
+    ("Przemapowania źródeł", "/admin/przemapuj_zrodlo/przemapowazrodla/"),
+    (
+        "Przemapowania źródeł PBN",
+        "/admin/przemapuj_zrodla_pbn/przemapowaniezrodla/",
+    ),
     ("Serie wydawnicze", "/admin/bpp/seria_wydawnicza/"),
     ("Konferencje", "/admin/bpp/konferencja/"),
     ("Wydawcy", "/admin/bpp/wydawca/"),
