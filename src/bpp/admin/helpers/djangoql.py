@@ -23,6 +23,12 @@ from djangoql.exceptions import DjangoQLError
 
 from bpp.djangoql_schema import BppQLSchema
 
+#: Ładowany wszędzie tam, gdzie ``djangoql/js/completion.js`` — i zawsze PO nim.
+#: Widżet podpowiedzi wstawia etykiety przez ``innerHTML`` bez escapowania;
+#: ten skrypt podmienia mu funkcję budującą znaczniki (patrz komentarz w pliku).
+SKRYPT_ESCAPOWANIA_PODPOWIEDZI = "bpp/js/djangoql-completion-escape.js"
+WIDZET_PODPOWIEDZI = "djangoql/js/completion.js"
+
 
 class BppDjangoQLSearchMixin(DjangoQLSearchMixin):
     """``DjangoQLSearchMixin`` ze wspólnym schematem BPP, podświetlaniem składni
@@ -40,7 +46,16 @@ class BppDjangoQLSearchMixin(DjangoQLSearchMixin):
     def media(self):
         return super().media + forms.Media(
             css={"all": ["djangoql/css/highlight.css"]},
-            js=["djangoql/js/highlight.js", "bpp/js/djangoql-admin.js"],
+            js=[
+                # Podpowiedzi mają pokazywać nazwy z bazy jako tekst, nie jako
+                # HTML. Widżet jest wymieniony jeszcze raz (choć daje go już
+                # ``super().media``), bo Django zachowuje kolejność tylko
+                # w obrębie jednej listy — a skrypt musi iść PO widżecie.
+                WIDZET_PODPOWIEDZI,
+                SKRYPT_ESCAPOWANIA_PODPOWIEDZI,
+                "djangoql/js/highlight.js",
+                "bpp/js/djangoql-admin.js",
+            ],
         )
 
     def djangoql_error_message(self, exception):

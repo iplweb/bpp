@@ -393,6 +393,8 @@
                 </button>
             </div>
             <script src="{% static 'djangoql/js/completion.js' %}"></script>
+            {# Zaraz po completion.js: tekst podpowiedzi to dane, nie HTML. #}
+            <script src="{% static 'bpp/js/djangoql-completion-escape.js' %}"></script>
             <script src="{% static 'bpp/js/djangoql-pretty.js' %}"></script>
             <script>
             (function () {

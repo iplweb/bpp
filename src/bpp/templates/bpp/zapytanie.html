@@ -771,6 +771,8 @@
 {# Prymitywy djangoql 0.25: completion (autocomplete + value-in-list), #}
 {# multiline (Shift+Enter), highlight (nakladka + czerwona falka bledu). #}
 <script src="{% static 'djangoql/js/completion.js' %}"></script>
+{# Zaraz po completion.js: tekst podpowiedzi to dane, nie HTML. #}
+<script src="{% static 'bpp/js/djangoql-completion-escape.js' %}"></script>
 <script src="{% static 'djangoql/js/multiline.js' %}"></script>
 <script src="{% static 'djangoql/js/highlight.js' %}"></script>
 <script src="{% static 'bpp/js/zapytanie.js' %}"></script>
