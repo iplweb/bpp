@@ -25,6 +25,7 @@ from ..util.identyfikatory import IdentyfikatoryProfiliFormMixin
 from ..util.obrazy import MAKS_ROZMIAR_PLIKU_ZDJECIA, przetworz_zdjecie_autora
 from ..wersjonowanie import przelicz_aktualna_jednostke
 from .actions import (
+    pobierz_odpowiedniki_autorow_z_pbn_w_tle,
     pokaz_autorow_wszedzie,
     ukryj_autorow_wszedzie,
     ustaw_pokazuj_false,
@@ -398,6 +399,7 @@ class AutorAdmin(
         ustaw_pokazuj_false,
         pokaz_autorow_wszedzie,
         ukryj_autorow_wszedzie,
+        pobierz_odpowiedniki_autorow_z_pbn_w_tle,
     ]
 
     list_display_always = ["nazwisko", "imiona"]

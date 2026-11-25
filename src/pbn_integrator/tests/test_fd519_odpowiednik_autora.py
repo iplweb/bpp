@@ -1,0 +1,279 @@
+"""FD#519 — przycisk „Pobierz z PBN” w edycji autora.
+
+ORCID → pewny odpowiednik (także pobrany z serwera PBN); bez ORCID — imię
+i nazwisko, a przy kilku kandydatach lista do wyboru z osobami z profilu
+instytucji na początku. Testy bez sieci.
+"""
+
+import json
+
+import pytest
+from django.urls import reverse
+from model_bakery import baker
+
+from bpp.models import Autor
+from pbn_api.models import OsobaZInstytucji, Scientist
+from pbn_integrator.models import PobieranieOdpowiednikowPBN
+from pbn_integrator.utils.odpowiednik_autora import (
+    STATUS_BRAK,
+    STATUS_DO_WYBORU,
+    STATUS_PEWNY,
+    szukaj_odpowiednika_autora,
+)
+
+OSOBA_1 = "5e709189878c28a04737dc71"
+OSOBA_2 = "5e709189878c28a04737dc72"
+OSOBA_3 = "5e709189878c28a04737dc73"
+ORCID = "0000-0002-1825-0097"
+
+
+def _osoba(pk, nazwisko, imiona, *, orcid=None, z_instytucji=False):
+    obiekt = {"lastName": nazwisko, "name": imiona}
+    if orcid:
+        obiekt["orcid"] = orcid
+    osoba = baker.make(
+        Scientist,
+        mongoId=pk,
+        status="ACTIVE",
+        versions=[{"current": True, "object": obiekt}],
+    )
+    if z_instytucji:
+        baker.make(
+            OsobaZInstytucji, personId=osoba, firstName=imiona, lastName=nazwisko
+        )
+    return osoba
+
+
+def _autor(**kw):
+    kw.setdefault("nazwisko", "Kowalski")
+    kw.setdefault("imiona", "Jan")
+    return baker.make(Autor, pbn_uid=None, **kw)
+
+
+class KlientTylkoOrcid:
+    """Atrapa klienta PBN: zna wyłącznie szukanie osoby po ORCID. Każde
+    inne wywołanie (np. wysyłka) kończy się ``AttributeError``."""
+
+    def __init__(self, osoby):
+        self.osoby = osoby
+        self.zapytania = []
+
+    def get_person_by_orcid(self, orcid):
+        self.zapytania.append(orcid)
+        return self.osoby
+
+
+@pytest.mark.django_db
+def test_autor_z_orcid_dostaje_pewny_odpowiednik(uczelnia):
+    _osoba(OSOBA_1, "Kowalski", "Jan", orcid=ORCID)
+    _osoba(OSOBA_2, "Kowalski", "Jan")
+    autor = _autor(orcid=ORCID)
+
+    wynik = szukaj_odpowiednika_autora(autor, uczelnia=uczelnia)
+
+    assert wynik.status == STATUS_PEWNY
+    assert wynik.kandydaci[0]["id"] == OSOBA_1
+    assert "ORCID" in wynik.komunikat
+    autor.refresh_from_db()
+    assert autor.pbn_uid_id is None  # szukanie niczego nie zapisuje
+
+
+@pytest.mark.django_db
+def test_orcid_i_profil_instytucji_wskazuja_rozne_osoby(uczelnia):
+    """Sprzeczne wskazania nigdy nie są rozstrzygane automatycznie."""
+    _osoba(OSOBA_1, "Kowalski", "Jan", orcid=ORCID)
+    _osoba(OSOBA_2, "Kowalski", "Jan", z_instytucji=True)
+
+    wynik = szukaj_odpowiednika_autora(_autor(orcid=ORCID), uczelnia=uczelnia)
+
+    assert wynik.status == STATUS_DO_WYBORU
+    assert [k["id"] for k in wynik.kandydaci] == [OSOBA_2, OSOBA_1]
+    assert "zgodny ORCID" in wynik.kandydaci[1]["opis"]
+
+
+@pytest.mark.django_db
+def test_orcid_spoza_lokalnej_kopii_jest_pobierany_z_serwera_pbn(uczelnia):
+    klient = KlientTylkoOrcid(
+        [
+            {
+                "mongoId": OSOBA_1,
+                "status": "ACTIVE",
+                "verificationLevel": "x",
+                "verified": True,
+                "versions": [
+                    {
+                        "current": True,
+                        "object": {
+                            "lastName": "Kowalski",
+                            "name": "Jan",
+                            "orcid": ORCID,
+                        },
+                    }
+                ],
+            }
+        ]
+    )
+    autor = _autor(orcid=ORCID)
+
+    wynik = szukaj_odpowiednika_autora(autor, uczelnia=uczelnia, klient=lambda: klient)
+
+    assert klient.zapytania == [ORCID]
+    assert Scientist.objects.filter(pk=OSOBA_1).exists()
+    assert wynik.status == STATUS_PEWNY
+    assert wynik.kandydaci[0]["id"] == OSOBA_1
+
+
+@pytest.mark.django_db
+def test_orcid_znany_lokalnie_nie_pyta_serwera(uczelnia):
+    _osoba(OSOBA_1, "Kowalski", "Jan", orcid=ORCID)
+    klient = KlientTylkoOrcid([])
+
+    szukaj_odpowiednika_autora(
+        _autor(orcid=ORCID), uczelnia=uczelnia, klient=lambda: klient
+    )
+
+    assert klient.zapytania == []
+
+
+@pytest.mark.django_db
+def test_bez_orcid_lista_do_wyboru_oficjalni_pierwsi(uczelnia):
+    _osoba(OSOBA_1, "Kowalski", "Jan")
+    _osoba(OSOBA_2, "Kowalski", "Jan", z_instytucji=True)
+    _osoba(OSOBA_3, "Kowalski", "Jan Maria")
+    _osoba("5e709189878c28a04737dc7f", "Kowalski", "Piotr", z_instytucji=True)
+
+    wynik = szukaj_odpowiednika_autora(_autor(), uczelnia=uczelnia)
+
+    assert wynik.status == STATUS_DO_WYBORU
+    assert [k["id"] for k in wynik.kandydaci][0] == OSOBA_2
+    assert {k["id"] for k in wynik.kandydaci} == {OSOBA_1, OSOBA_2, OSOBA_3}
+    assert [k["oficjalny"] for k in wynik.kandydaci] == [True, False, False]
+    assert "profilu instytucji" in wynik.kandydaci[0]["opis"]
+
+
+@pytest.mark.django_db
+def test_jedyny_imiennik_z_instytucji_nie_jest_ustawiany_bez_pytania(uczelnia):
+    """Samo imię i nazwisko to za mało na automat — zawsze wybór redaktora."""
+    _osoba(OSOBA_1, "Kowalski", "Jan", z_instytucji=True)
+
+    wynik = szukaj_odpowiednika_autora(_autor(), uczelnia=uczelnia)
+
+    assert wynik.status == STATUS_DO_WYBORU
+    assert [k["id"] for k in wynik.kandydaci] == [OSOBA_1]
+
+
+@pytest.mark.django_db
+def test_osoba_przypisana_do_innego_autora_jest_oznaczona(uczelnia):
+    osoba = _osoba(OSOBA_1, "Kowalski", "Jan", orcid=ORCID)
+    inny = baker.make(Autor, nazwisko="Kowalski", imiona="Jan", pbn_uid=osoba)
+
+    wynik = szukaj_odpowiednika_autora(_autor(orcid=ORCID), uczelnia=uczelnia)
+
+    assert wynik.status == STATUS_DO_WYBORU
+    assert f"ID {inny.pk}" in wynik.kandydaci[0]["zajety"]
+    assert "duplikat" in wynik.komunikat
+
+
+@pytest.mark.django_db
+def test_brak_kandydatow(uczelnia):
+    wynik = szukaj_odpowiednika_autora(_autor(orcid=ORCID), uczelnia=uczelnia)
+
+    assert wynik.status == STATUS_BRAK
+    assert wynik.kandydaci == []
+    assert ORCID in wynik.komunikat
+
+
+def _post(admin_client, **dane):
+    odp = admin_client.post(reverse("bpp:api_pobierz_z_pbn_autora"), data=dane)
+    assert odp.status_code == 200
+    return json.loads(odp.content)
+
+
+@pytest.mark.django_db
+def test_widok_uzywa_wartosci_z_formularza(admin_client, uczelnia):
+    """Redaktor wpisał ORCID i od razu klika przycisk — liczy się to, co
+    jest w formularzu, nie to, co zapisane."""
+    _osoba(OSOBA_1, "Kowalski", "Jan", orcid=ORCID)
+    autor = _autor(orcid=None)
+
+    res = _post(
+        admin_client,
+        pk=autor.pk,
+        imiona="Jan",
+        nazwisko="Kowalski",
+        orcid=ORCID,
+    )
+
+    assert res["status"] == STATUS_PEWNY
+    assert res["id"] == OSOBA_1
+    autor.refresh_from_db()
+    assert autor.pbn_uid_id is None
+    assert autor.orcid is None
+
+
+@pytest.mark.django_db
+def test_widok_dziala_dla_niezapisanego_autora_i_pustych_pol(admin_client, uczelnia):
+    _osoba(OSOBA_1, "Nowak", "Anna", z_instytucji=True)
+
+    nowy = _post(admin_client, pk="", imiona="Anna", nazwisko="Nowak")
+    pusty = _post(admin_client, pk="", imiona="", nazwisko="Nowak")
+
+    assert nowy["status"] == STATUS_DO_WYBORU
+    assert nowy["kandydaci"][0]["id"] == OSOBA_1
+    assert "id" not in nowy
+    assert pusty["status"] == "puste"
+    assert "Uzupełnij ORCID" in pusty["komunikat"]
+
+
+# --- akcja grupowa na liście autorów -----------------------------------------
+
+
+@pytest.mark.django_db
+def test_akcja_dla_autorow_ustawia_tylko_pewne(
+    admin_client, admin_user, uczelnia, django_capture_on_commit_callbacks
+):
+    baker.make(
+        Scientist,
+        mongoId=OSOBA_1,
+        status="ACTIVE",
+        versions=[
+            {
+                "current": True,
+                "object": {"lastName": "Kowalski", "name": "Jan", "orcid": ORCID},
+            }
+        ],
+    )
+    baker.make(
+        Scientist,
+        mongoId=OSOBA_2,
+        status="ACTIVE",
+        versions=[{"current": True, "object": {"lastName": "Nowak", "name": "Anna"}}],
+    )
+    z_orcid = baker.make(
+        Autor, nazwisko="Kowalski", imiona="Jan", orcid=ORCID, pbn_uid=None
+    )
+    nieznany = baker.make(Autor, nazwisko="Wiśniewski", imiona="Adam", pbn_uid=None)
+    url = reverse("admin:bpp_autor_changelist")
+
+    assert (
+        "Pobierz odpowiedniki z PBN (w tle)" in admin_client.get(url).content.decode()
+    )
+    with django_capture_on_commit_callbacks(execute=True):
+        admin_client.post(
+            url,
+            {
+                "action": "pobierz_odpowiedniki_autorow_z_pbn_w_tle",
+                "_selected_action": [z_orcid.pk, nieznany.pk],
+            },
+        )
+
+    zlecenie = PobieranieOdpowiednikowPBN.objects.get()
+    assert zlecenie.rodzaj == "autorzy"
+    assert zlecenie.zakonczono is not None and not zlecenie.blad, zlecenie.blad
+    grupy = {w["pk"]: w["grupa"] for w in zlecenie.wyniki}
+    assert grupy[z_orcid.pk] == "ustawiono"
+    assert grupy[nieznany.pk] == "nie_znaleziono"
+    z_orcid.refresh_from_db()
+    nieznany.refresh_from_db()
+    assert z_orcid.pbn_uid_id == OSOBA_1
+    assert nieznany.pbn_uid_id is None
