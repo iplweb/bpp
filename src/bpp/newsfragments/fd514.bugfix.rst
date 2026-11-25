@@ -25,3 +25,9 @@ wybranego okresu. Lista „Problemy PBN” jest stronicowana (po 50 pozycji,
 od najnowszych) i otwiera się szybko także przy tysiącach pozycji; kafelki
 „Statystyki” i pole „Szukaj” nadal obejmują cały wybrany zakres lat, a nie
 jedną stronę.
+W „Problemach PBN” pole „Szukaj” znajduje teraz rozbieżności dyscyplin także
+po nazwisku lub imieniu autora z BPP (tego, który jest widoczny w wierszu).
+W instalacjach obsługujących więcej niż jedną uczelnię lista „Problemy PBN”,
+jej statystyki i strony szczegółów pokazują wyłącznie oświadczenia
+instytucji bieżącej uczelni (dotąd wszystkie uczelnie widziały wspólną
+listę); w instalacjach z jedną uczelnią nic się nie zmienia.

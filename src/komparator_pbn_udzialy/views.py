@@ -16,6 +16,7 @@ from django.views import View
 from django.views.generic import DetailView
 
 from bpp.const import GR_WPROWADZANIE_DANYCH
+from bpp.models import Uczelnia
 from bpp.models.wydawnictwo_ciagle import Wydawnictwo_Ciagle_Autor
 from bpp.models.wydawnictwo_zwarte import Wydawnictwo_Zwarte_Autor
 from ewaluacja_common.okres import lata_okresu
@@ -34,6 +35,41 @@ RODZAJ_BRAK_AUTORA = "brak_autora"
 
 #: Ścieżka od rekordu problemu do roku publikacji w PBN.
 ROK_PUBLIKACJI_PBN = "oswiadczenie_instytucji__publicationId__year"
+
+
+def filtr_uczelni(request):
+    """``Q`` zawężające problemy do oświadczeń instytucji bieżącej uczelni.
+
+    Lustro oświadczeń PBN jest wspólne dla całej instalacji; w instalacji
+    wielouczelnianej każda uczelnia ma widzieć tylko swoje (oświadczenie
+    wiąże się z uczelnią przez ``institutionId == uczelnia.pbn_uid`` — pole
+    ``uczelnia`` oświadczenia bywa puste). W instalacji z jedną uczelnią nie
+    filtrujemy niczego: lista wygląda jak dotąd, także gdy uczelnia nie ma
+    ustawionego identyfikatora PBN albo oświadczenia mają inny.
+    """
+    if Uczelnia.objects.count() <= 1:
+        return Q()
+    uczelnia = Uczelnia.objects.get_for_request(request)
+    if uczelnia is None or uczelnia.pbn_uid_id is None:
+        # Nie wiadomo, czyje oświadczenia pokazać — nie pokazujemy cudzych.
+        return Q(pk__in=[])
+    return Q(oswiadczenie_instytucji__institutionId_id=uczelnia.pbn_uid_id)
+
+
+def _autorzy_bpp(search):
+    """``Q`` dla rozbieżności dyscyplin: autor BPP (nazwisko albo imiona)
+    powiązania autor–praca, którego dotyczy rozbieżność. Powiązanie jest
+    kluczem generycznym, stąd podzapytanie na każdy typ pracy."""
+    warunek = Q()
+    for model in (Wydawnictwo_Ciagle_Autor, Wydawnictwo_Zwarte_Autor):
+        pasujace = model.objects.filter(
+            Q(autor__nazwisko__icontains=search) | Q(autor__imiona__icontains=search)
+        ).values("pk")
+        warunek |= Q(
+            content_type=ContentType.objects.get_for_model(model),
+            object_id__in=pasujace,
+        )
+    return warunek
 
 
 def _rok(wartosc):
@@ -72,8 +108,13 @@ class ProblemyPBNListView(GroupRequiredMixin, View):
         rok_min = request.GET.get("rok_min", str(okres_od))
         rok_max = request.GET.get("rok_max", str(okres_do))
 
-        rozbieznosci = self._get_rozbieznosci(search, filter_type, rok_min, rok_max)
-        brakujacy = self._get_brakujacy(search, filter_type, rok_min, rok_max)
+        uczelnia = filtr_uczelni(request)
+        rozbieznosci = self._get_rozbieznosci(
+            search, filter_type, rok_min, rok_max
+        ).filter(uczelnia)
+        brakujacy = self._get_brakujacy(search, filter_type, rok_min, rok_max).filter(
+            uczelnia
+        )
 
         # Obie tabele w jednym zapytaniu (UNION ALL): filtrowanie, sortowanie
         # (najnowsze pierwsze) i stronicowanie robi baza, a nie Python.
@@ -91,7 +132,7 @@ class ProblemyPBNListView(GroupRequiredMixin, View):
         page_obj = Paginator(klucze, self.paginate_by).get_page(request.GET.get("page"))
 
         # Statystyki
-        stats = self._get_stats(rok_min, rok_max)
+        stats = self._get_stats(rok_min, rok_max, uczelnia)
 
         # PBN data freshness check
         pbn_data_fresh, pbn_stale_message, pbn_last_download = (
@@ -175,6 +216,7 @@ class ProblemyPBNListView(GroupRequiredMixin, View):
                 Q(oswiadczenie_instytucji__publicationId__title__icontains=search)
                 | Q(dyscyplina_bpp__nazwa__icontains=search)
                 | Q(dyscyplina_pbn__nazwa__icontains=search)
+                | _autorzy_bpp(search)
             )
 
         # Filtrowanie po typie - dla rozbieżności
@@ -223,11 +265,11 @@ class ProblemyPBNListView(GroupRequiredMixin, View):
 
         return filtruj_lata(queryset, rok_min, rok_max)
 
-    def _get_stats(self, rok_min, rok_max):
+    def _get_stats(self, rok_min, rok_max, uczelnia=Q()):
         """Statystyki wszystkich typów problemów dla tego samego zakresu lat
         co lista (inaczej kafelki pokazywałyby inne liczby niż tabela)."""
         rozbieznosci = filtruj_lata(
-            RozbieznoscDyscyplinPBN.objects.all(), rok_min, rok_max
+            RozbieznoscDyscyplinPBN.objects.filter(uczelnia), rok_min, rok_max
         ).aggregate(
             total=Count("id"),
             bpp_empty=Count("id", filter=Q(dyscyplina_bpp__isnull=True)),
@@ -243,7 +285,7 @@ class ProblemyPBNListView(GroupRequiredMixin, View):
         both_present = rozbieznosci["both_present"]
 
         brakujacy = filtruj_lata(
-            BrakAutoraWPublikacji.objects.all(), rok_min, rok_max
+            BrakAutoraWPublikacji.objects.filter(uczelnia), rok_min, rok_max
         ).aggregate(
             total=Count("id"),
             missing_autor=Count(
@@ -287,10 +329,12 @@ class RozbieznoscDyscyplinPBNDetailView(GroupRequiredMixin, DetailView):
     context_object_name = "rozbieznosc"
 
     def get_queryset(self):
-        """Optymalizowany queryset."""
+        """Optymalizowany queryset (w instalacji wielouczelnianej tylko
+        problemy oświadczeń bieżącej uczelni — cudze dają 404)."""
         return (
             super()
             .get_queryset()
+            .filter(filtr_uczelni(self.request))
             .select_related(
                 "oswiadczenie_instytucji",
                 "oswiadczenie_instytucji__publicationId",
@@ -423,10 +467,12 @@ class BrakAutoraDetailView(GroupRequiredMixin, DetailView):
     context_object_name = "brak_autora"
 
     def get_queryset(self):
-        """Optymalizowany queryset."""
+        """Optymalizowany queryset (w instalacji wielouczelnianej tylko
+        problemy oświadczeń bieżącej uczelni — cudze dają 404)."""
         return (
             super()
             .get_queryset()
+            .filter(filtr_uczelni(self.request))
             .select_related(
                 "oswiadczenie_instytucji",
                 "oswiadczenie_instytucji__publicationId",

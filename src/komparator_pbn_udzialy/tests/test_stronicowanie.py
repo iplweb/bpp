@@ -7,6 +7,7 @@ from django.contrib.contenttypes.models import ContentType
 from django.utils import timezone
 from model_bakery import baker
 
+from bpp.models import Uczelnia
 from komparator_pbn_udzialy.models import BrakAutoraWPublikacji, RozbieznoscDyscyplinPBN
 from komparator_pbn_udzialy.views import ProblemyPBNListView
 
@@ -34,9 +35,14 @@ def _brak_autora(nr, typ=BrakAutoraWPublikacji.TYP_BRAK_AUTORA_W_BPP):
 
 def _rozbieznosc(nr, model="bpp.Wydawnictwo_Ciagle"):
     rekord = baker.make(model, tytul_oryginalny=f"Praca rozb {nr:03}", rok=2027)
+    # Jednostka jednej, wspólnej uczelni: bez tego ``baker`` zakłada do
+    # każdej jednostki nową uczelnię, a w instalacji wielouczelnianej lista
+    # pokazuje tylko oświadczenia bieżącej uczelni.
+    uczelnia = Uczelnia.objects.first() or baker.make(Uczelnia)
     wa = baker.make(
         f"{model}_Autor",
         rekord=rekord,
+        jednostka=baker.make("bpp.Jednostka", uczelnia=uczelnia),
         autor=baker.make(
             "bpp.Autor", nazwisko=f"Rozb{nr:03}", tytul=baker.make("bpp.Tytul")
         ),
@@ -148,10 +154,10 @@ def test_liczba_zapytan_nie_rosnie_z_liczba_wierszy(
     liczba zapytań — bez zapytań na wiersz."""
     client_with_group.get(URL)  # rozgrzanie cache (ContentType, uczelnia itd.)
 
-    # Zmierzone: 40, z czego ~32 to obudowa strony (sesja, menu, pasek…),
-    # a 8 to lista: liczba wyników, 2× statystyki, klucze strony, po jednym
-    # zapytaniu na tabelę problemów i na typ pracy. Zapytanie na wiersz
-    # dałoby tu co najmniej 50 więcej.
+    # Zmierzone: 41, z czego ~32 to obudowa strony (sesja, menu, pasek…),
+    # a 9 to lista: liczba uczelni, liczba wyników, 2× statystyki, klucze
+    # strony, po jednym zapytaniu na tabelę problemów i na typ pracy.
+    # Zapytanie na wiersz dałoby tu co najmniej 50 więcej.
     with django_assert_max_num_queries(45):
         response = client_with_group.get(URL)
 
