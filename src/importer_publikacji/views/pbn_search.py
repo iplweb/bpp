@@ -1,9 +1,10 @@
 """Wyszukiwanie odpowiednika publikacji w PBN dla kroku „Sprawdź w PBN".
 
-Trzy niezależne osie wyszukiwania (każda ≤ ``MAX_RESULTS_PER_AXIS`` pozycji):
+Cztery niezależne osie wyszukiwania (każda ≤ ``MAX_RESULTS_PER_AXIS`` pozycji):
 
 * **DOI** — serwer PBN (``search_publications(doi=…)``),
 * **tytuł** — serwer PBN (``search_publications(title=…)``),
+* **ISBN** — serwer PBN (``search_publications(isbn=…)``, FD#512),
 * **strona WWW** — lokalny cache ``pbn_api.Publication`` po ``publicUri``
   (PBN API nie udostępnia wyszukiwania po adresie URL publikacji).
 
@@ -20,6 +21,8 @@ mieć tysiące pozycji).
 import itertools
 import logging
 
+from pbn_client.const import DELETED
+
 from import_common.normalization import normalize_doi
 
 logger = logging.getLogger(__name__)
@@ -29,6 +32,7 @@ MAX_RESULTS_PER_AXIS = 10
 
 AXIS_DOI = "DOI"
 AXIS_TITLE = "tytuł"
+AXIS_ISBN = "ISBN"
 AXIS_WWW = "strona WWW"
 
 
@@ -97,6 +101,11 @@ def _extract_object(elem):
     return elem
 
 
+def _usunieta_w_pbn(elem) -> bool:
+    """Czy odpowiedź PBN opisuje pracę oznaczoną jako usunięta."""
+    return isinstance(elem, dict) and elem.get("status") == DELETED
+
+
 def _result_from_search_elem(elem, axis, uczelnia):
     """Znormalizuj element z ``search_publications`` do wspólnej struktury."""
     obj = _extract_object(elem)
@@ -153,8 +162,30 @@ def _search_pbn_server(client, axis, key, value, uczelnia):
     results = [
         _result_from_search_elem(elem, axis, uczelnia)
         for elem in itertools.islice(resource, MAX_RESULTS_PER_AXIS)
+        # Praca usunięta w PBN nie może być odpowiednikiem (FD#512).
+        if not _usunieta_w_pbn(elem)
     ]
     return _dedup_by_mongo_id(results)
+
+
+def _search_pbn_isbn(client, isbny, uczelnia):
+    """Wyszukaj na serwerze PBN po numerach ISBN (≤ MAX_RESULTS_PER_AXIS).
+
+    PBN nie normalizuje zapytania i nie przelicza ISBN-10 na ISBN-13, więc
+    pytamy o każdy wariant w formie kanonicznej (``warianty_isbn``).
+    """
+    from bpp.util.isbn import warianty_isbn
+
+    warianty = []
+    for isbn in isbny:
+        for wariant in warianty_isbn(isbn):
+            if wariant not in warianty:
+                warianty.append(wariant)
+
+    results = []
+    for wariant in warianty:
+        results.extend(_search_pbn_server(client, AXIS_ISBN, "isbn", wariant, uczelnia))
+    return _dedup_by_mongo_id(results)[:MAX_RESULTS_PER_AXIS]
 
 
 def _search_pbn_local_www(url, uczelnia):
@@ -164,17 +195,20 @@ def _search_pbn_local_www(url, uczelnia):
         return []
     from pbn_api.models import Publication
 
-    qs = Publication.objects.filter(publicUri__icontains=norm)[:MAX_RESULTS_PER_AXIS]
+    qs = Publication.objects.filter(publicUri__icontains=norm).exclude(status=DELETED)[
+        :MAX_RESULTS_PER_AXIS
+    ]
     return _dedup_by_mongo_id(
         [_result_from_publication(pub, AXIS_WWW, uczelnia) for pub in qs]
     )
 
 
 def _search_pbn_equivalents(session, user) -> dict:
-    """Wyszukaj odpowiedniki pracy w PBN po DOI / tytule / stronie WWW.
+    """Wyszukaj odpowiedniki pracy w PBN po DOI / tytule / ISBN / stronie WWW.
 
     Zwraca dict:
-    ``{"by_doi", "by_title", "by_www", "total_unique", "error", "needs_auth"}``.
+    ``{"by_doi", "by_title", "by_isbn", "by_www", "total_unique", "error",
+    "needs_auth"}``.
     Osie serwerowe (DOI, tytuł) wymagają klienta PBN; oś WWW działa zawsze
     (lokalny cache). Błędy PBN degradują do komunikatu / needs_auth — bez
     wywalania kroku.
@@ -189,6 +223,7 @@ def _search_pbn_equivalents(session, user) -> dict:
     result = {
         "by_doi": [],
         "by_title": [],
+        "by_isbn": [],
         "by_www": [],
         "total_unique": 0,
         "error": None,
@@ -220,12 +255,19 @@ def _search_pbn_equivalents(session, user) -> dict:
         axes = [
             (AXIS_DOI, "doi", normalized_doi, "by_doi"),
             (AXIS_TITLE, "title", title, "by_title"),
+            # FD#512: książka w PBN często nie ma DOI — szukamy też po ISBN.
+            (AXIS_ISBN, "isbn", [nd.get("isbn"), nd.get("e_isbn")], "by_isbn"),
         ]
         for axis, key, value, bucket in axes:
             if not value:
                 continue
             try:
-                result[bucket] = _search_pbn_server(client, axis, key, value, uczelnia)
+                if axis == AXIS_ISBN:
+                    result[bucket] = _search_pbn_isbn(client, value, uczelnia)
+                else:
+                    result[bucket] = _search_pbn_server(
+                        client, axis, key, value, uczelnia
+                    )
             except (
                 NeedsPBNAuthorisationException,
                 AccessDeniedException,
@@ -240,7 +282,7 @@ def _search_pbn_equivalents(session, user) -> dict:
 
     unique_ids = {
         r["mongo_id"]
-        for bucket in ("by_doi", "by_title", "by_www")
+        for bucket in ("by_doi", "by_title", "by_isbn", "by_www")
         for r in result[bucket]
         if r.get("mongo_id")
     }
@@ -271,11 +313,17 @@ def _select_pbn_equivalent(session, user, mongo_id):
         # Rekord mógł już istnieć lokalnie (np. z osi WWW) — spróbuj mimo to.
         from pbn_api.models import Publication
 
-        if not Publication.objects.filter(pk=mongo_id).exists():
+        if not Publication.objects.filter(pk=mongo_id).exclude(status=DELETED).exists():
             return False
         session.matched_data["pbn_mongo_id"] = mongo_id
         session.save(update_fields=["matched_data"])
         return True
+
+    if _usunieta_w_pbn(data):
+        logger.warning(
+            "Rekord PBN %s jest usunięty — nie może być odpowiednikiem", mongo_id
+        )
+        return False
 
     from pbn_api.models import Publication
     from pbn_integrator.utils import zapisz_mongodb

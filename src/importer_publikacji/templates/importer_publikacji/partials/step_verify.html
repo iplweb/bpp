@@ -44,12 +44,15 @@
         </div>
     {% endif %}
 
+    {% include "importer_publikacji/partials/_zrodla_danych.html" %}
+
     {% if suggest_crossref %}
         <div class="callout warning">
             <span class="fi-info"></span>
             Dane pobrane z <strong>{{ session.provider_name }}</strong>
-            zawierają DOI.
-            Możesz pobrać pełniejsze metadane z CrossRef API.
+            zawierają DOI. Brakujące pola importer uzupełnia z CrossRef sam,
+            ale tytułu ani listy autorów nie zmienia. Jeśli dane z tego
+            źródła są błędne, możesz zastąpić je w całości danymi z CrossRef.
             <form style="display:inline; margin:0;"
                   hx-post="{% url 'importer_publikacji:fetch' %}"
                   hx-target="#importer-wizard"
@@ -73,7 +76,9 @@
     {% endif %}
 
     <div class="callout secondary">
-        <h6>Dane z {{ session.provider_name }}</h6>
+        <h6>
+            Dane z {{ session.provider_name }}{% for z in session.normalized_data.zrodla_dodatkowe %}{% if z.stan == "znaleziono" and z.pola and not z.wycofano %}, uzupełnione z: {{ z.zrodlo }}{% endif %}{% endfor %}
+        </h6>
         <table>
             <tr>
                 <th>Tytuł</th>

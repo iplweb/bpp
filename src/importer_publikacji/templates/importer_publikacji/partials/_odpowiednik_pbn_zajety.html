@@ -1,0 +1,18 @@
+{% load importer_tags %}
+{# FD#512: odpowiednik w PBN jest już przypisany do innego rekordu BPP — #}
+{# pole jest unikalne, więc nowy rekord nie zostanie z nim powiązany. #}
+{% with zajety=session|rekord_z_odpowiednikiem_pbn %}
+    {% if zajety %}
+        <div class="callout alert odpowiednik-pbn-zajety">
+            <span class="fi-alert"></span>
+            <strong>Odpowiednik w PBN jest już zajęty.</strong>
+            Praca w PBN wskazana jako odpowiednik jest powiązana z rekordem
+            w BPP:
+            <a href="{{ zajety.get_absolute_url }}" target="_blank" rel="noopener">{{ zajety }}</a>{% with change_url=zajety|admin_change_url %}{% if change_url %}
+                (<a href="{{ change_url }}" target="_blank" rel="noopener">redaguj</a>){% endif %}{% endwith %}.
+            To najpewniej ta sama praca — sprawdź, czy import nie tworzy
+            duplikatu. Jeśli utworzysz rekord, <strong>nie zostanie on
+            powiązany z PBN</strong>.
+        </div>
+    {% endif %}
+{% endwith %}

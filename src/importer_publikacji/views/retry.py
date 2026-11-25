@@ -1,5 +1,8 @@
 """Endpoint do retry-owania task-a importera publikacji po błędzie."""
 
+import uuid
+
+from django.db import transaction
 from django.http import HttpResponseBadRequest, HttpResponseNotAllowed
 from django.shortcuts import redirect
 from django.views import View
@@ -27,15 +30,24 @@ class ImportTaskRetryView(ImporterPermissionMixin, View):
         session.last_failed_stage = ""
 
         if failed_stage == "fetch":
-            session.authors.all().delete()
-            session.raw_data = {}
-            session.normalized_data = {}
-            session.status = ImportSession.Status.FETCHING
-            session.save()
+            # FD#512: poprzednie zadanie mogło jeszcze nie skończyć (strażnik
+            # uznał je za zawieszone, a ono czeka na wolne źródło). Blokada
+            # wiersza sesji + nowy identyfikator zadania zapisany w TEJ SAMEJ
+            # transakcji, przed wysłaniem: stare zadanie albo dokończy swój
+            # zapis przed nami (i zaraz go skasujemy), albo zobaczy, że sesja
+            # ma nowego właściciela, i wycofa się bez zapisu.
+            with transaction.atomic():
+                ImportSession.objects.select_for_update().get(pk=session.pk)
+                session.authors.all().delete()
+                session.raw_data = {}
+                session.normalized_data = {}
+                session.status = ImportSession.Status.FETCHING
+                session.celery_task_id = str(uuid.uuid4())
+                session.save()
 
-            task = fetch_session_task.delay(session.pk, request.user.pk)
-            session.celery_task_id = task.id
-            session.save(update_fields=["celery_task_id"])
+            fetch_session_task.apply_async(
+                args=[session.pk, request.user.pk], task_id=session.celery_task_id
+            )
 
         elif failed_stage == "create":
             session.created_record_content_type = None

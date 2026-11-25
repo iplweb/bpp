@@ -170,7 +170,17 @@ def _verify_context(request, session, form=None):
     existing = _find_duplicates(session)
 
     doi = session.normalized_data.get("doi")
-    suggest_crossref = bool(doi and session.provider_name != "CrossRef")
+    # FD#512: brakujące pola importer dociąga z CrossRef sam. Przycisk
+    # zastępujący sesję danymi z CrossRef zostaje na wypadek, gdy dane
+    # źródła głównego są błędne (tytuł, lista autorów) — łączenie źródeł
+    # ich nie nadpisuje. Znika, gdy CrossRef nie zna tego DOI.
+    crossref_nie_zna = any(
+        z.get("zrodlo") == "CrossRef" and z.get("stan") == "brak"
+        for z in session.normalized_data.get("zrodla_dodatkowe") or []
+    )
+    suggest_crossref = bool(
+        doi and session.provider_name != "CrossRef" and not crossref_nie_zna
+    )
 
     # Diagnostyka pól z API
     raw_data = session.raw_data

@@ -5,7 +5,8 @@ Logika podzielona na małe funkcje, żeby ułatwić mockowanie w testach.
 
 import logging
 
-from django.db import IntegrityError
+from django.db import IntegrityError, transaction
+from pbn_client.const import DELETED
 
 from import_common.normalization import normalize_doi
 
@@ -141,6 +142,40 @@ def _check_pbn_by_doi(session):
     return result
 
 
+def rekord_z_odpowiednikiem_pbn(mongo_id, poza=None):
+    """Rekord BPP, który ma już ten odpowiednik w PBN — albo ``None``.
+
+    Jedna reguła zajętości dla ostrzeżenia w kreatorze i dla zapisu
+    (FD#512). Unikalność w bazie działa osobno w każdej tabeli, więc
+    sprawdzamy wszystkie rodzaje rekordów z polem ``pbn_uid``: praca w PBN
+    przypisana do wydawnictwa ciągłego nie może zostać drugi raz przypisana
+    do zwartego. ``poza`` — rekord, którego nie liczymy (ten właśnie
+    wiązany).
+    """
+    from bpp.models import (
+        Praca_Doktorska,
+        Praca_Habilitacyjna,
+        Wydawnictwo_Ciagle,
+        Wydawnictwo_Zwarte,
+    )
+
+    if not mongo_id:
+        return None
+    for model in (
+        Wydawnictwo_Ciagle,
+        Wydawnictwo_Zwarte,
+        Praca_Doktorska,
+        Praca_Habilitacyjna,
+    ):
+        zajete = model.objects.filter(pbn_uid_id=mongo_id)
+        if poza is not None and isinstance(poza, model):
+            zajete = zajete.exclude(pk=poza.pk)
+        rekord = zajete.first()
+        if rekord is not None:
+            return rekord
+    return None
+
+
 def _link_pbn_uid(session, record):
     """Powiąż PBN UID z rekordem publikacji, jeśli znaleziono."""
     pbn_mongo_id = session.matched_data.get("pbn_mongo_id")
@@ -150,17 +185,44 @@ def _link_pbn_uid(session, record):
     from pbn_api.models import Publication
 
     try:
-        pbn_pub = Publication.objects.get(
-            mongoId=pbn_mongo_id,
-        )
+        # Blokada wiersza pracy w PBN: dwa równoległe importy tej samej
+        # pracy nie sprawdzą zajętości jednocześnie (poza transakcją —
+        # w testach jednostkowych — bez blokady).
+        prace = Publication.objects.all()
+        if transaction.get_connection().in_atomic_block:
+            prace = prace.select_for_update()
+        pbn_pub = prace.get(mongoId=pbn_mongo_id)
+        if pbn_pub.status == DELETED:
+            logger.warning(
+                "Praca %s jest usunięta w PBN — pominięto linkowanie", pbn_mongo_id
+            )
+            return
+        zajety = rekord_z_odpowiednikiem_pbn(pbn_mongo_id, poza=record)
+        if zajety is not None:
+            logger.warning(
+                "PBN UID %s jest już powiązany z rekordem BPP %s #%s — "
+                "pominięto linkowanie",
+                pbn_mongo_id,
+                zajety._meta.model_name,
+                zajety.pk,
+            )
+            return
         record.pbn_uid = pbn_pub
-        record.save(update_fields=["pbn_uid_id"])
+        # Własny savepoint: tworzenie rekordu biegnie w transakcji, a błąd
+        # unikalności bez savepointu unieważniłby ją całą — import padłby,
+        # zamiast tylko pominąć powiązanie (FD#512: odpowiednik w PBN jest
+        # teraz ustawiany automatycznie, więc ten przypadek jest częstszy).
+        with transaction.atomic():
+            record.save(update_fields=["pbn_uid_id"])
     except Publication.DoesNotExist:
         logger.info(
             "Rekord PBN %s nie istnieje lokalnie — pominięto linkowanie",
             pbn_mongo_id,
         )
     except IntegrityError:
+        # Niezapisane powiązanie nie może zostać na obiekcie — kolejny
+        # zapis rekordu ponowiłby ten sam błąd.
+        record.pbn_uid = None
         logger.warning(
             "PBN UID %s jest już powiązany z innym rekordem BPP",
             pbn_mongo_id,

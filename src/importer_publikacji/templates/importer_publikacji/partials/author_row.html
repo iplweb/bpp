@@ -30,6 +30,13 @@
         {% else %}
             <span class="label alert">niedopasowany</span>
         {% endif %}
+        {# FD#512: po czym importer rozpoznał autora #}
+        {% with podstawa=author|podstawa_dopasowania %}
+            {% if podstawa %}
+                <br>
+                <small class="podstawa-dopasowania">{{ podstawa }}</small>
+            {% endif %}
+        {% endwith %}
     </td>
     <td>
         {% if author.matched_autor %}
@@ -90,6 +97,50 @@
         {% else %}
             <em>-</em>
         {% endif %}
+        {# FD#512: oświadczenie w PBN mówi co innego niż zgłoszenie/przypisanie #}
+        {% with uwaga=author|uwaga_o_dyscyplinie:session %}
+            {% if uwaga.na_rok %}
+                <div class="callout warning uwaga-dyscyplina-pbn"
+                     style="padding:0.4rem;margin:0.3rem 0 0">
+                    <small>
+                        <strong>Uwaga:</strong> oświadczenie w PBN:
+                        <strong>{{ uwaga.pbn }}</strong>; przypisanie autora
+                        w BPP na rok {{ uwaga.rok }}:
+                        <strong>{{ uwaga.na_rok|join:", " }}</strong>.
+                        Przyjęto: <strong>{{ uwaga.przyjeta|default:"brak dyscypliny" }}</strong>.
+                        Dyscypliny spoza przypisania nie da się zapisać
+                        w rekordzie, a PBN może nie przyjąć oświadczenia
+                        z inną dyscypliną niż dotychczasowa.
+                    </small>
+                </div>
+            {% endif %}
+            {% if uwaga.spoza_uczelni %}
+                <div class="callout warning uwaga-dyscyplina-spoza"
+                     style="padding:0.4rem;margin:0.3rem 0 0">
+                    <small>
+                        <strong>Uwaga:</strong> oświadczenie w PBN:
+                        <strong>{{ uwaga.pbn }}</strong>. Autor nie ma w BPP
+                        przypisania dyscypliny na rok {{ uwaga.rok }} i nie
+                        jest autorem uczelni, więc importer nie przyjął tej
+                        dyscypliny. Przyjęto:
+                        <strong>{{ uwaga.przyjeta|default:"brak dyscypliny" }}</strong>.
+                        Jeśli to pracownik uczelni, przypisz go do jednostki
+                        uczelni i wybierz dyscyplinę przyciskiem „Edytuj”.
+                    </small>
+                </div>
+            {% endif %}
+            {% if uwaga.zgloszenie %}
+                <div class="callout primary uwaga-dyscyplina-zgloszenie"
+                     style="padding:0.4rem;margin:0.3rem 0 0">
+                    <small>
+                        Oświadczenie w PBN: <strong>{{ uwaga.pbn }}</strong>;
+                        zgłoszenie publikacji:
+                        <strong>{{ uwaga.zgloszenie }}</strong>.
+                        Przyjęto: <strong>{{ uwaga.przyjeta|default:"brak dyscypliny" }}</strong>.
+                    </small>
+                </div>
+            {% endif %}
+        {% endwith %}
     </td>
     <td>
         {% if author.dyscyplina_source %}

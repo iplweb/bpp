@@ -75,3 +75,73 @@ def dyscyplina_do_przypisania(author, session):
         )
         session._fd620_autorzy_z_przypisaniem = z_przypisaniem
     return author.matched_autor_id not in z_przypisaniem
+
+
+@register.filter(name="podstawa_dopasowania")
+def podstawa_dopasowania(author):
+    """FD#512: po czym importer rozpoznał autora — identyfikator osoby
+    w PBN, ORCID czy imię i nazwisko.
+
+    Liczone z bieżącego stanu wiersza: dostawca podał identyfikator i ten
+    sam ma dopasowany autor BPP. Dla wyboru ręcznego i braku dopasowania
+    — pusty tekst (podstawą jest decyzja redaktora)."""
+    from importer_publikacji.models import ImportedAuthor
+
+    autor = author.matched_autor
+    if autor is None or author.match_status not in (
+        ImportedAuthor.MatchStatus.AUTO_EXACT,
+        ImportedAuthor.MatchStatus.AUTO_LOOSE,
+    ):
+        return ""
+    if author.pbn_uid and autor.pbn_uid_id == author.pbn_uid:
+        return "po identyfikatorze PBN"
+    if author.orcid and (autor.orcid or "").strip().upper() == author.orcid.upper():
+        return "po ORCID"
+    return "po imieniu i nazwisku"
+
+
+@register.filter(name="uwaga_o_dyscyplinie")
+def uwaga_o_dyscyplinie(author, session):
+    """FD#512: rozbieżność między dyscypliną z oświadczenia w PBN a dyscypliną
+    ze zgłoszenia publikacji albo przypisaniem autora na rok pracy
+    (``zrodla.uwagi_o_dyscyplinach``); ``None``, gdy wszystko się zgadza.
+
+    Uwagi całej sesji liczymy raz na renderowanie (atrybut obiektu sesji)."""
+    from importer_publikacji.zrodla import uwagi_o_dyscyplinach
+
+    uwagi = getattr(session, "_fd512_uwagi_o_dyscyplinach", None)
+    if uwagi is None:
+        uwagi = uwagi_o_dyscyplinach(session)
+        session._fd512_uwagi_o_dyscyplinach = uwagi
+    return uwagi.get(author.pk)
+
+
+@register.filter(name="rekord_z_odpowiednikiem_pbn")
+def rekord_z_odpowiednikiem_pbn(session):
+    """FD#512: rekord BPP, który ma już odpowiednik w PBN wybrany w tej
+    sesji — albo ``None``. Pole jest unikalne, więc utworzony rekord nie
+    zostałby powiązany (``_link_pbn_uid`` pomija powiązanie); redaktor ma
+    to zobaczyć przed utworzeniem. Rekord utworzony przez tę sesję nie jest
+    „cudzy”. Wynik liczymy raz na renderowanie."""
+    from importer_publikacji.views.pbn_check import (
+        rekord_z_odpowiednikiem_pbn as rekord_bpp,
+    )
+
+    if not hasattr(session, "matched_data"):
+        # Szablon wyrenderowany bez obiektu sesji (np. test samego szablonu).
+        return None
+    if hasattr(session, "_fd512_zajety_odpowiednik"):
+        return session._fd512_zajety_odpowiednik
+
+    # Ta sama reguła, co przy zapisie (``_link_pbn_uid``). Rekord utworzony
+    # przez tę sesję nie jest „cudzy”.
+    zajety = rekord_bpp((session.matched_data or {}).get("pbn_mongo_id"))
+    if (
+        zajety is not None
+        and session.created_record_id == zajety.pk
+        and session.created_record_content_type is not None
+        and session.created_record_content_type.model_class() is type(zajety)
+    ):
+        zajety = None
+    session._fd512_zajety_odpowiednik = zajety
+    return zajety

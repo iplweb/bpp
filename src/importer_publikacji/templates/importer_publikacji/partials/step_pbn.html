@@ -3,9 +3,9 @@
 
     <p>
         Zanim utworzysz rekord, możesz wskazać jego odpowiednik w PBN.
-        Wyszukujemy pracę w PBN po <strong>DOI</strong>, <strong>tytule</strong>
-        i <strong>stronie WWW</strong>. Ten krok jest opcjonalny — możesz przejść
-        dalej bez wyboru odpowiednika.
+        Wyszukujemy pracę w PBN po <strong>DOI</strong>, <strong>tytule</strong>,
+        <strong>ISBN</strong> (książki) i <strong>stronie WWW</strong>. Ten krok
+        jest opcjonalny — możesz przejść dalej bez wyboru odpowiednika.
     </p>
 
     {# --- Aktualnie wybrany odpowiednik --------------------------------- #}
@@ -30,6 +30,8 @@
             </form>
         </div>
     {% endif %}
+
+    {% include "importer_publikacji/partials/_odpowiednik_pbn_zajety.html" %}
 
     {# --- Operator niezalogowany do PBN --------------------------------- #}
     {% if not logged_in %}
@@ -89,6 +91,16 @@
             {% include "importer_publikacji/partials/_pbn_result_list.html" with results=search.by_title %}
         {% else %}
             <p><em>Brak wyników po tytule.</em></p>
+        {% endif %}
+
+        {# --- Oś: ISBN (FD#512) — tylko gdy praca ma ISBN --- #}
+        {% if session.normalized_data.isbn or session.normalized_data.e_isbn %}
+            <h5><span class="fi-book"></span> Po ISBN</h5>
+            {% if search.by_isbn %}
+                {% include "importer_publikacji/partials/_pbn_result_list.html" with results=search.by_isbn %}
+            {% else %}
+                <p><em>Brak wyników po ISBN.</em></p>
+            {% endif %}
         {% endif %}
 
         {# --- Oś: strona WWW --- #}
