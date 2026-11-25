@@ -226,9 +226,15 @@ def _auto_match_type_and_language(session, result):
         session.rodzaj_rekordu = ImportSession.RodzajRekordu.PATENT
 
     mapper = _get_crossref_mapper(result.publication_type)
-    if mapper and mapper.charakter_formalny_bpp_id:
-        session.charakter_formalny = mapper.charakter_formalny_bpp
+    if mapper:
+        # Rodzaj rekordu (ciągłe/zwarte) wynika z samego typu publikacji i NIE
+        # zależy od tego, czy administrator przypisał temu typowi charakter
+        # formalny. Dawniej oba pola szły pod jednym warunkiem, więc książka
+        # (typ ``book`` bez zamapowanego charakteru) zostawała wydawnictwem
+        # ciągłym i krok „Dopasowanie źródła" pytał o czasopismo (FD#624).
         session.jest_wydawnictwem_zwartym = mapper.jest_wydawnictwem_zwartym
+        if mapper.charakter_formalny_bpp_id:
+            session.charakter_formalny = mapper.charakter_formalny_bpp
 
     language_code = result.language
     if not language_code:

@@ -88,7 +88,10 @@ Importer otworzysz na dwa sposoby:
 
     Część pól może być już wypełniona — zielony komunikat „Na podstawie
     typu … ustawiono …” mówi, co importer dobrał sam. Zawsze możesz to
-    zmienić. Kliknij **„Dalej”**.
+    zmienić. Gdy zamiast niego widzisz szary komunikat „Na podstawie
+    typu … zaznaczono rodzaj rekordu …”, importer rozpoznał tylko rodzaj
+    rekordu (np. dla książki *Wydawnictwo zwarte*), a **Charakter
+    formalny** musisz wybrać samodzielnie. Kliknij **„Dalej”**.
 
     ![Weryfikacja danych publikacji: odczytane dane, rodzaj rekordu, charakter formalny, typ MNiSW, język](../images/redaktor/importer-publikacji/07-weryfikacja.png)
 
