@@ -2,7 +2,7 @@ from django.urls import reverse
 from rest_framework import viewsets
 from rest_framework.permissions import AllowAny
 
-from bpp.models import Autor
+from bpp.models import Autor, Uczelnia
 
 from .recent_publications_common import (
     CorsNaBledachMixin,
@@ -34,11 +34,16 @@ class RecentAuthorPublicationsViewSet(CorsNaBledachMixin, viewsets.ViewSet):
                 "autor_id": autor.pk,
                 "autor_nazwa": str(autor),
                 # Autor ze schowaną stroną — brak linku (strona zwraca 404).
+                # Autor spoza uczelni (FD#640) — też brak: nie ma profilu,
+                # jest tylko prosta strona informacyjna.
                 "profil_url": (
                     request.build_absolute_uri(
                         reverse("bpp:browse_autor", args=[autor.slug])
                     )
                     if autor.pokazuj_strone_autora
+                    and not autor.jest_spoza_uczelni(
+                        Uczelnia.objects.get_for_request(request)
+                    )
                     else None
                 ),
             },

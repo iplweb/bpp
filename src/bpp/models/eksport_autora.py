@@ -62,6 +62,11 @@ class AutorEksportTask(models.Model):
     #: XLSX: statusy korekty, dla których punktacji autora nie pokazujemy
     #: (kanał „sloty”) — jak w sekcji slotów strony autora.
     ukryte_statusy_slotow = ArrayField(models.IntegerField(), default=list, blank=True)
+    #: XLSX: czy arkusz „Podsumowanie” ma sumy punktacji w latach (Σ PK,
+    #: Σ IF). ``False`` dla autora spoza uczelni (FD#640) — jego sum punktów
+    #: nie liczymy; zostaje liczba prac. Ustalane przy starcie (worker nie
+    #: zna uczelni z requestu); wchodzi do deduplikacji.
+    z_sumami_punktacji = models.BooleanField(default=True)
     #: Zadanie zlecone przez niezalogowanego użytkownika — liczone do
     #: globalnego limitu anonimowych zadań w kolejce
     #: (``settings.EKSPORT_AUTORA_LIMIT_ANON_W_KOLEJCE``).

@@ -98,15 +98,17 @@ def test_AutorView_funkcja_za_nazwiskiem(app):
 
 
 @pytest.fixture
-def test_browse_autor():
+def test_browse_autor(uczelnia):
     Typ_Odpowiedzialnosci.objects.get_or_create(nazwa="autor", skrot="aut.")
 
     autor = baker.make(Autor)
-    jednostka = baker.make(Jednostka, skupia_pracownikow=True)
+    # Jednostki w uczelni z hosta testów — inaczej autor byłby dla niej
+    # autorem spoza uczelni i dostałby prostą stronę zamiast profilu (FD#640).
+    jednostka = baker.make(Jednostka, skupia_pracownikow=True, uczelnia=uczelnia)
     wc = baker.make(Wydawnictwo_Ciagle, liczba_cytowan=200)
     wc.dodaj_autora(autor, jednostka, zapisany_jako="Jan K")
 
-    j2 = baker.make(Jednostka, skupia_pracownikow=False)
+    j2 = baker.make(Jednostka, skupia_pracownikow=False, uczelnia=uczelnia)
     wc2 = baker.make(Wydawnictwo_Ciagle, liczba_cytowan=300)
     wc2.dodaj_autora(autor, j2, zapisany_jako="Jan K2", afiliuje=False)
 

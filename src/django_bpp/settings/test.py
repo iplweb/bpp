@@ -16,6 +16,11 @@ import tempfile
 from .local import *  # noqa
 from .local import CACHES, INSTALLED_APPS, LIVEOPS, MIDDLEWARE, TEMPLATES  # noqa
 
+# local.py wstrzymuje automaty wysyłki do PBN (bezpiecznik lokalnej kopii) —
+# testy kolejki sprawdzają właśnie te automaty, więc tutaj działają normalnie.
+# Bezwarunkowo, żeby zmienna środowiskowa dewelopera nie zmieniała wyniku testów.
+PBN_WSTRZYMAJ_AUTOMATY = False
+
 # MEDIA_ROOT per-proces (worker xdist). Domyślnie testy dziedziczyły
 # MEDIA_ROOT = <repo>/src/media z local.py — JEDEN wspólny katalog w drzewie
 # źródeł dla wszystkich workerów. Skutki (audyt

@@ -1,3 +1,5 @@
+import logging
+
 from django.core.serializers.json import DjangoJSONEncoder
 from django.db import models
 from django.db.models import Count, Q
@@ -5,6 +7,8 @@ from liveops.models import LiveOperation
 
 from bpp.fields import YearField
 from bpp.models import Autor, Dyscyplina_Naukowa
+
+logger = logging.getLogger(__name__)
 
 # Pola stanu operacji liveops zerowane przed (po)ponownym enqueue. Zwierciadło
 # ``liveops.views.RestartView.post`` (liveops inline'uje ten reset, nie wystawia
@@ -27,8 +31,92 @@ _POLA_LIVEOPS_RESET = (
 )
 
 
+KOMUNIKAT_PLIK_Z_HASLEM_USUNIETY = (
+    "Ze względów bezpieczeństwa danych plik zabezpieczony hasłem został "
+    "usunięty z serwera zaraz po przetworzeniu, a hasło nie zostało nigdzie "
+    "zapisane. Dlatego tego importu nie można zapisać do bazy ani uruchomić "
+    "ponownie. Aby zapisać zmiany, utwórz nowy import, zaznacz „Zapisz zmiany "
+    "do bazy” i ponownie wpisz hasło do pliku."
+)
+
+KOMUNIKAT_BRAK_PLIKU = (
+    "Plik tego importu nie jest już dostępny na serwerze. Utwórz nowy import "
+    "i wgraj plik ponownie."
+)
+
+NAZWA_USUNIETEGO_PLIKU_Z_HASLEM = (
+    "(plik zabezpieczony hasłem — usunięty po przetworzeniu)"
+)
+
+
 class _LiveopsResetMixin:
-    """Wspólny ``reset_liveops_state`` dla importów POLON/absencji."""
+    """Wspólny ``reset_liveops_state`` dla importów POLON/absencji
+    oraz obsługa pliku importu (usuwanie odszyfrowanej kopii, brak pliku)."""
+
+    @property
+    def nazwa_pliku(self):
+        """Nazwa pliku do wyświetlenia — także gdy plik już usunięto."""
+        if self.plik:
+            return self.plik.name
+        if self.plik_byl_zaszyfrowany:
+            return NAZWA_USUNIETEGO_PLIKU_Z_HASLEM
+        return ""
+
+    @property
+    def plik_dostepny(self):
+        """Czy plik importu da się jeszcze przeczytać (ponowny przebieg)."""
+        if not self.plik:
+            return False
+        return self.plik.storage.exists(self.plik.name)
+
+    @property
+    def blokada_ponownego_przebiegu(self):
+        """Import z pliku zabezpieczonego hasłem NIGDY nie jest uruchamiany
+        ponownie ani zapisywany do bazy drugim przebiegiem — jego plik jest
+        kasowany po pierwszym przebiegu. Decyduje sama flaga, NIE istnienie
+        pliku: między ``p.result()`` a skasowaniem pliku jest okno, w którym
+        plik jeszcze leży na dysku, a import jest już „zakończony"."""
+        return self.plik_byl_zaszyfrowany
+
+    @property
+    def komunikat_braku_pliku(self):
+        if self.plik_byl_zaszyfrowany:
+            return KOMUNIKAT_PLIK_Z_HASLEM_USUNIETY
+        return KOMUNIKAT_BRAK_PLIKU
+
+    def usun_plik_jesli_byl_zaszyfrowany(self):
+        """Kasuje z dysku odszyfrowaną kopię pliku, który był zabezpieczony
+        hasłem, i czyści pole ``plik``. Plik bez hasła — bez zmian."""
+        if not self.plik_byl_zaszyfrowany or not self.plik:
+            return
+        nazwa, storage = self.plik.name, self.plik.storage
+        # Najpierw plik, POTEM pole: gdy storage zawiedzie, nazwa zostaje
+        # w rekordzie i zadanie sprzątające ponowi próbę. Odwrotna kolejność
+        # osierocałaby plik — pustego pola nikt już nie szuka.
+        try:
+            usun_plik_importu(storage, nazwa, pomin=self)
+        except OSError:
+            logger.exception(
+                "Nie udało się usunąć pliku importu %s (pk=%s) — zostaje do "
+                "ponownej próby przez zadanie sprzątające",
+                type(self).__name__,
+                self.pk,
+            )
+            return
+        # ``update()`` zamiast ``save()``: rekord mógł zniknąć w międzyczasie.
+        type(self).objects.filter(pk=self.pk).update(plik="")
+        self.plik = ""
+
+    def on_restart(self):
+        """Hook liveops wołany PRZED resetem stanu — także przez centralny
+        ``liveops:restart`` (przycisk „Ponów”), którego nie kontrolujemy.
+        Import z pliku z hasłem odrzucamy tu, zanim cokolwiek zostanie
+        skasowane: ``PermissionDenied`` daje 403, nie 500, i nie rusza wyników."""
+        if self.blokada_ponownego_przebiegu:
+            from django.core.exceptions import PermissionDenied
+
+            raise PermissionDenied(KOMUNIKAT_PLIK_Z_HASLEM_USUNIETY)
+        self.get_details_set().all().delete()
 
     def reset_liveops_state(self):
         """Zeruje pola stanu operacji liveops (jak ``RestartView.post``), tak by
@@ -67,27 +155,46 @@ def _uruchom_import(parent, p, analyze):
     from bpp.wersjonowanie import jako_uzytkownik
 
     try:
-        # Autor wpisów historii zmienianych rekordów = właściciel importu.
-        with jako_uzytkownik(parent.owner):
-            wynik = analyze(parent.plik.path, parent, p)
-    except Exception:
-        import sys
-        import traceback as _traceback
+        if not parent.plik_dostepny:
+            # Ponowny przebieg (restart liveops, „Zapisz do bazy") importu,
+            # którego plik usunięto — błąd użytkownika, nie aplikacji.
+            p.error(parent.komunikat_braku_pliku)
+            return
 
-        from bpp.zglaszanie_bledow import capture_exception
+        try:
+            # Autor wpisów historii zmienianych rekordów = właściciel importu.
+            with jako_uzytkownik(parent.owner):
+                wynik = analyze(parent.plik.path, parent, p)
+        except Exception:
+            import sys
+            import traceback as _traceback
 
-        _traceback.print_exc()
-        capture_exception(sys.exc_info())
-        raise
-    p.result({"total": parent.get_details_set().count(), **(wynik or {})})
+            from bpp.zglaszanie_bledow import capture_exception
+
+            _traceback.print_exc()
+            capture_exception(sys.exc_info())
+            raise
+        # Kasujemy PRZED oznaczeniem sukcesu — po ``p.result()`` import jest
+        # „zakończony" i w UI pojawiają się akcje kolejnego przebiegu.
+        parent.usun_plik_jesli_byl_zaszyfrowany()
+        p.result({"total": parent.get_details_set().count(), **(wynik or {})})
+    finally:
+        # Odszyfrowana kopia pliku z hasłem nie zostaje na serwerze — ani po
+        # sukcesie, ani po błędzie czy anulowaniu (także po podglądzie).
+        parent.usun_plik_jesli_byl_zaszyfrowany()
 
 
 class ImportPlikuAbsencji(_LiveopsResetMixin, LiveOperation):
     plik = models.FileField(max_length=255, upload_to="protected/import_polon")
+    plik_byl_zaszyfrowany = models.BooleanField(
+        default=False,
+        editable=False,
+        help_text=(
+            "Wgrany plik był zabezpieczony hasłem; jego odszyfrowana kopia "
+            "jest usuwana z serwera po przetworzeniu."
+        ),
+    )
     zapisz_zmiany_do_bazy = models.BooleanField(default=False)
-
-    def on_restart(self):
-        self.wierszimportuplikuabsencji_set.all().delete()
 
     def run(self, p):
         from .core.import_absencji import analyze_file_import_absencji
@@ -117,6 +224,14 @@ class WierszImportuPlikuAbsencji(models.Model):
 class ImportPlikuPolon(_LiveopsResetMixin, LiveOperation):
     rok = YearField()
     plik = models.FileField(max_length=255, upload_to="protected/import_polon")
+    plik_byl_zaszyfrowany = models.BooleanField(
+        default=False,
+        editable=False,
+        help_text=(
+            "Wgrany plik był zabezpieczony hasłem; jego odszyfrowana kopia "
+            "jest usuwana z serwera po przetworzeniu."
+        ),
+    )
     ukryj_niezmatchowanych_autorow = models.BooleanField(default=True)
     zapisz_zmiany_do_bazy = models.BooleanField(default=False)
     ignoruj_miejsce_pracy = models.BooleanField(
@@ -137,9 +252,6 @@ class ImportPlikuPolon(_LiveopsResetMixin, LiveOperation):
         help_text="Uczelnia, dla której wykonywany jest import (multi-hosted).",
     )
 
-    def on_restart(self):
-        self.wierszimportuplikupolon_set.all().delete()
-
     def run(self, p):
         from import_polon.core import analyze_file_import_polon
 
@@ -150,7 +262,7 @@ class ImportPlikuPolon(_LiveopsResetMixin, LiveOperation):
         """Nazwa pliku bez katalogu i z wyciętym środkiem — do tabeli na liście."""
         from import_polon.utils import skroc_nazwe_pliku
 
-        return skroc_nazwe_pliku(self.plik.name)
+        return skroc_nazwe_pliku(self.nazwa_pliku)
 
     @property
     def statystyki(self):
@@ -283,3 +395,57 @@ class ImportPolonOverride(models.Model):
 
     def __str__(self):
         return f"{self.grupa_stanowisk} → {'TAK' if self.jest_badawczy else 'NIE'}"
+
+
+def usun_plik_importu(storage, nazwa, pomin=None):
+    """Kasuje plik importu z dysku, o ile żaden import (POLON ani absencji)
+    — poza ``pomin`` — go już nie wskazuje. Jedno miejsce dla ``post_delete``
+    i dla kasowania odszyfrowanej kopii po przebiegu. Zwraca True, gdy plik
+    skasowano. Błąd storage (``OSError``) przechodzi do wołającego.
+
+    Znane ograniczenie: sprawdzenie referencji i ``delete`` nie są atomowe —
+    import utworzony w tej chwili z TĄ SAMĄ ścieżką straciłby plik. W kodzie
+    nie ma ścieżki, która przypisuje istniejącą nazwę nowemu importowi
+    (``upload_to`` nadaje unikalne nazwy), więc nie blokujemy tego dodatkowo.
+    """
+    if not nazwa:
+        return False
+    for model in (ImportPlikuPolon, ImportPlikuAbsencji):
+        qs = model.objects.filter(plik=nazwa)
+        if isinstance(pomin, model):
+            qs = qs.exclude(pk=pomin.pk)
+        if qs.exists():
+            return False  # plik współdzielony z innym importem
+    # ``FileSystemStorage.delete`` po cichu pomija brakujący plik.
+    storage.delete(nazwa)
+    return True
+
+
+def _usun_plik_importu(sender, instance, **kwargs):
+    """``post_delete``: kasuje plik usuniętego importu z dysku.
+
+    Dawniej rekordy znikały (lista trzyma 10 ostatnich importów), a pliki
+    zostawały w ``protected/import_polon/`` na zawsze. Plik kasujemy dopiero
+    po commicie (wycofana transakcja nie zgubi pliku) i tylko wtedy, gdy żaden
+    inny import nie wskazuje tej samej ścieżki.
+    """
+    from django.db import transaction
+
+    nazwa = instance.plik.name if instance.plik else ""
+    if not nazwa:
+        return
+    storage = instance.plik.storage
+
+    transaction.on_commit(lambda: usun_plik_importu(storage, nazwa))
+
+
+models.signals.post_delete.connect(
+    _usun_plik_importu,
+    sender=ImportPlikuPolon,
+    dispatch_uid="import_polon_usun_plik_polon",
+)
+models.signals.post_delete.connect(
+    _usun_plik_importu,
+    sender=ImportPlikuAbsencji,
+    dispatch_uid="import_polon_usun_plik_absencji",
+)

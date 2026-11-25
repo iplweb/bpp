@@ -122,6 +122,49 @@ prace autora powstałe w innej uczelni tej samej instalacji (szczegóły
 w [instrukcji administratora](../administrator/ogolna.md#układ-podstrony-autora-profil-autora)).
 Ten sam zakres obejmuje [eksport do BibTeX i RIS](#eksport-publikacji-autora-bibtex-i-ris).
 
+### Autor spoza uczelni {#autor-spoza-uczelni}
+
+Pełną stronę autora (podsumowanie dorobku, biogram, statystyki, wykresy,
+metryki) mają wyłącznie **autorzy uczelni — obecni i byli**, czyli osoby,
+które mają lub miały przypisanie do jakiejkolwiek jednostki uczelni innej niż
+[*Obca jednostka*](../redaktor/uczelnia.md#obca-jednostka) (liczą się też
+jednostki typu „Doktoranci”, „Studenci”, „Pracownicy emerytowani” i
+zatrudnienia już zakończone).
+
+Współautor spoza uczelni — osoba przypisana wyłącznie do *Obcej jednostki* —
+pod tym samym adresem dostaje **prostą stronę informacyjną**: imię i nazwisko,
+komunikat „Autor spoza uczelni” oraz przycisk **Pokaż prace współautorskie**,
+który otwiera listę jego prac w bibliografii (przycisk nie podaje liczby
+prac). Dotychczasowe linki do takiego
+autora (z opisów prac, wyników wyszukiwania, zakładek) nadal działają.
+Taka strona nie trafia do mapy strony (sitemap) i jest oznaczona dla
+wyszukiwarek internetowych jako nieindeksowana.
+
+Autor spoza uczelni pozostaje **wyszukiwalny**, a jego prace dostępne
+(wyszukiwarka, wyniki „autor = …”, eksport listy prac), ale w publicznej
+części serwisu **nie liczymy mu podsumowań dorobku** — kilka prac
+współautorskich w naszej bibliografii nie oddaje dorobku osoby z innej
+instytucji:
+
+- **raport slotów autora** i **raporty autora** (menu *Raporty*) nie
+  przyjmują autora spoza uczelni — formularz wyświetla komunikat, że takich
+  raportów dla autorów spoza uczelni nie przygotowujemy (dotyczy także
+  zalogowanych redaktorów; panel redagowania bez zmian),
+- **ranking autorów** pomija autorów spoza uczelni — na stronie i w eksporcie,
+- w **sieci powiązań** autor spoza uczelni nadal jest węzłem grafu (z liczbą
+  wspólnych prac na powiązaniach), ale bez liczby wszystkich prac, sum IF
+  i punktów — jego kółko ma stały, neutralny rozmiar niezależnie od
+  wybranej metryki, a podpis w widoku 3D zamiast liczby prac mówi „autor
+  spoza uczelni”,
+- **eksport XLSX** prac takiego autora zawiera tylko arkusz z listą prac —
+  bez arkusza „Podsumowanie” (ani liczby prac w latach, ani sum punktów,
+  IF i slotów) i bez kolumn z punktacją autora (PKdAut, slot).
+
+W instalacjach, w których jedna baza BPP obsługuje kilka uczelni, przynależność
+sprawdzana jest względem uczelni, której stronę oglądasz: pracownik innej
+uczelni tej samej instalacji jest tu autorem spoza uczelni. Jeżeli w ustawieniach
+uczelni nie wskazano *Obcej jednostki*, strony autorów działają jak dotąd.
+
 Strona autora składa się z **pasów**: sekcja zajmuje całą szerokość strony
 albo dwie sekcje stoją obok siebie. Sekcje bez danych (np. autor bez
 zdjęcia i biogramu) po prostu się nie pokazują, a sąsiednia sekcja zajmuje

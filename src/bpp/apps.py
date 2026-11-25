@@ -155,6 +155,10 @@ class BppConfig(AppConfig):
         "Praca_Doktorska",
         "Praca_Habilitacyjna",
         "Autor",
+        # FD#640: przypisania autora decydują, czy strona autora to pełny
+        # profil, czy prosta strona „Autor spoza uczelni”. Importy dodają je
+        # bez zapisu ``Autor``; bump i tak jest jeden na transakcję.
+        "Autor_Jednostka",
         # Faza C (#438): „wydział" to jednostka top-level, więc `Jednostka`
         # wyżej pokrywa też zapisy wydziałów — osobny wpis odpadł z modelem.
         "Jednostka",

@@ -31,6 +31,9 @@ export function dodajWezel(ctx, id, info, isCentrum, seedPos) {
             works: info.total_works || 0,
             if_sum: info.if_sum || 0,
             pk_sum: info.pk_sum || 0,
+            // FD#640: autor spoza uczelni nie ma metryk (null z API) —
+            // kółko dostaje stały, neutralny rozmiar (sizing.js)
+            spoza_uczelni: !!info.spoza_uczelni,
             rozmiar: 20
         },
         position: { x: seedPos.x, y: seedPos.y },

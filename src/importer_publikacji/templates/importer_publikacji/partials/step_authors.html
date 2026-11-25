@@ -103,7 +103,7 @@
         {% if stats.unmatched == 1 %}
             <form hx-post="{% url 'importer_publikacji:authors-create-unmatched' session.pk %}"
                   hx-target="#importer-wizard"
-                  hx-confirm="Czy na pewno chcesz utworzyć nowego autora w systemie BPP? Nowy autor zostanie przypisany do obcej jednostki.">
+                  hx-confirm="Czy na pewno chcesz utworzyć nowego autora w systemie BPP? Nowy autor zostanie przypisany do obcej jednostki.{% if bez_odpowiednika_pbn %} Nie będzie miał odpowiednika w PBN — jego oświadczenia nie trafią do PBN, dopóki nie zostanie powiązany z osobą w PBN.{% elif bez_odpowiednika_pbn is None %} Nie sprawdzono, czy ma odpowiednik w PBN.{% endif %}">
                 {% csrf_token %}
                 <button type="submit" class="button warning">
                     <span class="fi-torsos-all"></span>
@@ -113,7 +113,7 @@
         {% else %}
             <form hx-post="{% url 'importer_publikacji:authors-create-unmatched' session.pk %}"
                   hx-target="#importer-wizard"
-                  hx-confirm="Czy na pewno chcesz utworzyć {{ stats.unmatched }} nowych autorów w systemie BPP? Nowi autorzy zostaną przypisani do obcej jednostki.">
+                  hx-confirm="Czy na pewno chcesz utworzyć {{ stats.unmatched }} nowych autorów w systemie BPP? Nowi autorzy zostaną przypisani do obcej jednostki.{% if bez_odpowiednika_pbn %} Bez odpowiednika w PBN: {{ bez_odpowiednika_pbn }} z {{ stats.unmatched }} — oświadczenia tych autorów nie trafią do PBN, dopóki nie zostaną powiązani z osobami w PBN.{% elif bez_odpowiednika_pbn is None %} Nie sprawdzono, ilu z nich ma odpowiednik w PBN (zbyt wielu autorów).{% endif %}">
                 {% csrf_token %}
                 <button type="submit" class="button warning">
                     <span class="fi-torsos-all"></span>
@@ -126,6 +126,25 @@
             Nowi autorzy zostaną przypisani
             do obcej jednostki.
         </p>
+        {# FD#510: ilu nowych autorów nie będzie miało odpowiednika w PBN #}
+        {% if bez_odpowiednika_pbn %}
+            <div class="callout warning" id="bez-odpowiednika-pbn">
+                <span class="fi-alert"></span>
+                Bez odpowiednika w PBN:
+                <strong>{{ bez_odpowiednika_pbn }}</strong>
+                z {{ stats.unmatched }} niedopasowanych.
+                W danych pobranych z PBN nie ma jednoznacznie pasującej osoby,
+                więc po utworzeniu oświadczenia tych autorów nie trafią do PBN.
+                Jeśli to pracownicy uczelni, najpierw poszukaj ich wśród
+                autorów w BPP („Edytuj”) albo pobierz aktualne dane osób z PBN.
+            </div>
+        {% elif bez_odpowiednika_pbn is None %}
+            <p class="help-text" id="bez-odpowiednika-pbn">
+                Niedopasowanych autorów jest zbyt wielu, żeby z góry sprawdzić,
+                ilu z nich ma odpowiednik w PBN — po utworzeniu zobaczysz to
+                przy każdym autorze w tabeli.
+            </p>
+        {% endif %}
     {% endif %}
 
     {% if orcid_settable_count > 0 %}
