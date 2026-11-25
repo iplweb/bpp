@@ -154,7 +154,7 @@ danych dostawcy wybranego przez operatora nie nadpisuje.
 | Import zaczęty od | Sprawdzane dodatkowo | Co jest dociągane |
 |---|---|---|
 | CrossRef, BibTeX, DSpace, strona WWW | PBN: po DOI, a dla książek (typy `book`, `edited-book`, `monograph` itp.) także po ISBN | odpowiednik pracy w PBN, identyfikatory osób w PBN i ORCID autorów, brakujące pola (np. streszczenie, licencja, ISBN) |
-| PBN | CrossRef po DOI | brakujące pola (np. streszczenie, strony, licencja, tytuł źródła), ORCID autorów |
+| PBN, BibTeX, DSpace, strona WWW (gdy praca ma DOI) | CrossRef po DOI | brakujące pola (np. streszczenie, strony, licencja, tytuł źródła), ORCID autorów |
 | dowolnego źródła, gdy praca ma odpowiednik w PBN | oświadczenia z profilu instytucji w PBN | dyscypliny dopasowanych autorów |
 
 - Zapytania do PBN o pracę (DOI, ISBN) idą danymi aplikacji z rekordu
@@ -170,6 +170,11 @@ danych dostawcy wybranego przez operatora nie nadpisuje.
 - Błąd drugiego źródła nie przerywa importu — ramka „Źródła danych”
   w krokach weryfikacji i autorów podaje wtedy powód.
 - Patenty nie są sprawdzane w żadnym dodatkowym źródle.
+- Przycisk „Pobierz z CrossRef” w kroku weryfikacji (zastępuje całą sesję
+  danymi z CrossRef) pozostaje dla importów spoza CrossRef: łączenie źródeł
+  nie nadpisuje tytułu ani listy autorów, więc to jedyny sposób na
+  poprawienie błędnych danych źródła głównego. Jest ukryty, gdy CrossRef
+  nie zna numeru DOI.
 
 ### Krok 2: Weryfikacja typu publikacji
 
@@ -247,9 +252,12 @@ o jej pochodzeniu:
   zgłoszenia publikacji (moduł "Zgłoś publikację").
 - *(Z oświadczenia w profilu instytucji w PBN)* -- praca jest w PBN,
   a autor ma dla niej oświadczenie w profilu instytucji. Ma pierwszeństwo
-  przed „jedyną dyscypliną autora” i przed zgłoszeniem publikacji; jest
-  pomijane, gdy autor ma na rok pracy przypisanie do innej dyscypliny albo
-  nie jest autorem uczelni.
+  przed „jedyną dyscypliną autora” i przed zgłoszeniem publikacji; nie jest
+  przyjmowane, gdy autor ma na rok pracy przypisanie do innej dyscypliny
+  albo nie jest autorem uczelni. Rozbieżność z przypisaniem na rok system
+  pokazuje przy autorze jako ostrzeżenie, a rozbieżność ze zgłoszeniem
+  publikacji — jako informację (co jest w PBN, co w drugim źródle, co
+  przyjęto).
 - *(Wybór użytkownika)* -- dyscyplina została wybrana ręcznie.
 
 **Tworzenie autorów dla niedopasowanych**

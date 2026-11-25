@@ -50,8 +50,9 @@
         <div class="callout warning">
             <span class="fi-info"></span>
             Dane pobrane z <strong>{{ session.provider_name }}</strong>
-            zawierają DOI.
-            Możesz pobrać pełniejsze metadane z CrossRef API.
+            zawierają DOI. Brakujące pola importer uzupełnia z CrossRef sam,
+            ale tytułu ani listy autorów nie zmienia. Jeśli dane z tego
+            źródła są błędne, możesz zastąpić je w całości danymi z CrossRef.
             <form style="display:inline; margin:0;"
                   hx-post="{% url 'importer_publikacji:fetch' %}"
                   hx-target="#importer-wizard"

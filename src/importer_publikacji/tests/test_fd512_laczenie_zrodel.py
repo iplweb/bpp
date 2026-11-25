@@ -35,6 +35,7 @@ from importer_publikacji.zrodla import (
     ZRODLO_PROFIL,
     dolacz_profil_instytucji,
     polacz_zrodla,
+    uwagi_o_dyscyplinach,
     uzupelnij_autorow,
     uzupelnij_brakujace_pola,
     zastosuj_dyscypliny_z_profilu,
@@ -486,6 +487,12 @@ def crossref(monkeypatch):
             "objects",
             SimpleNamespace(get_by_doi=lambda doi: dane),
         )
+        # Fikstura z conftest odcina CrossRef w całości — tu przywracamy
+        # prawdziwego dostawcę, tylko z podstawioną odpowiedzią.
+        monkeypatch.setattr(
+            "importer_publikacji.zrodla._pobierz_z_crossref",
+            lambda doi: crossref_mod.CrossRefProvider().fetch(doi),
+        )
 
     return _ustaw
 
@@ -558,12 +565,129 @@ def test_import_z_pbn_bez_doi_nie_pyta_crossref():
     wynik = _z_pbn()
     wynik.doi = None
 
-    with patch("importer_publikacji.providers.get_provider") as get_provider:
-        (wpis,) = polacz_zrodla(sesja, wynik)
+    with patch("importer_publikacji.zrodla._pobierz_z_crossref") as pobierz:
+        assert polacz_zrodla(sesja, wynik) == []
 
-    get_provider.assert_not_called()
-    assert wpis["stan"] == STAN_NIE_SPRAWDZONO
+    pobierz.assert_not_called()
     assert sesja.matched_data == {"pbn_mongo_id": PRACA_PBN}
+
+
+DANE_CROSSREF = {
+    "DOI": DOI,
+    "type": "journal-article",
+    "title": ["Tytuł z CrossRef"],
+    "author": [
+        {"family": "Kowalski", "given": "Jan", "ORCID": f"https://orcid.org/{ORCID_1}"}
+    ],
+    "container-title": ["Czasopismo Testowe"],
+    "page": "10-20",
+    "published": {"date-parts": [[2024]]},
+}
+
+
+def _z_bibtex():
+    """Ubogi wpis BibTeX: tytuł, DOI, autorzy — bez źródła, stron, ORCID."""
+    return _z_crossref(
+        raw_data={},
+        source_title=None,
+        volume=None,
+        authors=[{"family": "Kowalski", "given": "Jan", "orcid": ""}],
+    )
+
+
+@pytest.mark.django_db
+def test_import_z_bibtex_dociaga_dane_z_pbn_i_z_crossref(importer_user, crossref):
+    """Start z BibTeX-a (tak samo DSpace i WWW) z numerem DOI: importer sam
+    pyta i PBN, i CrossRef — bez zastępowania sesji danymi z CrossRef."""
+    crossref(DANE_CROSSREF)
+
+    sesja = _pobierz(
+        _sesja(importer_user, provider="BibTeX"),
+        _z_bibtex(),
+        _klient_pbn(po_doi=_praca_pbn()),
+    )
+
+    assert [w["zrodlo"] for w in sesja.normalized_data[KLUCZ_ZRODEL]] == [
+        ZRODLO_PBN,
+        ZRODLO_CROSSREF,
+        ZRODLO_PROFIL,
+    ]
+    assert _wpis(sesja, ZRODLO_PBN)["pola"] == ["streszczenie", "licencja"]
+    z_crossref = _wpis(sesja, ZRODLO_CROSSREF)
+    assert z_crossref["stan"] == STAN_ZNALEZIONO
+    assert z_crossref["pola"] == ["tytuł źródła", "strony"]
+    assert z_crossref["autorzy"] == {"pbn_uid": 0, "orcid": 1, "dodani": 0}
+
+    nd = sesja.normalized_data
+    assert nd["source_title"] == "Czasopismo Testowe"
+    assert nd["abstract"] == "Streszczenie z PBN."
+    # Strażnik: tytuł zostaje z BibTeX-a.
+    assert nd["title"] == "Łączenie źródeł w praktyce"
+    kowalski = sesja.authors.get(order=0)
+    assert (kowalski.pbn_uid, kowalski.orcid) == (OSOBA_1, ORCID_1)
+    assert sesja.matched_data["pbn_mongo_id"] == PRACA_PBN
+
+
+@pytest.mark.django_db
+def test_awaria_pbn_nie_blokuje_crossref(importer_user, crossref):
+    crossref(DANE_CROSSREF)
+
+    with patch(
+        "importer_publikacji.zrodla._dolacz_pbn", side_effect=RuntimeError("bum")
+    ):
+        sesja = _pobierz(_sesja(importer_user, provider="BibTeX"), _z_bibtex())
+
+    assert _wpis(sesja, ZRODLO_PBN)["stan"] == STAN_NIE_SPRAWDZONO
+    assert _wpis(sesja, ZRODLO_CROSSREF)["stan"] == STAN_ZNALEZIONO
+    assert sesja.normalized_data["pages"] == "10-20"
+
+
+@pytest.mark.django_db
+def test_import_z_crossref_nie_pyta_crossref_drugi_raz(importer_user):
+    with patch("importer_publikacji.zrodla._pobierz_z_crossref") as pobierz:
+        sesja = _pobierz(_sesja(importer_user), _z_crossref(), _klient_pbn())
+
+    pobierz.assert_not_called()
+    assert [w["zrodlo"] for w in sesja.normalized_data[KLUCZ_ZRODEL]] == [ZRODLO_PBN]
+
+
+def _weryfikacja(importer_client, sesja):
+    return importer_client.get(
+        reverse("importer_publikacji:verify", kwargs={"session_id": sesja.pk})
+    ).content.decode()
+
+
+@pytest.mark.django_db
+def test_przycisk_pobierz_z_crossref_znika_gdy_crossref_nie_zna_doi(
+    importer_client, importer_user
+):
+    """Przycisk zastępujący sesję danymi z CrossRef zostaje (poprawia błędny
+    tytuł lub listę autorów ze źródła głównego), ale nie wtedy, gdy CrossRef
+    tej pracy nie ma."""
+    dane = {"title": "Praca", "doi": DOI}
+    znana = _sesja(
+        importer_user,
+        provider="BibTeX",
+        status=ImportSession.Status.FETCHED,
+        normalized_data={
+            **dane,
+            KLUCZ_ZRODEL: [{"zrodlo": ZRODLO_CROSSREF, "stan": STAN_ZNALEZIONO}],
+        },
+    )
+    nieznana = _sesja(
+        importer_user,
+        provider="BibTeX",
+        status=ImportSession.Status.FETCHED,
+        normalized_data={
+            **dane,
+            KLUCZ_ZRODEL: [{"zrodlo": ZRODLO_CROSSREF, "stan": STAN_BRAK}],
+        },
+    )
+
+    assert "Pobierz z CrossRef" in _weryfikacja(importer_client, znana)
+    tresc = _weryfikacja(importer_client, nieznana)
+    assert "Pobierz z CrossRef" not in tresc
+    assert "CrossRef nie zna numeru DOI tej pracy" in tresc
 
 
 # --- Dyscypliny z oświadczeń w profilu instytucji -----------------------------
@@ -712,6 +836,102 @@ def test_blad_pbn_przy_oswiadczeniach_zostawia_lokalna_kopie(sesja_z_oswiadczeni
 
     assert wpis["oswiadczenia"] == "z lokalnej kopii danych PBN"
     assert wpis["dyscypliny"] == 1
+
+
+def _autorzy(importer_client, sesja):
+    return importer_client.get(
+        reverse("importer_publikacji:authors", kwargs={"session_id": sesja.pk})
+    ).content.decode()
+
+
+@pytest.mark.django_db
+def test_ostrzezenie_gdy_pbn_niezgodny_z_przypisaniem_na_rok(
+    importer_client, sesja_z_oswiadczeniem
+):
+    """Oświadczenie w PBN mówi o dyscyplinie, której autor nie ma na rok
+    pracy: nie zapisujemy jej (rekord by nie powstał), ale redaktor widzi
+    ostrzeżenie — co jest w PBN, co w przypisaniu, co przyjęto."""
+    s = sesja_z_oswiadczeniem
+    baker.make(Autor_Dyscyplina, autor=s.autor, rok=2024, dyscyplina_naukowa=s.d2)
+    s.wiersz.matched_dyscyplina = s.d2
+    s.wiersz.dyscyplina_source = ImportedAuthor.DyscyplinaSource.AUTO_JEDYNA
+    s.wiersz.save()
+
+    dolacz_profil_instytucji(s.sesja, s.sesja.created_by)
+
+    s.wiersz.refresh_from_db()
+    # Strażnik: to, co trafi do rekordu, zostaje bez zmian.
+    assert s.wiersz.matched_dyscyplina == s.d2
+    assert s.wiersz.dyscyplina_source == ImportedAuthor.DyscyplinaSource.AUTO_JEDYNA
+    uwaga = uwagi_o_dyscyplinach(s.sesja)[s.wiersz.pk]
+    assert uwaga == {"pbn": s.d1, "przyjeta": s.d2, "rok": 2024, "na_rok": [s.d2]}
+
+    tresc = _autorzy(importer_client, s.sesja)
+    assert "uwaga-dyscyplina-pbn" in tresc
+    assert f"oświadczenie w PBN:\n                        <strong>{s.d1}" in tresc
+    assert f"na rok 2024:\n                        <strong>{s.d2}" in tresc
+    assert f"Przyjęto: <strong>{s.d2}" in tresc
+
+
+@pytest.mark.django_db
+def test_informacja_gdy_pbn_rozni_sie_od_zgloszenia(
+    importer_client, sesja_z_oswiadczeniem
+):
+    """PBN wygrywa z dyscypliną ze zgłoszenia publikacji, ale redaktor ma
+    o różnicy wiedzieć."""
+    from importer_publikacji.views.authors import _prefill_dyscypliny_z_zgloszen
+
+    s = sesja_z_oswiadczeniem
+    baker.make(
+        Autor_Dyscyplina,
+        autor=s.autor,
+        rok=2024,
+        dyscyplina_naukowa=s.d1,
+        subdyscyplina_naukowa=s.d2,
+    )
+    zgloszenie = baker.make(
+        "zglos_publikacje.Zgloszenie_Publikacji",
+        tytul_oryginalny="Łączenie źródeł w praktyce",
+        rok=2024,
+        status=0,
+        rodzaj_zglaszanej_publikacji=1,
+    )
+    baker.make(
+        "zglos_publikacje.Zgloszenie_Publikacji_Autor",
+        rekord=zgloszenie,
+        autor=s.autor,
+        jednostka=s.wiersz.matched_jednostka,
+        dyscyplina_naukowa=s.d2,
+        rok=2024,
+    )
+    s.sesja.zgloszenie = zgloszenie
+    s.sesja.save()
+
+    dolacz_profil_instytucji(s.sesja, s.sesja.created_by)
+    _prefill_dyscypliny_z_zgloszen(s.sesja)
+
+    s.wiersz.refresh_from_db()
+    assert s.wiersz.matched_dyscyplina == s.d1
+    assert s.wiersz.dyscyplina_source == ImportedAuthor.DyscyplinaSource.PBN_PROFIL
+    uwaga = uwagi_o_dyscyplinach(s.sesja)[s.wiersz.pk]
+    assert uwaga == {"pbn": s.d1, "przyjeta": s.d1, "rok": 2024, "zgloszenie": s.d2}
+
+    tresc = _autorzy(importer_client, s.sesja)
+    assert "uwaga-dyscyplina-zgloszenie" in tresc
+    assert "uwaga-dyscyplina-pbn" not in tresc
+    assert f"zgłoszenie publikacji:\n                        <strong>{s.d2}" in tresc
+
+
+@pytest.mark.django_db
+def test_bez_rozbieznosci_nie_ma_uwag_przy_autorze(
+    importer_client, sesja_z_oswiadczeniem
+):
+    s = sesja_z_oswiadczeniem
+    baker.make(Autor_Dyscyplina, autor=s.autor, rok=2024, dyscyplina_naukowa=s.d1)
+    dolacz_profil_instytucji(s.sesja, s.sesja.created_by)
+
+    assert uwagi_o_dyscyplinach(s.sesja) == {}
+    assert "uwaga-dyscyplina" not in _autorzy(importer_client, s.sesja)
 
 
 @pytest.mark.django_db

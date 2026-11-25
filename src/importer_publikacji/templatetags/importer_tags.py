@@ -98,3 +98,19 @@ def podstawa_dopasowania(author):
     if author.orcid and (autor.orcid or "").strip().upper() == author.orcid.upper():
         return "po ORCID"
     return "po imieniu i nazwisku"
+
+
+@register.filter(name="uwaga_o_dyscyplinie")
+def uwaga_o_dyscyplinie(author, session):
+    """FD#512: rozbieżność między dyscypliną z oświadczenia w PBN a dyscypliną
+    ze zgłoszenia publikacji albo przypisaniem autora na rok pracy
+    (``zrodla.uwagi_o_dyscyplinach``); ``None``, gdy wszystko się zgadza.
+
+    Uwagi całej sesji liczymy raz na renderowanie (atrybut obiektu sesji)."""
+    from importer_publikacji.zrodla import uwagi_o_dyscyplinach
+
+    uwagi = getattr(session, "_fd512_uwagi_o_dyscyplinach", None)
+    if uwagi is None:
+        uwagi = uwagi_o_dyscyplinach(session)
+        session._fd512_uwagi_o_dyscyplinach = uwagi
+    return uwagi.get(author.pk)

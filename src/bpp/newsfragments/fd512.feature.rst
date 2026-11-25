@@ -5,12 +5,18 @@ w kroku „Sprawdź w PBN”, a autorzy byli dopasowywani wyłącznie po ORCID
 i nazwisku. Teraz zaraz po pobraniu danych importer sam szuka pracy w PBN
 (po DOI, a książki także po ISBN): wiąże rekord z odpowiednikiem w PBN,
 uzupełnia brakujące pola i dopisuje autorom identyfikatory osób z PBN, po
-których rozpoznaje ich w BPP. Przy imporcie z PBN importer pobiera
-brakujące dane z CrossRef (np. streszczenie, strony, licencję, numery
-ORCID), a rekord utworzony z PBN jest od razu powiązany z pracą w PBN.
+których rozpoznaje ich w BPP. Przy imporcie z PBN, z BibTeX-a, ze strony
+WWW i z repozytorium importer sam pobiera brakujące dane z CrossRef po
+numerze DOI (np. tytuł czasopisma, streszczenie, strony, licencję, numery
+ORCID) — bez zastępowania danych źródła; przycisk „Pobierz z CrossRef”
+zostaje na wypadek błędnych danych źródła i znika, gdy CrossRef nie zna
+numeru DOI. Rekord utworzony z PBN jest od razu powiązany z pracą w PBN.
 Gdy praca jest w PBN, dyscypliny autorów są podpowiadane z oświadczeń
 w profilu instytucji (źródło dyscypliny: „Z oświadczenia w profilu
-instytucji w PBN”). Skąd pochodzi która informacja, widać w ramce „Źródła
+instytucji w PBN”); gdy oświadczenie w PBN różni się od przypisania
+dyscyplin autora na rok pracy albo od zgłoszenia publikacji, przy autorze
+w kroku „Dopasowanie autorów” pojawia się ostrzeżenie lub informacja: co
+jest w PBN, co w drugim źródle i co przyjęto. Skąd pochodzi która informacja, widać w ramce „Źródła
 danych” w krokach „Weryfikacja danych publikacji” i „Dopasowanie autorów”;
 przy każdym automatycznie dopasowanym autorze importer podaje, czy
 rozpoznał go po identyfikatorze PBN, po ORCID, czy po imieniu i nazwisku.

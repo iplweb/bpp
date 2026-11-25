@@ -3,11 +3,12 @@
 Import zaczyna się od jednego źródła (dostawcy), ale żadne nie ma kompletu
 danych: CrossRef nie zna identyfikatorów PBN ani oświadczeń, PBN często nie
 ma streszczenia, licencji czy numerów ORCID. Dlatego zaraz po pobraniu
-danych importer sam sprawdza drugie źródło:
+danych importer sam sprawdza pozostałe źródła:
 
 * import zaczęty POZA PBN (CrossRef, DSpace, strona WWW, BibTeX) — szuka
   pracy w PBN po DOI, a dla książek także po ISBN,
-* import zaczęty od PBN — pobiera dane z CrossRef po DOI.
+* import zaczęty POZA CrossRef (PBN, DSpace, strona WWW, BibTeX) — pobiera
+  dane z CrossRef po DOI.
 
 Z drugiego źródła bierzemy WYŁĄCZNIE to, czego brakuje w pierwszym — dane
 źródła wybranego przez redaktora nigdy nie są nadpisywane. Co skąd przyszło,
@@ -407,19 +408,25 @@ def _dolacz_pbn(session, result) -> dict:
 # --- CrossRef jako drugie źródło ----------------------------------------------
 
 
-def _dolacz_crossref(result) -> dict:
+def _pobierz_z_crossref(doi):
+    """Dane pracy z CrossRef albo ``None``, gdy CrossRef nie zna DOI.
+
+    Osobna funkcja, żeby testy mogły podstawić odpowiedź bez sieci.
+    """
     from .providers import get_provider
 
+    return get_provider(ZRODLO_CROSSREF).fetch(doi)
+
+
+def _dolacz_crossref(result) -> dict | None:
+    """Uzupełnij ``result`` danymi z CrossRef. ``None`` = praca bez DOI
+    (nie ma o co pytać)."""
     doi = normalize_doi(result.doi) if isinstance(result.doi, str) else None
     if not doi:
-        return _wpis(
-            ZRODLO_CROSSREF,
-            STAN_NIE_SPRAWDZONO,
-            komunikat="Praca nie ma w PBN numeru DOI.",
-        )
+        return None
 
     try:
-        z_crossref = get_provider(ZRODLO_CROSSREF).fetch(doi)
+        z_crossref = _pobierz_z_crossref(doi)
     except requests.RequestException as e:
         logger.warning("CrossRef: błąd pobierania %s: %s", doi, e)
         return _wpis(
@@ -443,8 +450,29 @@ def _dolacz_crossref(result) -> dict:
     )
 
 
+def _bezpiecznie(session, zrodlo, funkcja, *args):
+    """Wywołaj dołączenie jednego źródła tak, by jego awaria nie zabrała
+    redaktorowi danych, które już ma (ani nie zablokowała kolejnego
+    źródła)."""
+    try:
+        return funkcja(*args)
+    except Exception:
+        logger.exception(
+            "Sesja importu %s: błąd łączenia ze źródłem %s", session.pk, zrodlo
+        )
+        capture_exception()
+        return _wpis(
+            zrodlo,
+            STAN_NIE_SPRAWDZONO,
+            komunikat="Nieoczekiwany błąd podczas sprawdzania tego źródła.",
+        )
+
+
 def polacz_zrodla(session, result) -> list[dict]:
-    """Sprawdź drugie źródło i uzupełnij ``result`` tym, czego mu brakuje.
+    """Sprawdź pozostałe źródła i uzupełnij ``result`` tym, czego mu brakuje.
+
+    Import spoza PBN sprawdza PBN; każdy import poza zaczętym od CrossRef
+    sprawdza CrossRef (gdy praca ma DOI).
 
     Wywoływane w zadaniu pobierania, zaraz po odpowiedzi dostawcy i PRZED
     dopasowaniem typu, języka i autorów — dzięki temu identyfikator osoby
@@ -461,27 +489,20 @@ def polacz_zrodla(session, result) -> list[dict]:
     if result.publication_type == "patent":
         return []
 
-    try:
-        if session.provider_name == ZRODLO_PBN:
-            # Praca pobrana z PBN ma w PBN odpowiednik z definicji.
-            mongo_id = result.extra.get("pbn_uid")
-            if mongo_id:
-                session.matched_data["pbn_mongo_id"] = mongo_id
-            return [_dolacz_crossref(result)]
-        return [_dolacz_pbn(session, result)]
-    except Exception:
-        # Drugie źródło jest dodatkiem: jego awaria nie może zabrać
-        # redaktorowi danych, które pierwsze źródło już podało.
-        logger.exception("Sesja importu %s: błąd łączenia źródeł danych", session.pk)
-        capture_exception()
-        zrodlo = ZRODLO_CROSSREF if session.provider_name == ZRODLO_PBN else ZRODLO_PBN
-        return [
-            _wpis(
-                zrodlo,
-                STAN_NIE_SPRAWDZONO,
-                komunikat="Nieoczekiwany błąd podczas sprawdzania drugiego źródła.",
-            )
-        ]
+    wpisy = []
+    if session.provider_name == ZRODLO_PBN:
+        # Praca pobrana z PBN ma w PBN odpowiednik z definicji.
+        mongo_id = result.extra.get("pbn_uid")
+        if mongo_id:
+            session.matched_data["pbn_mongo_id"] = mongo_id
+    else:
+        # Najpierw PBN: książka znaleziona po ISBN może dopiero stamtąd
+        # dostać numer DOI, o który zapytamy CrossRef.
+        wpisy.append(_bezpiecznie(session, ZRODLO_PBN, _dolacz_pbn, session, result))
+
+    if session.provider_name != ZRODLO_CROSSREF:
+        wpisy.append(_bezpiecznie(session, ZRODLO_CROSSREF, _dolacz_crossref, result))
+    return [w for w in wpisy if w is not None]
 
 
 # --- Profil instytucji w PBN: dyscypliny z oświadczeń -------------------------
@@ -541,6 +562,33 @@ def _dyscyplina_z_oswiadczenia(oswiadczenie):
 _TYP_OSWIADCZENIA = {const.TO_AUTOR: "AUTHOR", const.TO_REDAKTOR: "EDITOR"}
 
 
+def _oswiadczenia_po_osobie(session) -> dict:
+    """Oświadczenia instytucji dla pracy tej sesji z lokalnej kopii danych
+    PBN: ``{(identyfikator osoby, typ oświadczenia): oświadczenie}``."""
+    from pbn_api.models import OswiadczenieInstytucji
+
+    mongo_id = (session.matched_data or {}).get("pbn_mongo_id")
+    if not mongo_id or session.rodzaj_rekordu == ImportSession.RodzajRekordu.PATENT:
+        return {}
+
+    oswiadczenia = OswiadczenieInstytucji.objects.filter(publicationId_id=mongo_id)
+    uczelnia = session.uczelnia
+    if uczelnia is not None and uczelnia.pbn_uid_id:
+        oswiadczenia = oswiadczenia.filter(institutionId_id=uczelnia.pbn_uid_id)
+    return {(o.personId_id, o.type): o for o in oswiadczenia}
+
+
+def _dyscyplina_z_pbn(po_osobie, imported):
+    """Dyscyplina z oświadczenia autora w PBN albo ``None``."""
+    if imported.matched_autor is None:
+        return None
+    osoba = imported.pbn_uid or imported.matched_autor.pbn_uid_id
+    oswiadczenie = po_osobie.get((osoba, _TYP_OSWIADCZENIA.get(imported.typ_ogolny)))
+    if oswiadczenie is None:
+        return None
+    return _dyscyplina_z_oswiadczenia(oswiadczenie)
+
+
 def _wolno_ustawic_dyscypline(session, imported, dyscyplina, rok) -> bool:
     """Czy dyscyplinę z oświadczenia da się zapisać w rekordzie pracy.
 
@@ -582,17 +630,7 @@ def zastosuj_dyscypliny_z_profilu(session, tylko=None) -> tuple[int, int]:
     ``tylko`` — identyfikatory wierszy autorów, do których ograniczyć
     działanie (np. właśnie utworzeni autorzy); ``None`` = wszyscy.
     """
-    from pbn_api.models import OswiadczenieInstytucji
-
-    mongo_id = (session.matched_data or {}).get("pbn_mongo_id")
-    if not mongo_id or session.rodzaj_rekordu == ImportSession.RodzajRekordu.PATENT:
-        return 0, 0
-
-    oswiadczenia = OswiadczenieInstytucji.objects.filter(publicationId_id=mongo_id)
-    uczelnia = session.uczelnia
-    if uczelnia is not None and uczelnia.pbn_uid_id:
-        oswiadczenia = oswiadczenia.filter(institutionId_id=uczelnia.pbn_uid_id)
-    po_osobie = {(o.personId_id, o.type): o for o in oswiadczenia}
+    po_osobie = _oswiadczenia_po_osobie(session)
     if not po_osobie:
         return 0, 0
 
@@ -607,13 +645,7 @@ def zastosuj_dyscypliny_z_profilu(session, tylko=None) -> tuple[int, int]:
     ):
         if imported.dyscyplina_source in (Zrodlo.MANUAL, Zrodlo.ZGLOSZENIE):
             continue
-        osoba = imported.pbn_uid or imported.matched_autor.pbn_uid_id
-        oswiadczenie = po_osobie.get(
-            (osoba, _TYP_OSWIADCZENIA.get(imported.typ_ogolny))
-        )
-        if oswiadczenie is None:
-            continue
-        dyscyplina = _dyscyplina_z_oswiadczenia(oswiadczenie)
+        dyscyplina = _dyscyplina_z_pbn(po_osobie, imported)
         if dyscyplina is None:
             continue
         if not _wolno_ustawic_dyscypline(session, imported, dyscyplina, rok):
@@ -657,3 +689,89 @@ def dolacz_profil_instytucji(session, user) -> dict | None:
         pominiete=pominiete,
         oswiadczenia=skad,
     )
+
+
+def _dyscypliny_ze_zgloszenia(session) -> dict:
+    """``{pk autora BPP: dyscyplina}`` ze zgłoszenia publikacji tej sesji."""
+    from .views.authors import _zgloszenie_dla_prefilla
+
+    zgloszenie = _zgloszenie_dla_prefilla(session)
+    if zgloszenie is None:
+        return {}
+
+    from zglos_publikacje.models import Zgloszenie_Publikacji_Autor
+
+    return {
+        zpa.autor_id: zpa.dyscyplina_naukowa
+        for zpa in Zgloszenie_Publikacji_Autor.objects.filter(
+            rekord=zgloszenie, dyscyplina_naukowa__isnull=False
+        ).select_related("dyscyplina_naukowa")
+    }
+
+
+def _dyscypliny_na_rok(autorzy, rok) -> dict:
+    """``{pk autora BPP: [dyscypliny przypisane na rok]}``."""
+    from bpp.models import Autor_Dyscyplina
+
+    wynik = {}
+    if not rok:
+        return wynik
+    for ad in Autor_Dyscyplina.objects.filter(
+        rok=rok, autor_id__in=autorzy
+    ).select_related("dyscyplina_naukowa", "subdyscyplina_naukowa"):
+        wynik.setdefault(ad.autor_id, []).extend(
+            d
+            for d in (ad.dyscyplina_naukowa, ad.subdyscyplina_naukowa)
+            if d is not None
+        )
+    return wynik
+
+
+def uwagi_o_dyscyplinach(session) -> dict:
+    """Rozbieżności między dyscypliną z oświadczenia w PBN a pozostałymi
+    źródłami — do pokazania przy autorze w kroku „Dopasowanie autorów”.
+
+    Zwraca ``{pk wiersza autora: uwaga}`` tylko dla autorów, u których coś
+    się nie zgadza. ``uwaga`` to słownik:
+
+    * ``pbn`` — dyscyplina z oświadczenia w profilu instytucji,
+    * ``przyjeta`` — dyscyplina, z którą autor trafi do rekordu (lub ``None``),
+    * ``zgloszenie`` — dyscyplina ze zgłoszenia publikacji, gdy jest inna
+      niż w PBN,
+    * ``na_rok`` — dyscypliny przypisane autorowi w BPP na rok pracy, gdy
+      nie ma wśród nich tej z PBN (wtedy to ostrzeżenie: takiej dyscypliny
+      nie da się zapisać w rekordzie, a PBN zapewne nie przyjmie
+      oświadczenia z inną),
+    * ``rok`` — rok pracy.
+
+    Liczone przy wyświetlaniu, z bieżącego stanu bazy — niczego nie zmienia.
+    """
+    po_osobie = _oswiadczenia_po_osobie(session)
+    if not po_osobie:
+        return {}
+
+    rok = (session.normalized_data or {}).get("year")
+    wiersze = list(
+        session.authors.filter(matched_autor__isnull=False).select_related(
+            "matched_autor", "matched_dyscyplina"
+        )
+    )
+
+    ze_zgloszenia = _dyscypliny_ze_zgloszenia(session)
+    na_rok = _dyscypliny_na_rok([w.matched_autor_id for w in wiersze], rok)
+
+    uwagi = {}
+    for imported in wiersze:
+        z_pbn = _dyscyplina_z_pbn(po_osobie, imported)
+        if z_pbn is None:
+            continue
+        uwaga = {"pbn": z_pbn, "przyjeta": imported.matched_dyscyplina, "rok": rok}
+        w_zgloszeniu = ze_zgloszenia.get(imported.matched_autor_id)
+        if w_zgloszeniu is not None and w_zgloszeniu != z_pbn:
+            uwaga["zgloszenie"] = w_zgloszeniu
+        przypisane = na_rok.get(imported.matched_autor_id)
+        if przypisane and z_pbn not in przypisane:
+            uwaga["na_rok"] = przypisane
+        if "zgloszenie" in uwaga or "na_rok" in uwaga:
+            uwagi[imported.pk] = uwaga
+    return uwagi

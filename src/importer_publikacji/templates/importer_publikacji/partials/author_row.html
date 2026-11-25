@@ -97,6 +97,35 @@
         {% else %}
             <em>-</em>
         {% endif %}
+        {# FD#512: oświadczenie w PBN mówi co innego niż zgłoszenie/przypisanie #}
+        {% with uwaga=author|uwaga_o_dyscyplinie:session %}
+            {% if uwaga.na_rok %}
+                <div class="callout warning uwaga-dyscyplina-pbn"
+                     style="padding:0.4rem;margin:0.3rem 0 0">
+                    <small>
+                        <strong>Uwaga:</strong> oświadczenie w PBN:
+                        <strong>{{ uwaga.pbn }}</strong>; przypisanie autora
+                        w BPP na rok {{ uwaga.rok }}:
+                        <strong>{{ uwaga.na_rok|join:", " }}</strong>.
+                        Przyjęto: <strong>{{ uwaga.przyjeta|default:"brak dyscypliny" }}</strong>.
+                        Dyscypliny spoza przypisania nie da się zapisać
+                        w rekordzie, a PBN może nie przyjąć oświadczenia
+                        z inną dyscypliną niż dotychczasowa.
+                    </small>
+                </div>
+            {% endif %}
+            {% if uwaga.zgloszenie %}
+                <div class="callout primary uwaga-dyscyplina-zgloszenie"
+                     style="padding:0.4rem;margin:0.3rem 0 0">
+                    <small>
+                        Oświadczenie w PBN: <strong>{{ uwaga.pbn }}</strong>;
+                        zgłoszenie publikacji:
+                        <strong>{{ uwaga.zgloszenie }}</strong>.
+                        Przyjęto: <strong>{{ uwaga.przyjeta|default:"brak dyscypliny" }}</strong>.
+                    </small>
+                </div>
+            {% endif %}
+        {% endwith %}
     </td>
     <td>
         {% if author.dyscyplina_source %}

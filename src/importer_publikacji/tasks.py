@@ -82,9 +82,9 @@ def fetch_session_task(self, session_id, request_user_id):
             return
 
         report_progress(self, "create_session", stages=FETCH_STAGES)
-        # FD#512: zanim cokolwiek dopasujemy, sprawdź drugie źródło (PBN dla
-        # importu zaczętego od DOI, CrossRef dla importu z PBN) i uzupełnij
-        # to, czego dostawca nie podał. Bez nowego etapu paska postępu —
+        # FD#512: zanim cokolwiek dopasujemy, sprawdź pozostałe źródła (PBN
+        # dla importu spoza PBN, CrossRef dla importu spoza CrossRef)
+        # i uzupełnij to, czego dostawca nie podał. Bez nowego etapu paska postępu —
         # ``report_progress`` zna tylko etapy z FETCH_STAGES.
         from .zrodla import KLUCZ_ZRODEL, dolacz_profil_instytucji, polacz_zrodla
 

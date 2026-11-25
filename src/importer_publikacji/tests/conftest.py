@@ -18,6 +18,16 @@ def _www_resolve_public(monkeypatch):
     )
 
 
+@pytest.fixture(autouse=True)
+def _crossref_jako_drugie_zrodlo_bez_sieci(monkeypatch):
+    """FD#512: zadanie pobierania pyta CrossRef o każdą pracę z DOI, która
+    nie przyszła z CrossRef. W testach domyślnie „CrossRef nie zna DOI” —
+    testy łączenia źródeł podstawiają własną odpowiedź."""
+    monkeypatch.setattr(
+        "importer_publikacji.zrodla._pobierz_z_crossref", lambda doi: None
+    )
+
+
 @pytest.fixture
 def importer_user(db):
     """Użytkownik z uprawnieniami do importu."""

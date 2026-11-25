@@ -95,9 +95,13 @@ Importer otworzysz na dwa sposoby:
 
     ![Weryfikacja danych publikacji: odczytane dane, rodzaj rekordu, charakter formalny, typ MNiSW, język](../images/redaktor/importer-publikacji/07-weryfikacja.png)
 
-    Jeśli wpis zawiera DOI, na górze pojawi się propozycja
-    **„Pobierz z CrossRef (…)”**. Kliknij ją, gdy dane z BibTeX-a są
-    niepełne — bieżący import zostanie wtedy zastąpiony danymi z CrossRef.
+    Jeśli praca ma DOI, a import nie zaczął się od CrossRef, na górze jest
+    też przycisk **„Pobierz z CrossRef (…)”**. Brakujące pola importer
+    uzupełnia z CrossRef sam, więc przycisk przydaje się tylko wtedy, gdy
+    dane ze źródła, które wybrałeś, są **błędne** (np. zniekształcony
+    tytuł albo lista autorów ze strony WWW) — bieżący import zostanie
+    wtedy w całości zastąpiony danymi z CrossRef. Przycisku nie ma, gdy
+    CrossRef nie zna tego numeru DOI.
 
     **Źródła danych.** Zaraz po pobraniu danych importer sam sprawdza
     drugie źródło i w niebieskiej ramce **„Źródła danych”** pokazuje, co
@@ -109,8 +113,10 @@ Importer otworzysz na dwa sposoby:
       w PBN** (odnośnik „pokaż w PBN”), a autorzy dostaną identyfikatory
       osób z PBN — dzięki temu importer rozpozna ich w BPP nawet przy
       innym zapisie nazwiska;
-    - przy imporcie **z PBN** — pobiera dane **z CrossRef** po numerze DOI
-      i uzupełnia np. streszczenie, strony, licencję i numery ORCID autorów;
+    - przy imporcie **z PBN**, z BibTeX-a, ze strony WWW i z repozytorium
+      — gdy praca ma numer DOI, pobiera dane **z CrossRef** i uzupełnia np.
+      tytuł czasopisma, streszczenie, strony, licencję i numery ORCID
+      autorów;
     - gdy praca jest w PBN — odczytuje **oświadczenia z profilu instytucji
       w PBN** i podpowiada z nich dyscypliny autorów (patrz krok
       „Dopasowanie autorów”).
@@ -227,11 +233,23 @@ Importer otworzysz na dwa sposoby:
     i nazwisku”*. Kolumna ze źródłem dyscypliny pokazuje **„Z oświadczenia
     w profilu instytucji w PBN”**, gdy dyscyplina pochodzi z oświadczenia
     autora dla tej pracy w PBN. Takie oświadczenie rozstrzyga np. autora
-    z dwiema dyscyplinami; importer pomija je, gdy autor ma na rok pracy
-    przypisanie do innej dyscypliny (ramka „Źródła danych” podaje wtedy
-    liczbę pominiętych oświadczeń). Aktualne oświadczenia importer pobiera
-    z PBN, jeśli jesteś zalogowany do PBN; w przeciwnym razie korzysta
-    z kopii danych PBN zapisanej w BPP.
+    z dwiema dyscyplinami. Aktualne oświadczenia importer pobiera z PBN,
+    jeśli jesteś zalogowany do PBN; w przeciwnym razie korzysta z kopii
+    danych PBN zapisanej w BPP.
+
+    Gdy źródła się różnią, przy autorze (w kolumnie z dyscypliną) pojawia
+    się ramka mówiąca, co jest w PBN, co w drugim źródle i co importer
+    przyjął:
+
+    - **żółte ostrzeżenie** — oświadczenie w PBN podaje dyscyplinę, której
+      autor nie ma w BPP wśród przypisań na rok pracy. Importer jej nie
+      przyjmuje (rekordu z taką dyscypliną nie da się zapisać) i zostawia
+      to, co wynika z przypisania. Sprawdź, który zapis jest właściwy:
+      popraw przypisanie dyscyplin autora w BPP albo oświadczenie w PBN —
+      PBN może nie przyjąć oświadczenia z inną dyscypliną niż dotychczasowa;
+    - **niebieska informacja** — oświadczenie w PBN podaje inną dyscyplinę
+      niż zgłoszenie publikacji. Pierwszeństwo ma PBN; jeśli właściwa jest
+      dyscyplina ze zgłoszenia, zmień ją przyciskiem „Edytuj”.
 
 7. **Autor, którego nie ma w BPP.** Otwórz **„Edytuj”** przy autorze
    „niedopasowanym” i kliknij **„Utwórz nowego autora”**. Nowa osoba
