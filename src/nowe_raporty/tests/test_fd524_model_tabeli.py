@@ -130,22 +130,14 @@ def _dane_formularza_raportu(raport, **zmiany_w_pierwszej_skladowej):
     return dane
 
 
-# ``strict``: po podbiciu django-flexible-reports do 0.6.1 test zacznie
-# przechodzić i ten znacznik zrobi z tego CZERWONY wynik — trzeba go wtedy
-# usunąć (w tym samym commicie co podbicie zależności).
-@pytest.mark.xfail(
-    strict=True,
-    raises=ValueError,
-    reason="błąd 500 w django-flexible-reports 0.6.0, poprawka w 0.6.1 "
-    "(mpasternak/django-flexible-reports#17)",
-)
 @pytest.mark.django_db
 def test_fd524_sekcje_inne_z_zapisanym_modelem_da_sie_przelaczyc_na_zrodlo(
     admin_client,
 ):
     """Raporty założone przed tą zmianą mają w sekcji „Inne” zapisany model
     (Rekord), a formularz go już nie pokazuje. Przełączenie takiej sekcji na
-    „źródło danych” kończyło się błędem 500 przy zapisie raportu."""
+    „źródło danych” kończyło się błędem 500 przy zapisie raportu
+    (django-flexible-reports 0.6.0; poprawione w 0.6.1)."""
     from flexible_reports.models.report import (
         DATA_FROM_DATASOURCE,
         DATA_FROM_EXCEPT_CATCHALL,
