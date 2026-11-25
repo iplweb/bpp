@@ -503,7 +503,7 @@ requires-dist = [
     { name = "django-favicon-plus-reloaded", specifier = ">=1.2,<2" },
     { name = "django-filter", specifier = ">=26.2,<26.3" },
     { name = "django-first-run-wizard", specifier = ">=0.3.0" },
-    { name = "django-flexible-reports", specifier = ">=0.5.1" },
+    { name = "django-flexible-reports", specifier = ">=0.6.0" },
     { name = "django-formdefaults", specifier = ">=0.6.5" },
     { name = "django-formtools", specifier = ">=2.7,<3" },
     { name = "django-fsm-2", specifier = ">=4.3.0,<5" },
@@ -1891,7 +1891,7 @@ wheels = [
 
 [[package]]
 name = "django-flexible-reports"
-version = "0.5.1"
+version = "0.6.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "bleach" },
@@ -1903,9 +1903,9 @@ dependencies = [
     { name = "pypandoc" },
     { name = "tablib" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/b7/94/fd42e7d927ffd2b2acab28adfcf77d7b3d69f3c15ec3a5642c48f7b59ce0/django_flexible_reports-0.5.1.tar.gz", hash = "sha256:c8ff1d1f8eff1e95235c69e4984a232874f61609c5be001fede646df1177b7d1", size = 35597, upload-time = "2026-10-22T18:27:55.703Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/15/db/fa5e6aa6ff62531f7174cca94fd3c925fa7e27ab14530b856196f02945f3/django_flexible_reports-0.6.0.tar.gz", hash = "sha256:30a923b31a5b00ab70e57932f726566a709172422257b3b48c4923712b6fc1c8", size = 51390, upload-time = "2026-11-25T17:40:55.494Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/43/83/b2f21b32220181f68e3f310ee704e3a1ec00d3f4ffa3bc1b608905af82bd/django_flexible_reports-0.5.1-py3-none-any.whl", hash = "sha256:42ecc67c51d2cada5b8d4453fa185e205a1b573b8e413050543254907fcff9ef", size = 53169, upload-time = "2026-10-22T18:27:54.298Z" },
+    { url = "https://files.pythonhosted.org/packages/c8/02/3d0fad1fd7f394002644bbe5a133f8a349783dbe25cc1f3d1e80cfe7ccbc/django_flexible_reports-0.6.0-py3-none-any.whl", hash = "sha256:4fdb80139188f0fc16ec7dba5e4e584695fa2796c1cbb1115832896a842cff5c", size = 71790, upload-time = "2026-11-25T17:40:54.166Z" },
 ]
 
 [[package]]

@@ -50,7 +50,10 @@ dependencies = [
     # formularzu raportów (FD467) nie ma jak nadpisać ColumnOrder tabeli.
     # >=0.5.1: wieloliniowy {# #} nad przyciskiem „Klonuj" wyciekał jako
     # tekst do formularza raportu w adminie.
-    "django-flexible-reports>=0.5.1",
+    # >=0.6.0: edytor zapytań źródła danych (FD#521), ustawienie
+    # FLEXIBLE_REPORTS_BASE_MODELS (FD#522), model wybierany tylko w źródle
+    # danych (FD#524; migracja flexible_reports.0015).
+    "django-flexible-reports>=0.6.0",
     "django-dsl>=0.1.15",
     "django-group-by==0.3.1",
     "django-columns==0.1.0",
