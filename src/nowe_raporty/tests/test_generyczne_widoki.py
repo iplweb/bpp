@@ -1,5 +1,7 @@
+from urllib.parse import quote
+
 import pytest
-from django.urls import reverse
+from django.urls import Resolver404, resolve, reverse
 from model_bakery import baker
 
 from bpp.models.autor import Autor
@@ -64,7 +66,23 @@ def test_formularz_zly_obiekt_w_querystringu_nie_wywala(webtest_app):
 
 
 @pytest.mark.django_db
-@pytest.mark.parametrize("obiekt", ["vS04D", "1abc", "-1", "1.5", "%20"])
+@pytest.mark.parametrize(
+    "obiekt",
+    [
+        "vS04D",
+        "1abc",
+        "-1",
+        "1.5",
+        "%20",
+        # '²'.isdigit() jest True, a int('²') rzuca ValueError.
+        quote("²"),
+        # Powyżej 4300 cyfr int() rzuca ValueError (limit konwersji).
+        "9" * 4301,
+        # Poza zakresem ``integer`` PostgreSQL.
+        "2147483648",
+        "99999999999",
+    ],
+)
 def test_formularz_nienumeryczny_obiekt_w_querystringu_nie_wywala(
     webtest_app, obiekt
 ):
@@ -74,6 +92,67 @@ def test_formularz_nienumeryczny_obiekt_w_querystringu_nie_wywala(
     url = reverse("nowe_raporty:raport_form", args=["raport-autorow"])
     res = webtest_app.get(url + f"?obiekt={obiekt}")
     assert res.status_code == 200
+
+
+@pytest.mark.django_db
+def test_formularz_cyfry_unicode_w_obiekcie_nie_wybieraja_autora(webtest_app):
+    # int("١٢") == 12 — cyfry arabsko-indyjskie wybierały prawdziwego autora
+    # o pk 12. Dwóch autorów, bo przy jednym widok celowo wybiera go sam.
+    seed_default_reports()
+    baker.make(Autor, pk=12, nazwisko="Dwunasty", imiona="Jan")
+    baker.make(Autor, pk=13, nazwisko="Trzynasty", imiona="Jan")
+    url = reverse("nowe_raporty:raport_form", args=["raport-autorow"])
+    res = webtest_app.get(url + "?obiekt=" + quote("١٢"))
+    assert res.status_code == 200
+    assert res.context["form"].initial.get("obiekt") is None
+    assert 'value="12"' not in res.text
+    assert "Dwunasty" not in res.text
+
+    # Kontrola: ten sam autor podany cyframi ASCII jest wybierany.
+    res = webtest_app.get(url + "?obiekt=12")
+    assert res.context["form"].initial.get("obiekt").pk == 12
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize(
+    "pk",
+    # Ścieżki >1024 znaków odcina wcześniej middleware (444), więc długi
+    # ciąg przez cały stos testujemy na 900 cyfrach, a 4301 — w resolverze.
+    [quote("²"), quote("١٢"), "9" * 11, "9" * 900, "2147483648"],
+)
+def test_generuj_zly_pk_w_adresie_daje_404(webtest_app, pk):
+    # Wzorzec ``\d+`` przepuszczał cyfry Unicode i dowolnie długie ciągi
+    # do ORM (ValueError = 500). Zły pk w adresie generowania = 404.
+    seed_default_reports()
+    baker.make(Autor, pk=12, nazwisko="Dwunasty", imiona="Jan")
+    url = reverse("nowe_raporty:raport_form", args=["raport-autorow"])
+    webtest_app.get(f"{url}{pk}/2020/2020/", status=404)
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize("rok", [quote("²"), "9" * 900])
+def test_generuj_zly_rok_w_adresie_daje_404(webtest_app, rok):
+    seed_default_reports()
+    url = reverse("nowe_raporty:raport_form", args=["raport-uczelni"])
+    webtest_app.get(f"{url}{rok}/2020/", status=404)
+
+
+@pytest.mark.parametrize(
+    "ogon",
+    [
+        "9" * 4301 + "/2020/2020/",
+        "12/" + "9" * 4301 + "/2020/",
+        "²/2020/2020/",
+        "١٢/2020/2020/",
+        "²/2020/",
+    ],
+)
+def test_generuj_resolver_odrzuca_zly_pk_i_rok(ogon):
+    # Bez middleware (ten tnie ścieżki >1024 znaków): sam wzorzec URL nie może
+    # dopasować cyfr Unicode ani ciągów dłuższych niż zakres ``integer``.
+    url = reverse("nowe_raporty:raport_form", args=["raport-autorow"])
+    with pytest.raises(Resolver404):
+        resolve(url + ogon)
 
 
 @pytest.mark.django_db
