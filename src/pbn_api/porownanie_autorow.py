@@ -97,7 +97,12 @@ def porownaj_autorow_z_profilem(
     """
     if publikacja_instytucji is None:
         return None
-    wynik = _porownaj(wyslane, publikacja_instytucji.json_data or {})
+    dane = publikacja_instytucji.json_data
+    # Wpis bez żadnej kolekcji osób (pusty, uszkodzony, w innym kształcie)
+    # to BRAK DANYCH, a nie „0 autorów” — nie strasz redaktora liczbą.
+    if not isinstance(dane, dict) or not any(rola in dane for rola in ROLE_AUTOROW):
+        return None
+    wynik = _porownaj(wyslane, dane)
     if wynik is not None:
         wynik.profil_instytucji = True
     return wynik
@@ -135,7 +140,11 @@ def _porownaj(wyslane: dict, zapisane: dict) -> PorownanieAutorow | None:
         kolekcja = zapisane.get(rola) or []
         if isinstance(kolekcja, dict):
             kolekcja = kolekcja.values()
+        elif not isinstance(kolekcja, list):
+            continue  # nie kolekcja osób — pomijamy zamiast się wywracać
         for autor in kolekcja:
+            if not isinstance(autor, dict):
+                continue  # goły identyfikator/null nikogo nie opisuje
             zapisani[_klucz(autor)[0]] += 1
             zapisano += 1
 

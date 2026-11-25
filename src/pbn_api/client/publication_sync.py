@@ -502,7 +502,12 @@ class PublicationSyncMixin(StatementsMixin):
     def _download_statements_with_retry(
         self, publication, objectId, notificator, max_tries=3
     ):
-        """Download publication statements with retry on 500 errors."""
+        """Download publication statements with retry on 500 errors.
+
+        Zwraca świeżo pobrany wpis profilu instytucji (``PublikacjaInstytucji_V2``)
+        albo ``None``, gdy PBN go nie zwrócił — żeby wołający nie sięgał po
+        lokalną kopię, która mogła zostać sprzed wysyłki (FD#641).
+        """
         no_tries = max_tries
         while True:
             try:
@@ -521,8 +526,10 @@ class PublicationSyncMixin(StatementsMixin):
 
         while v2_try < max_v2_tries:
             try:
-                self.pobierz_publikacje_instytucji_v2(objectId=objectId)
-                return
+                wpis, _utworzono = self.pobierz_publikacje_instytucji_v2(
+                    objectId=objectId
+                )
+                return wpis
             except PublikacjaInstytucjiV2NieZnalezionaException:
                 v2_try += 1
                 if v2_try >= max_v2_tries:
@@ -533,7 +540,7 @@ class PublicationSyncMixin(StatementsMixin):
                         "Spróbuj ponownie za kilka minut lub użyj wysyłki w tle "
                         "(PBN Export Queue), która automatycznie poradzi sobie z tym przypadkiem."
                     )
-                    return
+                    return None
 
                 delay = base_delay * (2**v2_try)
                 logger.info(
@@ -739,8 +746,11 @@ class PublicationSyncMixin(StatementsMixin):
         # Przy okazji odświeża lokalny cache ``OswiadczenieInstytucji``
         # (best effort — błąd tu nie blokuje synchronizacji oświadczeń,
         # bo ``_sync_statements_with_pbn`` zrobi własne GET dla porównania).
+        wpis_profilu = None
         try:
-            self._download_statements_with_retry(publication, objectId, notificator)
+            wpis_profilu = self._download_statements_with_retry(
+                publication, objectId, notificator
+            )
         except Exception as e:
             logger.warning(
                 "Odświeżenie lokalnego cache oświadczeń dla %s nie powiodło się: %s",
@@ -750,7 +760,11 @@ class PublicationSyncMixin(StatementsMixin):
 
         # FD#641: rekord publikacji ma zwykle komplet autorów, a krótszą
         # listę widać dopiero w profilu instytucji — porównaj także z nim.
-        self._ostrzez_o_brakujacych_autorach_w_profilu(pub, js, objectId, notificator)
+        # Tylko ze ŚWIEŻO pobranym wpisem: gdy KROK 4 się nie udał, lokalna
+        # kopia może być sprzed wysyłki i porównanie byłoby mylące.
+        self._ostrzez_o_brakujacych_autorach_w_profilu(
+            pub, js, objectId, wpis_profilu, notificator
+        )
 
         # KROK 5: synchronizacja oświadczeń (split flow, po wysyłce publikacji)
         uczelnia = self.uczelnia
@@ -803,20 +817,32 @@ class PublicationSyncMixin(StatementsMixin):
         if notificator is not None:
             notificator.warning(komunikat)
 
-    def _ostrzez_o_brakujacych_autorach_w_profilu(self, pub, js, objectId, notificator):
+    def _ostrzez_o_brakujacych_autorach_w_profilu(
+        self, pub, js, objectId, wpis_profilu, notificator
+    ):
         """Porównuje autorów wysłanych z profilem instytucji w PBN (FD#641).
 
-        Czyta lokalną kopię wpisu profilu, odświeżoną przed chwilą w KROKU 4
-        (bez dodatkowego zapytania do PBN). Brak wpisu = nie ma czego
-        porównywać (praca spoza profilu albo PBN jeszcze go nie wystawił).
+        ``wpis_profilu`` to wpis pobrany przed chwilą w KROKU 4 (bez
+        dodatkowego zapytania do PBN i bez czytania lokalnej kopii, która
+        mogła zostać sprzed wysyłki). ``None`` = PBN go nie zwrócił albo
+        KROK 4 się nie udał — wtedy nie ma czego porównywać.
+
+        To sprawdzenie jest dodatkiem do wysyłki, która JUŻ się udała:
+        żaden błąd tutaj nie może przerwać dalszych kroków (synchronizacji
+        oświadczeń, opłaty), więc błąd trafia do logu z tracebackiem.
         """
-        from pbn_api.models import PublikacjaInstytucji_V2
+        try:
+            porownanie = porownaj_autorow_z_profilem(js, wpis_profilu)
+        except Exception:
+            logger.exception(
+                "Porównanie autorów z profilem instytucji nie powiodło się "
+                "(rekord %s pk=%s, PBN %s) — wysyłka biegnie dalej",
+                pub,
+                pub.pk,
+                objectId,
+            )
+            return
 
-        wpisy = PublikacjaInstytucji_V2.objects.filter(objectId_id=objectId)
-        if self.uczelnia is not None:
-            wpisy = wpisy.filter(uczelnia=self.uczelnia)
-
-        porownanie = porownaj_autorow_z_profilem(js, wpisy.first())
         if porownanie is None or not porownanie.niepelne:
             return
 

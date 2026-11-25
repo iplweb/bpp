@@ -180,6 +180,10 @@ Profil instytucji bywa aktualizowany przez PBN z opóźnieniem albo wskazuje
 inną wersję pracy niż bieżąca, więc tuż po pierwszej wysyłce ostrzeżenie
 może być przejściowe.
 
+Sprawdzenie działa przy wysyłce z formularza rekordu, akcją „Wyślij do
+PBN” i z kolejki eksportu. Gdy PBN nie zwróci wpisu pracy z profilu
+instytucji, BPP niczego nie porównuje (nie sięga po dane pobrane wcześniej).
+
 Porównanie liczy razem autorów, redaktorów i tłumaczy. BPP niczego przy
 tym w PBN nie poprawia — tylko pokazuje różnicę.
 
