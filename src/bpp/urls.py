@@ -63,6 +63,7 @@ from bpp.views.autocomplete import (
     WyszukiwarkaAutorAutocomplete,
     ZapisanyJakoAutocomplete,
     Zewnetrzna_Baza_DanychAutocomplete,
+    ZgloszenieJednostkaAutocomplete,
     ZrodloAutocomplete,
     ZrodloAutocompleteNoCreate,
 )
@@ -586,6 +587,11 @@ urlpatterns = [
         r"^public-jednostka-autocomplete/$",
         PublicJednostkaAutocomplete.as_view(),
         name="public-jednostka-autocomplete",
+    ),
+    url(
+        r"^zgloszenie-jednostka-autocomplete/$",
+        ZgloszenieJednostkaAutocomplete.as_view(),
+        name="zgloszenie-jednostka-autocomplete",
     ),
     url(
         r"^public-jednostka-toplevel-autocomplete/$",

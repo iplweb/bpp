@@ -166,3 +166,43 @@ def test_changeform_add_full_flow(
     assert "Edycja rekordu" in normalize_html(admin_page.content())
 
     assert model_class.autorzy.through.objects.count() == 1
+
+
+@pytest.mark.django_db(transaction=True)
+def test_fd640_jednostka_obca_odznacza_afiliuje(
+    admin_page: Page,
+    channels_live_server,
+    jednostka,
+    obca_jednostka,
+    typy_odpowiedzialnosci,
+):
+    """FD#640 (punkt 4): wybór jednostki obcej w formularzu autora rekordu
+    odznacza „Afiliuje” (obca jednostka nigdy nie afiliuje); wybór jednostki
+    przyjmującej afiliację przywraca zaznaczenie, które odznaczył skrypt."""
+    from model_bakery import baker
+
+    from bpp.models import Wydawnictwo_Ciagle
+    from django_bpp.playwright_util import select_select2_autocomplete
+
+    rec = baker.make(Wydawnictwo_Ciagle)
+    admin_page.goto(
+        channels_live_server.url
+        + reverse("admin:bpp_wydawnictwo_ciagle_autor_changelist")
+        + f"?rekord__id__exact={rec.pk}"
+    )
+    admin_page.wait_for_selector('a[name="_add_wa"]', state="visible")
+    admin_page.click('a[name="_add_wa"]')
+    admin_page.wait_for_load_state("domcontentloaded")
+
+    afiliuje = admin_page.locator("#id_afiliuje")
+    expect(afiliuje).to_be_checked()
+
+    select_select2_autocomplete(
+        admin_page, "id_jednostka", obca_jednostka.nazwa, timeout=30000
+    )
+    expect(afiliuje).not_to_be_checked()
+
+    select_select2_autocomplete(
+        admin_page, "id_jednostka", jednostka.nazwa, timeout=30000
+    )
+    expect(afiliuje).to_be_checked()

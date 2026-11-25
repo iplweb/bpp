@@ -20,6 +20,7 @@ from django.contrib.sites.models import Site
 from django.urls import reverse
 from model_bakery import baker
 
+from bpp.models import Autor_Jednostka
 from importer_publikacji.models import ImportedAuthor, ImportSession
 from importer_publikacji.views.authors import (
     _prefill_dyscypliny_z_zgloszen,
@@ -52,11 +53,16 @@ def _zgl(doi=DOI, tytul=TYTUL, status=0, **kwargs):
 
 def _zpa(zgloszenie, jednostka=None, autor=None, dyscyplina=None):
     """Autor w zgłoszeniu — nośnik atrybucji zgłoszenia do uczelni (D8)."""
+    autor = autor or baker.make("bpp.Autor")
+    jednostka = jednostka or baker.make("bpp.Jednostka")
+    if dyscyplina is not None:
+        # FD#640: dyscyplinę w zgłoszeniu ma tylko autor uczelni.
+        Autor_Jednostka.objects.get_or_create(autor=autor, jednostka=jednostka)
     return baker.make(
         "zglos_publikacje.Zgloszenie_Publikacji_Autor",
         rekord=zgloszenie,
-        autor=autor or baker.make("bpp.Autor"),
-        jednostka=jednostka or baker.make("bpp.Jednostka"),
+        autor=autor,
+        jednostka=jednostka,
         dyscyplina_naukowa=dyscyplina,
         rok=2024,
     )

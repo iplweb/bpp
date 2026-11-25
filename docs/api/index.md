@@ -297,6 +297,10 @@ strony autora, np. `Yennefer-Merigold`. Analogiczny adres dla jednostki to
   - Data ostatniej modyfikacji
   - URL do szczegółowej strony publikacji w systemie BPP
   - URL do danych publikacji w API
+- Pole `profil_url` (adres strony autora) ma wartość `null`, gdy strona
+  autora jest ukryta albo gdy autor jest
+  [spoza uczelni](../uzytkownik/przegladanie-i-wyszukiwanie.md#autor-spoza-uczelni)
+  — taki autor nie ma pełnego profilu
 
 ### Format odpowiedzi
 

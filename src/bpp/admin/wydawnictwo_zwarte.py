@@ -55,7 +55,10 @@ from .crossref_api_helpers import (
     KorzystaZCrossRefAPIStreszczenieInlineMixin,
     UzupelniajWstepneDanePoCrossRefAPIMixin,
 )
-from .element_repozytorium import Element_RepozytoriumInline
+from .element_repozytorium import (
+    Element_RepozytoriumInline,
+    Element_RepozytoriumKoszInline,
+)
 from .grant import Grant_RekorduInline
 from .helpers import (
     poszukaj_duplikatu_pola_www_i_ewentualnie_zmien,
@@ -543,6 +546,7 @@ class Wydawnictwo_ZwarteAdmin(
         Wydawnictwo_Zwarte_Zewnetrzna_Baza_DanychInline,
         Grant_RekorduInline,
         Element_RepozytoriumInline,
+        Element_RepozytoriumKoszInline,
         Wydawnictwo_Zwarte_TytulInline,
         Wydawnictwo_Zwarte_StreszczenieInline,
     )

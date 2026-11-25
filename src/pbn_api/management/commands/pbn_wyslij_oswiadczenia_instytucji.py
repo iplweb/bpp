@@ -31,7 +31,12 @@ from tqdm import tqdm
 from bpp.models import Wydawnictwo_Ciagle, Wydawnictwo_Zwarte
 from bpp.util import zaloguj_polkniety_wyjatek
 from pbn_api.adapters.wydawnictwo import WydawnictwoPBNAdapter
+from pbn_api.adapters.wydawnictwo_autor import (
+    ostrzezenie_o_pominietych_oswiadczeniach,
+    powiazania_bez_identyfikatora_osoby,
+)
 from pbn_api.exceptions import (
+    AutorBezIdentyfikatoraPBN,
     CannotDeleteStatementsException,
     DaneLokalneWymagajaAktualizacjiException,
     HttpException,
@@ -162,8 +167,45 @@ def process_single_publication(  # noqa: C901
         "json_data": None,
     }
 
+    # FD#509: autor bez odpowiednika w PBN i bez ORCID — jego oświadczenie
+    # by przepadło, więc tej pracy nie ruszamy (nic nie kasujemy w PBN).
+    bez_identyfikatora = list(
+        powiazania_bez_identyfikatora_osoby(publication.autorzy_set)
+    )
+    uczelnia = getattr(pbn_client, "uczelnia", None)
+    wolno_bez_identyfikatora = (
+        getattr(uczelnia, "pbn_wysylaj_bez_identyfikatora_autora", False) is True
+    )
+    if bez_identyfikatora and wolno_bez_identyfikatora:
+        # Uczelnia pozwala wysyłać mimo braku identyfikatora: oświadczenia
+        # idą niepełne — zostaw ślad „M z N” na ekranie i w wyniku.
+        result["warning"] = ostrzezenie_o_pominietych_oswiadczeniach(
+            publication, bez_identyfikatora
+        )
+        if stdout and style and progress_lock:
+            with progress_lock:
+                tqdm.write(
+                    style.WARNING(
+                        f"{publication.pk};{publication.tytul_oryginalny};"
+                        f"UWAGA: {result['warning']}"
+                    )
+                )
+    elif bez_identyfikatora:
+        result["error"] = str(AutorBezIdentyfikatoraPBN(bez_identyfikatora))
+        if stdout and style and progress_lock:
+            with progress_lock:
+                tqdm.write(
+                    style.ERROR(
+                        f"{publication.pk};{publication.tytul_oryginalny};"
+                        f"{result['error']}"
+                    )
+                )
+        return result
+
     try:
-        json_data = WydawnictwoPBNAdapter(publication).pbn_get_api_statements()
+        json_data = WydawnictwoPBNAdapter(
+            publication, uczelnia=uczelnia
+        ).pbn_get_api_statements()
         result["json_data"] = json_data
 
     except DaneLokalneWymagajaAktualizacjiException as e:

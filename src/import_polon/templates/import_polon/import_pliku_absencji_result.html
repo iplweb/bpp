@@ -13,11 +13,15 @@
            class="button secondary">
             <span class="fi-list"></span> Zobacz wyniki
         </a>
-        {% if not operation.zapisz_zmiany_do_bazy %}
+        {% if not operation.zapisz_zmiany_do_bazy and not operation.plik_byl_zaszyfrowany %}
             <a href="{% url 'import_polon:importplikuabsencji-zapisz-do-bazy' operation.pk %}"
                class="button alert">
                 <span class="fi-save"></span> Zapisz ten import do bazy danych
             </a>
         {% endif %}
     </div>
+    {% if not operation.zapisz_zmiany_do_bazy and operation.plik_byl_zaszyfrowany %}
+        {% url 'import_polon:utworz-import-absencji' as nowy_import_url %}
+        {% include "import_polon/_plik_z_haslem_usuniety.html" %}
+    {% endif %}
 </div>

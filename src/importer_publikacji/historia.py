@@ -33,6 +33,15 @@ def komunikat_utworzenia(session):
     return f"Utworzono przez importer publikacji ({_szczegoly_sesji(session)})"
 
 
+def komunikat_utworzenia_z_pbn(session, wynik):
+    """Jak ``komunikat_utworzenia``, z informacją, skąd nowy autor ma
+    odpowiednik w PBN (FD#510)."""
+    return (
+        f"{komunikat_utworzenia(session)}; powiązano z osobą PBN "
+        f"{wynik.scientist_id} ({wynik.zrodlo})"
+    )
+
+
 def komunikat_zatrudnienia(session, jednostka):
     """Treść wpisu historii, gdy importer dopisał autorowi zatrudnienie."""
     return (

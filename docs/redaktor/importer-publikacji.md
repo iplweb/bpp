@@ -127,7 +127,18 @@ Importer otworzysz na dwa sposoby:
     afiliacją i dyscypliną autor trafi do rekordu. Dyscyplina jest
     podpowiadana sama, gdy autor ma w danym roku tylko jedną
     (**„Jedyna dyscyplina autora”**) albo gdy pochodzi ze zgłoszenia
-    publikacji.
+    publikacji. Dyscyplina ze zgłoszenia to propozycja zgłaszającego —
+    jeśli autor nie ma przypisania na rok publikacji, powstanie ono
+    dopiero przy **„Utwórz publikację”** (w Twoim imieniu). Autorowi spoza
+    uczelni importer nie podpowiada ze zgłoszenia ani dyscypliny, ani
+    żadnej jednostki poza obcą jednostką uczelni — w zamian wpisuje obcą
+    jednostkę (praca zapisze go bez afiliacji). Gdy uczelnia nie ma
+    ustawionej obcej jednostki, kolumna „Jednostka” pokazuje **„wybierz
+    jednostkę”** — autor bez jednostki nie trafi do pracy. Autorowi, który
+    w chwili tworzenia pracy nie jest autorem uczelni (np. po odpięciu go od
+    jednostek uczelni), importer nie założy przypisania do dyscypliny ze
+    zgłoszenia — **„Utwórz publikację”** pokaże komunikat; usuń wtedy jego
+    dyscyplinę w kroku „Autorzy”.
 
     ![Dopasowanie autorów: statusy dokładne, luźne i niedopasowany oraz przycisk „Edytuj”](../images/redaktor/importer-publikacji/09-autorzy.png)
 
@@ -198,6 +209,37 @@ Importer otworzysz na dwa sposoby:
     nad tabelą (przy jednym autorze: „Utwórz niedopasowanego autora”).
     Przed utworzeniem upewnij się, że to naprawdę ktoś spoza uczelni —
     pracownik utworzony drugi raz to duplikat do późniejszego scalania.
+
+    **Odpowiednik w PBN.** Zanim importer utworzy nowego autora, szuka tej
+    osoby w danych pobranych z PBN — po kolei: po identyfikatorze osoby
+    (podaje go import z PBN), po numerze ORCID, a na końcu po imieniu
+    i nazwisku wśród osób zatrudnionych w uczelni. Gdy wskazanie jest
+    jednoznaczne, nowy autor od razu dostaje **odpowiednik w PBN**
+    (pole „PBN UID” autora), a w jego historii zostaje wpis, skąd się wziął.
+    Jeśli wskazana osoba ma już autora w BPP (znaleziona po identyfikatorze
+    albo ORCID), importer przypisze wiersz do niego zamiast tworzyć duplikat.
+
+    Gdy pasującej osoby nie ma albo pasuje ich kilka, autor powstaje **bez
+    odpowiednika** — importer nie zgaduje. Widać to w kolumnie **„Autor
+    w BPP”**: czerwona etykieta **„bez odpowiednika w PBN”** z powodem pod
+    spodem (np. *„imię i nazwisko (osoba z instytucji): pasuje kilka osób
+    w PBN (…)”*). Szara etykieta o tej samej treści oznacza autora, który
+    był już w BPP i nie ma odpowiednika. **Oświadczenia autora bez
+    odpowiednika w PBN i bez ORCID nie trafiają do PBN**, więc u pracownika
+    uczelni warto to od razu uzupełnić: w module redagowania otwórz autora
+    i wybierz osobę w polu „PBN UID”.
+
+    Przed utworzeniem wielu autorów naraz żółta ramka nad tabelą i okno
+    potwierdzenia mówią, ilu z nich nie będzie miało odpowiednika, np.
+    *„Bez odpowiednika w PBN: 2 z 5”*. Dla autorów spoza uczelni to zwykle
+    w porządku; jeśli na liście są pracownicy, najpierw poszukaj ich
+    ręcznie („Edytuj”) albo poproś administratora o pobranie aktualnych
+    danych osób z PBN. Przy ponad 200 niedopasowanych autorach importer
+    nie liczy tego z góry — etykiety zobaczysz po utworzeniu.
+
+    Autorów, którzy **już są** w BPP bez odpowiednika w PBN, administrator
+    dopasowuje zbiorczo — patrz
+    [Dopasowanie autorów do osób z PBN](../administrator/integracja-pbn.md#dopasowanie-autorow-do-osob-z-pbn).
 
     Autor, który w ogóle nie powinien trafić do rekordu (np. błędny wpis
     w danych źródłowych), usuniesz z importu przyciskiem **„Usuń”**.

@@ -29,7 +29,6 @@ from pbn_api.models.publication import (
 )
 from pbn_api.models.publisher import Publisher as PBN_Publisher
 from zglos_publikacje import const
-from zglos_publikacje.dyscypliny import przypisz_dyscypline_jesli_brak
 from zglos_publikacje.forms import (
     FORMA_DOSTEPU_FORM_TO_MODEL,
     RODZAJ_FORM_TO_MODEL,
@@ -139,22 +138,28 @@ def _resolve_qss_value(value_str):
 
 
 def _process_autorzy_formset(
-    autorzy_formset, publication_object, typ_odpowiedzialnosci, user=None
+    autorzy_formset, publication_object, typ_odpowiedzialnosci
 ):
     """Process the authors formset and save author records.
 
-    FD#620: autorowi bez przypisania dyscypliny na rok pracy zakłada
-    przypisanie wybranej dyscypliny (z historią w imieniu ``user``)."""
+    FD#640: zapisuje wyłącznie dane zgłoszenia — wybrana dyscyplina zostaje
+    propozycją w ``Zgloszenie_Publikacji_Autor``; ``Autor_Dyscyplina`` (ani
+    ``Autor_Jednostka``) przy zapisie zgłoszenia nie powstaje."""
     if not autorzy_formset.is_valid():
         return
 
+    do_usuniecia = autorzy_formset.deleted_forms
     for no, form in enumerate(autorzy_formset):
-        if not form.is_valid():
-            continue
-
-        if form.cleaned_data.get("DELETE"):
+        # FD#640: usunięcie PRZED walidacją wiersza — formset pomija błędy
+        # wierszy oznaczonych do usunięcia, więc przy poprawce zwróconego
+        # zgłoszenia niepoprawny stary wiersz (np. obcy autor z dyscypliną)
+        # musi dać się usunąć, a nie zostać po cichu.
+        if form in do_usuniecia:
             if form.instance.pk:
                 form.instance.delete()
+            continue
+
+        if not form.is_valid():
             continue
 
         if not form.cleaned_data:
@@ -165,7 +170,6 @@ def _process_autorzy_formset(
         instance.kolejnosc = no
         instance.typ_odpowiedzialnosci = typ_odpowiedzialnosci
         instance.save()
-        przypisz_dyscypline_jesli_brak(instance, user)
 
 
 def _send_notification_email(publication_object, request):
@@ -343,6 +347,12 @@ class Zgloszenie_PublikacjiWizard(UczelniaSettingRequiredMixin, SessionWizardVie
             # pliki tymczasowe nie są zapisywane (process_step_files woła się
             # tylko dla ważnego formularza).
             kwargs["limit_przekroczony"] = limit_wyczerpany(self.request)
+        if step == "3":
+            # FD#640: formularz autora sprawdza „autora uczelni” względem
+            # uczelni z requestu (multi-hosted).
+            kwargs["form_kwargs"] = {
+                "uczelnia": Uczelnia.objects.get_for_request(self.request)
+            }
         if step == "4":
             # Krok opłat to też ModelForm na Zgloszenie_Publikacji → odpala
             # model.clean (walidacja opłat). Bez uczelni z requestu spada do
@@ -793,12 +803,7 @@ class Zgloszenie_PublikacjiWizard(UczelniaSettingRequiredMixin, SessionWizardVie
                 " odpowiedzialnosci z typem ogólnym = autor."
             )
 
-        _process_autorzy_formset(
-            autorzy_formset,
-            self.object,
-            typ_odpowiedzialnosci,
-            self.request.user,
-        )
+        _process_autorzy_formset(autorzy_formset, self.object, typ_odpowiedzialnosci)
 
         transaction.on_commit(
             lambda: _send_notification_email(self.object, self.request)

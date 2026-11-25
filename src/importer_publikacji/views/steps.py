@@ -31,7 +31,7 @@ from ..crossref_fields import categorize_crossref_fields
 from ..dspace_fields import categorize_dspace_fields
 from ..forms import PunktacjaForm, SourceForm, VerifyForm
 from ..models import ImportedAuthor, ImportSession
-from .authors import _orcid_settable_qs
+from .authors import _niedopasowani_bez_odpowiednika_pbn, _orcid_settable_qs
 from .helpers import (
     STEP_AUTHORS,
     STEP_PBN,
@@ -374,6 +374,9 @@ def _authors_context(request, session):
         "authors": all_authors,
         "stats": stats,
         "orcid_settable_count": orcid_settable_count,
+        # FD#510: ilu z niedopasowanych powstałoby bez odpowiednika w PBN
+        # (None = zbyt wielu, by sprawdzać przy każdym wyświetleniu).
+        "bez_odpowiednika_pbn": _niedopasowani_bez_odpowiednika_pbn(session),
         # „Wstecz" z Autorów: patent pomija Source → cofa do Verify.
         "is_patent": session.rodzaj_rekordu == ImportSession.RodzajRekordu.PATENT,
     }

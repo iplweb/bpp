@@ -117,6 +117,18 @@ def fetch_session_task(self, session_id, request_user_id):
                 stages=FETCH_STAGES,
             )
 
+        # Import z PBN podaje identyfikatory osób. Dla autorów, których
+        # trzeba będzie utworzyć, dociągamy dane osoby — inaczej nowy autor
+        # nie miałby odpowiednika w PBN (FD#510).
+        from .providers.pbn import pobierz_brakujace_osoby
+
+        pobierz_brakujace_osoby(
+            session.uczelnia,
+            session.authors.filter(matched_autor__isnull=True)
+            .exclude(pbn_uid="")
+            .values_list("pbn_uid", flat=True),
+        )
+
         report_progress(self, "prefill_zgl", stages=FETCH_STAGES)
         from .views.authors import _prefill_dyscypliny_z_zgloszen
         from .zgloszenia import zwiaz_automatycznie

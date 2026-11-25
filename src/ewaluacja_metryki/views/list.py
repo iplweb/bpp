@@ -281,7 +281,7 @@ class MetrykiListView(EwaluacjaRequiredMixin, ListView):
     def _get_status_context(self):
         """Get generation status and progress information."""
         uczelnia = uczelnia_dla_odczytu(self.request)
-        status = StatusGenerowania.get_or_create(
+        status = StatusGenerowania.aktualny(
             uczelnia=uczelnia, okres=okres_dla_request(self.request)
         )
         context = {

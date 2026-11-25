@@ -459,12 +459,15 @@ class AutorView(RekordUsunietyDetailMixin, DetailView):
     def get_context_data(self, **kwargs):
         from powiazania_autorow.models import AuthorConnection
 
-        # Link do sieci pokazujemy tylko gdy (a) są jakieś powiązania ORAZ
-        # (b) sieć jest włączona dla tego autora (per-autor nadpisuje
-        # per-uczelnia). Ten sam warunek twardo bramkuje widoki sieci (404).
         # getattr — get_context_data bywa wołane w testach jednostkowych bez
         # request; get_for_request(None) degraduje do uczelni domyślnej.
         uczelnia = Uczelnia.objects.get_for_request(getattr(self, "request", None))
+        if self.object.jest_spoza_uczelni(uczelnia):
+            return self._kontekst_autora_spoza_uczelni(uczelnia, **kwargs)
+
+        # Link do sieci pokazujemy tylko gdy (a) są jakieś powiązania ORAZ
+        # (b) sieć jest włączona dla tego autora (per-autor nadpisuje
+        # per-uczelnia). Ten sam warunek twardo bramkuje widoki sieci (404).
         ma_powiazania = (
             self.object.czy_pokazywac_siec_powiazan(uczelnia)
             and AuthorConnection.objects.filter(
@@ -503,6 +506,31 @@ class AutorView(RekordUsunietyDetailMixin, DetailView):
             context["uczelnia"] = uczelnia
         if context["pokazuj_metryki"]:
             context["metryki_autora"] = self._metryki_autora(request)
+        return context
+
+    def get_template_names(self):
+        if getattr(self, "autor_spoza_uczelni", False):
+            return ["browse/autor_spoza_uczelni.html"]
+        return super().get_template_names()
+
+    def _kontekst_autora_spoza_uczelni(self, uczelnia, **kwargs):
+        """Prosta strona autora spoza uczelni (FD#640) zamiast profilu.
+
+        Pełny profil (punktacja, biogram, statystyki, metryki, raporty, link
+        do sieci powiązań) nie przysługuje autorom spoza uczelni
+        (``Autor.jest_spoza_uczelni``) — sugerowałby, że to autor uczelni.
+        Zostaje nazwisko, informacja, że autor jest spoza uczelni, i przycisk
+        do jego prac w bibliografii (z natury współautorskich z autorami
+        uczelni). Stary URL działa dalej.
+
+        Bez liczby prac — nawet na przycisku: liczba prac obcego autora
+        w NASZEJ bazie nic nie mówi o jego dorobku, a wyglądałaby jak
+        statystyka jego twórczości.
+        """
+        self.autor_spoza_uczelni = True
+        context = super().get_context_data(**kwargs)
+        if uczelnia is not None:
+            context["uczelnia"] = uczelnia
         return context
 
     def _metryki_autora(self, request):
