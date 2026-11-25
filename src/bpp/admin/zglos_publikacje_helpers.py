@@ -2,6 +2,7 @@
 GET ``numer_zgloszenia`` czyli wypełniać dane wstępne wg zawartości zgłoszenia
 o danym numerze ID."""
 
+from django.contrib import messages
 from django.utils import timezone
 
 from bpp import const
@@ -93,15 +94,23 @@ class UzupelniajWstepneDanePoNumerzeZgloszeniaMixin(
         if z is None:
             return super().get_formset_kwargs(request, obj, inline, prefix)
 
+        from bpp.models import Uczelnia
+        from zglos_publikacje.dyscypliny import podpowiedz_dla_redakcji
+
+        # FD#640: dane zgłoszenia to propozycja — obcemu autorowi nie
+        # przenosimy jednostki uczelni ani dyscypliny, a dyscypliny bez
+        # przypisania na rok pracy nie wpisujemy (redaktor dostaje komunikat).
+        uczelnia = Uczelnia.objects.get_for_request(request)
         initial = []
-        for zpa in z.zgloszenie_publikacji_autor_set.all():
-            initial.append(
-                {
-                    "autor": zpa.autor_id,
-                    "jednostka": zpa.jednostka_id,
-                    "dyscyplina_naukowa": zpa.dyscyplina_naukowa_id,
-                }
-            )
+        for zpa in z.zgloszenie_publikacji_autor_set.select_related(
+            "autor", "jednostka", "dyscyplina_naukowa"
+        ):
+            if uczelnia is not None:
+                zpa._uczelnia = uczelnia
+            wiersz, uwagi = podpowiedz_dla_redakcji(zpa, z.rok)
+            initial.append(wiersz)
+            for uwaga in uwagi:
+                messages.warning(request, uwaga, fail_silently=True)
 
         return {
             "initial": initial,

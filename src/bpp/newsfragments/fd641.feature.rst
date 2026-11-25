@@ -1,0 +1,26 @@
+Wysyłka do PBN: BPP sprawdza teraz listę autorów także w profilu instytucji
+w PBN, a nie tylko w rekordzie publikacji. Zdarza się, że rekord publikacji
+w PBN ma komplet autorów (tylu, ilu jest w BPP), a w profilu instytucji —
+czyli tam, gdzie uczelnia składa oświadczenia — widać ich mniej, np.
+3 autorów w BPP i w rekordzie publikacji, a 1 w profilu instytucji.
+Dotychczas BPP tego nie zauważał: wysyłka kończyła się samym komunikatem
+o sukcesie.
+
+Po udanej wysyłce pracy z formularza rekordu, akcją „Wyślij do PBN” albo
+z kolejki eksportu BPP pobiera jej wpis z profilu instytucji (robił to już
+wcześniej) i porównuje z tym, co wysłał. Gdy profil instytucji
+pokazuje mniej autorów, obok komunikatu o sukcesie pojawia się żółte
+ostrzeżenie, np. „UWAGA: w profilu instytucji w PBN jest 1 z 3 wysłanych
+autorów — brakuje 2. Prawdopodobnie brakuje: …”. Widać je nad formularzem
+rekordu, po akcji „Wyślij do PBN” na liście prac i w komunikacie wpisu
+w kolejce eksportu do PBN. Liczby są pewne; nazwiska to wskazówka
+(dopasowanie po imieniu i nazwisku).
+
+Czego zmiana nie robi: niczego dodatkowo nie wysyła do PBN i niczego w PBN
+nie poprawia — tylko pokazuje różnicę. Autorzy, redaktorzy i tłumacze
+liczeni są razem. Gdy PBN nie zwróci wpisu pracy z profilu instytucji,
+porównania nie ma — BPP nie sięga wtedy po dane pobrane wcześniej. Masowa
+synchronizacja uruchamiana przez administratora z wiersza poleceń tego
+sprawdzenia nie wykonuje. Tuż po pierwszej wysyłce nowej pracy profil instytucji bywa
+aktualizowany przez PBN z opóźnieniem, więc ostrzeżenie może być
+przejściowe.

@@ -1200,12 +1200,18 @@ class CreateView(ImporterPermissionMixin, View):
         # User dostaje komunikat na przeglądzie i może poprawić dopasowanie.
         from django.core.exceptions import ValidationError
 
-        from ..dyscypliny import autorzy_z_niezgodna_dyscyplina
+        from ..dyscypliny import (
+            autorzy_z_niezgodna_dyscyplina,
+            waliduj_dyscypliny_autorow_spoza_uczelni,
+        )
         from .publikacja import waliduj_afiliacje_sesji
         from .steps import _render_review_full, _render_review_step
 
         try:
             waliduj_afiliacje_sesji(session)
+            # FD#640: autor spoza uczelni z dyscypliną ze zgłoszenia (np.
+            # redakcja odpięła go od jednostek uczelni po kroku „Autorzy”).
+            waliduj_dyscypliny_autorow_spoza_uczelni(session)
         except ValidationError as exc:
             error = " ".join(exc.messages)
             if request.headers.get("HX-Request"):

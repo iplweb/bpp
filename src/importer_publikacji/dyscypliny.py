@@ -11,12 +11,19 @@ Autora, który MA przypisanie na ten rok (do innej dyscypliny), nie ruszamy:
 zmiana jego dyscyplin to decyzja kadrowa, nie importu. Takiego autora
 wykrywamy PRZED utworzeniem rekordu (FD#623) i pokazujemy operatorowi
 z odnośnikami do poprawy — zamiast wywracać tworzenie rekordu.
+
+FD#640: autorowi spoza uczelni (``Autor.jest_autorem_uczelni``) nie
+zakładamy przypisania na podstawie dyscypliny ze zgłoszenia pracy — np. gdy
+redakcja po wczytaniu zgłoszenia odpięła autora od jednostek uczelni.
+Taki autor blokuje utworzenie pracy z czytelnym komunikatem
+(``autorzy_spoza_uczelni_bez_prawa_do_dyscypliny``).
 """
 
 from django.core.exceptions import ValidationError
 from django.db.models import Q
 
-from bpp.models import Autor_Dyscyplina
+from bpp.models import Autor_Dyscyplina, Uczelnia
+from bpp.models.autor import _jednostki_uczelni_bez_sztucznych
 from bpp.wersjonowanie import zapewnij_wersje_poczatkowa
 
 from .historia import komunikat_dyscypliny, zapisz_utworzenie, zapisz_zmiane
@@ -38,7 +45,9 @@ def _autorzy_z_wybrana_dyscyplina(session):
         .exclude(matched_autor=None)
         .exclude(matched_jednostka=None)
         .exclude(matched_dyscyplina=None)
-        .select_related("matched_autor", "matched_dyscyplina")
+        .select_related(
+            "matched_autor", "matched_dyscyplina", "matched_jednostka__uczelnia"
+        )
         .order_by("order")
     )
 
@@ -88,7 +97,9 @@ def waliduj_dyscypliny_sesji(session):
 
     Wołany przed utworzeniem pracy — na przeglądzie (``CreateView.post``,
     komunikat z odnośnikami) i na początku ``_create_publication`` (retry,
-    zmiany w międzyczasie)."""
+    zmiany w międzyczasie). Najpierw FD#640 — autor spoza uczelni z
+    dyscypliną bez przypisania na rok pracy."""
+    waliduj_dyscypliny_autorow_spoza_uczelni(session)
     problemy = autorzy_z_niezgodna_dyscyplina(session)
     if not problemy:
         return
@@ -100,6 +111,75 @@ def waliduj_dyscypliny_sesji(session):
         f"Nie można utworzyć pracy — część autorów nie ma na rok {rok} "
         f"przypisania do wybranej dyscypliny: {linie}. Zmień dyscyplinę w kroku "
         f"„Autorzy” albo popraw przypisanie dyscyplin autora i spróbuj ponownie."
+    )
+
+
+def _uczelnia_autora(session, imported):
+    """Uczelnia, względem której liczymy „autora uczelni” — uczelnia sesji
+    (multi-hosted, ta sama co w ``_add_authors_to_record``), a gdy jej brak
+    — uczelnia jednostki, z którą autor trafi do rekordu."""
+    if session.uczelnia_id is not None:
+        return session.uczelnia
+    if imported.matched_jednostka_id is not None:
+        return imported.matched_jednostka.uczelnia
+    return Uczelnia.objects.get_single_uczelnia_or_none()
+
+
+def _moze_dostac_przypisanie(session, imported):
+    """FD#640: czy autorowi wolno założyć ``Autor_Dyscyplina`` przy tworzeniu
+    rekordu.
+
+    Tak, gdy jest autorem uczelni. Autorowi spoza uczelni — tylko gdy
+    dyscyplinę wybrał operator importu (nie przyszła ze zgłoszenia) i autor
+    trafi do rekordu z jednostką uczelni (zapis pracy dopisze mu ją, więc
+    stanie się autorem uczelni — np. nowy pracownik bez przypisań).
+    Dyscyplina ze zgłoszenia to niezweryfikowana propozycja: autorowi, który
+    w chwili tworzenia pracy nie jest autorem uczelni, jej nie przypisujemy."""
+    uczelnia = _uczelnia_autora(session, imported)
+    if imported.matched_autor.jest_autorem_uczelni(uczelnia):
+        return True
+    if imported.dyscyplina_source == ImportedAuthor.DyscyplinaSource.ZGLOSZENIE:
+        return False
+    if uczelnia is None:
+        return False
+    return (
+        _jednostki_uczelni_bez_sztucznych(uczelnia)
+        .filter(pk=imported.matched_jednostka_id)
+        .exists()
+    )
+
+
+def autorzy_spoza_uczelni_bez_prawa_do_dyscypliny(session, rok=None):
+    """FD#640: dopasowani autorzy z wybraną dyscypliną, bez przypisania na
+    rok pracy, którym NIE wolno go założyć (``_moze_dostac_przypisanie``).
+    Utworzenie pracy zapisałoby im dyscyplinę bez przypisania — dlatego
+    blokujemy je komunikatem (``waliduj_dyscypliny_sesji``)."""
+    if rok is None:
+        rok = (session.normalized_data or {}).get("year")
+    if not rok:
+        return []
+    return [
+        imported
+        for imported in _autorzy_z_wybrana_dyscyplina(session)
+        if not ma_przypisanie_na_rok(imported.matched_autor, rok)
+        and not _moze_dostac_przypisanie(session, imported)
+    ]
+
+
+def waliduj_dyscypliny_autorow_spoza_uczelni(session, rok=None):
+    """Rzuca ``ValidationError``, gdy któryś autor spoza uczelni dostałby
+    przy tworzeniu pracy przypisanie dyscypliny (FD#640)."""
+    problemy = autorzy_spoza_uczelni_bez_prawa_do_dyscypliny(session, rok)
+    if not problemy:
+        return
+    linie = "; ".join(
+        f"{ia.matched_autor} (dyscyplina: {ia.matched_dyscyplina})" for ia in problemy
+    )
+    raise ValidationError(
+        "Nie można utworzyć pracy — autorom spoza uczelni nie przypisuje się "
+        f"dyscypliny ze zgłoszenia: {linie}. Usuń dyscyplinę autora w kroku "
+        "„Autorzy” (albo przypisz autora do jednostki uczelni w jego edycji) "
+        "i spróbuj ponownie."
     )
 
 
@@ -117,6 +197,11 @@ def przypisz_brakujace_dyscypliny(session, record, user):
     rok = record.rok
     if not rok:
         return utworzone
+
+    # FD#640: nigdy nie zakładaj przypisania autorowi spoza uczelni —
+    # sprawdzane tuż przed zapisem (stan autora mógł się zmienić po kroku
+    # „Autorzy”); błąd wycofuje transakcję tworzenia rekordu.
+    waliduj_dyscypliny_autorow_spoza_uczelni(session, rok)
 
     for imported in _autorzy_z_wybrana_dyscyplina(session):
         autor = imported.matched_autor

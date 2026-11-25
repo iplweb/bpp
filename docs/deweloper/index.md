@@ -16,6 +16,9 @@ repozytorium. Poniższe strony rozwijają wybrane tematy:
   zarządzanie).
 - [Pakiety klienckie PBN](pakiety-pbn.md) — pakiety `pbn-client` /
   `django-pbn-client` (PyPI), podział odpowiedzialności i aktualizacja wersji.
+- [Testowanie PBN lokalnie](testowanie-pbn-lokalnie.md) — token PBN na kopii
+  bazy klienta jednym poleceniem, przechwycenie powrotu z PBN, bezpiecznik
+  przed przypadkową wysyłką.
 - [Soft-delete (kosz)](soft-delete.md) — co jest kasowane miękko
   (`deleted_at`), a co nie, i co dzieje się z danymi powiązanymi, PBN
   i historią wersji przy usunięciu i przywróceniu.

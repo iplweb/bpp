@@ -171,6 +171,21 @@ dla **rzadszych przypadków**: testy z `PYTEST_TESTCONTAINERS_DISABLE=1`
 albo gdy potrzebujesz długożyjącej bazy niezależnie od `run-site`.
 Do oglądania samej strony — używaj `run-site`.
 
+## Testowanie PBN lokalnie (kopia bazy klienta)
+
+Token PBN na lokalnej instancji: `uv run run-site run --from-dump <plik>
+--get-pbn-token-from LOGIN@HOST`, potem `uv run bin/pbn-zaloguj-lokalnie.py
+--user LOGIN`. Szczegóły:
+[docs/deweloper/testowanie-pbn-lokalnie.md](docs/deweloper/testowanie-pbn-lokalnie.md).
+
+- **Lokalna instancja nie wysyła do PBN sama z siebie**: `settings/local.py`
+  ustawia `DJANGO_BPP_PBN_WSTRZYMAJ_AUTOMATY=1` (testy: `False` w
+  `settings/test.py`). Nowy automat wysyłający do PBN bez jawnego „wyślij
+  ten rekord” musi sprawdzać `pbn_export_queue.bezpiecznik.automaty_wstrzymane()`.
+- Powrót z PBN przechwytuje CDP `Fetch`, **nie** `context.route()`
+  Playwrighta — `route()` nie widzi skoków przekierowania i żądanie dotarłoby
+  do serwera klienta (pilnuje tego test e2e na atrapie PBN).
+
 ## Testowanie pull requestów z GitHuba
 
 Gdy user prosi „przetestuj / odpal / pokaż PR #N", **nie przełączaj gałęzi

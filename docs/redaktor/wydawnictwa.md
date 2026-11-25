@@ -110,8 +110,15 @@ Uwagi:
   przed pierwszą zmianą (komentarz „Stan sprzed pierwszej zarejestrowanej
   zmiany”) — dzięki temu i tę zmianę można cofnąć. Starsze zmiany widać
   w tabeli **„Wcześniejsza historia”** (kto i kiedy, bez przywracania).
-- Przywrócenie wersji z plikiem w repozytorium przywraca wpis o pliku,
-  ale nie treść pliku usuniętego z serwera.
+- Przywrócenie wersji **nie wyjmuje niczego z kosza**. Pliki repozytorium
+  usunięte po tej wersji zostają w koszu — podgląd wersji wymienia je
+  osobno („Nie zostaną przywrócone — są w koszu”), a przywraca się je
+  w formularzu rekordu (patrz [Pliki w repozytorium](#pliki-repozytorium)).
+- Wersji nie da się przywrócić, gdy jej stan nie pasuje do dzisiejszych
+  danych — np. pozycja z listy należy teraz do innego rekordu albo dawna
+  jednostka nadrzędna jest dziś podjednostką przywracanej jednostki.
+  Podgląd wersji wyjaśnia wtedy, co poprawić, i nie pokazuje przycisku
+  przywracania.
 - Historia jest przechowywana bez limitu czasu.
 - Historię i porównanie wersji rekordu z kosza można oglądać, ale
   przywrócić wersję da się dopiero po wyjęciu rekordu z kosza — strona
@@ -125,6 +132,30 @@ Uwagi:
 - Przywrócenie wersji jednego rekordu nigdy nie zmienia innych rekordów —
   także po akcji masowej (np. zmianie statusu korekty wielu prac) każdy
   rekord ma własną wersję.
+
+## Pliki w repozytorium — kosz i archiwum plików {#pliki-repozytorium}
+
+Pliki dodane do rekordu (sekcja **„elementy repozytorium”** w formularzu
+publikacji), pliki i załączniki zgłoszeń publikacji **nigdy nie są
+kasowane z serwera**.
+
+- **Usunięcie pliku w formularzu** (pole „Usunąć?” przy pliku i zapis
+  rekordu) przenosi go do kosza. Pliki z kosza są widoczne w tym samym
+  formularzu, w sekcji **„pliki repozytorium w koszu”**. Aby przywrócić
+  plik, zaznacz przy nim **„♻️ Przywróć z kosza”** i zapisz rekord.
+- **Archiwum plików** (moduł redagowania → **Historia zmian → Archiwum
+  plików**) zbiera pliki, które straciły powiązanie z rekordem: rekord
+  usunięty trwale z kosza (razem z jego plikami), usunięty załącznik
+  zgłoszenia, plik podmieniony na inny albo usunięty z pola. Przy każdym
+  wpisie widać, do czego plik należał, kto i kiedy go odpiął, a plik
+  można pobrać (⬇️). Archiwum widzą członkowie grup „wprowadzanie
+  danych” i „zgłoszenia publikacji” (oraz superużytkownik), ale każdy
+  tylko pliki z rekordów, do których ma dostęp — np. załączniki zgłoszeń
+  wyłącznie osoby z uprawnieniami do zgłoszeń.
+- Pliki leżą w chronionym katalogu serwera — nie da się ich pobrać
+  bezpośrednim adresem, tylko przez BPP po zalogowaniu.
+- Przywrócić plik z kosza może osoba z uprawnieniem do usuwania plików
+  repozytorium (jak w przypadku kosza rekordów).
 
 ## Dlaczego nie można usunąć pracy z wpisanym „Odpowiednikiem w PBN"
 

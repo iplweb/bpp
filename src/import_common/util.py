@@ -3,15 +3,19 @@ from __future__ import annotations
 import re
 from collections import defaultdict
 from collections.abc import Generator
+from contextlib import contextmanager
 from typing import TYPE_CHECKING
 
 from django.utils.functional import cached_property
+from django.views.decorators.debug import sensitive_variables
 
 from .exceptions import (
     BadNoOfSheetsException,
     DecompressionBombException,
     HeaderNotFoundException,
     ImproperFileException,
+    NieprawidloweHasloDoPlikuException,
+    PlikZabezpieczonyHaslemException,
     PlikZaDuzyException,
 )
 
@@ -100,13 +104,269 @@ def sprawdz_bombe_dekompresji(sciezka, max_rozpakowany=None):
         )
 
 
+# Sygnatura kontenera OLE2 (Compound File Binary). Ma ją stary .xls ORAZ
+# każdy plik Office zaszyfrowany hasłem — także .xlsx, który po zaszyfrowaniu
+# przestaje być archiwum ZIP i staje się OLE2 ze strumieniami
+# ``EncryptionInfo`` + ``EncryptedPackage``.
+SYGNATURA_OLE2 = b"\xd0\xcf\x11\xe0\xa1\xb1\x1a\xe1"
+
+# Jak zdjąć hasło w Excelu — wspólny fragment komunikatów dla użytkownika.
+INSTRUKCJA_USUNIECIA_HASLA = (
+    "otwórz plik w Excelu, usuń hasło (Plik → Informacje → Chroń skoroszyt → "
+    "Zaszyfruj przy użyciu hasła → wyczyść pole), zapisz plik i wgraj go ponownie."
+)
+
+KOMUNIKAT_PLIK_Z_HASLEM = (
+    "Plik jest zabezpieczony hasłem i nie da się go odczytać. Aby go "
+    "zaimportować, " + INSTRUKCJA_USUNIECIA_HASLA
+)
+
+KOMUNIKAT_NIEPRAWIDLOWE_HASLO = "Nieprawidłowe hasło do pliku."
+
+KOMUNIKAT_NIE_DA_SIE_ODSZYFROWAC = (
+    "Nie udało się odszyfrować pliku — plik jest uszkodzony albo ten rodzaj "
+    "zabezpieczenia nie jest obsługiwany. Zamiast podawać hasło, "
+    + INSTRUKCJA_USUNIECIA_HASLA
+)
+
+# Limit rozmiaru pliku zabezpieczonego hasłem, który odszyfrowujemy w procesie
+# HTTP. msoffcrypto trzyma całość w pamięci, a dla .xls (BIFF) buduje listę
+# Pythona z pozycją na KAŻDY bajt (~8 B wskaźnika na bajt pliku) — 100 MB
+# zwykłego limitu to ryzyko OOM. Eksporty z POL-on mają pojedyncze MB.
+MAX_ROZMIAR_PLIKU_Z_HASLEM = 10 * 1024 * 1024
+
+
+@contextmanager
+def _strumien_binarny(plik):
+    """Otwiera ``plik`` (ścieżka albo obiekt plikowy Django) do odczytu
+    binarnego. Dla obiektu plikowego przywraca pozycję odczytu po wyjściu —
+    zaraz po nas ten sam obiekt czyta parser. ``None`` = pliku nie da się
+    otworzyć (brak pliku): to nie ten wektor, niech padnie dalej."""
+    import os
+
+    if isinstance(plik, (str, os.PathLike)):
+        try:
+            f = open(plik, "rb")  # zamykany w finally niżej
+        except OSError:
+            yield None  # brak/nieczytelny plik — błąd zgłosi parser
+            return
+        try:
+            yield f
+        finally:
+            f.close()
+        return
+
+    if not all(hasattr(plik, a) for a in ("read", "seek", "tell")):
+        yield None  # nie plik — nie ten wektor
+        return
+
+    pozycja = plik.tell()
+    try:
+        plik.seek(0)
+        yield plik
+    finally:
+        plik.seek(pozycja)
+
+
+class HasloDoPliku:
+    """Hasło do zaszyfrowanego pliku, które nie pokazuje się w ``repr``/``str``.
+
+    Monitoring błędów (Sentry/GlitchTip, Rollbar) i raport błędu Django
+    zapisują zmienne lokalne i argumenty KAŻDEJ ramki tracebacku — także
+    krotki ``*args`` dekoratorów (np. ``sensitive_variables``), gdzie nie ma
+    nazwy klucza, po której dałoby się wartość zamazać. Przekazujemy więc
+    wszędzie ten obiekt, a jawną wartość wyjmujemy (``odslon()``) dopiero
+    w wywołaniu biblioteki odszyfrowującej, bez przypisywania do zmiennej.
+    """
+
+    __slots__ = ("_wartosc",)
+    ZAMASKOWANE = "********"
+
+    def __init__(self, wartosc=""):
+        self._wartosc = wartosc or ""
+
+    def __bool__(self):
+        return bool(self._wartosc)
+
+    def __repr__(self):
+        return f"HasloDoPliku({self.ZAMASKOWANE!r})"
+
+    def __str__(self):
+        return self.ZAMASKOWANE
+
+    def odslon(self):
+        return self._wartosc
+
+
+def _odslon(haslo):
+    if isinstance(haslo, HasloDoPliku):
+        return haslo.odslon()
+    return haslo
+
+
+# Rekordy BIFF (.xls): BOF globals, FILEPASS (= plik zaszyfrowany), EOF.
+_BIFF_FILEPASS = 0x002F
+_BIFF_EOF = 0x000A
+
+
+def _xls_ma_filepass(f, ole):
+    """Czy strumień ``Workbook`` (.xls, BIFF8) zaczyna się od rekordu FILEPASS?
+
+    FILEPASS stoi zaraz po BOF podstrumienia globals, więc wystarczy PIERWSZY
+    sektor strumienia — czytamy go wprost z pliku, bez ``openstream()``
+    (olefile i ``msoffcrypto.Xls97File`` wczytują cały strumień do pamięci,
+    a to dzieje się PRZED sprawdzeniem limitów rozmiaru pliku z hasłem)."""
+    import struct
+
+    wpis = next((k for k in ole.root.kids if k.name.lower() == "workbook"), None)
+    if wpis is None:
+        return False
+    if wpis.size < ole.minisectorcutoff:
+        # Mały strumień (< 4 KB) siedzi w ministrumieniu — tani odczyt.
+        dane = ole.openstream(wpis.name).read(ole.sectorsize)
+    else:
+        f.seek((wpis.isectStart + 1) * ole.sectorsize)
+        dane = f.read(min(ole.sectorsize, wpis.size))
+
+    poz = 0
+    while poz + 4 <= len(dane):
+        numer, rozmiar = struct.unpack_from("<HH", dane, poz)
+        if numer == _BIFF_FILEPASS:
+            return True
+        if numer == _BIFF_EOF:
+            return False
+        poz += 4 + rozmiar
+    return False
+
+
+def czy_plik_zaszyfrowany(plik):
+    """Czy ``plik`` (ścieżka albo obiekt plikowy) to dokument Office
+    zaszyfrowany hasłem (XLSX/XLS „Zaszyfruj przy użyciu hasła")?
+
+    Czyta tylko nagłówek i katalog OLE2 (plus pierwszy sektor strumienia
+    ``Workbook`` dla .xls) — nie parsuje metadanych szyfrowania i nie
+    odszyfrowuje niczego. Pliki nie-OLE2 (zwykły XLSX/ZIP, CSV) od razu dają
+    ``False``. Kontener z TYLKO jednym ze strumieni szyfrowania (uszkodzony
+    plik z hasłem) daje ``PlikZabezpieczonyHaslemException`` „uszkodzony"."""
+    with _strumien_binarny(plik) as f:
+        if f is None or f.read(len(SYGNATURA_OLE2)) != SYGNATURA_OLE2:
+            return False
+
+        import struct
+
+        import olefile
+
+        try:
+            f.seek(0)
+            ole = olefile.OleFileIO(f)
+            info = ole.exists("EncryptionInfo")
+            pakiet = ole.exists("EncryptedPackage")
+            if info or pakiet:
+                if not (info and pakiet):
+                    raise PlikZabezpieczonyHaslemException(
+                        KOMUNIKAT_NIE_DA_SIE_ODSZYFROWAC
+                    )
+                # Zaszyfrowany OOXML (.xlsx) — po samych strumieniach.
+                return True
+            return _xls_ma_filepass(f, ole)
+        except (OSError, ValueError, IndexError, KeyError, struct.error):
+            # OLE2, ale uszkodzony kontener (olefile rzuca ``OSError``/
+            # ``ValueError``). To nie jest „plik z hasłem" — błąd formatu
+            # zgłosi parser niżej.
+            return False
+
+
+def sprawdz_szyfrowanie_pliku(plik):
+    """Odrzuca plik zaszyfrowany hasłem PRZED parsowaniem, z komunikatem dla
+    użytkownika (zamiast „Can't find workbook in OLE2 compound document")."""
+    if czy_plik_zaszyfrowany(plik):
+        raise PlikZabezpieczonyHaslemException(KOMUNIKAT_PLIK_Z_HASLEM)
+
+
+@sensitive_variables("haslo")
+def odszyfruj_plik(plik, haslo):
+    """Odszyfrowuje dokument Office zabezpieczony hasłem; zwraca bajty pliku
+    już BEZ hasła (XLSX → zwykły ZIP, XLS → zwykły BIFF).
+
+    ``plik`` — ścieżka albo obiekt plikowy. Rzuca
+    ``NieprawidloweHasloDoPlikuException`` przy złym haśle i
+    ``PlikZabezpieczonyHaslemException`` przy zabezpieczeniu, którego nie
+    umiemy zdjąć. Hasło NIE trafia do żadnego komunikatu ani łańcucha
+    wyjątków (``from None``) — nie wolno go też logować w miejscu wywołania.
+
+    Plik większy niż ``MAX_ROZMIAR_PLIKU_Z_HASLEM`` jest odrzucany PRZED
+    odszyfrowaniem (``PlikZaDuzyException``). Wynik trzeba przepuścić przez
+    ``sprawdz_plik_importu`` jak każdy inny plik — odszyfrowany XLSX też może
+    być bombą dekompresyjną."""
+    import io
+    import logging
+    import struct
+    from xml.parsers.expat import ExpatError
+
+    import msoffcrypto
+    from msoffcrypto.exceptions import (
+        DecryptionError,
+        FileFormatError,
+        InvalidKeyError,
+        ParseError,
+    )
+
+    rozmiar = _rozmiar(plik)
+    if rozmiar is not None and rozmiar > MAX_ROZMIAR_PLIKU_Z_HASLEM:
+        raise PlikZaDuzyException(
+            f"Plik zabezpieczony hasłem jest za duży, żeby odszyfrować go na "
+            f"serwerze ({rozmiar / 1024 / 1024:.1f} MB, limit "
+            f"{MAX_ROZMIAR_PLIKU_Z_HASLEM // 1024 // 1024} MB). Zamiast podawać "
+            f"hasło, " + INSTRUKCJA_USUNIECIA_HASLA
+        )
+
+    wynik = io.BytesIO()
+    with _strumien_binarny(plik) as f:
+        if f is None:
+            raise PlikZabezpieczonyHaslemException(KOMUNIKAT_NIE_DA_SIE_ODSZYFROWAC)
+        try:
+            dokument = msoffcrypto.OfficeFile(f)
+            # Jawne hasło tylko w argumencie wywołania — bez zmiennej lokalnej.
+            dokument.load_key(password=_odslon(haslo))
+            dokument.decrypt(wynik)
+        except InvalidKeyError:
+            raise NieprawidloweHasloDoPlikuException(
+                KOMUNIKAT_NIEPRAWIDLOWE_HASLO
+            ) from None
+        except (
+            DecryptionError,
+            FileFormatError,
+            ParseError,
+            OSError,
+            ValueError,
+            IndexError,
+            KeyError,
+            ExpatError,
+            AssertionError,
+            struct.error,
+        ) as e:
+            # Nieobsługiwany wariant szyfrowania albo uszkodzony plik (msoffcrypto
+            # przy złych metadanych rzuca m.in. ``IndexError``/``KeyError``,
+            # ``ExpatError`` z XML-a EncryptionInfo) — błąd użytkownika (ma
+            # zdjąć hasło w Excelu), nie aplikacji. Logujemy tylko typ wyjątku.
+            logging.getLogger(__name__).info(
+                "Nie udało się odszyfrować pliku importu: %s", type(e).__name__
+            )
+            raise PlikZabezpieczonyHaslemException(
+                KOMUNIKAT_NIE_DA_SIE_ODSZYFROWAC
+            ) from None
+    return wynik.getvalue()
+
+
 def sprawdz_plik_importu(sciezka, max_bajtow=None, max_rozpakowany=None):
     """Wspólny bezpiecznik dla plików importu wgrywanych przez użytkownika:
-    limit rozmiaru na dysku + (dla XLSX/ZIP) limit rozmiaru po dekompresji.
-    Wołać PRZED parsowaniem (openpyxl/pandas/csv). Rzuca podklasę
-    ``NiebezpiecznyPlikException`` z czytelnym komunikatem."""
+    limit rozmiaru na dysku + (dla XLSX/ZIP) limit rozmiaru po dekompresji +
+    odrzucenie pliku zaszyfrowanego hasłem. Wołać PRZED parsowaniem
+    (openpyxl/pandas/csv). Rzuca podklasę ``NiebezpiecznyPlikException``
+    z czytelnym komunikatem."""
     sprawdz_rozmiar_pliku(sciezka, max_bajtow=max_bajtow)
     sprawdz_bombe_dekompresji(sciezka, max_rozpakowany=max_rozpakowany)
+    sprawdz_szyfrowanie_pliku(sciezka)
 
 
 # openpyxl importujemy LOKALNIE (nie na poziomie modułu): ten moduł jest
@@ -198,6 +458,7 @@ def znajdz_naglowek(
 
     sprawdz_rozmiar_pliku(sciezka)
     sprawdz_bombe_dekompresji(sciezka)
+    sprawdz_szyfrowanie_pliku(sciezka)
     try:
         # read_only: czytamy strumieniowo (tylko cell.value + iteracja rows),
         # bez wciągania całego skoroszytu do RAM — obrona przed OOM workera.
@@ -256,6 +517,7 @@ class XLSImportFile:
 
         sprawdz_rozmiar_pliku(self.xls_path)
         sprawdz_bombe_dekompresji(self.xls_path)
+        sprawdz_szyfrowanie_pliku(self.xls_path)
         # read_only: strumieniowy odczyt (iteracja rows + cell.value) bez
         # ładowania całego skoroszytu do RAM — obrona przed OOM workera.
         return openpyxl.load_workbook(self.xls_path, read_only=True)

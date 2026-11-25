@@ -48,7 +48,12 @@ function esc(s) {
 
 // nodeVal steruje OBJĘTOŚCIĄ kuli; metryki bywają duże (sumy IF/PK), a
 // 3d-force-graph i tak skaluje promień ~cbrt(val). Pilnujemy minimum.
+// FD#640: autor spoza uczelni nie ma metryk (null z API) — stała,
+// neutralna wielkość kuli niezależna od wybranej metryki.
+const WARTOSC_NEUTRALNA = 1;
+
 function wartoscMetryki(n, metryka) {
+    if (n.spoza_uczelni) { return WARTOSC_NEUTRALNA; }
     if (metryka === "if") { return Math.max(0.2, n.if_sum || 0); }
     if (metryka === "pk") { return Math.max(0.2, n.pk_sum || 0); }
     return Math.max(1, n.total_works || 1);
@@ -135,8 +140,12 @@ export function init(ForceGraph3D) {
         .nodeLabel(function (n) {
             // tytuł naukowy przed nazwiskiem, np. "prof. dr hab. Jan Kowalski"
             const tyt = n.tytul ? esc(n.tytul) + " " : "";
-            return "<b>" + tyt + esc(n.label) + "</b><br>prace: "
-                + (n.total_works | 0);
+            const nazwa = "<b>" + tyt + esc(n.label) + "</b>";
+            // FD#640: autorowi spoza uczelni nie pokazujemy liczby prac
+            if (n.spoza_uczelni || n.total_works == null) {
+                return nazwa + "<br>autor spoza uczelni";
+            }
+            return nazwa + "<br>prace: " + (n.total_works | 0);
         })
         // etykieta jako sprite obok kuli (extend = nie zastępuje kuli);
         // tylko dla top-N i gdy włączone "pokaż etykiety"
@@ -346,9 +355,11 @@ export function init(ForceGraph3D) {
                 orcid: n.orcid,
                 pbn_url: n.pbn_url,
                 level: n.level || 0,
-                total_works: n.total_works || 0,
+                // null (autor spoza uczelni, FD#640) zostaje nullem
+                total_works: n.total_works == null ? null : n.total_works,
                 if_sum: n.if_sum || 0,
-                pk_sum: n.pk_sum || 0
+                pk_sum: n.pk_sum || 0,
+                spoza_uczelni: !!n.spoza_uczelni
             };
         });
         oznaczTop(nodes);

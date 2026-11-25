@@ -94,6 +94,7 @@ from ewaluacja_liczba_n.models import (
     IloscUdzialowDlaAutoraZaRok,
     LiczbaNDlaUczelni,
 )
+from historia_zmian.models import ArchiwalnyPlik
 from import_polon.models import ImportPolonOverride
 from pbn_api.models import (
     Conference,
@@ -203,6 +204,9 @@ groups = {
         Projekt_Autor,
         Finansowanie,
         Element_Repozytorium,
+        # Archiwum plików (FD#587) — tylko do odczytu; lista i pobieranie są
+        # zawężone do modeli, które użytkownik może oglądać.
+        ArchiwalnyPlik,
         IloscUdzialowDlaAutoraZaRok,
         # Podrzędny wobec ``Autor`` (FK z CASCADE), jak wariant „za rok" wyżej:
         # bez tego uprawnienia admin nie pozwoli skasować autora, dla którego
@@ -237,7 +241,11 @@ groups = {
         flexible_models.Datasource,
         flexible_models.ColumnOrder,
     ],
-    GR_ZGLOSZENIA_PUBLIKACJI: [Zgloszenie_Publikacji, Zgloszenie_Publikacji_Autor],
+    GR_ZGLOSZENIA_PUBLIKACJI: [
+        Zgloszenie_Publikacji,
+        Zgloszenie_Publikacji_Autor,
+        ArchiwalnyPlik,
+    ],
     GR_RAPORTY_WYSWIETLANIE: [],
     # Wysyłka rekordów do repozytorium DSpace (akcje admina) i konfiguracja
     # mapowań kolekcji. Grupy nie nadaje się automatycznie — przydziela ją

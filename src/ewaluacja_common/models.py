@@ -98,3 +98,26 @@ class WybranyOkresEwaluacji(models.Model):
 
     def __str__(self):
         return f"{self.user}: {self.okres}"
+
+
+class OdczytPrzebiegu(models.Model):
+    """Pamięć strażnika przebiegów w tle (``ewaluacja_common.przebiegi``):
+    ostatni odczyt stanu przebiegu w Celery i od kiedy ten stan trwa.
+
+    W bazie, a nie w cache: cache bywa wyłączony (środowisko deweloperskie)
+    albo osobny dla każdego procesu serwera, a anulowanie wymaga stanu
+    potwierdzonego w kolejnych odczytach.
+    """
+
+    klucz = models.CharField(max_length=200, unique=True)
+    task_id = models.CharField(max_length=255)
+    stan = models.CharField(max_length=32)
+    od = models.DateTimeField(help_text="Od kiedy trwa odczytany stan")
+    sprawdzono = models.DateTimeField(help_text="Kiedy ostatnio pytano Celery")
+
+    class Meta:
+        verbose_name = "odczyt przebiegu w tle"
+        verbose_name_plural = "odczyty przebiegów w tle"
+
+    def __str__(self):
+        return f"{self.klucz}: {self.stan}"
