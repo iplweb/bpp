@@ -139,6 +139,23 @@ autora (z opisów prac, wyników wyszukiwania, zakładek) nadal działają.
 Taka strona nie trafia do mapy strony (sitemap) i jest oznaczona dla
 wyszukiwarek internetowych jako nieindeksowana.
 
+Autor spoza uczelni pozostaje **wyszukiwalny**, a jego prace dostępne
+(wyszukiwarka, wyniki „autor = …”, eksport listy prac), ale w publicznej
+części serwisu **nie liczymy mu podsumowań dorobku** — kilka prac
+współautorskich w naszej bibliografii nie oddaje dorobku osoby z innej
+instytucji:
+
+- **raport slotów autora** i **raporty autora** (menu *Raporty*) nie
+  przyjmują autora spoza uczelni — formularz wyświetla komunikat, że takich
+  raportów dla autorów spoza uczelni nie przygotowujemy (dotyczy także
+  zalogowanych redaktorów; panel redagowania bez zmian),
+- **ranking autorów** pomija autorów spoza uczelni — na stronie i w eksporcie,
+- w **sieci powiązań** autor spoza uczelni nadal jest węzłem grafu (z liczbą
+  wspólnych prac), ale bez sum IF i punktów — przy rozmiarze kółek wg IF lub
+  punktów jego kółko jest najmniejsze,
+- w **eksporcie XLSX** prac takiego autora arkusz „Podsumowanie” zawiera
+  tylko liczbę prac w latach, bez sum punktów, IF i slotów.
+
 W instalacjach, w których jedna baza BPP obsługuje kilka uczelni, przynależność
 sprawdzana jest względem uczelni, której stronę oglądasz: pracownik innej
 uczelni tej samej instalacji jest tu autorem spoza uczelni. Jeżeli w ustawieniach

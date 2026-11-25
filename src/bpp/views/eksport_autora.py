@@ -141,21 +141,35 @@ def _kolejka_anon_pelna() -> bool:
     return w_toku >= limit
 
 
-def _parametry_punktacji(request, format) -> dict:
+def _parametry_punktacji(request, format, autor) -> dict:
     """Pola zadania XLSX decydujące o kolumnach punktacji autora.
 
     Bramka jak sekcja „Punkty i sloty w latach” na stronie autora
     (``pokazuj_raport_slotow_autor``); ukryte statusy w kanale „sloty”
     fail-closed (``ukryte_statusy_eksportu``). Dla BibTeX/RIS — puste
     wartości domyślne, więc deduplikacja tych formatów się nie zmienia.
+
+    Autor spoza uczelni z requestu (FD#640): lista prac zostaje, ale bez
+    punktacji autora i bez sum punktacji w „Podsumowaniu”.
     """
+    from bpp.models import Uczelnia
     from bpp.profil_autora_dane import _mozna_pokazac_sloty
 
-    if format != "xlsx" or not _mozna_pokazac_sloty(request):
-        return {"z_punktacja_autora": False, "ukryte_statusy_slotow": []}
+    bez_punktacji = {
+        "z_punktacja_autora": False,
+        "ukryte_statusy_slotow": [],
+        "z_sumami_punktacji": True,
+    }
+    if format != "xlsx":
+        return bez_punktacji
+    if autor.jest_spoza_uczelni(Uczelnia.objects.get_for_request(request)):
+        return {**bez_punktacji, "z_sumami_punktacji": False}
+    if not _mozna_pokazac_sloty(request):
+        return bez_punktacji
     return {
         "z_punktacja_autora": True,
         "ukryte_statusy_slotow": ukryte_statusy_eksportu(request, kanal="sloty"),
+        "z_sumami_punktacji": True,
     }
 
 
@@ -269,7 +283,7 @@ class StartEksportAutoraView(View):
         # współdzielone.
         tylko_dla_redakcji = moze_wprowadzac_dane(request.user)
         ukryte = [] if tylko_dla_redakcji else ukryte_statusy_eksportu(request)
-        punktacja = _parametry_punktacji(request, format)
+        punktacja = _parametry_punktacji(request, format, autor)
 
         od = timezone.now() - timedelta(minutes=DEDUPE_MINUTES)
         istniejacy = (

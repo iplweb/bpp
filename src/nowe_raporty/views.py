@@ -19,6 +19,7 @@ from formdefaults.helpers import FormDefaultsMixin
 
 from bpp.const import GR_RAPORTY_WYSWIETLANIE
 from bpp.models import Uczelnia
+from bpp.util.autor_spoza_uczelni import KOMUNIKAT_RAPORT_AUTORA_SPOZA_UCZELNI
 from bpp.views.mixins import UczelniaSettingRequiredMixin
 
 from .docx_export import as_docx
@@ -339,7 +340,19 @@ class RaportGenerujView(RaportDostepMixin, GenerujRaportBase):
             # widoczne korzenie), nie z ``cfg.model`` — inaczej generujący URL
             # przyjąłby DOWOLNY pk Jednostki (walidacja jest tylko na polu
             # formularza, a bookmark celuje wprost w URL generowania).
-            return get_object_or_404(cfg.obiekt_queryset(), pk=self.kwargs["pk"])
+            obiekt = get_object_or_404(cfg.obiekt_queryset(), pk=self.kwargs["pk"])
+            if (
+                self.definicja.poziom == DefinicjaRaportu.POZIOM_AUTOR
+                and obiekt.jest_spoza_uczelni(
+                    Uczelnia.objects.get_for_request(self.request)
+                )
+            ):
+                # FD#640: wejście wprost z adresu (zakładka) — ta sama zasada
+                # co w formularzu: raportu dla autora spoza uczelni nie ma.
+                raise Http404(
+                    KOMUNIKAT_RAPORT_AUTORA_SPOZA_UCZELNI.format(autor=obiekt)
+                )
+            return obiekt
         return Uczelnia.objects.get_for_request(self.request)
 
     def get_base_queryset(self):

@@ -6,7 +6,8 @@ Skoroszyt ma dwa arkusze:
   typ MNiSW/MEiN, IF, PK, dyscyplina autora w pracy oraz (opcjonalnie)
   punktacja autora z cache slotów: PKdAut i slot,
 - „Podsumowanie” — sumy w latach (liczba prac, Σ PK, Σ IF, opcjonalnie
-  Σ PKdAut i Σ slotów).
+  Σ PKdAut i Σ slotów). Dla autora spoza uczelni (FD#640) — tylko liczba
+  prac w latach, bez sum punktacji.
 
 Budowane w zadaniu Celery (bez requestu) — zakres widoczności (ukryte
 statusy, czy wolno pokazać sloty) przychodzi z ``AutorEksportTask``.
@@ -127,13 +128,19 @@ def zbuduj_xlsx_autora(
     z_punktacja_autora=False,
     ukryte_statusy_slotow=(),
     limit=None,
+    z_sumami_punktacji=True,
 ) -> bytes:
     """Zbuduj plik XLSX z publikacjami autora; zwraca bajty skoroszytu.
 
     ``z_punktacja_autora`` — czy dołożyć kolumny PKdAut/slot (bramka jak
     sekcja „Punkty i sloty w latach” na stronie autora, ustalana przy
     starcie zadania). ``limit`` — maks. liczba prac (zabezpieczenie OOM).
+    ``z_sumami_punktacji=False`` (autor spoza uczelni, FD#640) — arkusz
+    „Podsumowanie” bez Σ PK / Σ IF (i bez Σ PKdAut / Σ slotów), tylko
+    liczba prac w latach.
     """
+    if not z_sumami_punktacji:
+        z_punktacja_autora = False
     from openpyxl import Workbook
 
     from bpp.models import Rekord
@@ -153,6 +160,8 @@ def zbuduj_xlsx_autora(
 
     naglowki = NAGLOWKI_PUBLIKACJE
     naglowki_sum = NAGLOWKI_PODSUMOWANIE
+    if not z_sumami_punktacji:
+        naglowki_sum = naglowki_sum[:2]
     if z_punktacja_autora:
         naglowki = naglowki + NAGLOWKI_PUNKTACJA_AUTORA
         naglowki_sum = naglowki_sum + NAGLOWKI_PODSUMOWANIE_AUTORA
@@ -205,7 +214,7 @@ def zbuduj_xlsx_autora(
     podsumowanie.append(naglowki_sum)
     for rok in sorted((r for r in sumy if r is not None), reverse=True):
         liczba, pk, if_, pkdaut, slot = sumy[rok]
-        wiersz = [rok, liczba, pk, if_]
+        wiersz = [rok, liczba, pk, if_] if z_sumami_punktacji else [rok, liczba]
         if z_punktacja_autora:
             wiersz += [pkdaut, slot]
         podsumowanie.append(wiersz)
