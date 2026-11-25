@@ -1,13 +1,14 @@
 """Eksport publikacji autora do XLSX z punktacją (§3.3, obok BibTeX/RIS).
 
-Skoroszyt ma dwa arkusze:
+Skoroszyt ma dwa arkusze (dla autora spoza uczelni — tylko pierwszy):
 
 - „Publikacje” — wiersz na pracę: rok, tytuł, autorzy, źródło, charakter,
   typ MNiSW/MEiN, IF, PK, dyscyplina autora w pracy oraz (opcjonalnie)
   punktacja autora z cache slotów: PKdAut i slot,
 - „Podsumowanie” — sumy w latach (liczba prac, Σ PK, Σ IF, opcjonalnie
-  Σ PKdAut i Σ slotów). Dla autora spoza uczelni (FD#640) — tylko liczba
-  prac w latach, bez sum punktacji.
+  Σ PKdAut i Σ slotów). Autor spoza uczelni (FD#640) nie dostaje tego
+  arkusza wcale — nawet liczba prac w latach wyglądałaby jak statystyka
+  jego dorobku, a nasza bibliografia jego dorobku nie oddaje.
 
 Budowane w zadaniu Celery (bez requestu) — zakres widoczności (ukryte
 statusy, czy wolno pokazać sloty) przychodzi z ``AutorEksportTask``.
@@ -135,9 +136,9 @@ def zbuduj_xlsx_autora(
     ``z_punktacja_autora`` — czy dołożyć kolumny PKdAut/slot (bramka jak
     sekcja „Punkty i sloty w latach” na stronie autora, ustalana przy
     starcie zadania). ``limit`` — maks. liczba prac (zabezpieczenie OOM).
-    ``z_sumami_punktacji=False`` (autor spoza uczelni, FD#640) — arkusz
-    „Podsumowanie” bez Σ PK / Σ IF (i bez Σ PKdAut / Σ slotów), tylko
-    liczba prac w latach.
+    ``z_sumami_punktacji=False`` (autor spoza uczelni, FD#640) — bez
+    arkusza „Podsumowanie” i bez kolumn PKdAut/slot; zostaje sama lista
+    prac.
     """
     if not z_sumami_punktacji:
         z_punktacja_autora = False
@@ -160,8 +161,6 @@ def zbuduj_xlsx_autora(
 
     naglowki = NAGLOWKI_PUBLIKACJE
     naglowki_sum = NAGLOWKI_PODSUMOWANIE
-    if not z_sumami_punktacji:
-        naglowki_sum = naglowki_sum[:2]
     if z_punktacja_autora:
         naglowki = naglowki + NAGLOWKI_PUNKTACJA_AUTORA
         naglowki_sum = naglowki_sum + NAGLOWKI_PODSUMOWANIE_AUTORA
@@ -210,15 +209,16 @@ def zbuduj_xlsx_autora(
 
     _domknij_arkusz(arkusz, naglowki, "Publikacje")
 
-    podsumowanie = workbook.create_sheet("Podsumowanie")
-    podsumowanie.append(naglowki_sum)
-    for rok in sorted((r for r in sumy if r is not None), reverse=True):
-        liczba, pk, if_, pkdaut, slot = sumy[rok]
-        wiersz = [rok, liczba, pk, if_] if z_sumami_punktacji else [rok, liczba]
-        if z_punktacja_autora:
-            wiersz += [pkdaut, slot]
-        podsumowanie.append(wiersz)
-    _domknij_arkusz(podsumowanie, naglowki_sum, "Podsumowanie")
+    if z_sumami_punktacji:
+        podsumowanie = workbook.create_sheet("Podsumowanie")
+        podsumowanie.append(naglowki_sum)
+        for rok in sorted((r for r in sumy if r is not None), reverse=True):
+            liczba, pk, if_, pkdaut, slot = sumy[rok]
+            wiersz = [rok, liczba, pk, if_]
+            if z_punktacja_autora:
+                wiersz += [pkdaut, slot]
+            podsumowanie.append(wiersz)
+        _domknij_arkusz(podsumowanie, naglowki_sum, "Podsumowanie")
 
     output = io.BytesIO()
     workbook.save(output)

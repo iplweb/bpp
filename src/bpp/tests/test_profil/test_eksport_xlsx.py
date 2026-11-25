@@ -138,19 +138,25 @@ def test_start_bib_nie_ustawia_punktacji(
     assert task.z_punktacja_autora is False
 
 
-def test_fd640_xlsx_bez_sum_punktacji(autor_z_punktacja):
-    """Autor spoza uczelni (FD#640): lista prac zostaje, „Podsumowanie”
-    tylko z liczbą prac — bez Σ PK / Σ IF / Σ PKdAut / Σ slotów."""
+def test_fd640_xlsx_bez_arkusza_podsumowania(autor_z_punktacja):
+    """Autor spoza uczelni (FD#640): lista prac zostaje, ale bez arkusza
+    „Podsumowanie” — nawet liczba prac w latach byłaby statystyką dorobku."""
     wb = _wygeneruj(
         autor_z_punktacja, z_punktacja_autora=True, z_sumami_punktacji=False
     )
+    assert wb.sheetnames == ["Publikacje"]
     naglowek, *dane = _wiersze(wb["Publikacje"])
     assert len(dane) == 1
     assert "PKdAut" not in naglowek
 
+
+def test_fd640_xlsx_autora_uczelni_z_arkuszem_podsumowania(autor_z_punktacja):
+    """Strażnik: autor uczelni (z_sumami_punktacji=True) ma oba arkusze."""
+    wb = _wygeneruj(autor_z_punktacja, z_sumami_punktacji=True)
+    assert wb.sheetnames == ["Publikacje", "Podsumowanie"]
     naglowek, *dane = _wiersze(wb["Podsumowanie"])
-    assert naglowek == ["Rok", "Liczba prac"]
-    assert dane == [[2022, 1]]
+    assert naglowek[:2] == ["Rok", "Liczba prac"]
+    assert len(dane) == 1
 
 
 def _start_xlsx(client, django_user_model, autor):

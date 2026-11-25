@@ -156,8 +156,9 @@ instytucji:
   i punktów — jego kółko ma stały, neutralny rozmiar niezależnie od
   wybranej metryki, a podpis w widoku 3D zamiast liczby prac mówi „autor
   spoza uczelni”,
-- w **eksporcie XLSX** prac takiego autora arkusz „Podsumowanie” zawiera
-  tylko liczbę prac w latach, bez sum punktów, IF i slotów.
+- **eksport XLSX** prac takiego autora zawiera tylko arkusz z listą prac —
+  bez arkusza „Podsumowanie” (ani liczby prac w latach, ani sum punktów,
+  IF i slotów) i bez kolumn z punktacją autora (PKdAut, slot).
 
 W instalacjach, w których jedna baza BPP obsługuje kilka uczelni, przynależność
 sprawdzana jest względem uczelni, której stronę oglądasz: pracownik innej
