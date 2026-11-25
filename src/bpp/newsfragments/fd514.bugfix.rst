@@ -31,3 +31,7 @@ W instalacjach obsługujących więcej niż jedną uczelnię lista „Problemy P
 jej statystyki i strony szczegółów pokazują wyłącznie oświadczenia
 instytucji bieżącej uczelni (dotąd wszystkie uczelnie widziały wspólną
 listę); w instalacjach z jedną uczelnią nic się nie zmienia.
+Jeśli w takiej instalacji uczelnia nie ma ustawionego identyfikatora PBN
+(moduł redagowania → Uczelnia → pole „Odpowiednik w PBN”), „Problemy PBN”
+i strony szczegółów pokazują o tym wyraźny komunikat zamiast listy — bez
+identyfikatora nie da się ustalić, które oświadczenia dotyczą tej uczelni.

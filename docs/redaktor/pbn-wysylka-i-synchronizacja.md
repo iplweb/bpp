@@ -380,6 +380,13 @@ wypełnione latami wybranego okresu — można wpisać w nie własny zakres.
 Kliknięcie innego okresu na pasku przywraca lata tego okresu i wraca na
 pierwszą stronę listy (pozostałe filtry zostają).
 
+W instalacji BPP obsługującej więcej niż jedną uczelnię „Problemy PBN”
+pokazują tylko oświadczenia instytucji bieżącej uczelni. Uczelnia musi mieć
+w tym celu ustawiony identyfikator PBN — administrator robi to w module
+redagowania: **Uczelnia** → pole **„Odpowiednik w PBN”**. Bez niego zamiast
+listy pojawia się komunikat, że nie da się ustalić, które oświadczenia
+dotyczą tej uczelni. W instalacji z jedną uczelnią nic nie trzeba ustawiać.
+
 Komparator publikacji przegląda **do 100 prac każdego typu naraz** —
 przy dużej bazie zawęź lata albo wyszukaj po tytule, DOI lub ISBN.
 Komparatory źródeł i udziałów mają przycisk **Przebuduj** — przelicza
