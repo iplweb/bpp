@@ -227,10 +227,17 @@ class OstatniaJednostkaIDyscyplinaView(View):
             rok = None
 
         # FD#640: formularz zgłaszania prac ukrywa pole dyscypliny dla autora
-        # spoza uczelni (``autorform_dependant.js``).
-        ret["autor_uczelni"] = a.jest_autorem_uczelni(
-            Uczelnia.objects.get_for_request(request)
-        )
+        # spoza uczelni i ustawia mu jednostkę obcą uczelni
+        # (``autorform_dependant.js``, tylko pola oznaczone ``data-*``).
+        uczelnia = Uczelnia.objects.get_for_request(request)
+        ret["autor_uczelni"] = a.jest_autorem_uczelni(uczelnia)
+        if (
+            not ret["autor_uczelni"]
+            and uczelnia is not None
+            and uczelnia.obca_jednostka_id is not None
+        ):
+            ret["obca_jednostka_id"] = uczelnia.obca_jednostka_id
+            ret["obca_jednostka_nazwa"] = uczelnia.obca_jednostka.nazwa
 
         ost_dys = ostatnia_dyscyplina(request, a, rok)
 

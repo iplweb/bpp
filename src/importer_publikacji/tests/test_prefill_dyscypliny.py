@@ -298,5 +298,28 @@ def test_fd640_nie_przenosi_dyscypliny_autorowi_spoza_uczelni(
 
     imported.refresh_from_db()
     assert imported.matched_dyscyplina is None
-    # Jednostka nadal podpowiadana (decyzja redaktora).
-    assert imported.matched_jednostka == zpa.jednostka
+    # Jednostki uczelni też nie — zapis pracy założyłby obcemu autorowi
+    # ``Autor_Jednostka`` i „zrobił” z niego autora uczelni.
+    assert zpa.jednostka_jest_jednostka_uczelni()
+    assert imported.matched_jednostka is None
+
+
+@pytest.mark.django_db
+def test_fd640_obcemu_podpowiada_jednostke_obca(session, autor):
+    """Jednostkę obcą uczelni (i jednostkę innej uczelni) obcemu autorowi
+    nadal podpowiadamy."""
+    from bpp.models import Autor_Jednostka
+
+    obca = baker.make("bpp.Jednostka", skupia_pracownikow=False)
+    obca.uczelnia.obca_jednostka = obca
+    obca.uczelnia.save()
+    Autor_Jednostka.objects.create(autor=autor, jednostka=obca)
+
+    zgl = _make_zgloszenie(doi="10.1234/test")
+    _make_zpa(zgl, autor, jednostka=obca)
+    imported = _make_imported_author(session, autor=autor)
+
+    _prefill_dyscypliny_z_zgloszen(session)
+
+    imported.refresh_from_db()
+    assert imported.matched_jednostka == obca

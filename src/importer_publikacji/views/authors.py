@@ -256,13 +256,20 @@ def _prefill_dyscypliny_z_zgloszen(session):
         zpa = zpa_by_autor.get(imported.matched_autor_id)
         if not zpa:
             continue
-        # FD#640: dyscypliny ze zgłoszenia nie przenosimy autorowi spoza
-        # uczelni (stare zgłoszenia mogły ją mieć).
-        if zpa.dyscyplina_naukowa_id and zpa.autor_jest_autorem_uczelni():
-            imported.matched_dyscyplina = zpa.dyscyplina_naukowa
+        # FD#640: autorowi spoza uczelni nie przenosimy ze zgłoszenia ani
+        # dyscypliny, ani jednostki uczelni (stare zgłoszenia mogły je mieć) —
+        # zapis pracy założyłby mu ``Autor_Jednostka`` w jednostce uczelni.
+        # Dyscyplina-propozycja autora uczelni bez przypisania na rok pracy
+        # stanie się przypisaniem dopiero przy tworzeniu rekordu
+        # (``przypisz_brakujace_dyscypliny``, w imieniu redaktora).
+        dyscyplina = zpa.dyscyplina_dla_redakcji()
+        if dyscyplina is not None:
+            imported.matched_dyscyplina = dyscyplina
             imported.dyscyplina_source = ImportedAuthor.DyscyplinaSource.ZGLOSZENIE
-        if not imported.matched_jednostka_id and zpa.jednostka_id:
-            imported.matched_jednostka = zpa.jednostka
+        if not imported.matched_jednostka_id:
+            jednostka = zpa.jednostka_dla_redakcji()
+            if jednostka is not None:
+                imported.matched_jednostka = jednostka
         imported.save()
 
 

@@ -6,6 +6,7 @@ from dal_select2_queryset_sequence.widgets import (
 )
 from django import forms
 from django.core.exceptions import ValidationError
+from django.db.models import Q
 from django.forms import inlineformset_factory
 from django.forms.widgets import HiddenInput
 from django.urls import reverse_lazy
@@ -540,8 +541,24 @@ class Zgloszenie_Publikacji_AutorForm(forms.ModelForm):
     )
 
     jednostka = forms.ModelChoiceField(
-        queryset=Jednostka.objects.publiczne(),
-        widget=autocomplete.ModelSelect2(url="bpp:public-jednostka-autocomplete"),
+        # FD#640: także (zwykle niewidoczne) obce jednostki uczelni — jedyny
+        # dozwolony wybór dla autora spoza uczelni.
+        queryset=Jednostka.objects.filter(
+            Q(pk__in=Jednostka.objects.publiczne().values("pk"))
+            | Q(
+                pk__in=Uczelnia.objects.exclude(obca_jednostka=None).values(
+                    "obca_jednostka"
+                )
+            )
+        ),
+        widget=autocomplete.ModelSelect2(
+            url="bpp:zgloszenie-jednostka-autocomplete",
+            # FD#640: autorowi spoza uczelni lista podpowiada tylko jednostkę
+            # obcą, a ``autorform_dependant.js`` ustawia ją po wybraniu
+            # autora (tylko pola z tym atrybutem — admin bez zmian).
+            forward=["autor"],
+            attrs={"data-obcy-tylko-obca-jednostka": "1"},
+        ),
     )
 
     dyscyplina_naukowa = forms.ModelChoiceField(
@@ -563,7 +580,8 @@ class Zgloszenie_Publikacji_AutorForm(forms.ModelForm):
             "Jeśli autor nie ma przypisanej dyscypliny na rok publikacji, "
             "lista podpowiada jego dyscypliny z wcześniejszego roku (a gdy "
             "nie miał ich nigdy — dyscypliny typowe dla uczelni). Wybrana "
-            "dyscyplina zostanie przypisana autorowi na rok publikacji."
+            "dyscyplina to propozycja dla redakcji — autorowi zostanie "
+            "przypisana dopiero po zatwierdzeniu zgłoszenia."
         ),
     )
 
@@ -596,12 +614,30 @@ class Zgloszenie_Publikacji_AutorForm(forms.ModelForm):
             self.instance._uczelnia = uczelnia
 
     def clean_jednostka(self):
-        # #438: zgłoszony autor zawsze dostaje ``afiliuje=True`` (formularz nie
-        # ma pola do odznaczenia), więc jednostka MUSI przyjmować afiliację.
+        # #438: zgłoszony autor dostaje ``afiliuje=True`` (formularz nie ma
+        # pola do odznaczenia), więc jednostka MUSI przyjmować afiliację.
         # Odrzucamy tu — czytelnie na polu „Jednostka" — zamiast pozwolić na
         # nieczytelny błąd walidacji modelu (o polu 'Afiliuje') przy zapisie.
         jednostka = self.cleaned_data.get("jednostka")
-        if jednostka is not None and not jednostka.przyjmuje_afiliacje():
+        if jednostka is None:
+            return jednostka
+
+        # FD#640: wyjątek — autor spoza uczelni z jej obcą jednostką
+        # (``Uczelnia.obca_jednostka``), bez afiliacji. Jednostki uczelni
+        # takiemu autorowi nie przepuści ``Zgloszenie_Publikacji_Autor.clean``.
+        autor = self.cleaned_data.get("autor")
+        uczelnia = getattr(self.instance, "_uczelnia", jednostka.uczelnia)
+        if (
+            autor is not None
+            and uczelnia is not None
+            and uczelnia.obca_jednostka_id == jednostka.pk
+            and not autor.jest_autorem_uczelni(uczelnia)
+        ):
+            self.instance.afiliuje = False
+            return jednostka
+        self.instance.afiliuje = True
+
+        if not jednostka.przyjmuje_afiliacje():
             raise forms.ValidationError(
                 f"Do jednostki „{jednostka}” nie można afiliować autora "
                 "(np. jest to wydział albo jednostka obca). Wybierz jednostkę "

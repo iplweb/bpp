@@ -157,6 +157,17 @@ Odpowiedź na wiadomość („Odpowiedz”) trafia prosto do zgłaszającego.
    i dyscyplinami. W polu **Adnotacje** zostaje e-mail zgłaszającego
    i numer zgłoszenia. Uzupełnij resztę opisu i zapisz rekord.
 
+    !!! note "Dyscypliny i jednostki ze zgłoszenia to propozycje"
+        Zgłoszenie nie zmienia danych autorów — dyscyplina wybrana przez
+        zgłaszającego jest tylko propozycją. Autorowi, który nie ma na rok
+        pracy przypisania do proponowanej dyscypliny, formularz jej nie
+        wpisze (zapis rekordu i tak by jej nie przyjął) — nad formularzem
+        pojawi się komunikat. Przypisz ją wtedy w edycji autora albo
+        dopisz pracę **importerem**, który sam założy przypisanie.
+        Autorowi spoza uczelni formularz nie wpisuje ani dyscypliny, ani
+        jednostki uczelni ze zgłoszenia (zamiast niej — obcą jednostkę
+        uczelni), żeby zapis pracy nie zrobił z niego pracownika.
+
     !!! warning "Ręczne dopisanie nie zamyka zgłoszenia"
         Po zapisaniu rekordu tą drogą zgłoszenie **dalej ma status „nowe
         zgłoszenie”** i zostaje na liście „Do obsługi”. Usuń je ręcznie

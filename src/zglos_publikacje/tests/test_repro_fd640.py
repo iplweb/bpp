@@ -5,9 +5,11 @@ spoza uczelni, a zapis zgłoszenia dopisywał mu ją na rok pracy (widać ją
 było potem w profilu autora). Do tego wybranie przy obcym autorze jednostki
 uczelni dopisywało go do niej — stawała się jego „aktualną jednostką”.
 
-Teraz dyscyplinę określa się tylko autorom uczelni (zatrudnionym obecnie lub
-kiedyś w realnej jednostce uczelni), a zgłoszenie nie zakłada autorowi
-powiązania z jednostką.
+Teraz dyscyplinę i jednostkę uczelni określa się tylko autorom uczelni
+(``AutorQuerySet.autorzy_uczelni`` — przypisani obecnie lub kiedyś do
+jednostki uczelni innej niż obca), autor spoza uczelni dostaje jednostkę obcą,
+a zapis zgłoszenia nie zmienia danych autora: dyscyplina zostaje propozycją,
+``Autor_Dyscyplina`` zakłada dopiero redakcja przy zatwierdzaniu (importer).
 """
 
 import datetime
@@ -18,8 +20,7 @@ from django.core.exceptions import ValidationError
 from django.urls import reverse
 from model_bakery import baker
 
-from bpp.models import Autor, Autor_Dyscyplina, Autor_Jednostka
-from zglos_publikacje.dyscypliny import przypisz_dyscypline_jesli_brak
+from bpp.models import Autor, Autor_Dyscyplina, Autor_Jednostka, Jednostka
 from zglos_publikacje.forms import Zgloszenie_Publikacji_AutorForm
 from zglos_publikacje.models import Zgloszenie_Publikacji, Zgloszenie_Publikacji_Autor
 from zglos_publikacje.tests.tests_zglos_publikacje import (
@@ -29,11 +30,12 @@ from zglos_publikacje.tests.tests_zglos_publikacje import (
 
 ROK = 2020  # rok z _krok2_dane
 KOMUNIKAT_OBCY = "nie jest autorem uczelni"
+KOMUNIKAT_JEDNOSTKA_OBCEGO = "nie można go przypisać do jednostki uczelni"
 
 
 @pytest.fixture
-def autor_obcy(obca_jednostka):
-    """Autor powiązany wyłącznie z jednostką obcą."""
+def autor_obcy(uczelnia_z_obca_jednostka, obca_jednostka):
+    """Autor powiązany wyłącznie z jednostką obcą uczelni."""
     autor = baker.make(Autor, nazwisko="Yilmaz", imiona="Oktay")
     Autor_Jednostka.objects.create(autor=autor, jednostka=obca_jednostka)
     return autor
@@ -83,8 +85,39 @@ def test_jest_autorem_uczelni(
 
 
 @pytest.mark.django_db
+def test_doktorant_jest_autorem_uczelni_i_ma_dyscypline(
+    uczelnia_z_obca_jednostka, wydzial, jednostka, jednostka_maker, dyscyplina1
+):
+    """Strażnik #3: jednostka uczelni bez ``skupia_pracownikow`` (doktoranci,
+    studenci, emeryci) czyni autora autorem uczelni — ta sama definicja co
+    pełny profil autora (``AutorQuerySet.autorzy_uczelni``)."""
+    uczelnia = uczelnia_z_obca_jednostka
+    doktoranci = jednostka_maker(
+        "Doktoranci", skrot="Dokt.", wydzial=wydzial, skupia_pracownikow=False
+    )
+    doktorant = baker.make(Autor, nazwisko="Doktorant")
+    Autor_Jednostka.objects.create(autor=doktorant, jednostka=doktoranci)
+
+    assert doktorant.jest_autorem_uczelni(uczelnia)
+    assert Autor.objects.autorzy_uczelni(uczelnia).filter(pk=doktorant.pk).exists()
+
+    form = _form(doktorant, jednostka, dyscyplina1, uczelnia=uczelnia)
+    assert form.is_valid(), form.errors
+
+
+@pytest.mark.django_db
+def test_jednostka_o_ujemnym_pk_nie_czyni_autorem_uczelni(uczelnia, wydzial):
+    bledna = baker.make(
+        Jednostka, pk=-5, uczelnia=uczelnia, parent=None, skupia_pracownikow=True
+    )
+    autor = baker.make(Autor)
+    Autor_Jednostka.objects.create(autor=autor, jednostka=bledna)
+    assert not autor.jest_autorem_uczelni(uczelnia)
+
+
+@pytest.mark.django_db
 def test_jest_autorem_uczelni_innej_uczelni(uczelnia, jednostka, autor_uczelni):
-    from bpp.models import Jednostka, Uczelnia
+    from bpp.models import Uczelnia
 
     inna = baker.make(Uczelnia, skrot="IN", nazwa="Inna uczelnia")
     assert not autor_uczelni.jest_autorem_uczelni(inna)
@@ -121,7 +154,7 @@ def test_autor_bez_zadnej_jednostki_z_dyscyplina_odrzucony(
 
 @pytest.mark.django_db
 def test_obcy_z_przypisaniem_na_rok_bez_dyscypliny_przechodzi(
-    uczelnia, jednostka, autor_obcy, dyscyplina1
+    uczelnia, obca_jednostka, autor_obcy, dyscyplina1
 ):
     """Repro: obcy autor, któremu dyscyplina już się „dopięła” na rok pracy,
     wymuszał podanie dyscypliny („pole nie może być puste”). Teraz pole ma
@@ -129,9 +162,9 @@ def test_obcy_z_przypisaniem_na_rok_bez_dyscypliny_przechodzi(
     Autor_Dyscyplina.objects.create(
         autor=autor_obcy, rok=ROK, dyscyplina_naukowa=dyscyplina1
     )
-    assert _form(autor_obcy, jednostka, None, uczelnia=uczelnia).is_valid()
+    assert _form(autor_obcy, obca_jednostka, None, uczelnia=uczelnia).is_valid()
 
-    form = _form(autor_obcy, jednostka, dyscyplina1, uczelnia=uczelnia)
+    form = _form(autor_obcy, obca_jednostka, dyscyplina1, uczelnia=uczelnia)
     assert not form.is_valid()
     assert KOMUNIKAT_OBCY in str(form.errors["dyscyplina_naukowa"])
 
@@ -165,22 +198,87 @@ def test_autor_uczelni_dyscyplina_jak_dotad(
     assert "nie może być puste" in str(form.errors["dyscyplina_naukowa"])
 
 
+# --- jednostka autora spoza uczelni (punkt 2) ------------------------------
+
+
 @pytest.mark.django_db
-def test_przypisz_dyscypline_pomija_obcego(
-    uczelnia, jednostka, autor_obcy, dyscyplina1
+def test_obcy_z_jednostka_uczelni_odrzucony(uczelnia, jednostka, autor_obcy):
+    """Repro: obcemu autorowi dało się wybrać jednostkę uczelni."""
+    form = _form(autor_obcy, jednostka, None, uczelnia=uczelnia)
+    assert not form.is_valid()
+    bledy = str(form.errors["jednostka"])
+    assert KOMUNIKAT_JEDNOSTKA_OBCEGO in bledy
+    assert "Obca Jednostka" in bledy  # podpowiedź, co wybrać
+
+
+@pytest.mark.django_db
+def test_obcy_z_obca_jednostka_przechodzi_bez_afiliacji(
+    uczelnia, obca_jednostka, autor_obcy
 ):
-    # Druga linia obrony: rekord z dyscypliną z pominięciem walidacji.
-    zpa = baker.prepare(
-        Zgloszenie_Publikacji_Autor,
-        _save_related=True,
-        autor=autor_obcy,
-        jednostka=jednostka,
-        dyscyplina_naukowa=dyscyplina1,
-        rok=ROK,
+    form = _form(autor_obcy, obca_jednostka, None, uczelnia=uczelnia)
+    assert form.is_valid(), form.errors
+    assert form.instance.afiliuje is False
+
+
+@pytest.mark.django_db
+def test_autor_uczelni_z_obca_jednostka_odrzucony_jak_dotad(
+    uczelnia_z_obca_jednostka, obca_jednostka, autor_uczelni
+):
+    """Strażnik #438: autor uczelni (afiliuje) nie dostaje jednostki obcej."""
+    form = _form(autor_uczelni, obca_jednostka, None, uczelnia=uczelnia_z_obca_jednostka)
+    assert not form.is_valid()
+    assert "nie można afiliować" in str(form.errors["jednostka"])
+
+
+@pytest.mark.django_db
+def test_obcy_z_jednostka_innej_uczelni_przechodzi(uczelnia, autor_obcy):
+    from bpp.models import Uczelnia
+
+    inna = baker.make(Uczelnia, skrot="IN", nazwa="Inna uczelnia")
+    jednostka_innej = baker.make(
+        Jednostka, uczelnia=inna, skupia_pracownikow=True, parent=None
     )
-    zpa.save(**{"__disable_bmoa_clean_method": True})
-    assert przypisz_dyscypline_jesli_brak(zpa, None) is None
-    assert not Autor_Dyscyplina.objects.filter(autor=autor_obcy).exists()
+    zpa = Zgloszenie_Publikacji_Autor(autor=autor_obcy, jednostka=jednostka_innej)
+    zpa._uczelnia = uczelnia
+    zpa.rok = ROK
+    zpa.clean()  # bez wyjątku
+
+
+@pytest.mark.django_db
+def test_obcy_bez_skonfigurowanej_obcej_jednostki(
+    uczelnia, jednostka, obca_jednostka, dyscyplina1
+):
+    """Uczelnia bez ``obca_jednostka``: nie ma czego zaproponować w zamian,
+    więc jednostki uczelni nie blokujemy (dyscyplinę — tak)."""
+    assert uczelnia.obca_jednostka_id is None
+    autor = baker.make(Autor)  # bez żadnych przypisań = nie autor uczelni
+    assert _form(autor, jednostka, None, uczelnia=uczelnia).is_valid()
+    form = _form(autor, jednostka, dyscyplina1, uczelnia=uczelnia)
+    assert not form.is_valid()
+    assert KOMUNIKAT_OBCY in str(form.errors["dyscyplina_naukowa"])
+
+
+@pytest.mark.django_db
+def test_autocomplete_jednostki_dla_obcego_tylko_obca(
+    webtest_app, uczelnia, jednostka, obca_jednostka, autor_obcy, autor_uczelni
+):
+    url = reverse("bpp:zgloszenie-jednostka-autocomplete")
+
+    def ids(autor):
+        fwd = json.dumps({"autor": str(autor.pk)}) if autor else "{}"
+        res = webtest_app.get(url, {"forward": fwd}).json
+        return {int(r["id"]) for r in res["results"]}
+
+    assert ids(autor_obcy) == {obca_jednostka.pk}
+    assert jednostka.pk in ids(autor_uczelni)
+    assert jednostka.pk in ids(None)
+
+
+def test_pole_jednostki_oznaczone_dla_js():
+    widget = Zgloszenie_Publikacji_AutorForm.base_fields["jednostka"].widget
+    assert widget.attrs.get("data-obcy-tylko-obca-jednostka") == "1"
+    assert widget.url == reverse("bpp:zgloszenie-jednostka-autocomplete")
+    assert "autor" in [getattr(f, "src", f) for f in widget.forward]
 
 
 # --- zapis zgłoszenia ------------------------------------------------------
@@ -198,31 +296,63 @@ def _wypelnij_autora(webtest_app, autor, jednostka, dyscyplina=None):
 
 
 @pytest.mark.django_db
-def test_zgloszenie_obcego_nie_dopisuje_mu_jednostki_ani_dyscypliny(
+def test_zgloszenie_obcego_z_jednostka_uczelni_odrzucone(
+    webtest_app,
+    typy_odpowiedzialnosci,
+    uczelnia,
+    autor_obcy,
+    jednostka,
+):
+    """Repro: zgłoszenie z obcym autorem i jednostką uczelni przechodziło
+    (i dopisywało go do tej jednostki — nowa „aktualna jednostka”)."""
+    page = _wypelnij_autora(webtest_app, autor_obcy, jednostka)
+    res = page.forms[0].submit()
+    assert KOMUNIKAT_JEDNOSTKA_OBCEGO in res.text
+    assert not Zgloszenie_Publikacji.objects.exists()
+
+
+@pytest.mark.django_db
+def test_zgloszenie_obcego_z_obca_jednostka(
     webtest_app,
     django_capture_on_commit_callbacks,
     typy_odpowiedzialnosci,
     uczelnia,
     autor_obcy,
-    jednostka,
-    dyscyplina1,
+    obca_jednostka,
 ):
-    """Repro: zgłoszenie z obcym autorem i jednostką uczelni dopisywało go do
-    tej jednostki (nowa „aktualna jednostka”)."""
-    page = _wypelnij_autora(webtest_app, autor_obcy, jednostka)
+    page = _wypelnij_autora(webtest_app, autor_obcy, obca_jednostka)
     with django_capture_on_commit_callbacks(execute=True):
         page.forms[0].submit().maybe_follow()
 
     zpa = Zgloszenie_Publikacji.objects.get().zgloszenie_publikacji_autor_set.get()
     assert zpa.autor == autor_obcy
-    assert zpa.jednostka == jednostka
+    assert zpa.jednostka == obca_jednostka
+    assert zpa.afiliuje is False
     assert zpa.dyscyplina_naukowa is None
-    assert not Autor_Jednostka.objects.filter(
-        autor=autor_obcy, jednostka=jednostka
-    ).exists()
     assert not Autor_Dyscyplina.objects.filter(autor=autor_obcy).exists()
     autor_obcy.refresh_from_db()
     assert not autor_obcy.jest_autorem_uczelni(uczelnia)
+
+
+@pytest.mark.django_db
+def test_zgloszenie_nie_zaklada_autorowi_jednostki(
+    webtest_app,
+    django_capture_on_commit_callbacks,
+    typy_odpowiedzialnosci,
+    uczelnia,
+    jednostka,
+):
+    """Uczelnia bez obcej jednostki: autor bez przypisań z jednostką uczelni
+    przechodzi, ale zgłoszenie nie zakłada mu ``Autor_Jednostka`` (dawniej
+    stawał się przez to autorem uczelni)."""
+    autor = baker.make(Autor, nazwisko="Nowy")
+    page = _wypelnij_autora(webtest_app, autor, jednostka)
+    with django_capture_on_commit_callbacks(execute=True):
+        page.forms[0].submit().maybe_follow()
+
+    assert Zgloszenie_Publikacji.objects.get().zgloszenie_publikacji_autor_set.get()
+    assert not Autor_Jednostka.objects.filter(autor=autor).exists()
+    assert not autor.jest_autorem_uczelni(uczelnia)
 
 
 @pytest.mark.django_db
@@ -242,7 +372,7 @@ def test_zgloszenie_obcego_z_dyscyplina_odrzucone(
 
 
 @pytest.mark.django_db
-def test_zgloszenie_autora_uczelni_dyscyplina_przypisana(
+def test_zgloszenie_autora_uczelni_dyscyplina_tylko_propozycja(
     webtest_app,
     django_capture_on_commit_callbacks,
     typy_odpowiedzialnosci,
@@ -251,13 +381,91 @@ def test_zgloszenie_autora_uczelni_dyscyplina_przypisana(
     jednostka,
     dyscyplina1,
 ):
-    """Strażnik FD#620 dla autora uczelni."""
+    """Punkt 1: zapis zgłoszenia (anonim) NIE zakłada ``Autor_Dyscyplina`` —
+    dyscyplina zostaje propozycją w zgłoszeniu. Przypisanie po zatwierdzeniu
+    w importerze: ``importer_publikacji/tests/test_repro_fd640.py``."""
     page = _wypelnij_autora(webtest_app, autor_uczelni, jednostka, dyscyplina1)
     with django_capture_on_commit_callbacks(execute=True):
         page.forms[0].submit().maybe_follow()
 
-    ad = Autor_Dyscyplina.objects.get(autor=autor_uczelni, rok=ROK)
-    assert ad.dyscyplina_naukowa == dyscyplina1
+    zpa = Zgloszenie_Publikacji.objects.get().zgloszenie_publikacji_autor_set.get()
+    assert zpa.dyscyplina_naukowa == dyscyplina1
+    assert not Autor_Dyscyplina.objects.filter(autor=autor_uczelni).exists()
+
+
+# --- „Dodaj wyd. …” ze zgłoszenia w adminie ---------------------------------
+
+
+def _zpa_bez_walidacji(autor, jednostka, dyscyplina=None, rok=ROK):
+    zpa = baker.prepare(
+        Zgloszenie_Publikacji_Autor,
+        _save_related=True,
+        autor=autor,
+        jednostka=jednostka,
+        dyscyplina_naukowa=dyscyplina,
+        rok=rok,
+    )
+    zpa.save(**{"__disable_bmoa_clean_method": True})
+    return zpa
+
+
+@pytest.mark.django_db
+def test_admin_podpowiedz_obcemu_bez_jednostki_uczelni_i_dyscypliny(
+    uczelnia, jednostka, obca_jednostka, autor_obcy, dyscyplina1
+):
+    """Stare zgłoszenie: obcy autor z jednostką uczelni i dyscypliną."""
+    from zglos_publikacje.dyscypliny import podpowiedz_dla_redakcji
+
+    zpa = _zpa_bez_walidacji(autor_obcy, jednostka, dyscyplina1)
+    initial, uwagi = podpowiedz_dla_redakcji(zpa, ROK)
+    assert initial == {
+        "autor": autor_obcy.pk,
+        "jednostka": obca_jednostka.pk,
+        "dyscyplina_naukowa": None,
+    }
+    assert "jest spoza uczelni" in uwagi[0]
+
+
+@pytest.mark.django_db
+def test_admin_podpowiedz_propozycji_bez_przypisania(
+    uczelnia, jednostka, autor_uczelni, dyscyplina1
+):
+    """Propozycja dla autora uczelni bez przypisania na rok: nie wpisujemy
+    (walidacja rekordu by jej nie przyjęła), redaktor dostaje komunikat.
+    Z przypisaniem — wpisujemy."""
+    from zglos_publikacje.dyscypliny import podpowiedz_dla_redakcji
+
+    zpa = _zpa_bez_walidacji(autor_uczelni, jednostka, dyscyplina1)
+    initial, uwagi = podpowiedz_dla_redakcji(zpa, ROK)
+    assert initial["jednostka"] == jednostka.pk
+    assert initial["dyscyplina_naukowa"] is None
+    assert "nie ma do niej przypisania" in uwagi[0]
+
+    Autor_Dyscyplina.objects.create(
+        autor=autor_uczelni, rok=ROK, dyscyplina_naukowa=dyscyplina1
+    )
+    initial, uwagi = podpowiedz_dla_redakcji(zpa, ROK)
+    assert initial["dyscyplina_naukowa"] == dyscyplina1.pk
+    assert uwagi == []
+
+
+@pytest.mark.django_db
+def test_admin_dodaj_wydawnictwo_ze_zgloszenia_obcego(
+    admin_app, typy_odpowiedzialnosci, uczelnia, jednostka, obca_jednostka,
+    autor_obcy, dyscyplina1,
+):
+    from bpp.const import NUMER_ZGLOSZENIA_PARAM
+
+    zpa = _zpa_bez_walidacji(autor_obcy, jednostka, dyscyplina1)
+    page = admin_app.get(
+        reverse("admin:bpp_wydawnictwo_ciagle_add")
+        + f"?{NUMER_ZGLOSZENIA_PARAM}={zpa.rekord_id}"
+    )
+    form = page.forms["wydawnictwo_ciagle_form"]
+    assert form["autorzy_set-0-autor"].value == str(autor_obcy.pk)
+    assert form["autorzy_set-0-jednostka"].value == str(obca_jednostka.pk)
+    assert not form["autorzy_set-0-dyscyplina_naukowa"].value
+    assert "jest spoza uczelni" in page.text
 
 
 # --- interfejs: pole dyscypliny chowane dla autora spoza uczelni -----------
@@ -269,11 +477,18 @@ def test_pole_dyscypliny_oznaczone_dla_js():
 
 
 @pytest.mark.django_db
-def test_api_mowi_czy_autor_uczelni(webtest_app, uczelnia, autor_obcy, autor_uczelni):
+def test_api_mowi_czy_autor_uczelni(
+    webtest_app, uczelnia, obca_jednostka, autor_obcy, autor_uczelni
+):
     url = reverse("bpp:api_ostatnia_jednostka_i_dyscyplina")
-    for autor, oczekiwane in ((autor_obcy, False), (autor_uczelni, True)):
-        res = webtest_app.post(url, {"autor_id": autor.pk, "rok": ROK}).json
-        assert res["autor_uczelni"] is oczekiwane
+    res = webtest_app.post(url, {"autor_id": autor_obcy.pk, "rok": ROK}).json
+    assert res["autor_uczelni"] is False
+    assert res["obca_jednostka_id"] == obca_jednostka.pk
+    assert res["obca_jednostka_nazwa"] == obca_jednostka.nazwa
+
+    res = webtest_app.post(url, {"autor_id": autor_uczelni.pk, "rok": ROK}).json
+    assert res["autor_uczelni"] is True
+    assert "obca_jednostka_id" not in res
 
 
 @pytest.mark.django_db
@@ -390,7 +605,7 @@ def test_komenda_pomija_pracownika_innej_uczelni(uczelnia, jednostka, dyscyplina
 
 @pytest.mark.django_db
 def test_komenda_pomija_uzyte_w_pracach_i_zmienione(
-    uczelnia, jednostka, obca_jednostka, dyscyplina1
+    uczelnia_z_obca_jednostka, jednostka, obca_jednostka, dyscyplina1
 ):
     from django.contrib.admin.models import CHANGE, LogEntry
 

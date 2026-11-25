@@ -256,11 +256,14 @@ def test_fd640_dyscyplina_ukryta_dla_autora_spoza_uczelni(
     autor_jan_nowak,
     jednostka,
     obca_jednostka,
+    uczelnia_z_obca_jednostka,
     dyscyplina1,
     rok,
 ):
     """FD#640: po wybraniu autora spoza uczelni pole „Dyscyplina naukowa”
-    znika (i jest czyszczone); po wybraniu autora uczelni wraca."""
+    znika (i jest czyszczone), a jednostka zmienia się na obcą jednostkę
+    uczelni — lista jednostek podpowiada mu tylko ją. Po wybraniu autora
+    uczelni pole dyscypliny wraca, a jednostka to jego jednostka."""
     obcy, swoj = autor_jan_nowak, autor_jan_kowalski
     Autor_Jednostka.objects.get_or_create(autor=obcy, jednostka=obca_jednostka)
     Autor_Jednostka.objects.get_or_create(autor=swoj, jednostka=jednostka)
@@ -285,12 +288,22 @@ def test_fd640_dyscyplina_ukryta_dla_autora_spoza_uczelni(
     )
     expect(pole).to_be_hidden()
     assert admin_page.locator("#id_3-0-dyscyplina_naukowa").input_value() == ""
+    jednostka_pole = admin_page.locator("#id_3-0-jednostka")
+    expect(jednostka_pole).to_have_value(str(obca_jednostka.pk))
+
+    # Autocomplete jednostki podpowiada obcemu autorowi tylko jednostkę obcą.
+    admin_page.locator("#div_id_3-0-jednostka .select2-selection").click()
+    wyniki = admin_page.locator(".select2-results__option")
+    expect(wyniki).to_have_count(1)
+    expect(wyniki.first).to_contain_text(obca_jednostka.nazwa)
+    admin_page.keyboard.press("Escape")
 
     set_select2_value(
         admin_page, "id_3-0-autor", swoj.pk, label=str(swoj), timeout=30000
     )
     expect(pole).to_be_visible()
     wait_for_discipline_populated(admin_page, "id_3-0-dyscyplina_naukowa")
+    expect(jednostka_pole).to_have_value(str(jednostka.pk))
 
 
 # Pełna integracja zgłoszenia z plikami (1 i wiele) jest pokryta

@@ -67,6 +67,41 @@ class PublicJednostkaAutocomplete(
     qset = Jednostka.objects.publiczne().select_related("wydzial")
 
 
+class ZgloszenieJednostkaAutocomplete(PublicJednostkaAutocomplete):
+    """Jednostka autora w formularzu zgłaszania prac (FD#640).
+
+    Jak ``PublicJednostkaAutocomplete``, ale z przekazanym (``forward``)
+    autorem: autorowi spoza uczelni z requestu podpowiada wyłącznie jednostkę
+    obcą (``Uczelnia.obca_jednostka``) — autor spoza uczelni nie może
+    dostać w zgłoszeniu jednostki uczelni. Gdy uczelnia nie ma
+    skonfigurowanej obcej jednostki, lista jest jak w publicznym
+    autocomplete (nie ma czego zaproponować w zamian).
+    """
+
+    def _obca_jednostka_dla_autora(self):
+        from bpp.models import Autor, Uczelnia
+
+        uczelnia = Uczelnia.objects.get_for_request(self.request)
+        if uczelnia is None or uczelnia.obca_jednostka_id is None:
+            return None
+        try:
+            autor = Autor.objects.get(pk=int(self.forwarded.get("autor")))
+        except (Autor.DoesNotExist, TypeError, ValueError):
+            return None
+        if autor.jest_autorem_uczelni(uczelnia):
+            return None
+        return uczelnia.obca_jednostka
+
+    def get_queryset(self):
+        obca = self._obca_jednostka_dla_autora()
+        if obca is None:
+            return super().get_queryset()
+        qs = Jednostka.objects.filter(pk=obca.pk).select_related("wydzial")
+        if self.q:
+            qs = qs.filter(Q(nazwa__icontains=self.q) | Q(skrot__icontains=self.q))
+        return qs
+
+
 class PublicJednostkaToplevelAutocomplete(
     UczelniaScopedAutocompleteMixin, _JednostkaAutocompleteBase
 ):

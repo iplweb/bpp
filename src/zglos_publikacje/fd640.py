@@ -1,9 +1,10 @@
 """Porządki po FD#640: dyscypliny dopisane autorom spoza uczelni przez
 formularz zgłaszania publikacji.
 
-Od FD#620 zapis zgłoszenia dopisywał autorowi bez dyscypliny na rok pracy
-wybraną dyscyplinę (``Autor_Dyscyplina``, z wpisem w historii „…podczas
-zgłaszania pracy… (zgłoszenie #N)”) — także autorom obcym. Dodatkowo zapis
+Od FD#620 do FD#640 zapis zgłoszenia dopisywał autorowi bez dyscypliny na rok
+pracy wybraną dyscyplinę (``Autor_Dyscyplina``, z wpisem w historii „…podczas
+zgłaszania pracy… (zgłoszenie #N)”) — także autorom obcym. Teraz zgłoszenie
+przechowuje dyscyplinę tylko jako propozycję dla redakcji. Dodatkowo zapis
 autora zgłoszenia zakładał mu powiązanie z wybraną jednostką
 (``Autor_Jednostka`` bez dat), więc obcy autor, przy którym zgłaszający wybrał
 jednostkę uczelni, wyglądał potem jak jej pracownik.
@@ -27,9 +28,11 @@ from bpp.models import (
     Autor_Dyscyplina,
     Autor_Jednostka,
     Patent_Autor,
+    Uczelnia,
     Wydawnictwo_Ciagle_Autor,
     Wydawnictwo_Zwarte_Autor,
 )
+from bpp.models.autor import _jednostki_uczelni_bez_sztucznych
 from bpp.wersjonowanie import zarejestruj_usuniecie, zmiana_rekordu
 from zglos_publikacje.models import Zgloszenie_Publikacji_Autor
 
@@ -94,25 +97,31 @@ def _jednostki_ze_zgloszenia(ad, zgloszenie_id):
 
 
 def _jest_autorem_jakiejkolwiek_uczelni(ad, pomin_pk):
-    """Czy autor ma (lub miał) powiązanie z realną jednostką KTÓREJKOLWIEK
-    uczelni w bazie — po pominięciu powiązań ``pomin_pk`` (ze zgłoszenia).
-    Wszystkie uczelnie, nie jedna: w bazie wielu uczelni autor obcy dla
-    jednej bywa pracownikiem drugiej i jego dyscypliny nie wolno ruszać."""
+    """Czy autor jest autorem (``AutorQuerySet.autorzy_uczelni``)
+    KTÓREJKOLWIEK uczelni w bazie — po pominięciu powiązań ``pomin_pk`` (ze
+    zgłoszenia). Wszystkie uczelnie, nie jedna: w bazie wielu uczelni autor
+    obcy dla jednej bywa pracownikiem drugiej i jego dyscypliny nie wolno
+    ruszać. Ta sama definicja co w zgłoszeniu i na stronie autora: liczą się
+    jednostki uczelni poza sztucznymi (obca jednostka, pk < 0), także te bez
+    ``skupia_pracownikow`` (doktoranci, emeryci)."""
     autor = ad.autor
-    if autor.aktualna_jednostka_id is not None and (
-        autor.aktualna_jednostka.skupia_pracownikow
-        and not Autor_Jednostka.objects.filter(
-            pk__in=pomin_pk, jednostka_id=autor.aktualna_jednostka_id
-        ).exists()
-    ):
-        return True
-    return (
-        Autor_Jednostka.objects.filter(
-            autor_id=autor.pk, jednostka__skupia_pracownikow=True
-        )
-        .exclude(pk__in=pomin_pk)
-        .exists()
-    )
+    for uczelnia in Uczelnia.objects.all():
+        nasze = _jednostki_uczelni_bez_sztucznych(uczelnia)
+        if (
+            autor.aktualna_jednostka_id is not None
+            and nasze.filter(pk=autor.aktualna_jednostka_id).exists()
+            and not Autor_Jednostka.objects.filter(
+                pk__in=pomin_pk, jednostka_id=autor.aktualna_jednostka_id
+            ).exists()
+        ):
+            return True
+        if (
+            Autor_Jednostka.objects.filter(autor_id=autor.pk, jednostka__in=nasze)
+            .exclude(pk__in=pomin_pk)
+            .exists()
+        ):
+            return True
+    return False
 
 
 def _liczba_prac_z_dyscyplina(ad):

@@ -124,7 +124,11 @@ Importer otworzysz na dwa sposoby:
     afiliacją i dyscypliną autor trafi do rekordu. Dyscyplina jest
     podpowiadana sama, gdy autor ma w danym roku tylko jedną
     (**„Jedyna dyscyplina autora”**) albo gdy pochodzi ze zgłoszenia
-    publikacji.
+    publikacji. Dyscyplina ze zgłoszenia to propozycja zgłaszającego —
+    jeśli autor nie ma przypisania na rok publikacji, powstanie ono
+    dopiero przy **„Utwórz publikację”** (w Twoim imieniu). Autorowi spoza
+    uczelni importer nie podpowiada ze zgłoszenia ani dyscypliny, ani
+    jednostki uczelni.
 
     ![Dopasowanie autorów: statusy dokładne, luźne i niedopasowany oraz przycisk „Edytuj”](../images/redaktor/importer-publikacji/09-autorzy.png)
 

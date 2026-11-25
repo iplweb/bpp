@@ -22,6 +22,36 @@
         }
     };
 
+    // FD#640: pole „Jednostka” w formularzu zgłaszania prac jest oznaczone
+    // ``data-obcy-tylko-obca-jednostka`` — autorowi spoza uczelni ustawiamy
+    // jednostkę obcą uczelni (API zwraca ją w ``obca_jednostka_*``, gdy jest
+    // skonfigurowana). Autocomplete tego pola i tak podpowiada takiemu
+    // autorowi tylko ją, a serwer odrzuca jednostkę uczelni.
+    var poleJednostki = function (prefix) {
+        return $(':input[name=' + prefix + 'jednostka]');
+    };
+
+    var obcyTylkoObcaJednostka = function (prefix) {
+        return poleJednostki(prefix).is('[data-obcy-tylko-obca-jednostka]');
+    };
+
+    var ustawJednostke = function (prefix, id, nazwa) {
+        var pole = poleJednostki(prefix);
+        pole.find('option').filter(function () {
+            return this.value === String(id);
+        }).remove();
+        pole.append($('<option>', {value: id, text: nazwa, selected: true}));
+        pole.trigger('change');
+    };
+
+    var obcaJednostkaDlaObcego = function (prefix, data) {
+        if (!obcyTylkoObcaJednostka(prefix) || data.autor_uczelni !== false)
+            return null;
+        if (!data.obca_jednostka_id)
+            return null;
+        return {id: data.obca_jednostka_id, nazwa: data.obca_jednostka_nazwa};
+    };
+
     var zapytajOAutora = function (element) {
         // CSRF token z najbliższego formularza — nie polegamy na
         // globalnym $.ajaxSetup, bo public-facing zglos_publikacje
@@ -61,7 +91,10 @@
                 if ($(pole).val() !== value)
                     return;
 
-                if (data.jednostka_id && data.nazwa) {
+                var obca = obcaJednostkaDlaObcego(prefix, data);
+                if (obca) {
+                    ustawJednostke(prefix, obca.id, obca.nazwa);
+                } else if (data.jednostka_id && data.nazwa) {
                     $(':input[name=' + prefix + 'jednostka]').append(
                         '<option selected="selected" value=' + data['jednostka_id'] + '>'
                         + data['nazwa'] + '</option>');
@@ -91,17 +124,24 @@
     };
 
     // FD#640: formularz wyrenderowany z już wybranym autorem (powrót do kroku,
-    // błąd walidacji, edycja zwróconego zgłoszenia) — ustawiamy tylko
-    // widoczność pola dyscypliny, bez nadpisywania jednostki.
+    // błąd walidacji, edycja zwróconego zgłoszenia) — ustawiamy widoczność
+    // pola dyscypliny, a jednostkę zmieniamy tylko autorowi spoza uczelni
+    // (na obcą); autorowi uczelni wybranej jednostki nie nadpisujemy.
     var sprawdzWybranegoAutora = function (element) {
         var prefix = $(element).getFormPrefix();
-        if (!$(element).val() || !tylkoDlaAutorowUczelni(prefix))
+        if (!$(element).val())
+            return;
+        if (!tylkoDlaAutorowUczelni(prefix) && !obcyTylkoObcaJednostka(prefix))
             return;
         var wyslany = $(element).val();
         zapytajOAutora(element).done(function (data) {
             if (data.status == 'error' || $(element).val() !== wyslany)
                 return;
-            pokazDyscypline(prefix, data.autor_uczelni !== false);
+            if (tylkoDlaAutorowUczelni(prefix))
+                pokazDyscypline(prefix, data.autor_uczelni !== false);
+            var obca = obcaJednostkaDlaObcego(prefix, data);
+            if (obca && poleJednostki(prefix).val() !== String(obca.id))
+                ustawJednostke(prefix, obca.id, obca.nazwa);
         });
     };
 
