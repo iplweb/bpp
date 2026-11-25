@@ -6,25 +6,18 @@ czyli tam, gdzie uczelnia składa oświadczenia — widać ich mniej, np.
 Dotychczas BPP tego nie zauważał: wysyłka kończyła się samym komunikatem
 o sukcesie.
 
-Po każdej udanej wysyłce pracy, gdy profil instytucji pokazuje mniej
-autorów, niż BPP wysłał, obok komunikatu o sukcesie pojawia się żółte
+Po każdej udanej wysyłce pracy BPP pobiera jej wpis z profilu instytucji
+(robił to już wcześniej) i porównuje z tym, co wysłał. Gdy profil instytucji
+pokazuje mniej autorów, obok komunikatu o sukcesie pojawia się żółte
 ostrzeżenie, np. „UWAGA: w profilu instytucji w PBN jest 1 z 3 wysłanych
 autorów — brakuje 2. Prawdopodobnie brakuje: …”. Widać je nad formularzem
 rekordu, po akcji „Wyślij do PBN” na liście prac i w komunikacie wpisu
 w kolejce eksportu do PBN. Liczby są pewne; nazwiska to wskazówka
 (dopasowanie po imieniu i nazwisku).
 
-Dla prac już istniejących — także tych, które nigdy nie były wysyłane
-z BPP — w menu „PBN” jest nowa pozycja „niepełne listy autorów w PBN”.
-Strona pokazuje prace uczelni, które w profilu instytucji mają mniej autorów
-niż w BPP: rok, tytuł (odnośnik do edycji rekordu), liczbę autorów w BPP
-i w profilu instytucji, informację, czy praca była wysyłana z BPP, datę
-pobrania profilu oraz odnośniki do pracy w profilu instytucji i do rekordu
-publikacji w PBN. Dostęp mają superużytkownicy i grupa „wprowadzanie
-danych”.
-
-Czego zmiana nie robi: niczego nie wysyła do PBN i niczego w PBN nie
-poprawia — tylko pokazuje różnicę. Zestawienie powstaje z danych pobranych
-z PBN wcześniej, więc jest tak aktualne, jak ostatnie „pobieranie danych
-z PBN”. Autorzy, redaktorzy i tłumacze liczeni są razem. Praca, której
-w ogóle nie ma w profilu instytucji, na liście się nie pojawia.
+Czego zmiana nie robi: niczego dodatkowo nie wysyła do PBN i niczego w PBN
+nie poprawia — tylko pokazuje różnicę. Autorzy, redaktorzy i tłumacze
+liczeni są razem. Gdy pracy nie ma jeszcze w profilu instytucji, porównania
+nie ma. Tuż po pierwszej wysyłce nowej pracy profil instytucji bywa
+aktualizowany przez PBN z opóźnieniem, więc ostrzeżenie może być
+przejściowe.

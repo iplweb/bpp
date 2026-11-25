@@ -78,8 +78,7 @@ class PorownanieAutorow:
             " Sam rekord publikacji w PBN może mieć komplet autorów — różnica "
             "dotyczy profilu instytucji, który bywa aktualizowany przez PBN "
             "z opóźnieniem albo wskazuje inną wersję pracy. Otwórz pracę "
-            "w profilu instytucji i sprawdź listę autorów; wszystkie takie "
-            "prace pokazuje „PBN” → „niepełne listy autorów w PBN”."
+            "w profilu instytucji i sprawdź listę autorów."
         )
 
 
@@ -150,85 +149,3 @@ def _porownaj(wyslane: dict, zapisane: dict) -> PorownanieAutorow | None:
     return PorownanieAutorow(
         wyslano=len(wyslani), zapisano=zapisano, brakujacy=brakujacy
     )
-
-
-# --------------------------------------------------------------------------
-# Zestawienie dla prac już istniejących (FD#641)
-# --------------------------------------------------------------------------
-
-_SQL_LICZBA_AUTOROW_W_PROFILU = """
-(SELECT COALESCE(SUM(jsonb_array_length(json_data -> rola)), 0)
-   FROM unnest(ARRAY['authors', 'editors', 'translators', 'translationEditors'])
-        AS rola
-  WHERE jsonb_typeof(json_data -> rola) = 'array')
-"""
-
-
-@dataclass
-class PracaZNiepelnaListaAutorow:
-    """Wiersz zestawienia: praca, która w profilu instytucji ma mniej autorów."""
-
-    rekord: object
-    w_bpp: int
-    w_profilu: int
-    profil_pobrany: object
-    wyslana_z_bpp: bool
-
-    @property
-    def brakuje(self) -> int:
-        return self.w_bpp - self.w_profilu
-
-
-def prace_z_niepelna_lista_autorow_w_profilu(uczelnia):
-    """Prace uczelni, które w profilu instytucji w PBN mają MNIEJ autorów
-    niż rekord BPP.
-
-    Liczone z lokalnej kopii profilu instytucji (``PublikacjaInstytucji_V2``)
-    — bez zapytań do PBN — więc wynik jest tak świeży, jak ostatnie
-    „pobieranie danych z PBN”. Liczone są wszystkie role razem (autorzy,
-    redaktorzy, tłumacze, redaktorzy tłumaczenia).
-
-    :return: lista ``PracaZNiepelnaListaAutorow``, od najnowszych prac.
-    """
-    from django.db.models import Count
-    from django.db.models.expressions import RawSQL
-
-    from bpp.models import Wydawnictwo_Ciagle, Wydawnictwo_Zwarte
-    from pbn_api.models import PublikacjaInstytucji_V2, SentData
-
-    profil = {}
-    for pbn_uid, w_profilu, pobrany in (
-        PublikacjaInstytucji_V2.objects.filter(uczelnia=uczelnia)
-        .annotate(w_profilu=RawSQL(_SQL_LICZBA_AUTOROW_W_PROFILU, []))
-        .values_list("objectId_id", "w_profilu", "last_updated")
-    ):
-        profil[pbn_uid] = (int(w_profilu), pobrany)
-    if not profil:
-        return []
-
-    wyslane = set(
-        SentData.objects.filter(
-            uczelnia=uczelnia, uploaded_okay=True, pbn_uid_id__in=list(profil)
-        ).values_list("pbn_uid_id", flat=True)
-    )
-
-    wynik = []
-    for model in (Wydawnictwo_Ciagle, Wydawnictwo_Zwarte):
-        for rekord in (
-            model.objects.filter(pbn_uid_id__in=list(profil))
-            .annotate(w_bpp=Count("autorzy_set"))
-            .only("pk", "tytul_oryginalny", "rok", "pbn_uid_id")
-        ):
-            w_profilu, pobrany = profil[rekord.pbn_uid_id]
-            if w_profilu < rekord.w_bpp:
-                wynik.append(
-                    PracaZNiepelnaListaAutorow(
-                        rekord=rekord,
-                        w_bpp=rekord.w_bpp,
-                        w_profilu=w_profilu,
-                        profil_pobrany=pobrany,
-                        wyslana_z_bpp=rekord.pbn_uid_id in wyslane,
-                    )
-                )
-    wynik.sort(key=lambda w: (-(w.rekord.rok or 0), w.rekord.tytul_oryginalny or ""))
-    return wynik
