@@ -71,6 +71,8 @@ zatrudniającą pracowników, a nie np. „Obcą jednostką”).
       pokazuje, co by zmienił, ale niczego nie zapisuje. To najczęstsza
       pomyłka — import „przeszedł”, a w bazie nic się nie zmieniło.
     - **Plik** — zestawienie z POL-on.
+    - **Hasło do pliku** — zostaw puste, chyba że plik Excel jest
+      zabezpieczony hasłem (patrz [Plik zabezpieczony hasłem](#plik-z-haslem)).
 
     Kliknij **„Utwórz import”**.
 
@@ -247,6 +249,54 @@ zmian.
 
 **„Niewłaściwy format pliku. Proszę przesłać plik Excel (.xlsx, .xls) lub CSV
 (.csv).”** — wgrano plik o innym rozszerzeniu (np. PDF albo `.ods`).
+
+**„Plik jest zabezpieczony hasłem. …”**{#plik-z-haslem} — plik zapisano
+w Excelu z hasłem (**Plik → Informacje → Chroń skoroszyt → Zaszyfruj przy
+użyciu hasła**). Masz dwie możliwości:
+
+- wpisz hasło w polu **„Hasło do pliku”** i wgraj plik ponownie — BPP
+  odszyfruje go przy wgrywaniu; samo hasło nie jest nigdzie zapisywane,
+- albo otwórz plik w Excelu, wejdź w **Plik → Informacje → Chroń skoroszyt →
+  Zaszyfruj przy użyciu hasła**, wyczyść pole hasła, zapisz plik i wgraj go
+  ponownie.
+
+**Plik z hasłem nie zostaje na serwerze.** Ze względów bezpieczeństwa danych
+BPP usuwa plik zabezpieczony hasłem z serwera zaraz po przetworzeniu importu —
+także po podglądzie i także wtedy, gdy import zakończył się błędem — a hasła
+nigdzie nie zapisuje. Dlatego przy pliku z hasłem **podgląd i zapis do bazy to
+dwa osobne importy**:
+
+1. utwórz import **bez** „Zapisz zmiany do bazy”, wpisz hasło i obejrzyj
+   podgląd,
+2. jeśli wszystko się zgadza, utwórz **nowy** import, tym razem
+   z zaznaczonym **„Zapisz zmiany do bazy”**, i wpisz hasło ponownie.
+
+Przycisku **„Zapisz ten import do bazy danych”** przy takim podglądzie nie
+ma. W jego miejscu jest wyjaśnienie: ze względów bezpieczeństwa danych plik
+został usunięty z serwera, a hasło nie zostało nigdzie zapisane, więc tego
+importu nie można zapisać do bazy ani uruchomić ponownie — trzeba utworzyć
+nowy import z zaznaczonym „Zapisz zmiany do bazy” i ponownie wpisać hasło. Na liście importów zamiast nazwy pliku widać
+„(plik zabezpieczony hasłem — usunięty po przetworzeniu)”. Jeśli wolisz
+zwykły tryb (podgląd i zapis jednym kliknięciem), zdejmij hasło w Excelu
+przed wgraniem.
+
+Jeśli import z takim plikiem w ogóle nie wystartuje (np. anulujesz go, zanim
+ruszy), plik i tak zostanie usunięty — BPP co 15 minut sprząta pliki z hasłem
+zakończonych importów (także anulowanych). Plik niezakończonego importu usuwa,
+gdy od utworzenia importu minęła ponad doba oraz import jeszcze się nie
+rozpoczął lub od jego rozpoczęcia również minęła ponad doba.
+
+Plik zabezpieczony hasłem może mieć najwyżej **10 MB** (zwykły plik — 100 MB):
+odszyfrowanie odbywa się w pamięci serwera. Większy plik trzeba wgrać po
+zdjęciu hasła w Excelu. Uszkodzony plik z hasłem kończy się komunikatem
+„Nie udało się odszyfrować pliku — plik jest uszkodzony albo ten rodzaj
+zabezpieczenia nie jest obsługiwany …”.
+
+Złe hasło kończy się komunikatem **„Nieprawidłowe hasło do pliku.”**. Jeśli
+plik nie ma hasła, wpisane hasło jest po prostu pomijane. Tak samo działa
+formularz importu absencji. Inne importy (np. import pracowników) nie mają
+pola na hasło — pokażą komunikat, że plik jest zabezpieczony hasłem, i trzeba
+zdjąć hasło w Excelu.
 
 **„REKORD ZIGNOROWANY: Pole 'ZATRUDNIENIE' (…) nie zaczyna się od nazwy
 uczelni importu (…).”** — osoba jest zatrudniona w innej uczelni (w pliku

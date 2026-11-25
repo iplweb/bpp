@@ -23,6 +23,7 @@ from .util import (
     find_similar_row_in_rows,
     rename_duplicate_columns,
     sprawdz_rozmiar_pliku,
+    sprawdz_szyfrowanie_pliku,
 )
 
 
@@ -202,6 +203,9 @@ def otworz_zrodlo(
     # CSVSource wczytuje cały plik do pamięci — limit rozmiaru PRZED
     # odczytem (XLSX dodatkowo przechodzi bomb-check w ``XLSImportFile``).
     sprawdz_rozmiar_pliku(path)
+    # XLSX zaszyfrowany hasłem to kontener OLE2, nie ZIP — ``wykryj_format``
+    # wziąłby go za CSV i parsował binarne śmieci. Odrzucamy z komunikatem.
+    sprawdz_szyfrowanie_pliku(path)
     klasa = XLSXSource if wykryj_format(path) == "xlsx" else CSVSource
     return klasa(
         path,

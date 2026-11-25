@@ -3665,11 +3665,23 @@ def metryki_ewaluacyjne(page: Page, base: str, out: Path) -> None:
         },
     )
 
-    # 4. Submit, catch the progress box, wait until done
+    # 4. Submit, catch the progress box, wait until done. The box goes through
+    # three states ("Oczekiwanie...", "Przeliczanie liczby N...", then the
+    # counter of processed authors); the screenshot shows the last one, so wait
+    # for the counter instead of taking whatever is there right after submit.
     m.click("#generowanie-form button[type=submit]")
     m.wait_for_selector("#status-box.warning", timeout=10000)
-    m.wait_for_timeout(1000)
     m.set_viewport_size(VIEWPORT)
+    m.wait_for_function(
+        "document.querySelector('#liczba-przetworzonych')"
+        " || document.querySelector('#status-box.success, #status-box.alert')",
+        timeout=120000,
+    )
+    if not m.locator("#liczba-przetworzonych").count():
+        raise RuntimeError(
+            "metryki-ewaluacyjne: generowanie skończyło się, zanim ramka statusu "
+            "pokazała licznik autorów — uruchom scenariusz ponownie"
+        )
     m.mouse.move(5, 5)
     sb = page_box(m, "#status-box")
     shot(m, out / "05-postep.png", sb["y"] - 8, sb["height"] + 28)
@@ -3692,7 +3704,7 @@ def metryki_ewaluacyjne(page: Page, base: str, out: Path) -> None:
                 "arrow": "above",
                 "label": "Excel z filtrami",
                 "dx": -420,
-                "dy": 95,
+                "dy": -21,  # in the status box's empty part, clear of the filters
             },
         ],
     )
@@ -3769,10 +3781,11 @@ def metryki_ewaluacyjne(page: Page, base: str, out: Path) -> None:
             {"sel": "h4", "text": "Szczegóły prac nazbieranych"},
             {
                 "sel": "button[title='Odepnij dyscyplinę']",
-                "arrow": "left",
+                # label in the heading row: in the table it covers the titles
+                "arrow": "above",
                 "label": "odepnij",
-                "dx": -260,
-                "dy": 30,
+                "dx": -200,
+                "dy": 42,
             },
         ],
     )
