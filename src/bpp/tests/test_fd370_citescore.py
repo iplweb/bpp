@@ -231,7 +231,7 @@ def test_admin_odrzuca_wartosci_spoza_zakresu(
 
 
 def test_migracja_dodaje_tylko_dwa_opcjonalne_pola():
-    mod = importlib.import_module("bpp.migrations.0530_punktacja_zrodla_citescore")
+    mod = importlib.import_module("bpp.migrations.0532_punktacja_zrodla_citescore")
     operacje = mod.Migration.operations
     assert [(o.model_name, o.name) for o in operacje] == [
         ("punktacja_zrodla", "citescore"),

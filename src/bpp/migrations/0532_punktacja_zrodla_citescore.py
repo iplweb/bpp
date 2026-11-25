@@ -8,7 +8,7 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('bpp', '0529_motyw_zapisany'),
+        ('bpp', '0531_eksport_autora_z_sumami_punktacji'),
     ]
 
     operations = [
