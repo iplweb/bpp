@@ -37,33 +37,18 @@ import json
 from django.contrib.auth import get_user_model
 from bpp.models import Uczelnia
 _login = %(login)r
-_skrot = %(skrot)r
-_wynik = {"wersja": 1, "blad": None, "uzytkownik": None}
-_uczelnie = list(Uczelnia.objects.order_by("pk"))
-_uczelnia = None
-if _skrot:
-    for _u in _uczelnie:
-        if _u.skrot == _skrot:
-            _uczelnia = _u
-    if _uczelnia is None:
-        _wynik["blad"] = "na serwerze nie ma uczelni o skrocie " + repr(_skrot)
-elif len(_uczelnie) == 1:
-    _uczelnia = _uczelnie[0]
-elif not _uczelnie:
-    _wynik["blad"] = "na serwerze nie ma zadnej uczelni"
-else:
-    _skroty = []
-    for _u in _uczelnie:
-        _skroty.append(str(_u.skrot))
-    _wynik["blad"] = (
-        "na serwerze jest kilka uczelni, wskaz jedna (--uczelnia-zdalna): "
-        + ", ".join(_skroty)
+_wynik = {"wersja": 2, "blad": None, "uczelnie": [], "uzytkownik": None}
+for _u in Uczelnia.objects.order_by("pk"):
+    _wynik["uczelnie"].append(
+        {
+            "skrot": str(_u.skrot),
+            "pbn_api_root": str(_u.pbn_api_root or ""),
+            "pbn_app_name": str(_u.pbn_app_name or ""),
+            "pbn_app_token": str(_u.pbn_app_token or ""),
+        }
     )
-if _uczelnia is not None:
-    _wynik["uczelnia_skrot"] = str(_uczelnia.skrot)
-    _wynik["pbn_api_root"] = str(_uczelnia.pbn_api_root or "")
-    _wynik["pbn_app_name"] = str(_uczelnia.pbn_app_name or "")
-    _wynik["pbn_app_token"] = str(_uczelnia.pbn_app_token or "")
+if not _wynik["uczelnie"]:
+    _wynik["blad"] = "na serwerze nie ma zadnej uczelni"
 if _login:
     _user = get_user_model().objects.filter(username=_login).first()
     if _user is None:
@@ -84,12 +69,8 @@ class BladPrzenoszenia(Exception):
     """Czytelny dla człowieka błąd przenoszenia konfiguracji PBN."""
 
 
-def zdalny_skrypt(login=None, skrot=None) -> str:
-    return ZDALNY_SKRYPT % {
-        "login": login or "",
-        "skrot": skrot or "",
-        "znacznik": ZNACZNIK,
-    }
+def zdalny_skrypt(login=None) -> str:
+    return ZDALNY_SKRYPT % {"login": login or "", "znacznik": ZNACZNIK}
 
 
 def rozbierz_zrodlo(zrodlo: str) -> tuple[str | None, str]:
@@ -123,7 +104,6 @@ def _zacytuj_sciezke_zdalna(sciezka: str) -> str:
 
 def zdalne_polecenie(
     login=None,
-    skrot=None,
     remote_deploy_path="~/bpp-deploy",
     remote_compose_service="appserver",
 ) -> str:
@@ -131,7 +111,7 @@ def zdalne_polecenie(
     return (
         f"cd {_zacytuj_sciezke_zdalna(remote_deploy_path)} && "
         f"docker compose exec -T {shlex.quote(remote_compose_service)} "
-        f"python src/manage.py shell -c {shlex.quote(zdalny_skrypt(login, skrot))}"
+        f"python src/manage.py shell -c {shlex.quote(zdalny_skrypt(login))}"
     )
 
 
@@ -158,14 +138,11 @@ def rozbierz_odpowiedz(stdout: str) -> dict:
 def pobierz_z_serwera(
     ssh_host,
     login=None,
-    skrot=None,
     remote_deploy_path="~/bpp-deploy",
     remote_compose_service="appserver",
     timeout=120,
 ) -> dict:
-    polecenie = zdalne_polecenie(
-        login, skrot, remote_deploy_path, remote_compose_service
-    )
+    polecenie = zdalne_polecenie(login, remote_deploy_path, remote_compose_service)
     try:
         wynik = subprocess.run(
             ["ssh", ssh_host, polecenie],
@@ -189,28 +166,79 @@ def pobierz_z_serwera(
     return rozbierz_odpowiedz(wynik.stdout)
 
 
-def _wybierz_uczelnie_lokalna(skrot_lokalny, skrot_zdalny):
+def _dopasuj_uczelnie(zdalne, skrot=None):
+    """Pary ``(lokalna uczelnia, konfiguracja z serwera)``.
+
+    Kopia bazy ma te same skróty co serwer, więc parujemy po skrócie —
+    także w instalacji z kilkoma uczelniami (każda ma własną aplikację PBN).
+    Jedna uczelnia po obu stronach paruje się niezależnie od skrótu.
+    ``skrot`` zawęża do jednej uczelni.
+    """
     from bpp.models import Uczelnia
 
-    uczelnie = list(Uczelnia.objects.order_by("pk"))
-    if not uczelnie:
+    lokalne = list(Uczelnia.objects.order_by("pk"))
+    if not lokalne:
         raise BladPrzenoszenia("W lokalnej bazie nie ma żadnej uczelni.")
-    for kandydat in (skrot_lokalny, skrot_zdalny):
-        if not kandydat:
-            continue
-        for u in uczelnie:
-            if u.skrot == kandydat:
-                return u
-        if kandydat == skrot_lokalny:
+    if skrot:
+        lokalne = [u for u in lokalne if u.skrot == skrot]
+        zdalne = [z for z in zdalne if z.get("skrot") == skrot]
+        if not lokalne or not zdalne:
             raise BladPrzenoszenia(
-                f"W lokalnej bazie nie ma uczelni o skrócie {skrot_lokalny!r}."
+                f"Uczelni o skrócie {skrot!r} nie ma "
+                f"{'w lokalnej bazie' if not lokalne else 'na serwerze'}."
             )
-    if len(uczelnie) == 1:
-        return uczelnie[0]
-    lista = ", ".join(str(u.skrot) for u in uczelnie)
-    raise BladPrzenoszenia(
-        f"W lokalnej bazie jest kilka uczelni — wskaż jedną (--uczelnia): {lista}"
+    if len(lokalne) == 1 and len(zdalne) == 1:
+        return [(lokalne[0], zdalne[0])]
+    po_skrocie = {z.get("skrot"): z for z in zdalne}
+    return [(u, po_skrocie[u.skrot]) for u in lokalne if u.skrot in po_skrocie]
+
+
+def _zastosuj_uczelnie(uczelnia, zdalna, raport) -> bool:
+    root = (zdalna.get("pbn_api_root") or "").rstrip("/")
+    nazwa = zdalna.get("pbn_app_name") or ""
+    token = zdalna.get("pbn_app_token") or ""
+    if not nazwa or not token or urlsplit(root).scheme not in ("http", "https"):
+        raport.append(
+            f"UWAGA: uczelnia {uczelnia.skrot} — serwer nie zwrócił kompletnej "
+            "konfiguracji aplikacji PBN (brak integracji albo serwer sam nie "
+            "potrafi odszyfrować tokenu: `manage.py check`, bpp.W103). Pominięto."
+        )
+        return False
+
+    uczelnia.pbn_api_root = root
+    uczelnia.pbn_app_name = nazwa
+    uczelnia.pbn_app_token = token
+    pola = ["pbn_api_root", "pbn_app_name", "pbn_app_token"]
+    wlaczono_integracje = not uczelnia.pbn_integracja
+    if wlaczono_integracje:
+        uczelnia.pbn_integracja = True
+        pola.append("pbn_integracja")
+    try:
+        uczelnia.save(update_fields=pola)
+    except ValidationError as e:
+        # Uczelnia.save() woła clean() — m.in. odrzuca adres API wskazujący
+        # na sieć prywatną. Komunikaty walidacji nie zawierają sekretów.
+        raise BladPrzenoszenia(
+            f"Lokalna uczelnia {uczelnia.skrot} nie przechodzi walidacji przy "
+            f"zapisie: {'; '.join(e.messages)}"
+        ) from e
+    raport.append(
+        f"Konfiguracja aplikacji PBN uczelni {uczelnia.skrot}: zapisana "
+        f"(adres API {root}, aplikacja {nazwa}, token aplikacji zaszyfrowany "
+        "lokalnym kluczem)."
     )
+    if wlaczono_integracje:
+        raport.append(
+            f"Uczelnia {uczelnia.skrot}: włączono „Czy używać integracji "
+            "z PBN?” (pbn_integracja)."
+        )
+    if not uczelnia.pbn_aktualizuj_na_biezaco:
+        raport.append(
+            f"Uczelnia {uczelnia.skrot}: przyciski „Zapisz i wyślij do PBN” są "
+            "wyłączone (pbn_aktualizuj_na_biezaco) — włącz w adminie uczelni, "
+            "jeśli chcesz testować ręczną wysyłkę."
+        )
+    return True
 
 
 def _zastosuj_uzytkownika(uzytkownik, login_lokalny, raport):
@@ -250,55 +278,23 @@ def _zastosuj_uzytkownika(uzytkownik, login_lokalny, raport):
     )
 
 
-def zastosuj(dane: dict, skrot_lokalny=None, login_lokalny=None) -> list[str]:
+def zastosuj(dane: dict, skrot=None, login_lokalny=None) -> list[str]:
     """Zapisuje pobraną konfigurację w lokalnej bazie (szyfrując lokalnym
     kluczem). Zwraca raport — bez żadnych sekretów."""
     if dane.get("blad"):
         raise BladPrzenoszenia(f"Serwer zgłosił błąd: {dane['blad']}.")
 
-    root = (dane.get("pbn_api_root") or "").rstrip("/")
-    nazwa = dane.get("pbn_app_name") or ""
-    token = dane.get("pbn_app_token") or ""
-    if urlsplit(root).scheme not in ("http", "https"):
-        raise BladPrzenoszenia("Serwer nie zwrócił poprawnego adresu API PBN.")
-    if not nazwa or not token:
-        raise BladPrzenoszenia(
-            "Serwer nie zwrócił nazwy lub tokenu aplikacji PBN — uczelnia na "
-            "serwerze nie ma skonfigurowanej integracji z PBN albo serwer sam "
-            "nie potrafi odszyfrować tokenu (sprawdź tam `manage.py check`, "
-            "bpp.W103)."
-        )
-
-    uczelnia = _wybierz_uczelnie_lokalna(skrot_lokalny, dane.get("uczelnia_skrot"))
-    uczelnia.pbn_api_root = root
-    uczelnia.pbn_app_name = nazwa
-    uczelnia.pbn_app_token = token
-    pola = ["pbn_api_root", "pbn_app_name", "pbn_app_token"]
     raport = []
-    if not uczelnia.pbn_integracja:
-        uczelnia.pbn_integracja = True
-        pola.append("pbn_integracja")
-        raport.append("Włączono „Czy używać integracji z PBN?” (pbn_integracja).")
-    try:
-        uczelnia.save(update_fields=pola)
-    except ValidationError as e:
-        # Uczelnia.save() woła clean() — m.in. odrzuca adres API wskazujący
-        # na sieć prywatną. Komunikaty walidacji nie zawierają sekretów.
+    pary = _dopasuj_uczelnie(dane.get("uczelnie") or [], skrot)
+    zapisane = [_zastosuj_uczelnie(u, z, raport) for u, z in pary]
+    if not any(zapisane):
         raise BladPrzenoszenia(
-            f"Lokalna uczelnia {uczelnia.skrot} nie przechodzi walidacji przy "
-            f"zapisie: {'; '.join(e.messages)}"
-        ) from e
-    raport.insert(
-        0,
-        f"Konfiguracja aplikacji PBN uczelni {uczelnia.skrot}: zapisana "
-        f"(adres API {root}, aplikacja {nazwa}, token aplikacji zaszyfrowany "
-        "lokalnym kluczem).",
-    )
-    if not uczelnia.pbn_aktualizuj_na_biezaco:
-        raport.append(
-            "Przyciski „Zapisz i wyślij do PBN” są wyłączone "
-            "(pbn_aktualizuj_na_biezaco) — włącz w adminie uczelni, jeśli "
-            "chcesz testować ręczną wysyłkę."
+            "Nie zapisano konfiguracji aplikacji PBN dla żadnej uczelni — "
+            + (
+                " ".join(raport)
+                if raport
+                else "skróty uczelni na serwerze i w lokalnej bazie się nie pokrywają."
+            )
         )
 
     if dane.get("uzytkownik"):

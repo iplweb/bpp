@@ -39,22 +39,25 @@ def _chromium_z_profilem(profil: Path, bez_okna: bool):
 
 class Command(BaseCommand):
     help = (
-        "Loguje użytkownika lokalnej instancji BPP do PBN: otwiera przeglądarkę, "
-        "czeka na zalogowanie w PBN, przechwytuje powrót kierowany na serwer "
-        "klienta i kończy autoryzację lokalnie. Tokenu nie wypisuje."
+        "Loguje użytkownika lokalnej instancji BPP do PBN: otwiera w "
+        "przeglądarce logowanie aplikacji PBN wskazanej uczelni, czeka na "
+        "zalogowanie, przechwytuje powrót kierowany na serwer klienta "
+        "i wymienia kod na token. Tokenu nie wypisuje."
     )
 
     #: Podmieniane w testach (kontekst przeglądarki z pytest-playwright).
     otworz_przegladarke = staticmethod(_chromium_z_profilem)
 
     def add_arguments(self, parser):
-        parser.add_argument(
-            "--url",
-            required=False,
-            help="Adres lokalnej instancji BPP, np. http://localhost:8000.",
-        )
         parser.add_argument("--user", default="admin", help="Login w lokalnym BPP.")
-        parser.add_argument("--uczelnia", default=None, help="ID lub skrót uczelni.")
+        parser.add_argument(
+            "--uczelnia",
+            default=None,
+            help=(
+                "ID lub skrót uczelni, przez której aplikację PBN idzie "
+                "logowanie. Wymagane, gdy w bazie jest kilka uczelni."
+            ),
+        )
         parser.add_argument(
             "--ott",
             default=None,
@@ -90,7 +93,7 @@ class Command(BaseCommand):
             action="store_true",
             help="Przeglądarka bez okna — ma sens tylko, gdy sesja PBN w profilu żyje.",
         )
-        parser.add_argument("--limit-czasu", type=int, default=570, metavar="SEKUNDY")
+        parser.add_argument("--limit-czasu", type=int, default=900, metavar="SEKUNDY")
 
     def handle(self, *args, **o):
         try:
@@ -118,7 +121,6 @@ class Command(BaseCommand):
                 "pbn_konfiguracja_z_serwera",
                 zrodlo,
                 user_lokalny=user.username,
-                uczelnia=uczelnia.skrot,
                 bez_bezpiecznika=True,
                 stdout=self.stdout,
             )
@@ -143,9 +145,8 @@ class Command(BaseCommand):
         user.refresh_from_db()
         if not user.pbn_token or (user.pbn_token_updated or start) < start:
             raise CommandError(
-                "Token PBN NIE został zapisany — lokalny BPP odrzucił "
-                "autoryzację. Zajrzyj do logu run-site (komunikat widoku "
-                "/pbn_api/callback)."
+                "Token PBN NIE został zapisany — wymiana kodu OTT nie "
+                "zmieniła tokenu użytkownika."
             )
         self._podsumuj(user, uczelnia, zapisano_teraz=True)
 
@@ -174,7 +175,8 @@ class Command(BaseCommand):
         return (
             "Pobierz konfigurację z serwera: "
             "`uv run bin/pbn-zaloguj-lokalnie.py --konfiguracja-z HOST` "
-            "(albo `manage.py pbn_konfiguracja_z_serwera HOST`)."
+            "(albo `uv run bin/run-site-manage.py pbn_konfiguracja_z_serwera "
+            "HOST`)."
         )
 
     def _wymien_ott(self, ott, user, uczelnia):
@@ -187,22 +189,15 @@ class Command(BaseCommand):
         )
 
     def _zaloguj_w_przegladarce(self, user, uczelnia, o):
-        base_url = (o["url"] or "").rstrip("/")
-        if not base_url:
-            raise CommandError("Podaj --url lokalnej instancji BPP.")
-        if not ll.adres_jest_lokalny(base_url):
-            raise CommandError(
-                f"ODMOWA: {base_url} nie jest adresem lokalnym "
-                "(localhost / 127.0.0.1). To narzędzie obsługuje wyłącznie "
-                "lokalną instancję."
-            )
-
-        ciasteczko = ll.utworz_sesje(user)
+        adres = ll.adres_logowania(uczelnia)
+        self.stdout.write(
+            f"Logowanie przez aplikację PBN „{uczelnia.pbn_app_name}” uczelni "
+            f"{uczelnia.skrot} ({uczelnia.pbn_api_root})."
+        )
         with self.otworz_przegladarke(Path(o["profil"]), o["bez_okna"]) as context:
-            wynik = ll.autoryzuj_w_przegladarce(
+            wynik = ll.przechwyc_ott(
                 context,
-                base_url,
-                ciasteczko,
+                adres,
                 pbn_api_root=uczelnia.pbn_api_root,
                 limit_czasu=o["limit_czasu"],
                 komunikat=self.stdout.write,
@@ -214,15 +209,9 @@ class Command(BaseCommand):
                 "Zatrzymano przed wyjściem z przeglądarki: "
                 + ", ".join(f"{m} {u}" for m, u in wynik.zatrzymane)
             )
-        if wynik.status == "callback":
-            return
         if wynik.status == "ott":
-            # PBN wrócił inną drogą niż GET na /pbn_api/callback — kod mamy,
-            # wymieniamy go tą samą ścieżką co tryb --ott.
-            self.stdout.write(
-                "PBN wrócił nietypowo (nie przez /pbn_api/callback) — "
-                "wymieniam przechwycony kod OTT bezpośrednio."
-            )
+            # Wymiana jawnie dla wskazanej uczelni — ta sama ścieżka co
+            # /pbn_api/callback i tryb --ott.
             self._wymien_ott(wynik.ott, user, uczelnia)
             return
         komunikaty = {
@@ -231,12 +220,6 @@ class Command(BaseCommand):
                 "w treści żądania — nie umiem go przechwycić. Skorzystaj "
                 "z wariantu awaryjnego (--ott <kod>, patrz "
                 "docs/deweloper/testowanie-pbn-lokalnie.md)."
-            ),
-            "niezalogowany": (
-                "Lokalny BPP nie przyjął sesji użytkownika "
-                f"{user.username} (strona: {wynik.szczegoly}). Sprawdź, czy "
-                "--url wskazuje instancję korzystającą z TEJ bazy i czy konto "
-                "nie wymaga zmiany hasła."
             ),
             "zamknieto": "Okno przeglądarki zostało zamknięte przed zalogowaniem.",
             "timeout": (
@@ -262,8 +245,8 @@ class Command(BaseCommand):
             kod = getattr(e, "status_code", 403)
             raise CommandError(
                 f"Token PBN użytkownika {user.username} jest zapisany, ale PBN "
-                f"go ODRZUCA (HTTP {kod} z {uczelnia.pbn_api_root}) — zaloguj "
-                "się ponownie."
+                f"go ODRZUCA dla uczelni {uczelnia.skrot} (HTTP {kod} "
+                f"z {uczelnia.pbn_api_root}) — zaloguj się ponownie."
             ) from e
         except requests.RequestException as e:
             raise CommandError(
@@ -274,8 +257,8 @@ class Command(BaseCommand):
         self.stdout.write(
             self.style.SUCCESS(
                 f"OK: token PBN użytkownika {user.username} "
-                f"{'zapisany i ' if zapisano_teraz else ''}działa — "
-                f"{uczelnia.pbn_api_root} odpowiada (liczba publikacji "
-                f"w profilu instytucji: {ile})."
+                f"{'zapisany i ' if zapisano_teraz else ''}działa dla uczelni "
+                f"{uczelnia.skrot} — {uczelnia.pbn_api_root} odpowiada (liczba "
+                f"publikacji w profilu instytucji: {ile})."
             )
         )

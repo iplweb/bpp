@@ -1,11 +1,11 @@
 """E2E ``pbn_zaloguj_lokalnie`` na ATRAPIE PBN.
 
-Trzy procesy/serwery biorą udział:
+Biorą udział dwa lokalne serwery HTTP:
 
-- lokalny BPP (``channels_live_server``, ``http://localhost:<port>``),
-- atrapa PBN (``http://127.0.0.1:<port A>``): strona logowania, która od
-  razu „loguje" i odsyła przeglądarkę na serwer klienta, wymiana ott→token
-  i jeden endpoint odczytu,
+- atrapa PBN (``http://127.0.0.1:<port A>``): strona logowania aplikacji,
+  która od razu „loguje" i odsyła przeglądarkę na serwer klienta, wymiana
+  ott→token i jeden endpoint odczytu. Zna KILKA aplikacji (po jednej na
+  uczelnię) i pilnuje, żeby kod jednej nie przeszedł z tokenem drugiej,
 - „serwer klienta" (``http://127.0.0.1:<port B>``) — prawdziwy, nasłuchujący
   serwer, który ZAPISUJE każde otrzymane żądanie. Powrót z PBN jest na niego
   kierowany tak jak na produkcję; test dowodzi, że nic do niego nie dociera.
@@ -34,6 +34,18 @@ APLIKACJA = "aplikacja-bpp"
 TOKEN_APLIKACJI = "token-aplikacji-z-testu"
 TOKEN_UZYTKOWNIKA = "token-uzytkownika-z-atrapy"
 OTT = "0b7e-ott z+dziwnymi&znakami"
+
+#: Druga uczelnia tej samej instalacji — własna aplikacja w PBN.
+APLIKACJA_2 = "aplikacja-drugiej-uczelni"
+TOKEN_APLIKACJI_2 = "token-aplikacji-drugiej"
+DRUGI_TOKEN = "token-uzytkownika-z-aplikacji-drugiej"
+OTT_2 = "ott-drugiej-uczelni"
+
+#: aplikacja → (token aplikacji, kod OTT wydawany po zalogowaniu, token użytkownika)
+APLIKACJE = {
+    APLIKACJA: (TOKEN_APLIKACJI, OTT, TOKEN_UZYTKOWNIKA),
+    APLIKACJA_2: (TOKEN_APLIKACJI_2, OTT_2, DRUGI_TOKEN),
+}
 
 
 class _Serwer(ThreadingHTTPServer):
@@ -90,24 +102,28 @@ def serwer_klienta():
 @pytest.fixture
 def atrapa_pbn(serwer_klienta):
     serwer = _Serwer()
-    #: Co atrapa robi po „zalogowaniu"; podmieniane w testach.
-    serwer.powrot = lambda h: h.odpowiedz(
+    #: Co atrapa robi po „zalogowaniu" (dostaje kod OTT aplikacji);
+    #: podmieniane w testach.
+    serwer.powrot = lambda h, ott: h.odpowiedz(
         302,
-        Location=f"{serwer_klienta.url}/pbn_api/callback?ott={_q(OTT)}",
+        Location=f"{serwer_klienta.url}/pbn_api/callback?ott={_q(ott)}",
     )
 
     def obsluga(h, cialo):
         sciezka = urlsplit(h.path).path
-        if sciezka == f"/auth/pbn/api/registration/user/token/{APLIKACJA}":
-            return serwer.powrot(h)
+        prefiks = "/auth/pbn/api/registration/user/token/"
+        if sciezka.startswith(prefiks) and sciezka[len(prefiks) :] in APLIKACJE:
+            return serwer.powrot(h, APLIKACJE[sciezka[len(prefiks) :]][1])
+        aplikacja = APLIKACJE.get(h.headers.get("X-App-Id"))
+        if aplikacja is None or h.headers.get("X-App-Token") != aplikacja[0]:
+            return h.odpowiedz(400, "Mismatched X-APP-TOKEN: zly")
+        token_aplikacji, ott, token_uzytkownika = aplikacja
         if sciezka == "/auth/pbn/api/user/token" and h.command == "POST":
-            if h.headers.get("X-App-Token") != TOKEN_APLIKACJI:
-                return h.odpowiedz(400, "Mismatched X-APP-TOKEN: zly")
-            if json.loads(cialo).get("oneTimeToken") != OTT:
+            if json.loads(cialo).get("oneTimeToken") != ott:
                 return h.json({"message": "invalid ott"})
-            return h.json({"X-User-Token": TOKEN_UZYTKOWNIKA})
+            return h.json({"X-User-Token": token_uzytkownika})
         if sciezka == "/api/v1/institutionProfile/publications/page":
-            if h.headers.get("X-User-Token") != TOKEN_UZYTKOWNIKA:
+            if h.headers.get("X-User-Token") != token_uzytkownika:
                 return h.json({"message": "Access Denied"}, kod=403)
             return h.json(
                 {
@@ -131,22 +147,42 @@ def _q(wartosc):
     return quote(wartosc, safe="")
 
 
+def _ustaw_aplikacje(uczelnia, adres, aplikacja, token):
+    # update(): Uczelnia.save() nie przyjmuje adresu API w sieci lokalnej
+    # (ochrona przed SSRF), a atrapa PBN stoi na 127.0.0.1.
+    Uczelnia.objects.filter(pk=uczelnia.pk).update(pbn_api_root=adres)
+    uczelnia = Uczelnia.objects.get(pk=uczelnia.pk)
+    uczelnia.pbn_app_name = aplikacja
+    uczelnia.pbn_app_token = token
+    uczelnia.pbn_integracja = True
+    uczelnia.save()
+    return uczelnia
+
+
 @pytest.fixture
 def lokalny_bpp(transactional_db, settings, uczelnia, admin_user, atrapa_pbn):
     settings.DEBUG = True
-    # update(): Uczelnia.save() nie przyjmuje adresu API w sieci lokalnej
-    # (ochrona przed SSRF), a atrapa PBN stoi na 127.0.0.1.
-    Uczelnia.objects.filter(pk=uczelnia.pk).update(pbn_api_root=atrapa_pbn.url)
-    uczelnia = Uczelnia.objects.get(pk=uczelnia.pk)
-    uczelnia.pbn_app_name = APLIKACJA
-    uczelnia.pbn_app_token = TOKEN_APLIKACJI
-    uczelnia.pbn_integracja = True
-    uczelnia.save()
+    uczelnia = _ustaw_aplikacje(uczelnia, atrapa_pbn.url, APLIKACJA, TOKEN_APLIKACJI)
     with patch("pbn_export_queue.bezpiecznik.host_bazy", return_value="localhost"):
         yield uczelnia
 
 
-def _zaloguj(page, channels_live_server, **opcje):
+@pytest.fixture
+def druga_uczelnia(lokalny_bpp, atrapa_pbn):
+    """Instalacja z kilkoma uczelniami: druga ma WŁASNĄ aplikację PBN."""
+    from django.contrib.sites.models import Site
+    from model_bakery import baker
+
+    druga = baker.make(
+        Uczelnia,
+        skrot="DRUGA",
+        nazwa="Druga uczelnia",
+        site=Site.objects.create(domain="druga.example.org", name="druga"),
+    )
+    return _ustaw_aplikacje(druga, atrapa_pbn.url, APLIKACJA_2, TOKEN_APLIKACJI_2)
+
+
+def _zaloguj(page, **opcje):
     """Woła komendę tak jak ``bin/pbn-zaloguj-lokalnie.py``, tylko zamiast
     Chromium z trwałym profilem dostaje kontekst z pytest-playwright."""
 
@@ -158,7 +194,6 @@ def _zaloguj(page, channels_live_server, **opcje):
     with patch.object(Command, "otworz_przegladarke", staticmethod(kontekst_z_testu)):
         call_command(
             "pbn_zaloguj_lokalnie",
-            url=channels_live_server.url,
             user="admin",
             limit_czasu=opcje.pop("limit_czasu", 60),
             stdout=out,
@@ -177,21 +212,21 @@ def _wymiany_ott(atrapa_pbn):
 
 @pytest.mark.parametrize("sciezka", ["/pbn_api/callback", "/pbn_api/kalbak/"])
 def test_powrot_przekierowaniem_nie_wychodzi_do_serwera_klienta(
-    lokalny_bpp, page: Page, channels_live_server, atrapa_pbn, serwer_klienta, sciezka
+    lokalny_bpp, page: Page, atrapa_pbn, serwer_klienta, sciezka
 ):
-    atrapa_pbn.powrot = lambda h: h.odpowiedz(
+    atrapa_pbn.powrot = lambda h, ott: h.odpowiedz(
         302, Location=f"{serwer_klienta.url}{sciezka}?ott={_q(OTT)}"
     )
 
     try:
-        wyjscie = _zaloguj(page, channels_live_server, limit_czasu=20)
+        wyjscie = _zaloguj(page, limit_czasu=20)
     finally:
         # 1. Do serwera klienta nie dotarło ŻADNE żądanie. W ``finally``, bo
         #    gdy przechwycenie zawiedzie, komenda kończy się limitem czasu —
         #    a przyczyną ma być widoczny wyciek, nie timeout.
         assert serwer_klienta.zadania == [], "żądanie wyszło do serwera klienta"
-    # 2. Lokalny BPP dokończył autoryzację normalną ścieżką: sam wymienił
-    #    ott w (atrapie) PBN, przedstawiając się tokenem aplikacji.
+    # 2. Przechwycony kod został wymieniony w (atrapie) PBN z poświadczeniami
+    #    aplikacji uczelni.
     (wymiana,) = _wymiany_ott(atrapa_pbn)
     assert json.loads(wymiana[3]) == {"oneTimeToken": OTT}
     assert wymiana[2]["X-App-Id"] == APLIKACJA
@@ -202,22 +237,24 @@ def test_powrot_przekierowaniem_nie_wychodzi_do_serwera_klienta(
     assert TOKEN_UZYTKOWNIKA not in wyjscie
     assert TOKEN_APLIKACJI not in wyjscie
     assert f"GET {serwer_klienta.url}{sciezka}" in wyjscie
-    # 4. Przeglądarka skończyła na lokalnej instancji.
-    assert urlsplit(page.url).netloc == urlsplit(channels_live_server.url).netloc
+    assert "działa dla uczelni TE" in wyjscie
+    # 4. Zamiast strony serwera klienta przeglądarka dostała naszą.
+    assert "Kod z PBN przechwycony" in page.content()
+    assert "serwer klienta" not in page.content()
 
 
 def test_powrot_postem_tez_jest_przechwytywany(
-    lokalny_bpp, page: Page, channels_live_server, atrapa_pbn, serwer_klienta
+    lokalny_bpp, page: Page, atrapa_pbn, serwer_klienta
 ):
     """Gdyby PBN wracał formularzem POST: kod jest w treści żądania."""
-    atrapa_pbn.powrot = lambda h: h.odpowiedz(
+    atrapa_pbn.powrot = lambda h, ott: h.odpowiedz(
         200,
         f'<form id="f" method="post" action="{serwer_klienta.url}/pbn_api/callback">'
         f'<input name="ott" value="{OTT}"></form>'
         '<script>document.getElementById("f").submit()</script>',
     )
 
-    wyjscie = _zaloguj(page, channels_live_server)
+    wyjscie = _zaloguj(page)
 
     assert serwer_klienta.zadania == []
     assert _token_admina() == TOKEN_UZYTKOWNIKA
@@ -225,26 +262,26 @@ def test_powrot_postem_tez_jest_przechwytywany(
 
 
 def test_powrot_na_nieznana_sciezke_kod_wymieniany_bezposrednio(
-    lokalny_bpp, page: Page, channels_live_server, atrapa_pbn, serwer_klienta
+    lokalny_bpp, page: Page, atrapa_pbn, serwer_klienta
 ):
     """PBN wraca z ``ott`` na adres, który nie jest callbackiem BPP: żądanie
     nadal nie wychodzi, a kod jest wymieniany tą samą drogą co ``--ott``."""
-    atrapa_pbn.powrot = lambda h: h.odpowiedz(
+    atrapa_pbn.powrot = lambda h, ott: h.odpowiedz(
         302, Location=f"{serwer_klienta.url}/zupelnie/inny/adres?ott={_q(OTT)}"
     )
 
-    wyjscie = _zaloguj(page, channels_live_server)
+    wyjscie = _zaloguj(page)
 
     assert serwer_klienta.zadania == []
     assert _token_admina() == TOKEN_UZYTKOWNIKA
-    assert "wymieniam przechwycony kod OTT bezpośrednio" in wyjscie
+    assert f"GET {serwer_klienta.url}/zupelnie/inny/adres" in wyjscie
     assert "Kod z PBN przechwycony" in page.content()
 
 
 def test_powrot_bez_kodu_czytelny_blad_i_nic_nie_wychodzi(
-    lokalny_bpp, page: Page, channels_live_server, atrapa_pbn, serwer_klienta
+    lokalny_bpp, page: Page, atrapa_pbn, serwer_klienta
 ):
-    atrapa_pbn.powrot = lambda h: h.odpowiedz(
+    atrapa_pbn.powrot = lambda h, ott: h.odpowiedz(
         200,
         f'<form id="f" method="post" action="{serwer_klienta.url}/pbn_api/callback">'
         '<input name="cos_innego" value="x"></form>'
@@ -252,30 +289,30 @@ def test_powrot_bez_kodu_czytelny_blad_i_nic_nie_wychodzi(
     )
 
     with pytest.raises(CommandError, match="BEZ kodu OTT"):
-        _zaloguj(page, channels_live_server)
+        _zaloguj(page)
 
     assert serwer_klienta.zadania == []
     assert _token_admina() == ""
 
 
 def test_limit_czasu_gdy_nikt_sie_nie_zaloguje(
-    lokalny_bpp, page: Page, channels_live_server, atrapa_pbn, serwer_klienta
+    lokalny_bpp, page: Page, atrapa_pbn, serwer_klienta
 ):
-    atrapa_pbn.powrot = lambda h: h.odpowiedz(200, "<h1>Logowanie do PBN</h1>")
+    atrapa_pbn.powrot = lambda h, ott: h.odpowiedz(200, "<h1>Logowanie do PBN</h1>")
 
     with pytest.raises(CommandError, match="limit czasu"):
-        _zaloguj(page, channels_live_server, limit_czasu=2)
+        _zaloguj(page, limit_czasu=2)
 
     assert _token_admina() == ""
 
 
 def test_dzialajacy_token_pomija_logowanie(
-    lokalny_bpp, page: Page, channels_live_server, atrapa_pbn, admin_user
+    lokalny_bpp, page: Page, atrapa_pbn, admin_user
 ):
     admin_user.pbn_token = TOKEN_UZYTKOWNIKA
     admin_user.save()
 
-    wyjscie = _zaloguj(page, channels_live_server)
+    wyjscie = _zaloguj(page)
 
     assert "OK: token PBN użytkownika admin działa" in wyjscie
     assert _wymiany_ott(atrapa_pbn) == []
@@ -285,7 +322,6 @@ def test_dzialajacy_token_pomija_logowanie(
 def test_logowanie_zamyka_kolejke_i_niczego_nie_wysyla(
     lokalny_bpp,
     page: Page,
-    channels_live_server,
     atrapa_pbn,
     serwer_klienta,
     admin_user,
@@ -302,7 +338,7 @@ def test_logowanie_zamyka_kolejke_i_niczego_nie_wysyla(
         retry_after_user_authorised=True,
     )
 
-    wyjscie = _zaloguj(page, channels_live_server)
+    wyjscie = _zaloguj(page)
 
     assert _token_admina() == TOKEN_UZYTKOWNIKA
     wpis.refresh_from_db()
@@ -345,16 +381,66 @@ def test_tylko_sprawdz_wykrywa_token_odrzucany_przez_pbn(
     assert [z[0] for z in atrapa_pbn.zadania] == ["GET"]
 
 
-def test_odmowa_dla_adresu_nielokalnego(lokalny_bpp):
+def test_kilka_uczelni_logowanie_przez_aplikacje_wskazanej(
+    lokalny_bpp, druga_uczelnia, page: Page, atrapa_pbn, serwer_klienta
+):
+    """Instalacja z kilkoma uczelniami: ``--uczelnia DRUGA`` prowadzi przez
+    aplikację PBN DRUGIEJ uczelni (nie pierwszej z brzegu) i tę samą potem
+    sprawdza."""
+    wyjscie = _zaloguj(page, uczelnia="DRUGA")
+
+    assert serwer_klienta.zadania == []
+    logowania = [
+        urlsplit(z[1]).path for z in atrapa_pbn.zadania if "registration" in z[1]
+    ]
+    assert logowania == [f"/auth/pbn/api/registration/user/token/{APLIKACJA_2}"]
+    (wymiana,) = _wymiany_ott(atrapa_pbn)
+    assert wymiana[2]["X-App-Id"] == APLIKACJA_2
+    assert wymiana[2]["X-App-Token"] == TOKEN_APLIKACJI_2
+    assert json.loads(wymiana[3]) == {"oneTimeToken": OTT_2}
+    assert _token_admina() == DRUGI_TOKEN
+    assert "działa dla uczelni DRUGA" in wyjscie
+    assert f"aplikację PBN „{APLIKACJA_2}” uczelni DRUGA" in wyjscie
+    # Żadne żądanie nie poszło z poświadczeniami pierwszej uczelni.
+    assert not [z for z in atrapa_pbn.zadania if z[2].get("X-App-Id") == APLIKACJA]
+
+
+def test_kilka_uczelni_bez_wskazania_lista_do_wyboru(
+    lokalny_bpp, druga_uczelnia, atrapa_pbn
+):
     with patch.object(Command, "otworz_przegladarke") as przegladarka:
-        with pytest.raises(CommandError, match="ODMOWA.*nie jest adresem lokalnym"):
-            call_command(
-                "pbn_zaloguj_lokalnie",
-                url="https://bpp.example.org",
-                user="admin",
-                stdout=StringIO(),
-            )
+        with pytest.raises(CommandError, match="kilka uczelni.*TE.*DRUGA"):
+            call_command("pbn_zaloguj_lokalnie", user="admin", stdout=StringIO())
+
     przegladarka.assert_not_called()
+    assert atrapa_pbn.zadania == []
+
+
+def test_kilka_uczelni_token_jednej_nie_dziala_dla_drugiej(
+    lokalny_bpp, druga_uczelnia, atrapa_pbn, admin_user
+):
+    """Końcowe sprawdzenie pyta PBN jako WSKAZANA uczelnia."""
+    admin_user.pbn_token = DRUGI_TOKEN
+    admin_user.save()
+
+    out = StringIO()
+    call_command(
+        "pbn_zaloguj_lokalnie",
+        user="admin",
+        uczelnia="DRUGA",
+        tylko_sprawdz=True,
+        stdout=out,
+    )
+    assert "działa dla uczelni DRUGA" in out.getvalue()
+
+    with pytest.raises(CommandError, match="ODRZUCA dla uczelni TE"):
+        call_command(
+            "pbn_zaloguj_lokalnie",
+            user="admin",
+            uczelnia="TE",
+            tylko_sprawdz=True,
+            stdout=StringIO(),
+        )
 
 
 def test_odmowa_na_nielokalnej_instancji(lokalny_bpp, settings, atrapa_pbn):

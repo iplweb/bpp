@@ -37,6 +37,7 @@ setenv_default("DJANGO_BPP_PBN_WSTRZYMAJ_AUTOMATY", "1")
 
 from .base import *  # noqa
 from .base import (  # noqa
+    CONSTANCE_CONFIG,
     DATABASES,
     DJANGO_BPP_HOSTNAMES,
     INSTALLED_APPS,
@@ -49,6 +50,22 @@ from .base import (  # noqa
 
 # DEBUG = False
 DEBUG = True
+
+# Przelacznik „odblokuj automaty wysylki do PBN" dla lokalnej instancji
+# (strona kolejki eksportu, `run-site run --pbn-automaty wlacz`). Stan lezy
+# w bazie (constance), bo czytaja go osobne procesy: web i worker Celery.
+# Klucz istnieje TYLKO tutaj — w ustawieniach produkcyjnych go nie ma, wiec
+# na produkcji przelacznika nie da sie ani zobaczyc, ani ustawic. Patrz
+# `pbn_export_queue/bezpiecznik.py`.
+CONSTANCE_CONFIG = {
+    **CONSTANCE_CONFIG,
+    "PBN_AUTOMATY_ODBLOKOWANE_LOKALNIE": (
+        False,
+        "Lokalna instancja: automaty wysylki do PBN odblokowane "
+        "(kolejka, watchdog, kosz). Przelaczaj ze strony kolejki eksportu.",
+        bool,
+    ),
+}
 
 SENDFILE_BACKEND = "django_sendfile.backends.simple"
 
