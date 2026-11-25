@@ -219,6 +219,18 @@ def _extract_abstract(obj: dict) -> str | None:
     return None
 
 
+def _streszczenia_wg_jezyka(obj: dict) -> dict[str, str]:
+    """Streszczenia z PBN w podziale na języki (``pol``, ``eng``…)."""
+    abstracts = obj.get("abstracts")
+    if not abstracts or not isinstance(abstracts, dict):
+        return {}
+    return {
+        kod: tekst
+        for kod, tekst in abstracts.items()
+        if isinstance(tekst, str) and tekst.strip()
+    }
+
+
 def _extract_license_url(obj: dict) -> str | None:
     """Mapuj PBN openAccess.license na URL licencji."""
     open_access = obj.get("openAccess")
@@ -328,6 +340,9 @@ def publikacja_z_obiektu_wersji(data: dict, obj: dict, uid: str) -> FetchedPubli
             "pbn_uid": uid,
             # BPP trzyma słowa polskie i angielskie w osobnych polach.
             "slowa_kluczowe_wg_jezyka": _slowa_kluczowe_wg_jezyka(obj),
+            # Wszystkie streszczenia z kodami języków (``abstract`` wyżej to
+            # tylko pierwsze — tyle potrzebuje kreator importu).
+            "streszczenia_wg_jezyka": _streszczenia_wg_jezyka(obj),
         },
     )
 

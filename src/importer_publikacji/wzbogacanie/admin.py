@@ -15,6 +15,7 @@ from . import zrodla
 from .autorzy import porownaj_autorow
 from .blokada import zablokuj_rekord
 from .pola import porownaj, zastosuj
+from .zakres import w_zakresie_uczelni
 
 
 def komentarz_historii(dane, przeniesione):
@@ -96,6 +97,8 @@ class WzbogacanieRekorduAdminMixin:
             raise PermissionDenied
         if getattr(obj, "deleted_at", None) is not None:
             raise Http404("Rekord jest w koszu — najpierw przywróć go z kosza.")
+        if not w_zakresie_uczelni(request, obj):
+            raise Http404("Brak takiego rekordu w zakresie Twojej uczelni.")
         return obj
 
     @staticmethod
@@ -173,28 +176,49 @@ class WzbogacanieRekorduAdminMixin:
         dane = self._pobierz_dane_zrodla(request, obj, zrodlo, wersja)
         return self._wzbogac_pokaz(request, obj, dane)
 
+    def _ta_sama_publikacja(self, request, obj, zrodlo, wersja):
+        """Czy rekord wskazuje w źródle tę samą publikację (i wersję), którą
+        redaktor widział na podglądzie. Jeśli nie — komunikat i ``False``."""
+        if zrodla.identyfikator(obj, zrodlo, wersja) == request.POST.get("zrodlo_id"):
+            return True
+        co = "numer DOI" if zrodlo == zrodla.CROSSREF else "odpowiednik w PBN"
+        messages.error(
+            request,
+            f"Nic nie zmieniono: od otwarcia porównania zmienił się {co} rekordu "
+            "albo porównywana wersja — dane, które widziałeś, dotyczą innej "
+            "publikacji. Sprawdź porównanie jeszcze raz.",
+        )
+        return False
+
     def _wzbogac_zastosuj(self, request, obj, zrodlo, wersja):
-        # Bez łączenia ze źródłem: stosujemy dane, które były na podglądzie.
-        dane = self._pobierz_dane_zrodla(request, obj, zrodlo, wersja)
         powrot = HttpResponseRedirect(self._wzbogac_url(obj, zrodlo, wersja=wersja))
-        if dane.publikacja is None:
-            messages.error(request, dane.blad)
-            return powrot
         wybrane = request.POST.getlist("pole")
         if not wybrane:
             messages.warning(
                 request, "Nie zaznaczono żadnego pola — nic nie zmieniono."
             )
             return powrot
+        # Wybór pól dotyczy publikacji z podglądu. Sprawdzamy to, ZANIM
+        # sięgniemy po dane źródła (dla zmienionego DOI byłyby to dane innej
+        # pracy), i jeszcze raz pod blokadą.
+        if not self._ta_sama_publikacja(request, obj, zrodlo, wersja):
+            return powrot
+        # Bez łączenia ze źródłem: stosujemy dane, które były na podglądzie.
+        dane = self._pobierz_dane_zrodla(request, obj, zrodlo, wersja)
+        if dane.publikacja is None:
+            messages.error(request, dane.blad)
+            return powrot
 
         with transaction.atomic():
             # Blokada wiersza rekordu jako pierwsze zapytanie transakcji —
             # ta sama kolejność blokad co przy zapisie formularza rekordu
             # (``BlokujRekordPrzedZapisemMixin``, Rollbar #5363) — i odczyt
-            # stanu rekordu JUŻ pod blokadą: porównanie liczone jest z tym,
-            # co naprawdę jest w bazie, a nie z tym, co było przy otwarciu.
+            # stanu rekordu JUŻ pod blokadą: te same kontrole co przy wejściu
+            # i porównanie liczone z tym, co naprawdę jest w bazie.
             zablokuj_rekord(obj)
-            obj = self.get_object(request, str(obj.pk))
+            obj = self._wzbogacany_rekord(request, str(obj.pk), zrodlo)
+            if not self._ta_sama_publikacja(request, obj, zrodlo, wersja):
+                return powrot
             with zmiana_rekordu(request.user, obj, "") as zmiana:
                 wiersze = porownaj(obj, dane.publikacja)
                 przeniesione, pominiete = zastosuj(obj, wiersze, wybrane)
@@ -257,6 +281,7 @@ class WzbogacanieRekorduAdminMixin:
                 for w in dane.wersje
             ],
             "identyfikator_wersji": identyfikator_wersji,
+            "zrodlo_id": zrodla.identyfikator(obj, dane.zrodlo, identyfikator_wersji),
             "moze_dodawac_autorow": self._moze_uzywac_importera(request),
             "autorzy_url": reverse(
                 f"{nazwa}_wzbogac_autorzy", args=(quote(obj.pk), dane.zrodlo)

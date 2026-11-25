@@ -133,6 +133,8 @@
             <form method="post" id="bpp-wzbogacanie-form">
                 {% csrf_token %}
                 <input type="hidden" name="wersja" value="{{ identyfikator_wersji }}">
+                {# Publikacja w źródle, której dotyczy ten podgląd (DOI / odpowiednik PBN + wersja). #}
+                <input type="hidden" name="zrodlo_id" value="{{ zrodlo_id }}">
                 {% if wiersze %}
                     <table class="grp-table bpp-porownanie">
                         <thead>
@@ -180,7 +182,7 @@
                 {% if autorzy.sa_roznice %}
                     <div class="bpp-wzbogacanie-ramka bpp-wzbogacanie-rozne">
                         W źródle: {{ autorzy.w_zrodle }}, w BPP: {{ autorzy.w_bpp }}.
-                        Brakuje w BPP: <strong>{{ autorzy.brakujacy }}</strong>, tylko w BPP: <strong>{{ autorzy.nadmiarowi }}</strong>, w innej kolejności: <strong>{{ autorzy.inna_kolejnosc }}</strong>.
+                        Brakuje w BPP: <strong>{{ autorzy.brakujacy }}</strong>, tylko w BPP: <strong>{{ autorzy.nadmiarowi }}</strong>, w innej kolejności: <strong>{{ autorzy.inna_kolejnosc }}</strong>.{% if autorzy.do_sprawdzenia %} Do sprawdzenia: <strong>{{ autorzy.do_sprawdzenia }}</strong> (kilku autorów rekordu o tym samym nazwisku i inicjale — nie da się rozstrzygnąć, o którego chodzi).{% endif %}
                         Dodanie autora wymaga wskazania jednostki i dyscypliny — brakujących dodasz w kroku „Autorzy” importera publikacji; kolejność i autorów nadmiarowych popraw w formularzu rekordu.
                         {% if autorzy.brakujacy and moze_dodawac_autorow %}
                             <form method="post" action="{{ autorzy_url }}" style="margin: 8px 0 0;">

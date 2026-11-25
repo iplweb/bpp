@@ -179,6 +179,10 @@ def _sprawdz_dostep(request, rekord):
         raise ValidationError(
             "Rekord jest w koszu — przywróć go z kosza, zanim dodasz autorów."
         )
+    from .zakres import w_zakresie_uczelni
+
+    if not w_zakresie_uczelni(request, widziany):
+        raise ValidationError("Ten rekord nie należy do Twojej uczelni.")
 
 
 def dodaj_autorow_do_rekordu(session, user, request=None):
@@ -204,6 +208,8 @@ def dodaj_autorow_do_rekordu(session, user, request=None):
         # Blokada rekordu przed jakimkolwiek zapisem (patrz ``blokada``);
         # walidacja już pod blokadą — lista autorów nie zmieni się pod ręką.
         zablokuj_rekord(rekord)
+        if request is not None:
+            _sprawdz_dostep(request, rekord)
         _waliduj(session, rekord)
         with zmiana_rekordu(user, rekord, "") as zmiana:
             przed = set(rekord.autorzy_set.values_list("pk", flat=True))
