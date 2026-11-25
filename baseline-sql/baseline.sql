@@ -7971,6 +7971,7 @@ CREATE TABLE public.bpp_uczelnia (
     deleted_at timestamp with time zone,
     restored_at timestamp with time zone,
     transaction_id uuid,
+    pbn_wysylaj_bez_identyfikatora_autora boolean NOT NULL,
     CONSTRAINT bpp_uczelnia_ilosc_jednostek_na_strone_check CHECK ((ilosc_jednostek_na_strone >= 0)),
     CONSTRAINT bpp_uczelnia_pokazuj_deklaracje_dostepnosci_check CHECK ((pokazuj_deklaracje_dostepnosci >= 0))
 );
@@ -11536,6 +11537,8 @@ CREATE TABLE public.importer_publikacji_importedauthor (
     dyscyplina_source character varying(20) NOT NULL,
     zapisany_jako character varying(512) NOT NULL,
     typ_ogolny smallint NOT NULL,
+    pbn_uid character varying(32) NOT NULL,
+    pbn_uwagi character varying(512) NOT NULL,
     CONSTRAINT importer_publikacji_importedauthor_order_check CHECK (("order" >= 0))
 );
 
@@ -16431,7 +16434,7 @@ COPY public.bpp_tytul (id, nazwa, skrot) FROM stdin;
 -- Data for Name: bpp_uczelnia; Type: TABLE DATA; Schema: public; Owner: -
 --
 
-COPY public.bpp_uczelnia (id, ostatnio_zmieniony, adnotacje, nazwa, skrot, nazwa_dopelniacz_field, slug, logo_www, logo_svg, favicon_ico, pbn_id, obca_jednostka_id, pokazuj_index_copernicus, pokazuj_punktacje_wewnetrzna, pokazuj_status_korekty, pokazuj_ranking_autorow, pokazuj_praca_recenzowana, clarivate_password, clarivate_username, domyslnie_afiliuje, pokazuj_liczbe_cytowan_w_rankingu, pokazuj_liczbe_cytowan_na_stronie_autora, wydruk_logo, wydruk_parametry_zapytania, wydruk_logo_szerokosc, wyszukiwanie_rekordy_na_strone_anonim, wyszukiwanie_rekordy_na_strone_zalogowany, pokazuj_punktacja_snip, podpowiadaj_dyscypliny, pokazuj_tabele_slotow_na_stronie_rekordu, pokazuj_raport_slotow_autor, pokazuj_raport_slotow_uczelnia, ranking_autorow_rozbij_domyslnie, pokazuj_raport_slotow_zerowy, sortuj_jednostki_alfabetycznie, metoda_do_roku_formularze, pbn_uid_id, pbn_api_root, pbn_app_name, pbn_app_token, pbn_aktualizuj_na_biezaco, pbn_integracja, pbn_api_user_id, pbn_api_nie_wysylaj_prac_bez_pk, ilosc_jednostek_na_strone, pokazuj_tylko_jednostki_nadrzedne, wymagaj_informacji_o_oplatach, pokazuj_formularz_zglaszania_publikacji, pbn_api_afiliacja_zawsze_na_uczelnie, pbn_wysylaj_bez_oswiadczen, deklaracja_dostepnosci_tekst, deklaracja_dostepnosci_url, pokazuj_deklaracje_dostepnosci, ranking_autorow_bez_kol_naukowych, pokazuj_autorow_obcych_w_przegladaniu_danych, pokazuj_autorow_bez_prac_w_przegladaniu_danych, drukuj_alternatywne_oswiadczenia, drukuj_oswiadczenia, pokazuj_zrodla_bez_prac_w_przegladaniu_danych, pokazuj_jednostki_na_pierwszej_stronie, pokazuj_wydzialy_na_pierwszej_stronie, przydzielaj_1_slot_gdy_udzial_mniejszy, pytaj_o_zgode_na_publikacje_pelnego_tekstu, uzywaj_wydzialow, tytul_strony_glownej, wymagaj_logowania_zglos_publikacje, nowy_autor_z_formularza_pokazuj, orcid_client_id, orcid_client_secret, orcid_sandbox, orcid_tylko_dla_pracownikow, wymagaj_oplatach_artykul, wymagaj_oplatach_inne, wymagaj_oplatach_monografia, wymagaj_oplatach_rozdzial, pbn_kasuj_dyscypliny_selektywnie, pokazuj_siec_powiazan, dspace_aktywny, dspace_api_endpoint, dspace_api_password, dspace_api_username, dspace_domyslny_jezyk_dc, site_id, theme_name, google_analytics_property_id, google_verification_code, pokazuj_oswiadczenie_ken, skrot_wydzialu_w_nazwie_jednostki, wydruk_margines_dol, wydruk_margines_gora, wydruk_margines_lewo, wydruk_margines_prawo, zwijaj_dlugie_listy_autorow, oai_identyfikator_repozytorium, oai_pmh_aktywny, api_v1_wlaczone, eksport_cerif_wlaczony, ror_id, eksport_cerif_osoby, eksport_cerif_kwoty, api_v1_dane_bibliograficzne, api_v1_kafelki, api_v1_narzedzia_redaktorskie, api_v1_tylko_zalogowani, api_v1_wyszukiwanie, mcp_wlaczone, kreator_czeka_na_pbn, uklad_profilu_autora, etykieta_profilu_uczelni, kafel_wydzialy_zamiast_jednostek, deleted_at, restored_at, transaction_id) FROM stdin;
+COPY public.bpp_uczelnia (id, ostatnio_zmieniony, adnotacje, nazwa, skrot, nazwa_dopelniacz_field, slug, logo_www, logo_svg, favicon_ico, pbn_id, obca_jednostka_id, pokazuj_index_copernicus, pokazuj_punktacje_wewnetrzna, pokazuj_status_korekty, pokazuj_ranking_autorow, pokazuj_praca_recenzowana, clarivate_password, clarivate_username, domyslnie_afiliuje, pokazuj_liczbe_cytowan_w_rankingu, pokazuj_liczbe_cytowan_na_stronie_autora, wydruk_logo, wydruk_parametry_zapytania, wydruk_logo_szerokosc, wyszukiwanie_rekordy_na_strone_anonim, wyszukiwanie_rekordy_na_strone_zalogowany, pokazuj_punktacja_snip, podpowiadaj_dyscypliny, pokazuj_tabele_slotow_na_stronie_rekordu, pokazuj_raport_slotow_autor, pokazuj_raport_slotow_uczelnia, ranking_autorow_rozbij_domyslnie, pokazuj_raport_slotow_zerowy, sortuj_jednostki_alfabetycznie, metoda_do_roku_formularze, pbn_uid_id, pbn_api_root, pbn_app_name, pbn_app_token, pbn_aktualizuj_na_biezaco, pbn_integracja, pbn_api_user_id, pbn_api_nie_wysylaj_prac_bez_pk, ilosc_jednostek_na_strone, pokazuj_tylko_jednostki_nadrzedne, wymagaj_informacji_o_oplatach, pokazuj_formularz_zglaszania_publikacji, pbn_api_afiliacja_zawsze_na_uczelnie, pbn_wysylaj_bez_oswiadczen, deklaracja_dostepnosci_tekst, deklaracja_dostepnosci_url, pokazuj_deklaracje_dostepnosci, ranking_autorow_bez_kol_naukowych, pokazuj_autorow_obcych_w_przegladaniu_danych, pokazuj_autorow_bez_prac_w_przegladaniu_danych, drukuj_alternatywne_oswiadczenia, drukuj_oswiadczenia, pokazuj_zrodla_bez_prac_w_przegladaniu_danych, pokazuj_jednostki_na_pierwszej_stronie, pokazuj_wydzialy_na_pierwszej_stronie, przydzielaj_1_slot_gdy_udzial_mniejszy, pytaj_o_zgode_na_publikacje_pelnego_tekstu, uzywaj_wydzialow, tytul_strony_glownej, wymagaj_logowania_zglos_publikacje, nowy_autor_z_formularza_pokazuj, orcid_client_id, orcid_client_secret, orcid_sandbox, orcid_tylko_dla_pracownikow, wymagaj_oplatach_artykul, wymagaj_oplatach_inne, wymagaj_oplatach_monografia, wymagaj_oplatach_rozdzial, pbn_kasuj_dyscypliny_selektywnie, pokazuj_siec_powiazan, dspace_aktywny, dspace_api_endpoint, dspace_api_password, dspace_api_username, dspace_domyslny_jezyk_dc, site_id, theme_name, google_analytics_property_id, google_verification_code, pokazuj_oswiadczenie_ken, skrot_wydzialu_w_nazwie_jednostki, wydruk_margines_dol, wydruk_margines_gora, wydruk_margines_lewo, wydruk_margines_prawo, zwijaj_dlugie_listy_autorow, oai_identyfikator_repozytorium, oai_pmh_aktywny, api_v1_wlaczone, eksport_cerif_wlaczony, ror_id, eksport_cerif_osoby, eksport_cerif_kwoty, api_v1_dane_bibliograficzne, api_v1_kafelki, api_v1_narzedzia_redaktorskie, api_v1_tylko_zalogowani, api_v1_wyszukiwanie, mcp_wlaczone, kreator_czeka_na_pbn, uklad_profilu_autora, etykieta_profilu_uczelni, kafel_wydzialy_zamiast_jednostek, deleted_at, restored_at, transaction_id, pbn_wysylaj_bez_identyfikatora_autora) FROM stdin;
 \.
 
 
@@ -17081,6 +17084,53 @@ COPY public.django_countdown_sitecountdown (id, countdown_time, message, long_de
 --
 
 COPY public.django_migrations (id, app, name, applied) FROM stdin;
+344	bpp	0252_slug	2000-01-01 00:00:00+00
+800	importer_publikacji	0007_async_import_state	2000-01-01 00:00:00+00
+15	auth	0008_alter_user_username_max_length	2000-01-01 00:00:00+00
+16	auth	0009_alter_user_last_name_max_length	2000-01-01 00:00:00+00
+17	auth	0010_alter_group_name_max_length	2000-01-01 00:00:00+00
+18	auth	0011_update_proxy_permissions	2000-01-01 00:00:00+00
+19	auth	0012_alter_user_first_name_max_length	2000-01-01 00:00:00+00
+21	axes	0002_auto_20151217_2044	2000-01-01 00:00:00+00
+22	axes	0003_auto_20160322_0929	2000-01-01 00:00:00+00
+23	axes	0004_auto_20181024_1538	2000-01-01 00:00:00+00
+24	axes	0005_remove_accessattempt_trusted	2000-01-01 00:00:00+00
+723	formdefaults	0001_initial	2000-01-01 00:00:00+00
+26	axes	0007_alter_accessattempt_unique_together	2000-01-01 00:00:00+00
+28	axes	0009_add_session_hash	2000-01-01 00:00:00+00
+29	axes	0010_accessattemptexpiration	2000-01-01 00:00:00+00
+30	dynamic_admin_columns	0001_initial	2000-01-01 00:00:00+00
+31	ewaluacja_common	0001_initial	2000-01-01 00:00:00+00
+32	ewaluacja_common	0002_populate_rodzaje_autorow	2000-01-01 00:00:00+00
+33	ewaluacja_common	0003_add_sort_field	2000-01-01 00:00:00+00
+34	ewaluacja_common	0004_alter_rodzaj_autora_options	2000-01-01 00:00:00+00
+37	pbn_api	0003_conference	2000-01-01 00:00:00+00
+38	pbn_api	0004_journal	2000-01-01 00:00:00+00
+264	bpp	0178_auto_20190905_2020	2000-01-01 00:00:00+00
+39	pbn_api	0005_auto_20210406_0436	2000-01-01 00:00:00+00
+986	bpp	0444_merge_20260616_1920	2000-01-01 00:00:00+00
+434	bpp	0339_autor_opis	2000-01-01 00:00:00+00
+43	pbn_api	0009_sentdata	2000-01-01 00:00:00+00
+44	pbn_api	0010_auto_20210504_0040	2000-01-01 00:00:00+00
+45	pbn_api	0011_auto_20210509_2339	2000-01-01 00:00:00+00
+46	pbn_api	0012_auto_20210621_0947	2000-01-01 00:00:00+00
+47	pbn_api	0013_oswiadczenieinstytucji_publikacjainstytucji	2000-01-01 00:00:00+00
+48	pbn_api	0014_auto_20210713_2229	2000-01-01 00:00:00+00
+49	pbn_api	0015_auto_20210713_2234	2000-01-01 00:00:00+00
+50	pbn_api	0016_auto_20210713_2235	2000-01-01 00:00:00+00
+51	pbn_api	0017_publikacjainstytucji_usertype	2000-01-01 00:00:00+00
+53	pbn_api	0019_auto_20210805_2306	2000-01-01 00:00:00+00
+54	pbn_api	0020_przemapuj	2000-01-01 00:00:00+00
+55	pbn_api	0021_auto_20210808_1204	2000-01-01 00:00:00+00
+56	pbn_api	0022_auto_20210809_0120	2000-01-01 00:00:00+00
+57	pbn_api	0023_auto_20210809_0122	2000-01-01 00:00:00+00
+58	pbn_api	0024_auto_20210809_0125	2000-01-01 00:00:00+00
+59	pbn_api	0025_auto_20210809_0149	2000-01-01 00:00:00+00
+60	pbn_api	0026_auto_20210816_0815	2000-01-01 00:00:00+00
+61	pbn_api	0027_przemapuj_rok_publikacji	2000-01-01 00:00:00+00
+193	bpp	0112_fix_refresh_cache	2000-01-01 00:00:00+00
+62	pbn_api	0028_gist_idx_publications	2000-01-01 00:00:00+00
+1226	import_polon	0018_plik_byl_zaszyfrowany	2000-01-01 00:00:00+00
 463	bpp	0356_drop_kc_komisja_centralna	2000-01-01 00:00:00+00
 114	bpp	0037_auto_20160124_1336	2000-01-01 00:00:00+00
 448	multiseek	0001_initial	2000-01-01 00:00:00+00
@@ -17506,6 +17556,7 @@ COPY public.django_migrations (id, app, name, applied) FROM stdin;
 524	bpp	0414_code_review_2026_05_fixes	2000-01-01 00:00:00+00
 525	bpp	0415_merge_20260504_0907	2000-01-01 00:00:00+00
 526	bpp	0416_rename_dynamic_columns_to_admin	2000-01-01 00:00:00+00
+880	raport_slotow	0001_initial	2000-01-01 00:00:00+00
 527	bpp	0417_remove_uczelnia_pokazuj_raport_autorow_and_more	2000-01-01 00:00:00+00
 528	bpp	0414_uczelnia_pbn_kasuj_dyscypliny_selektywnie	2000-01-01 00:00:00+00
 1138	oauth2_provider	0021_translatable_field_labels	2000-01-01 00:00:00+00
@@ -17689,7 +17740,6 @@ COPY public.django_migrations (id, app, name, applied) FROM stdin;
 1215	pbn_api	0081_uzupelnij_tlumacza_dyscyplin_fd608	2000-01-01 00:00:00+00
 829	miniblog	0003_alter_article_article_body	2000-01-01 00:00:00+00
 1146	bpp	0446_merge_20260619_2128	2000-01-01 00:00:00+00
-880	raport_slotow	0001_initial	2000-01-01 00:00:00+00
 512	bpp	0405_add_rok_to_oplaty_log	2000-01-01 00:00:00+00
 706	favicon	0003_site_manager	2000-01-01 00:00:00+00
 1135	bpp	0487_api_v1_przelaczniki	2000-01-01 00:00:00+00
@@ -17761,7 +17811,6 @@ COPY public.django_migrations (id, app, name, applied) FROM stdin;
 775	import_polon	0011_alter_wierszimportuplikuabsencji_ile_dni_and_more	2000-01-01 00:00:00+00
 776	import_polon	0012_importpolonoverride	2000-01-01 00:00:00+00
 777	import_polon	0013_alter_importpolonoverride_options_and_more	2000-01-01 00:00:00+00
-344	bpp	0252_slug	2000-01-01 00:00:00+00
 778	import_polon	0014_add_ignoruj_miejsce_pracy	2000-01-01 00:00:00+00
 780	import_pracownikow	0001_initial	2000-01-01 00:00:00+00
 781	import_pracownikow	0002_importpracownikowrow	2000-01-01 00:00:00+00
@@ -17783,7 +17832,6 @@ COPY public.django_migrations (id, app, name, applied) FROM stdin;
 1213	first_run_wizard	0002_stamp_existing_superuser	2000-01-01 00:00:00+00
 617	django_celery_results	0008_chordcounter	2000-01-01 00:00:00+00
 799	importer_publikacji	0006_merge_20260421_1100	2000-01-01 00:00:00+00
-800	importer_publikacji	0007_async_import_state	2000-01-01 00:00:00+00
 801	importer_publikacji	0008_identifier_textfield	2000-01-01 00:00:00+00
 1133	bpp	0485_projekt_finansowanie	2000-01-01 00:00:00+00
 1134	bpp	0486_seed_instytucje_finansujace	2000-01-01 00:00:00+00
@@ -18257,51 +18305,8 @@ COPY public.django_migrations (id, app, name, applied) FROM stdin;
 12	auth	0005_alter_user_last_login_null	2000-01-01 00:00:00+00
 13	auth	0006_require_contenttypes_0002	2000-01-01 00:00:00+00
 14	auth	0007_alter_validators_add_error_messages	2000-01-01 00:00:00+00
-15	auth	0008_alter_user_username_max_length	2000-01-01 00:00:00+00
-16	auth	0009_alter_user_last_name_max_length	2000-01-01 00:00:00+00
-17	auth	0010_alter_group_name_max_length	2000-01-01 00:00:00+00
-18	auth	0011_update_proxy_permissions	2000-01-01 00:00:00+00
-19	auth	0012_alter_user_first_name_max_length	2000-01-01 00:00:00+00
-21	axes	0002_auto_20151217_2044	2000-01-01 00:00:00+00
-22	axes	0003_auto_20160322_0929	2000-01-01 00:00:00+00
-23	axes	0004_auto_20181024_1538	2000-01-01 00:00:00+00
-24	axes	0005_remove_accessattempt_trusted	2000-01-01 00:00:00+00
-723	formdefaults	0001_initial	2000-01-01 00:00:00+00
-26	axes	0007_alter_accessattempt_unique_together	2000-01-01 00:00:00+00
-28	axes	0009_add_session_hash	2000-01-01 00:00:00+00
-29	axes	0010_accessattemptexpiration	2000-01-01 00:00:00+00
-30	dynamic_admin_columns	0001_initial	2000-01-01 00:00:00+00
-31	ewaluacja_common	0001_initial	2000-01-01 00:00:00+00
-32	ewaluacja_common	0002_populate_rodzaje_autorow	2000-01-01 00:00:00+00
-33	ewaluacja_common	0003_add_sort_field	2000-01-01 00:00:00+00
-34	ewaluacja_common	0004_alter_rodzaj_autora_options	2000-01-01 00:00:00+00
-37	pbn_api	0003_conference	2000-01-01 00:00:00+00
-38	pbn_api	0004_journal	2000-01-01 00:00:00+00
-264	bpp	0178_auto_20190905_2020	2000-01-01 00:00:00+00
-39	pbn_api	0005_auto_20210406_0436	2000-01-01 00:00:00+00
-986	bpp	0444_merge_20260616_1920	2000-01-01 00:00:00+00
-434	bpp	0339_autor_opis	2000-01-01 00:00:00+00
-43	pbn_api	0009_sentdata	2000-01-01 00:00:00+00
-44	pbn_api	0010_auto_20210504_0040	2000-01-01 00:00:00+00
-45	pbn_api	0011_auto_20210509_2339	2000-01-01 00:00:00+00
-46	pbn_api	0012_auto_20210621_0947	2000-01-01 00:00:00+00
-47	pbn_api	0013_oswiadczenieinstytucji_publikacjainstytucji	2000-01-01 00:00:00+00
-48	pbn_api	0014_auto_20210713_2229	2000-01-01 00:00:00+00
-49	pbn_api	0015_auto_20210713_2234	2000-01-01 00:00:00+00
-50	pbn_api	0016_auto_20210713_2235	2000-01-01 00:00:00+00
-51	pbn_api	0017_publikacjainstytucji_usertype	2000-01-01 00:00:00+00
-53	pbn_api	0019_auto_20210805_2306	2000-01-01 00:00:00+00
-54	pbn_api	0020_przemapuj	2000-01-01 00:00:00+00
-55	pbn_api	0021_auto_20210808_1204	2000-01-01 00:00:00+00
-56	pbn_api	0022_auto_20210809_0120	2000-01-01 00:00:00+00
-57	pbn_api	0023_auto_20210809_0122	2000-01-01 00:00:00+00
-58	pbn_api	0024_auto_20210809_0125	2000-01-01 00:00:00+00
-59	pbn_api	0025_auto_20210809_0149	2000-01-01 00:00:00+00
-60	pbn_api	0026_auto_20210816_0815	2000-01-01 00:00:00+00
-61	pbn_api	0027_przemapuj_rok_publikacji	2000-01-01 00:00:00+00
-193	bpp	0112_fix_refresh_cache	2000-01-01 00:00:00+00
-62	pbn_api	0028_gist_idx_publications	2000-01-01 00:00:00+00
-1226	import_polon	0018_plik_byl_zaszyfrowany	2000-01-01 00:00:00+00
+1227	bpp	0530_uczelnia_pbn_wysylaj_bez_identyfikatora_autora	2000-01-01 00:00:00+00
+1228	importer_publikacji	0022_importedauthor_pbn_uid	2000-01-01 00:00:00+00
 \.
 
 
@@ -18991,7 +18996,7 @@ COPY public.importer_autorow_pbn_matchcacherebuildoperation (id, created_on, las
 -- Data for Name: importer_publikacji_importedauthor; Type: TABLE DATA; Schema: public; Owner: -
 --
 
-COPY public.importer_publikacji_importedauthor (id, "order", family_name, given_name, orcid, match_status, matched_autor_id, matched_dyscyplina_id, matched_jednostka_id, session_id, dyscyplina_source, zapisany_jako, typ_ogolny) FROM stdin;
+COPY public.importer_publikacji_importedauthor (id, "order", family_name, given_name, orcid, match_status, matched_autor_id, matched_dyscyplina_id, matched_jednostka_id, session_id, dyscyplina_source, zapisany_jako, typ_ogolny, pbn_uid, pbn_uwagi) FROM stdin;
 \.
 
 
@@ -20440,7 +20445,7 @@ SELECT pg_catalog.setval('public.django_countdown_sitecountdown_id_seq', 1, fals
 -- Name: django_migrations_id_seq; Type: SEQUENCE SET; Schema: public; Owner: -
 --
 
-SELECT pg_catalog.setval('public.django_migrations_id_seq', 1226, true);
+SELECT pg_catalog.setval('public.django_migrations_id_seq', 1228, true);
 
 
 --
