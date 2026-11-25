@@ -1,0 +1,9 @@
+Raporty: model wybiera się teraz tylko raz — w źródle danych. Z formularza
+tabeli (moduł redagowania → **Raporty** → **Tabele**) oraz ze składowych
+raportu (**Raporty** → **Raporty** → „Składowe raportu”) zniknęło pole
+**„Podstawowy model”**, które powtarzało wybór ze źródła danych i mogło się
+z nim rozjechać. Nazwy atrybutów kolumn tabeli są sprawdzane względem modelu
+źródła danych, z którym tabela jest użyta w raporcie. Sekcja typu „wszystkie
+rekordy oprócz pasujących do źródeł danych raportu” (w domyślnych raportach
+„4.3. Inne”) nie wymaga już wskazania modelu. Istniejące tabele i raporty
+działają bez zmian.
