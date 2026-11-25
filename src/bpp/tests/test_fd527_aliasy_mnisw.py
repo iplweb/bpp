@@ -234,3 +234,16 @@ def test_fd527_eksport_xlsx_wartosci_pod_nowymi_naglowkami(prace):
     wiersz = dane.dict[0]
     assert wiersz["typ_mnisw"] == "Typ A"
     assert Decimal(str(wiersz["punkty_mnisw"])) == Decimal("140")
+
+
+def test_fd527_importer_i_formularz_raportu_zostaja_przy_mnisw():
+    """Strażnik: te etykiety już były „…MNiSW” — mają takie zostać."""
+    from importer_publikacji.forms import PunktacjaForm, VerifyForm
+    from nowe_raporty.forms import BaseRaportForm
+    from nowe_raporty.seeding import definicje
+
+    assert VerifyForm.base_fields["typ_kbn"].label == "Typ MNiSW"
+    assert PunktacjaForm.base_fields["punkty_kbn"].label == "Punkty MNiSW"
+    assert "Pkt. MNiSW" in [kolumna["label"] for kolumna in definicje.KOLUMNY]
+    etykiety = [str(p.label) for p in BaseRaportForm.base_fields.values()]
+    assert "Tylko prace punktowane (pkt MNiSW > 0)" in etykiety

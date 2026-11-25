@@ -2,6 +2,7 @@ import hashlib
 import json
 import logging
 
+from django.contrib import messages
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.core.cache import cache
 from django.db.models import Count, Sum
@@ -15,11 +16,12 @@ from django.shortcuts import redirect
 from django.views.decorators.cache import never_cache
 from django.views.decorators.http import require_POST
 from django.views.generic import View
-from multiseek.logic import get_registry
+from multiseek.logic import ParseError, UnknownField, UnknownOperation, get_registry
 from multiseek.models import SearchForm
 from multiseek.views import (
     MULTISEEK_SESSION_KEY,
     MULTISEEK_SESSION_KEY_REMOVED,
+    MultiseekFormPage,
     MultiseekResults,
     MultiseekSaveForm,
     manually_add_or_remove,
@@ -27,6 +29,7 @@ from multiseek.views import (
 
 from bpp.models import Uczelnia
 from bpp.multiseek_registry import registry as multiseek_registry
+from bpp.multiseek_registry.dawne_etykiety import popraw_formularz
 from bpp.multiseek_registry.djangoql_export import multiseek_form_to_djangoql
 from bpp.views.multiseek_export import (
     EXTRA_TYPES,
@@ -61,8 +64,68 @@ MULTISEEK_REPORT_TITLE_SESSION_KEY = "MULTISEEK_TITLE"
 MULTISEEK_MNOZACE_ZLACZENIA = frozenset({"bpp_autorzy_mat", "bpp_zewnetrzne_bazy_view"})
 
 
-class MyMultiseekResults(MultiseekResults):
+KOMUNIKAT_FORMULARZ_WYCZYSZCZONY = (
+    "Zapamiętanego formularza wyszukiwania nie udało się odtworzyć (zawierał "
+    "pole, którego nie ma już w wyszukiwarce), więc został wyczyszczony. "
+    "Ustaw kryteria wyszukiwania ponownie."
+)
+
+
+class FormularzZSesjiMixin:
+    """Bieżący formularz wyszukiwarki siedzi w sesji i pamięta pola po
+    etykiecie (FD#527).
+
+    1. Dawne etykiety pól (``bpp.multiseek_registry.dawne_etykiety``) są
+       przed użyciem zamieniane na obecne — w samej sesji, żeby zgadzały się
+       także z listą pól, którą dostaje JavaScript formularza.
+    2. Formularz, którego mimo to nie da się odczytać (nieznane pole,
+       nieznana operacja, zepsuta struktura), nie kończy się błędem 500 bez
+       wyjścia: czyścimy go i wracamy do pustej wyszukiwarki z komunikatem.
+    """
+
+    def _popraw_formularz_w_sesji(self):
+        poprawiony = popraw_formularz(self.request.session.get(MULTISEEK_SESSION_KEY))
+        if poprawiony is not None:
+            self.request.session[MULTISEEK_SESSION_KEY] = poprawiony
+
+    def _wyczysc_formularz(self, request):
+        for klucz in (MULTISEEK_SESSION_KEY, MULTISEEK_SESSION_KEY_REMOVED):
+            request.session.pop(klucz, None)
+        messages.warning(request, KOMUNIKAT_FORMULARZ_WYCZYSZCZONY)
+        return redirect("multiseek:index")
+
+    def dispatch(self, request, *args, **kwargs):
+        self._popraw_formularz_w_sesji()
+        try:
+            response = super().dispatch(request, *args, **kwargs)
+            if hasattr(response, "render") and not response.is_rendered:
+                # Szablon renderuje się leniwie — wyjątek z odtwarzania
+                # formularza musi wyjść tutaj, a nie poza ``dispatch``.
+                response.render()
+            return response
+        except (UnknownField, UnknownOperation, ParseError):
+            logger.warning(
+                "Wyszukiwarka: formularz z sesji nie daje się odczytać — czyszczę.",
+                exc_info=True,
+            )
+            return self._wyczysc_formularz(request)
+
+
+class BppMultiseekFormPage(FormularzZSesjiMixin, MultiseekFormPage):
+    """Strona formularza wyszukiwarki odporna na dawne/nieznane etykiety."""
+
+
+class MyMultiseekResults(FormularzZSesjiMixin, MultiseekResults):
     registry = "bpp.multiseek.registry"
+
+    def post(self, request, *args, **kwargs):
+        # ``post`` bazowej klasy zapisuje do sesji formularz z żądania — może
+        # pochodzić z karty otwartej przed zmianą etykiet.
+        poprawiony = popraw_formularz(request.POST.get("json"))
+        if poprawiony is not None:
+            request.POST = request.POST.copy()
+            request.POST["json"] = poprawiony
+        return super().post(request, *args, **kwargs)
 
     def get_queryset(self, only_those_ids=None):
         registry = get_registry(self.registry)
