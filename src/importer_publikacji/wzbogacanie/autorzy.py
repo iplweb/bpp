@@ -29,6 +29,8 @@ class WierszAutora:
     bpp: str = ""
     nr_bpp: int | None = None
     sposob: str = ""
+    #: Osoba ze źródła (słownik dostawcy) — dla brakujących w BPP.
+    osoba: dict | None = field(default=None, repr=False)
 
 
 @dataclass
@@ -39,6 +41,11 @@ class PorownanieAutorow:
 
     def _ile(self, status):
         return sum(1 for w in self.wiersze if w.status == status)
+
+    @property
+    def osoby_brakujace(self):
+        """Osoby ze źródła, których nie ma w rekordzie (w kolejności źródła)."""
+        return [w.osoba for w in self.wiersze if w.status == BRAK_W_BPP]
 
     @property
     def brakujacy(self):
@@ -143,7 +150,10 @@ def porownaj_autorow(rekord, osoby) -> PorownanieAutorow:
     for nr_zrodlo, osoba in enumerate(osoby, start=1):
         nr, sposob = autorzy.dopasuj(osoba)
         wiersz = WierszAutora(
-            status=BRAK_W_BPP, zrodlo=_nazwa_osoby(osoba), nr_zrodlo=nr_zrodlo
+            status=BRAK_W_BPP,
+            zrodlo=_nazwa_osoby(osoba),
+            nr_zrodlo=nr_zrodlo,
+            osoba=osoba,
         )
         if nr is not None:
             wiersz.status = ZGODNY if nr > najdalszy else INNA_KOLEJNOSC

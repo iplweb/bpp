@@ -77,7 +77,7 @@ Każde przeniesienie zostawia wpis w [historii rekordu](wydawnictwa.md#historia-
 pola Strony, Nr zeszytu”. Zmianę można tam porównać z poprzednią wersją
 i cofnąć.
 
-## Autorzy — tylko do podglądu {#autorzy}
+## Autorzy {#autorzy}
 
 Pod tabelą pól jest porównanie list autorów: kogo **brakuje w BPP**, kto
 jest **tylko w BPP** i kto jest **w innej kolejności**. Osoby są
@@ -86,9 +86,31 @@ nazwisku i pierwszej literze imienia; przy każdej osobie widać, jak ją
 dopasowano. Przy pracach z bardzo długą listą autorów pokazywane są same
 różnice.
 
-Autorów **nie przenosi się** tym narzędziem — dodanie autora wymaga
-wskazania jednostki i dyscypliny. Listę autorów popraw w formularzu rekordu
-(przycisk „✏️ Wróć do rekordu”).
+### Dodawanie brakujących autorów {#brakujacy-autorzy}
+
+Dodanie autora wymaga wskazania jednostki i dyscypliny, dlatego brakujące
+osoby dodaje się w kroku „Autorzy” [importera publikacji](importer-publikacji.md)
+— tym samym, co przy imporcie nowej pracy:
+
+1. Kliknij **„👥 Dodaj brakujących autorów (N) w importerze”** pod
+   podsumowaniem autorów.
+2. Otwiera się krok „Autorzy” z samymi brakującymi osobami i informacją,
+   że trafią do **istniejącego rekordu** — nowy rekord nie powstanie. Dla
+   każdej osoby dopasuj autora, jednostkę i dyscyplinę (albo utwórz nowego
+   autora), tak jak przy imporcie. Osobę, której nie chcesz dodawać, usuń
+   z listy przyciskiem „Usuń”.
+3. Kliknij **„Dodaj autorów do rekordu”**. Wracasz do porównania.
+
+Dodani autorzy trafiają **na koniec listy autorów** rekordu — kolejność
+popraw w formularzu rekordu. W historii rekordu zostaje wpis „Dodano
+autorów z CrossRef (kreator importera publikacji): …”. Osoby, która już
+jest na liście autorów rekordu, nie da się dodać drugi raz.
+
+Przycisk widzą osoby z dostępem do importera publikacji (grupa
+„wprowadzanie danych”). Gdy brakuje więcej niż 100 osób, dodaj autorów
+w formularzu rekordu albo zaimportuj pracę importerem. Autorów nadmiarowych
+i kolejność poprawia się w formularzu rekordu (przycisk „✏️ Wróć do
+rekordu”).
 
 ## PBN: wersje publikacji i odtwarzanie ze starszej wersji {#wersje-pbn}
 

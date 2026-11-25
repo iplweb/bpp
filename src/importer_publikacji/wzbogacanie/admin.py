@@ -4,7 +4,7 @@ from django.contrib import messages
 from django.contrib.admin.utils import quote, unquote
 from django.core.exceptions import PermissionDenied
 from django.db import transaction
-from django.http import Http404, HttpResponseRedirect
+from django.http import Http404, HttpResponseNotAllowed, HttpResponseRedirect
 from django.shortcuts import render
 from django.urls import path, reverse
 from django.utils.http import urlencode
@@ -37,6 +37,11 @@ class WzbogacanieRekorduAdminMixin:
         opts = self.model._meta
         return [
             path(
+                "<path:object_id>/wzbogac/<str:zrodlo>/autorzy/",
+                self.admin_site.admin_view(self.wzbogac_autorzy_view),
+                name=f"{opts.app_label}_{opts.model_name}_wzbogac_autorzy",
+            ),
+            path(
                 "<path:object_id>/wzbogac/<str:zrodlo>/",
                 self.admin_site.admin_view(self.wzbogac_view),
                 name=f"{opts.app_label}_{opts.model_name}_wzbogac",
@@ -65,7 +70,7 @@ class WzbogacanieRekorduAdminMixin:
             odswiez=odswiez,
         )
 
-    def wzbogac_view(self, request, object_id, zrodlo):
+    def _wzbogacany_rekord(self, request, object_id, zrodlo):
         if zrodlo not in zrodla.NAZWY_ZRODEL:
             raise Http404("Nieznane źródło danych.")
         obj = self.get_object(request, unquote(object_id))
@@ -75,6 +80,66 @@ class WzbogacanieRekorduAdminMixin:
             raise PermissionDenied
         if getattr(obj, "deleted_at", None) is not None:
             raise Http404("Rekord jest w koszu — najpierw przywróć go z kosza.")
+        return obj
+
+    @staticmethod
+    def _moze_uzywac_importera(request):
+        """Krok „Autorzy” jest częścią importera publikacji — te same
+        uprawnienia (``ImporterPermissionMixin``)."""
+        from bpp.const import GR_WPROWADZANIE_DANYCH
+
+        user = request.user
+        return (
+            user.is_superuser
+            or user.groups.filter(name=GR_WPROWADZANIE_DANYCH).exists()
+        )
+
+    def wzbogac_autorzy_view(self, request, object_id, zrodlo):
+        """Załóż sesję importera z brakującymi autorami i otwórz jej krok
+        „Autorzy”; dodani tam autorzy trafią do tego rekordu."""
+        from bpp.models import Uczelnia
+
+        from . import dodawanie_autorow
+
+        obj = self._wzbogacany_rekord(request, object_id, zrodlo)
+        if request.method != "POST":
+            return HttpResponseNotAllowed(["POST"])
+        if not self._moze_uzywac_importera(request):
+            raise PermissionDenied
+        wersja = request.POST.get("wersja") or ""
+        powrot = self._wzbogac_url(obj, zrodlo, wersja=wersja)
+        dane = self._pobierz_dane_zrodla(request, obj, zrodlo, wersja, odswiez=False)
+        if dane.publikacja is None:
+            messages.error(request, dane.blad)
+            return HttpResponseRedirect(powrot)
+        osoby = porownaj_autorow(obj, dane.publikacja.authors).osoby_brakujace
+        if not osoby:
+            messages.warning(request, "W rekordzie nie brakuje już żadnego autora.")
+            return HttpResponseRedirect(powrot)
+        if len(osoby) > dodawanie_autorow.LIMIT_OSOB:
+            messages.error(
+                request,
+                f"W rekordzie brakuje {len(osoby)} autorów — to za dużo na "
+                f"dodawanie tą drogą (limit: {dodawanie_autorow.LIMIT_OSOB}). "
+                "Zaimportuj pracę importerem publikacji albo dodaj autorów "
+                "w formularzu rekordu.",
+            )
+            return HttpResponseRedirect(powrot)
+        session = dodawanie_autorow.utworz_sesje(
+            request.user,
+            Uczelnia.objects.get_for_request(request),
+            obj,
+            dane.nazwa,
+            (obj.doi if zrodlo == zrodla.CROSSREF else obj.pbn_uid_id) or "",
+            osoby,
+            powrot,
+        )
+        return HttpResponseRedirect(
+            reverse("importer_publikacji:authors", kwargs={"session_id": session.pk})
+        )
+
+    def wzbogac_view(self, request, object_id, zrodlo):
+        obj = self._wzbogacany_rekord(request, object_id, zrodlo)
 
         wersja = request.POST.get("wersja") or request.GET.get("wersja") or ""
         if request.method == "POST":
@@ -162,6 +227,10 @@ class WzbogacanieRekorduAdminMixin:
                 for w in dane.wersje
             ],
             "identyfikator_wersji": identyfikator_wersji,
+            "moze_dodawac_autorow": self._moze_uzywac_importera(request),
+            "autorzy_url": reverse(
+                f"{nazwa}_wzbogac_autorzy", args=(quote(obj.pk), dane.zrodlo)
+            ),
             "changelist_url": reverse(f"{nazwa}_changelist"),
             "change_url": reverse(f"{nazwa}_change", args=(quote(obj.pk),)),
             "history_url": reverse(f"{nazwa}_history", args=(quote(obj.pk),)),

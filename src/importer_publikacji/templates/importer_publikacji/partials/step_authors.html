@@ -1,4 +1,5 @@
-{% load static %}
+{% load static wzbogacanie_tags %}
+{% wzbogacany_rekord session as wzbogacany %}
 <style>
 /* Sekcja kandydatów w modalu edycji autora — lista klikalnych
    wierszy z badge'ami; wybrany jest podświetlony. */
@@ -64,6 +65,17 @@
         <span class="fi-torsos-all"></span>
         Dopasowanie autorów
     </h4>
+    {% if wzbogacany %}
+        {# FD#517: sesja dodaje brakujących autorów do istniejącego rekordu. #}
+        <div class="callout primary">
+            <span class="fi-info"></span>
+            Dodajesz brakujących autorów do <strong>istniejącego rekordu</strong>:
+            „{{ wzbogacany.rekord|default:"(rekord usunięty)" }}”. Nowy rekord nie powstanie.
+            Dopasuj każdą osobę (autor, jednostka, dyscyplina) i kliknij
+            „Dodaj autorów do rekordu”. Osobę, której nie chcesz dodawać, usuń z listy.
+            {% if wzbogacany.powrot %}<a href="{{ wzbogacany.powrot }}">Wróć do porównania bez dodawania</a>{% endif %}
+        </div>
+    {% endif %}
 
     <div class="callout secondary">
         <div class="grid-x grid-margin-x small-up-2 medium-up-4">
@@ -220,6 +232,7 @@
                   hx-target="#importer-wizard"
                   hx-indicator="#authors-spinner">
                 {% csrf_token %}
+                {% if not wzbogacany %}
                 {# Patent pomija krok Source → „Wstecz" cofa do Verify. #}
                 <button type="button"
                         class="button secondary"
@@ -232,13 +245,14 @@
                     <span class="fi-arrow-left"></span>
                     Wstecz
                 </button>
+                {% endif %}
                 <button type="submit"
                         class="button"
                         {% if stats.unmatched > 0 %}
                             disabled
                         {% endif %}>
                     <span class="fi-arrow-right"></span>
-                    Potwierdź i przejdź dalej
+                    {% if wzbogacany %}Dodaj autorów do rekordu{% else %}Potwierdź i przejdź dalej{% endif %}
                 </button>
             </form>
         </div>

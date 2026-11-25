@@ -403,12 +403,12 @@ def test_autorzy_brakujacy_nadmiarowi_i_kolejnosc(rekord, jednostka):
     assert wynik.sa_roznice
 
 
-def test_autorzy_sa_tylko_do_podgladu(admin_client, rekord, crossref, jednostka):
+def test_autorzy_podglad_niczego_nie_zmienia(admin_client, rekord, crossref, jednostka):
     _autor(rekord, jednostka, "Jan", "Kowalski")
 
     tresc = admin_client.get(_url(rekord)).content.decode()
 
-    assert "Autorzy — tylko do podglądu" in tresc
+    assert "<h2>Autorzy</h2>" in tresc
     assert "Brakuje w BPP: <strong>1</strong>" in tresc
     assert rekord.autorzy_set.count() == 1
 
@@ -424,3 +424,199 @@ def test_crossref_niedostepny_daje_czytelny_komunikat(admin_client, rekord, mock
 
     assert res.status_code == 200
     assert "Nie udało się połączyć z CrossRef" in res.content.decode()
+
+
+# --- Dodawanie brakujących autorów przez krok „Autorzy” importera -----------
+
+
+def _url_autorzy(rekord, zrodlo="crossref"):
+    return reverse(
+        "admin:bpp_wydawnictwo_ciagle_wzbogac_autorzy", args=(rekord.pk, zrodlo)
+    )
+
+
+@pytest.fixture
+def sesja_autorow(admin_client, rekord, crossref, jednostka, uczelnia):
+    """Rekord ma Kowalskiego; w CrossRef jest jeszcze Nowak Anna — sesja
+    importera z samą brakującą osobą, otwarta przyciskiem z porównania."""
+    from importer_publikacji.models import ImportSession
+
+    _autor(rekord, jednostka, "Jan", "Kowalski")
+    res = admin_client.post(_url_autorzy(rekord))
+    session = ImportSession.objects.get()
+    assert res.status_code == 302
+    assert res.url == reverse(
+        "importer_publikacji:authors", kwargs={"session_id": session.pk}
+    )
+    return session
+
+
+def test_przycisk_dodawania_brakujacych_autorow(
+    admin_client, rekord, crossref, jednostka
+):
+    _autor(rekord, jednostka, "Jan", "Kowalski")
+
+    tresc = admin_client.get(_url(rekord)).content.decode()
+
+    assert "Dodaj brakujących autorów (1) w importerze" in tresc
+    assert _url_autorzy(rekord) in tresc
+
+
+def test_sesja_autorow_zawiera_tylko_brakujace_osoby(sesja_autorow, rekord):
+    from importer_publikacji.wzbogacanie.dodawanie_autorow import (
+        jest_sesja_wzbogacania,
+        rekord_sesji,
+    )
+
+    assert jest_sesja_wzbogacania(sesja_autorow)
+    assert rekord_sesji(sesja_autorow) == rekord
+    assert sesja_autorow.status == sesja_autorow.Status.SOURCE_MATCHED
+    assert sesja_autorow.normalized_data["year"] == rekord.rok
+    assert [(a.family_name, a.given_name) for a in sesja_autorow.authors.all()] == [
+        ("Nowak", "Anna")
+    ]
+
+
+def test_krok_autorzy_mowi_ze_to_istniejacy_rekord(admin_client, sesja_autorow):
+    url = reverse(
+        "importer_publikacji:authors", kwargs={"session_id": sesja_autorow.pk}
+    )
+
+    tresc = admin_client.get(url).content.decode()
+
+    assert "istniejącego rekordu" in tresc
+    assert "Dodaj autorów do rekordu" in tresc
+    assert "Potwierdź i przejdź dalej" not in tresc
+
+
+def test_zwykla_sesja_importu_ma_krok_autorzy_bez_zmian(admin_client, uczelnia):
+    from importer_publikacji.models import ImportSession
+
+    session = baker.make(
+        ImportSession,
+        uczelnia=uczelnia,
+        status=ImportSession.Status.SOURCE_MATCHED,
+        normalized_data={"title": "X", "year": 2024},
+        raw_data={},
+        matched_data={},
+    )
+    url = reverse("importer_publikacji:authors", kwargs={"session_id": session.pk})
+
+    tresc = admin_client.get(url).content.decode()
+
+    assert "Potwierdź i przejdź dalej" in tresc
+    assert "istniejącego rekordu" not in tresc
+    assert "Dodaj autorów do rekordu" not in tresc
+
+
+def test_potwierdzenie_dodaje_autora_do_istniejacego_rekordu(
+    admin_client, admin_user, sesja_autorow, rekord, jednostka
+):
+    from importer_publikacji.models import ImportedAuthor, ImportSession
+
+    nowak = baker.make(Autor, imiona="Anna", nazwisko="Nowak")
+    ia = sesja_autorow.authors.get()
+    ia.matched_autor = nowak
+    ia.matched_jednostka = jednostka
+    ia.match_status = ImportedAuthor.MatchStatus.MANUAL
+    ia.save()
+    ile_rekordow = Wydawnictwo_Ciagle.objects.count()
+
+    res = admin_client.post(
+        reverse(
+            "importer_publikacji:authors-confirm",
+            kwargs={"session_id": sesja_autorow.pk},
+        ),
+        HTTP_HX_REQUEST="true",
+    )
+
+    # Wracamy do porównania; nowy rekord nie powstał, sesja nie zostaje.
+    assert res["HX-Redirect"] == _url(rekord)
+    assert Wydawnictwo_Ciagle.objects.count() == ile_rekordow
+    assert not ImportSession.objects.exists()
+    autorzy = list(
+        rekord.autorzy_set.order_by("kolejnosc").values_list(
+            "autor__nazwisko", flat=True
+        )
+    )
+    assert autorzy == ["Kowalski", "Nowak"]
+    wpis = LogEntry.objects.get(object_id=str(rekord.pk), action_flag=CHANGE)
+    assert wpis.user == admin_user
+    assert wpis.change_message == (
+        f"Dodano autorów z CrossRef (kreator importera publikacji): {nowak}"
+    )
+    assert Version.objects.get_for_object(rekord).first().revision.comment == (
+        wpis.change_message
+    )
+    # Po dodaniu listy autorów się zgadzają.
+    assert "Lista autorów się zgadza" in admin_client.get(_url(rekord)).content.decode()
+
+
+def test_niedopasowana_osoba_blokuje_dodanie(admin_client, sesja_autorow, rekord):
+    sesja_autorow.authors.update(matched_autor=None)
+
+    res = admin_client.post(
+        reverse(
+            "importer_publikacji:authors-confirm",
+            kwargs={"session_id": sesja_autorow.pk},
+        ),
+        HTTP_HX_REQUEST="true",
+    )
+
+    assert "niedopasowany autor" in res.content.decode()
+    assert rekord.autorzy_set.count() == 1
+
+
+def test_autor_ktory_juz_jest_w_rekordzie_nie_jest_dublowany(
+    admin_client, sesja_autorow, rekord, jednostka
+):
+    from importer_publikacji.models import ImportedAuthor, ImportSession
+
+    kowalski = rekord.autorzy_set.get().autor
+    sesja_autorow.authors.update(
+        matched_autor=kowalski,
+        matched_jednostka=jednostka,
+        match_status=ImportedAuthor.MatchStatus.MANUAL,
+    )
+
+    res = admin_client.post(
+        reverse(
+            "importer_publikacji:authors-confirm",
+            kwargs={"session_id": sesja_autorow.pk},
+        ),
+        HTTP_HX_REQUEST="true",
+    )
+
+    assert "są już na liście autorów rekordu" in res.content.decode()
+    assert rekord.autorzy_set.count() == 1
+    assert ImportSession.objects.exists()
+    assert not LogEntry.objects.filter(object_id=str(rekord.pk)).exists()
+
+
+def test_sesja_dodawania_autorow_nie_tworzy_nowego_rekordu(sesja_autorow):
+    from django.core.exceptions import ValidationError
+
+    from importer_publikacji.views.publikacja import _create_publication
+
+    ile = Wydawnictwo_Ciagle.objects.count()
+
+    with pytest.raises(ValidationError, match="nie tworzy"):
+        _create_publication(sesja_autorow)
+
+    assert Wydawnictwo_Ciagle.objects.count() == ile
+
+
+def test_dodawanie_autorow_wymaga_uprawnien_importera(client, rekord, crossref):
+    from importer_publikacji.models import ImportSession
+
+    user = baker.make("bpp.BppUser", is_staff=True, is_active=True)
+    user.user_permissions.add(
+        Permission.objects.get(codename="change_wydawnictwo_ciagle")
+    )
+    client.force_login(user)
+
+    assert client.post(_url_autorzy(rekord)).status_code == 403
+    assert not ImportSession.objects.exists()
+    tresc = client.get(_url(rekord)).content.decode()
+    assert "w importerze</button>" not in tresc
+    assert "wymaga uprawnień do importera publikacji" in tresc
