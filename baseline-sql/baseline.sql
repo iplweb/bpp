@@ -4411,7 +4411,11 @@ CREATE TABLE public.bpp_patent (
     slowa_kluczowe_eng character varying(255)[],
     deleted_at timestamp with time zone,
     restored_at timestamp with time zone,
-    transaction_id uuid
+    transaction_id uuid,
+    data_opublikowania date,
+    kraj character varying(100) NOT NULL,
+    typ_patentu character varying(16) NOT NULL,
+    uprawnieni text NOT NULL
 );
 
 
@@ -16136,7 +16140,7 @@ COPY public.bpp_organprzyznajacynagrody (id, nazwa, skrot) FROM stdin;
 -- Data for Name: bpp_patent; Type: TABLE DATA; Schema: public; Owner: -
 --
 
-COPY public.bpp_patent (id, opis_bibliograficzny_cache, opis_bibliograficzny_autorzy_cache, opis_bibliograficzny_zapisani_autorzy_cache, ostatnio_zmieniony, adnotacje, rok, www, recenzowana, impact_factor, punkty_kbn, index_copernicus, punktacja_wewnetrzna, weryfikacja_punktacji, informacje, szczegoly, uwagi, utworzono, search_index, tytul_oryginalny_sort, tytul_oryginalny, data_decyzji, status_korekty_id, informacja_z_id, dostep_dnia, public_dostep_dnia, public_www, strony, tom, legacy_data, pbn_id, data_zgloszenia, numer_prawa_wylacznego, numer_zgloszenia, wdrozenie, wydzial_id, rodzaj_prawa_id, punktacja_snip, tekst_po_ostatnim_autorze, tekst_przed_pierwszym_autorem, nie_eksportuj_przez_api, slug, cached_punkty_dyscyplin, slowa_kluczowe_eng, deleted_at, restored_at, transaction_id) FROM stdin;
+COPY public.bpp_patent (id, opis_bibliograficzny_cache, opis_bibliograficzny_autorzy_cache, opis_bibliograficzny_zapisani_autorzy_cache, ostatnio_zmieniony, adnotacje, rok, www, recenzowana, impact_factor, punkty_kbn, index_copernicus, punktacja_wewnetrzna, weryfikacja_punktacji, informacje, szczegoly, uwagi, utworzono, search_index, tytul_oryginalny_sort, tytul_oryginalny, data_decyzji, status_korekty_id, informacja_z_id, dostep_dnia, public_dostep_dnia, public_www, strony, tom, legacy_data, pbn_id, data_zgloszenia, numer_prawa_wylacznego, numer_zgloszenia, wdrozenie, wydzial_id, rodzaj_prawa_id, punktacja_snip, tekst_po_ostatnim_autorze, tekst_przed_pierwszym_autorem, nie_eksportuj_przez_api, slug, cached_punkty_dyscyplin, slowa_kluczowe_eng, deleted_at, restored_at, transaction_id, data_opublikowania, kraj, typ_patentu, uprawnieni) FROM stdin;
 \.
 
 
@@ -17085,6 +17089,53 @@ COPY public.django_countdown_sitecountdown (id, countdown_time, message, long_de
 --
 
 COPY public.django_migrations (id, app, name, applied) FROM stdin;
+155	bpp	0074_django110	2000-01-01 00:00:00+00
+162	bpp	0081_konferencje	2000-01-01 00:00:00+00
+810	integrator2	0003_django110_py3k	2000-01-01 00:00:00+00
+1207	pbn_downloader_app	0005_task_user_opcjonalny	2000-01-01 00:00:00+00
+256	bpp	0171_auto_20190806_2015	2000-01-01 00:00:00+00
+1053	pbn_api	0075_sentdata_fee_sent_sentdata_fee_uploaded_okay	2000-01-01 00:00:00+00
+1054	przemapuj_prace_autora	0003_przemapoaniepracautora_zrodlowy_import	2000-01-01 00:00:00+00
+1055	import_pracownikow	0016_importpracownikow_tworz_brakujace_jednostki_and_more	2000-01-01 00:00:00+00
+1056	import_pracownikow	0017_importpracownikow_tworz_brakujace_tytuly_and_more	2000-01-01 00:00:00+00
+1057	import_pracownikow	0018_importpracownikow_zakres_integracji	2000-01-01 00:00:00+00
+969	bpp	0416_merge_20260428_1806	2000-01-01 00:00:00+00
+1065	oauth2_provider	0005_auto_20211222_2352	2000-01-01 00:00:00+00
+1066	oauth2_provider	0006_alter_application_client_secret	2000-01-01 00:00:00+00
+1067	oauth2_provider	0007_application_post_logout_redirect_uris	2000-01-01 00:00:00+00
+1068	oauth2_provider	0008_alter_accesstoken_token	2000-01-01 00:00:00+00
+1069	oauth2_provider	0009_add_hash_client_secret	2000-01-01 00:00:00+00
+1070	oauth2_provider	0010_application_allowed_origins	2000-01-01 00:00:00+00
+1071	oauth2_provider	0011_refreshtoken_token_family	2000-01-01 00:00:00+00
+1112	bpp	0473_guard_autor_jednostka_okresy_bez_nakladan	2000-01-01 00:00:00+00
+1113	bpp	0474_constraint_autor_jednostka_okresy_bez_nakladan	2000-01-01 00:00:00+00
+1114	bpp	0475_merge_20260724_1726	2000-01-01 00:00:00+00
+1115	ewaluacja_optymalizacja	0016_statusodpinaniawszystkich	2000-01-01 00:00:00+00
+1116	import_list_ministerialnych	0009_alter_importlistministerialnych_options_and_more	2000-01-01 00:00:00+00
+69	pbn_api	0035_django32	2000-01-01 00:00:00+00
+786	import_pracownikow	0007_django32	2000-01-01 00:00:00+00
+1072	oauth2_provider	0012_add_token_checksum	2000-01-01 00:00:00+00
+273	bpp	0186_auto_20191021_2008	2000-01-01 00:00:00+00
+1073	oauth2_provider	0013_alter_application_authorization_grant_type_device	2000-01-01 00:00:00+00
+1074	oauth2_provider	0014_alter_help_text	2000-01-01 00:00:00+00
+1075	import_pracownikow	0020_confidence_status_reczny	2000-01-01 00:00:00+00
+1076	import_pracownikow	0021_pola_data_zmian_i_przepnij_wszystkie	2000-01-01 00:00:00+00
+1077	importer_publikacji	0019_multipleworksimport_uczelnia	2000-01-01 00:00:00+00
+319	bpp	0225_charakter_sloty_referat	2000-01-01 00:00:00+00
+996	bpp	0453_zrodlo_trigram_indexes	2000-01-01 00:00:00+00
+1078	pbn_export_queue	0010_atomowa_kolejka_pbn	2000-01-01 00:00:00+00
+1079	bpp	0468_stopien_sluzbowy_stanowisko_dydaktyczne	2000-01-01 00:00:00+00
+1080	first_run_wizard	0001_initial	2000-01-01 00:00:00+00
+1081	import_pracownikow	0022_alter_importpracownikowrow_confidence	2000-01-01 00:00:00+00
+1082	import_pracownikow	0023_slowniki_stopnie_stanowiska	2000-01-01 00:00:00+00
+1083	bpp	0469_przyszle_daty_zakonczenia_zatrudnienia	2000-01-01 00:00:00+00
+1084	import_pracownikow	0024_importpracownikowrow_stany_pol_snapshot	2000-01-01 00:00:00+00
+1085	oidc_integration	0001_initial	2000-01-01 00:00:00+00
+1086	orcid_integration	0001_initial	2000-01-01 00:00:00+00
+1087	import_pracownikow	0025_importpracownikow_plik_po_imporcie	2000-01-01 00:00:00+00
+1108	bpp	0473_szablon_nazwa_szablonu	2000-01-01 00:00:00+00
+1109	bpp	0474_merge_20260724_1635	2000-01-01 00:00:00+00
+1229	bpp	0531_eksport_autora_z_sumami_punktacji	2000-01-01 00:00:00+00
 235	bpp	0153_django21	2000-01-01 00:00:00+00
 105	bpp	0028_openaccess	2000-01-01 00:00:00+00
 915	rozbieznosci_dyscyplin	0014_recreate	2000-01-01 00:00:00+00
@@ -17336,7 +17387,6 @@ COPY public.django_migrations (id, app, name, applied) FROM stdin;
 214	bpp	0133_liczba_autorow	2000-01-01 00:00:00+00
 1220	bpp	0528_motyw_wlasny	2000-01-01 00:00:00+00
 610	django_celery_results	0001_initial	2000-01-01 00:00:00+00
-155	bpp	0074_django110	2000-01-01 00:00:00+00
 3	bpp	0001_initial	2000-01-01 00:00:00+00
 215	bpp	0134_uczelnia_domyslnie_afiliuje	2000-01-01 00:00:00+00
 216	bpp	0134_liczba_cytowan_wyszukaj	2000-01-01 00:00:00+00
@@ -17721,7 +17771,6 @@ COPY public.django_migrations (id, app, name, applied) FROM stdin;
 648	easyaudit	0015_auto_20201019_1217	2000-01-01 00:00:00+00
 649	easyaudit	0016_alter_crudevent_event_type	2000-01-01 00:00:00+00
 650	easyaudit	0017_alter_requestevent_datetime	2000-01-01 00:00:00+00
-162	bpp	0081_konferencje	2000-01-01 00:00:00+00
 651	easyaudit	0018_rename_crudevent_object_id_content_type_index	2000-01-01 00:00:00+00
 652	easyaudit	0019_alter_crudevent_changed_fields_and_more	2000-01-01 00:00:00+00
 654	ewaluacja2021	0002_auto_20211026_1137	2000-01-01 00:00:00+00
@@ -17891,7 +17940,6 @@ COPY public.django_migrations (id, app, name, applied) FROM stdin;
 804	importer_publikacji	0006_merge_20260420_2212	2000-01-01 00:00:00+00
 806	importer_publikacji	0011_merge_20260601_0632	2000-01-01 00:00:00+00
 807	importer_publikacji	0012_alter_importedauthor_session	2000-01-01 00:00:00+00
-810	integrator2	0003_django110_py3k	2000-01-01 00:00:00+00
 812	integrator2	0005_nullbooleanfield	2000-01-01 00:00:00+00
 813	integrator2	0006_move_files_to_protected	2000-01-01 00:00:00+00
 815	komparator_pbn	0002_pbndownloadtask_current_step_and_more	2000-01-01 00:00:00+00
@@ -17982,7 +18030,6 @@ COPY public.django_migrations (id, app, name, applied) FROM stdin;
 156	bpp	0075_auto_20170622_0057	2000-01-01 00:00:00+00
 157	bpp	0076_auto_20170622_0058	2000-01-01 00:00:00+00
 158	bpp	0077_auto_20170624_0130	2000-01-01 00:00:00+00
-1207	pbn_downloader_app	0005_task_user_opcjonalny	2000-01-01 00:00:00+00
 643	easyaudit	0010_repr_text	2000-01-01 00:00:00+00
 122	bpp	0045_auto_20160809_0004	2000-01-01 00:00:00+00
 615	django_celery_results	0006_taskresult_date_created	2000-01-01 00:00:00+00
@@ -18266,49 +18313,7 @@ COPY public.django_migrations (id, app, name, applied) FROM stdin;
 1118	import_pracownikow	0028_nadpisuj_daty_zatrudnienia	2000-01-01 00:00:00+00
 388	bpp	0295_instaluj_szablony	2000-01-01 00:00:00+00
 1052	importer_publikacji	0016_alter_importsession_status	2000-01-01 00:00:00+00
-256	bpp	0171_auto_20190806_2015	2000-01-01 00:00:00+00
-1053	pbn_api	0075_sentdata_fee_sent_sentdata_fee_uploaded_okay	2000-01-01 00:00:00+00
-1054	przemapuj_prace_autora	0003_przemapoaniepracautora_zrodlowy_import	2000-01-01 00:00:00+00
-1055	import_pracownikow	0016_importpracownikow_tworz_brakujace_jednostki_and_more	2000-01-01 00:00:00+00
-1056	import_pracownikow	0017_importpracownikow_tworz_brakujace_tytuly_and_more	2000-01-01 00:00:00+00
-1057	import_pracownikow	0018_importpracownikow_zakres_integracji	2000-01-01 00:00:00+00
-969	bpp	0416_merge_20260428_1806	2000-01-01 00:00:00+00
-1065	oauth2_provider	0005_auto_20211222_2352	2000-01-01 00:00:00+00
-1066	oauth2_provider	0006_alter_application_client_secret	2000-01-01 00:00:00+00
-1067	oauth2_provider	0007_application_post_logout_redirect_uris	2000-01-01 00:00:00+00
-1068	oauth2_provider	0008_alter_accesstoken_token	2000-01-01 00:00:00+00
-1069	oauth2_provider	0009_add_hash_client_secret	2000-01-01 00:00:00+00
-1070	oauth2_provider	0010_application_allowed_origins	2000-01-01 00:00:00+00
-1071	oauth2_provider	0011_refreshtoken_token_family	2000-01-01 00:00:00+00
-1112	bpp	0473_guard_autor_jednostka_okresy_bez_nakladan	2000-01-01 00:00:00+00
-1113	bpp	0474_constraint_autor_jednostka_okresy_bez_nakladan	2000-01-01 00:00:00+00
-1114	bpp	0475_merge_20260724_1726	2000-01-01 00:00:00+00
-1115	ewaluacja_optymalizacja	0016_statusodpinaniawszystkich	2000-01-01 00:00:00+00
-1116	import_list_ministerialnych	0009_alter_importlistministerialnych_options_and_more	2000-01-01 00:00:00+00
-69	pbn_api	0035_django32	2000-01-01 00:00:00+00
-786	import_pracownikow	0007_django32	2000-01-01 00:00:00+00
-1072	oauth2_provider	0012_add_token_checksum	2000-01-01 00:00:00+00
-273	bpp	0186_auto_20191021_2008	2000-01-01 00:00:00+00
-1073	oauth2_provider	0013_alter_application_authorization_grant_type_device	2000-01-01 00:00:00+00
-1074	oauth2_provider	0014_alter_help_text	2000-01-01 00:00:00+00
-1075	import_pracownikow	0020_confidence_status_reczny	2000-01-01 00:00:00+00
-1076	import_pracownikow	0021_pola_data_zmian_i_przepnij_wszystkie	2000-01-01 00:00:00+00
-1077	importer_publikacji	0019_multipleworksimport_uczelnia	2000-01-01 00:00:00+00
-319	bpp	0225_charakter_sloty_referat	2000-01-01 00:00:00+00
-996	bpp	0453_zrodlo_trigram_indexes	2000-01-01 00:00:00+00
-1078	pbn_export_queue	0010_atomowa_kolejka_pbn	2000-01-01 00:00:00+00
-1079	bpp	0468_stopien_sluzbowy_stanowisko_dydaktyczne	2000-01-01 00:00:00+00
-1080	first_run_wizard	0001_initial	2000-01-01 00:00:00+00
-1081	import_pracownikow	0022_alter_importpracownikowrow_confidence	2000-01-01 00:00:00+00
-1082	import_pracownikow	0023_slowniki_stopnie_stanowiska	2000-01-01 00:00:00+00
-1083	bpp	0469_przyszle_daty_zakonczenia_zatrudnienia	2000-01-01 00:00:00+00
-1084	import_pracownikow	0024_importpracownikowrow_stany_pol_snapshot	2000-01-01 00:00:00+00
-1085	oidc_integration	0001_initial	2000-01-01 00:00:00+00
-1086	orcid_integration	0001_initial	2000-01-01 00:00:00+00
-1087	import_pracownikow	0025_importpracownikow_plik_po_imporcie	2000-01-01 00:00:00+00
-1108	bpp	0473_szablon_nazwa_szablonu	2000-01-01 00:00:00+00
-1109	bpp	0474_merge_20260724_1635	2000-01-01 00:00:00+00
-1229	bpp	0531_eksport_autora_z_sumami_punktacji	2000-01-01 00:00:00+00
+1230	bpp	0532_patent_pola_fd449	2000-01-01 00:00:00+00
 \.
 
 
@@ -20447,7 +20452,7 @@ SELECT pg_catalog.setval('public.django_countdown_sitecountdown_id_seq', 1, fals
 -- Name: django_migrations_id_seq; Type: SEQUENCE SET; Schema: public; Owner: -
 --
 
-SELECT pg_catalog.setval('public.django_migrations_id_seq', 1229, true);
+SELECT pg_catalog.setval('public.django_migrations_id_seq', 1230, true);
 
 
 --
@@ -34549,28 +34554,28 @@ CREATE TRIGGER d_aft_row_upd_on_bpp_patent_autor_patent_slug AFTER UPDATE ON pub
 -- Name: bpp_patent d_aft_row_upd_on_bpp_patent_patent_cached_punkty_dyscyd3c7; Type: TRIGGER; Schema: public; Owner: -
 --
 
-CREATE TRIGGER d_aft_row_upd_on_bpp_patent_patent_cached_punkty_dyscyd3c7 AFTER UPDATE ON public.bpp_patent FOR EACH ROW WHEN (((old.id IS DISTINCT FROM new.id) OR (old.nie_eksportuj_przez_api IS DISTINCT FROM new.nie_eksportuj_przez_api) OR (old.deleted_at IS DISTINCT FROM new.deleted_at) OR (old.restored_at IS DISTINCT FROM new.restored_at) OR (old.transaction_id IS DISTINCT FROM new.transaction_id) OR (old.tekst_przed_pierwszym_autorem IS DISTINCT FROM new.tekst_przed_pierwszym_autorem) OR (old.tekst_po_ostatnim_autorze IS DISTINCT FROM new.tekst_po_ostatnim_autorze) OR (old.pbn_id IS DISTINCT FROM new.pbn_id) OR (old.slowa_kluczowe_eng IS DISTINCT FROM new.slowa_kluczowe_eng) OR (old.adnotacje IS DISTINCT FROM new.adnotacje) OR (old.informacja_z_id IS DISTINCT FROM new.informacja_z_id) OR (old.status_korekty_id IS DISTINCT FROM new.status_korekty_id) OR (old.informacje IS DISTINCT FROM new.informacje) OR ((old.szczegoly)::text IS DISTINCT FROM (new.szczegoly)::text) OR (old.uwagi IS DISTINCT FROM new.uwagi) OR (old.utworzono IS DISTINCT FROM new.utworzono) OR ((old.strony)::text IS DISTINCT FROM (new.strony)::text) OR ((old.tom)::text IS DISTINCT FROM (new.tom)::text) OR (old.recenzowana IS DISTINCT FROM new.recenzowana) OR (old.rok IS DISTINCT FROM new.rok) OR (old.search_index IS DISTINCT FROM new.search_index) OR (old.tytul_oryginalny_sort IS DISTINCT FROM new.tytul_oryginalny_sort) OR (old.legacy_data IS DISTINCT FROM new.legacy_data) OR (old.impact_factor IS DISTINCT FROM new.impact_factor) OR (old.punkty_kbn IS DISTINCT FROM new.punkty_kbn) OR (old.index_copernicus IS DISTINCT FROM new.index_copernicus) OR (old.punktacja_wewnetrzna IS DISTINCT FROM new.punktacja_wewnetrzna) OR (old.punktacja_snip IS DISTINCT FROM new.punktacja_snip) OR (old.weryfikacja_punktacji IS DISTINCT FROM new.weryfikacja_punktacji) OR ((old.www)::text IS DISTINCT FROM (new.www)::text) OR (old.dostep_dnia IS DISTINCT FROM new.dostep_dnia) OR ((old.public_www)::text IS DISTINCT FROM (new.public_www)::text) OR (old.public_dostep_dnia IS DISTINCT FROM new.public_dostep_dnia) OR (old.tytul_oryginalny IS DISTINCT FROM new.tytul_oryginalny) OR (old.data_zgloszenia IS DISTINCT FROM new.data_zgloszenia) OR ((old.numer_zgloszenia)::text IS DISTINCT FROM (new.numer_zgloszenia)::text) OR (old.data_decyzji IS DISTINCT FROM new.data_decyzji) OR ((old.numer_prawa_wylacznego)::text IS DISTINCT FROM (new.numer_prawa_wylacznego)::text) OR (old.rodzaj_prawa_id IS DISTINCT FROM new.rodzaj_prawa_id) OR (old.wdrozenie IS DISTINCT FROM new.wdrozenie) OR (old.wydzial_id IS DISTINCT FROM new.wydzial_id) OR (old.opis_bibliograficzny_cache IS DISTINCT FROM new.opis_bibliograficzny_cache) OR (old.opis_bibliograficzny_autorzy_cache IS DISTINCT FROM new.opis_bibliograficzny_autorzy_cache) OR (old.opis_bibliograficzny_zapisani_autorzy_cache IS DISTINCT FROM new.opis_bibliograficzny_zapisani_autorzy_cache) OR ((old.slug)::text IS DISTINCT FROM (new.slug)::text))) EXECUTE FUNCTION public.f_d_aft_row_upd_on_bpp_patent_patent_cached_punkty_dyscyd3c7();
+CREATE TRIGGER d_aft_row_upd_on_bpp_patent_patent_cached_punkty_dyscyd3c7 AFTER UPDATE ON public.bpp_patent FOR EACH ROW WHEN (((old.id IS DISTINCT FROM new.id) OR (old.nie_eksportuj_przez_api IS DISTINCT FROM new.nie_eksportuj_przez_api) OR (old.deleted_at IS DISTINCT FROM new.deleted_at) OR (old.restored_at IS DISTINCT FROM new.restored_at) OR (old.transaction_id IS DISTINCT FROM new.transaction_id) OR (old.tekst_przed_pierwszym_autorem IS DISTINCT FROM new.tekst_przed_pierwszym_autorem) OR (old.tekst_po_ostatnim_autorze IS DISTINCT FROM new.tekst_po_ostatnim_autorze) OR (old.pbn_id IS DISTINCT FROM new.pbn_id) OR (old.slowa_kluczowe_eng IS DISTINCT FROM new.slowa_kluczowe_eng) OR (old.adnotacje IS DISTINCT FROM new.adnotacje) OR (old.informacja_z_id IS DISTINCT FROM new.informacja_z_id) OR (old.status_korekty_id IS DISTINCT FROM new.status_korekty_id) OR (old.informacje IS DISTINCT FROM new.informacje) OR ((old.szczegoly)::text IS DISTINCT FROM (new.szczegoly)::text) OR (old.uwagi IS DISTINCT FROM new.uwagi) OR (old.utworzono IS DISTINCT FROM new.utworzono) OR ((old.strony)::text IS DISTINCT FROM (new.strony)::text) OR ((old.tom)::text IS DISTINCT FROM (new.tom)::text) OR (old.recenzowana IS DISTINCT FROM new.recenzowana) OR (old.rok IS DISTINCT FROM new.rok) OR (old.search_index IS DISTINCT FROM new.search_index) OR (old.tytul_oryginalny_sort IS DISTINCT FROM new.tytul_oryginalny_sort) OR (old.legacy_data IS DISTINCT FROM new.legacy_data) OR (old.impact_factor IS DISTINCT FROM new.impact_factor) OR (old.punkty_kbn IS DISTINCT FROM new.punkty_kbn) OR (old.index_copernicus IS DISTINCT FROM new.index_copernicus) OR (old.punktacja_wewnetrzna IS DISTINCT FROM new.punktacja_wewnetrzna) OR (old.punktacja_snip IS DISTINCT FROM new.punktacja_snip) OR (old.weryfikacja_punktacji IS DISTINCT FROM new.weryfikacja_punktacji) OR ((old.www)::text IS DISTINCT FROM (new.www)::text) OR (old.dostep_dnia IS DISTINCT FROM new.dostep_dnia) OR ((old.public_www)::text IS DISTINCT FROM (new.public_www)::text) OR (old.public_dostep_dnia IS DISTINCT FROM new.public_dostep_dnia) OR (old.tytul_oryginalny IS DISTINCT FROM new.tytul_oryginalny) OR (old.data_zgloszenia IS DISTINCT FROM new.data_zgloszenia) OR ((old.numer_zgloszenia)::text IS DISTINCT FROM (new.numer_zgloszenia)::text) OR (old.data_decyzji IS DISTINCT FROM new.data_decyzji) OR (old.data_opublikowania IS DISTINCT FROM new.data_opublikowania) OR ((old.numer_prawa_wylacznego)::text IS DISTINCT FROM (new.numer_prawa_wylacznego)::text) OR (old.rodzaj_prawa_id IS DISTINCT FROM new.rodzaj_prawa_id) OR (old.wdrozenie IS DISTINCT FROM new.wdrozenie) OR (old.wydzial_id IS DISTINCT FROM new.wydzial_id) OR (old.uprawnieni IS DISTINCT FROM new.uprawnieni) OR ((old.typ_patentu)::text IS DISTINCT FROM (new.typ_patentu)::text) OR ((old.kraj)::text IS DISTINCT FROM (new.kraj)::text) OR (old.opis_bibliograficzny_cache IS DISTINCT FROM new.opis_bibliograficzny_cache) OR (old.opis_bibliograficzny_autorzy_cache IS DISTINCT FROM new.opis_bibliograficzny_autorzy_cache) OR (old.opis_bibliograficzny_zapisani_autorzy_cache IS DISTINCT FROM new.opis_bibliograficzny_zapisani_autorzy_cache) OR ((old.slug)::text IS DISTINCT FROM (new.slug)::text))) EXECUTE FUNCTION public.f_d_aft_row_upd_on_bpp_patent_patent_cached_punkty_dyscyd3c7();
 
 
 --
 -- Name: bpp_patent d_aft_row_upd_on_bpp_patent_patent_opis_bibliograficzn2783; Type: TRIGGER; Schema: public; Owner: -
 --
 
-CREATE TRIGGER d_aft_row_upd_on_bpp_patent_patent_opis_bibliograficzn2783 AFTER UPDATE ON public.bpp_patent FOR EACH ROW WHEN (((old.id IS DISTINCT FROM new.id) OR (old.nie_eksportuj_przez_api IS DISTINCT FROM new.nie_eksportuj_przez_api) OR (old.deleted_at IS DISTINCT FROM new.deleted_at) OR (old.restored_at IS DISTINCT FROM new.restored_at) OR (old.transaction_id IS DISTINCT FROM new.transaction_id) OR (old.tekst_przed_pierwszym_autorem IS DISTINCT FROM new.tekst_przed_pierwszym_autorem) OR (old.tekst_po_ostatnim_autorze IS DISTINCT FROM new.tekst_po_ostatnim_autorze) OR (old.pbn_id IS DISTINCT FROM new.pbn_id) OR (old.slowa_kluczowe_eng IS DISTINCT FROM new.slowa_kluczowe_eng) OR (old.adnotacje IS DISTINCT FROM new.adnotacje) OR (old.informacja_z_id IS DISTINCT FROM new.informacja_z_id) OR (old.status_korekty_id IS DISTINCT FROM new.status_korekty_id) OR (old.informacje IS DISTINCT FROM new.informacje) OR ((old.szczegoly)::text IS DISTINCT FROM (new.szczegoly)::text) OR (old.uwagi IS DISTINCT FROM new.uwagi) OR (old.utworzono IS DISTINCT FROM new.utworzono) OR ((old.strony)::text IS DISTINCT FROM (new.strony)::text) OR ((old.tom)::text IS DISTINCT FROM (new.tom)::text) OR (old.recenzowana IS DISTINCT FROM new.recenzowana) OR (old.rok IS DISTINCT FROM new.rok) OR (old.search_index IS DISTINCT FROM new.search_index) OR (old.tytul_oryginalny_sort IS DISTINCT FROM new.tytul_oryginalny_sort) OR (old.legacy_data IS DISTINCT FROM new.legacy_data) OR (old.impact_factor IS DISTINCT FROM new.impact_factor) OR (old.punkty_kbn IS DISTINCT FROM new.punkty_kbn) OR (old.index_copernicus IS DISTINCT FROM new.index_copernicus) OR (old.punktacja_wewnetrzna IS DISTINCT FROM new.punktacja_wewnetrzna) OR (old.punktacja_snip IS DISTINCT FROM new.punktacja_snip) OR (old.weryfikacja_punktacji IS DISTINCT FROM new.weryfikacja_punktacji) OR ((old.www)::text IS DISTINCT FROM (new.www)::text) OR (old.dostep_dnia IS DISTINCT FROM new.dostep_dnia) OR ((old.public_www)::text IS DISTINCT FROM (new.public_www)::text) OR (old.public_dostep_dnia IS DISTINCT FROM new.public_dostep_dnia) OR (old.tytul_oryginalny IS DISTINCT FROM new.tytul_oryginalny) OR (old.data_zgloszenia IS DISTINCT FROM new.data_zgloszenia) OR ((old.numer_zgloszenia)::text IS DISTINCT FROM (new.numer_zgloszenia)::text) OR (old.data_decyzji IS DISTINCT FROM new.data_decyzji) OR ((old.numer_prawa_wylacznego)::text IS DISTINCT FROM (new.numer_prawa_wylacznego)::text) OR (old.rodzaj_prawa_id IS DISTINCT FROM new.rodzaj_prawa_id) OR (old.wdrozenie IS DISTINCT FROM new.wdrozenie) OR (old.wydzial_id IS DISTINCT FROM new.wydzial_id) OR (old.cached_punkty_dyscyplin IS DISTINCT FROM new.cached_punkty_dyscyplin) OR (old.opis_bibliograficzny_cache IS DISTINCT FROM new.opis_bibliograficzny_cache) OR (old.opis_bibliograficzny_zapisani_autorzy_cache IS DISTINCT FROM new.opis_bibliograficzny_zapisani_autorzy_cache) OR ((old.slug)::text IS DISTINCT FROM (new.slug)::text))) EXECUTE FUNCTION public.f_d_aft_row_upd_on_bpp_patent_patent_opis_bibliograficzn2783();
+CREATE TRIGGER d_aft_row_upd_on_bpp_patent_patent_opis_bibliograficzn2783 AFTER UPDATE ON public.bpp_patent FOR EACH ROW WHEN (((old.id IS DISTINCT FROM new.id) OR (old.nie_eksportuj_przez_api IS DISTINCT FROM new.nie_eksportuj_przez_api) OR (old.deleted_at IS DISTINCT FROM new.deleted_at) OR (old.restored_at IS DISTINCT FROM new.restored_at) OR (old.transaction_id IS DISTINCT FROM new.transaction_id) OR (old.tekst_przed_pierwszym_autorem IS DISTINCT FROM new.tekst_przed_pierwszym_autorem) OR (old.tekst_po_ostatnim_autorze IS DISTINCT FROM new.tekst_po_ostatnim_autorze) OR (old.pbn_id IS DISTINCT FROM new.pbn_id) OR (old.slowa_kluczowe_eng IS DISTINCT FROM new.slowa_kluczowe_eng) OR (old.adnotacje IS DISTINCT FROM new.adnotacje) OR (old.informacja_z_id IS DISTINCT FROM new.informacja_z_id) OR (old.status_korekty_id IS DISTINCT FROM new.status_korekty_id) OR (old.informacje IS DISTINCT FROM new.informacje) OR ((old.szczegoly)::text IS DISTINCT FROM (new.szczegoly)::text) OR (old.uwagi IS DISTINCT FROM new.uwagi) OR (old.utworzono IS DISTINCT FROM new.utworzono) OR ((old.strony)::text IS DISTINCT FROM (new.strony)::text) OR ((old.tom)::text IS DISTINCT FROM (new.tom)::text) OR (old.recenzowana IS DISTINCT FROM new.recenzowana) OR (old.rok IS DISTINCT FROM new.rok) OR (old.search_index IS DISTINCT FROM new.search_index) OR (old.tytul_oryginalny_sort IS DISTINCT FROM new.tytul_oryginalny_sort) OR (old.legacy_data IS DISTINCT FROM new.legacy_data) OR (old.impact_factor IS DISTINCT FROM new.impact_factor) OR (old.punkty_kbn IS DISTINCT FROM new.punkty_kbn) OR (old.index_copernicus IS DISTINCT FROM new.index_copernicus) OR (old.punktacja_wewnetrzna IS DISTINCT FROM new.punktacja_wewnetrzna) OR (old.punktacja_snip IS DISTINCT FROM new.punktacja_snip) OR (old.weryfikacja_punktacji IS DISTINCT FROM new.weryfikacja_punktacji) OR ((old.www)::text IS DISTINCT FROM (new.www)::text) OR (old.dostep_dnia IS DISTINCT FROM new.dostep_dnia) OR ((old.public_www)::text IS DISTINCT FROM (new.public_www)::text) OR (old.public_dostep_dnia IS DISTINCT FROM new.public_dostep_dnia) OR (old.tytul_oryginalny IS DISTINCT FROM new.tytul_oryginalny) OR (old.data_zgloszenia IS DISTINCT FROM new.data_zgloszenia) OR ((old.numer_zgloszenia)::text IS DISTINCT FROM (new.numer_zgloszenia)::text) OR (old.data_decyzji IS DISTINCT FROM new.data_decyzji) OR (old.data_opublikowania IS DISTINCT FROM new.data_opublikowania) OR ((old.numer_prawa_wylacznego)::text IS DISTINCT FROM (new.numer_prawa_wylacznego)::text) OR (old.rodzaj_prawa_id IS DISTINCT FROM new.rodzaj_prawa_id) OR (old.wdrozenie IS DISTINCT FROM new.wdrozenie) OR (old.wydzial_id IS DISTINCT FROM new.wydzial_id) OR (old.uprawnieni IS DISTINCT FROM new.uprawnieni) OR ((old.typ_patentu)::text IS DISTINCT FROM (new.typ_patentu)::text) OR ((old.kraj)::text IS DISTINCT FROM (new.kraj)::text) OR (old.cached_punkty_dyscyplin IS DISTINCT FROM new.cached_punkty_dyscyplin) OR (old.opis_bibliograficzny_cache IS DISTINCT FROM new.opis_bibliograficzny_cache) OR (old.opis_bibliograficzny_zapisani_autorzy_cache IS DISTINCT FROM new.opis_bibliograficzny_zapisani_autorzy_cache) OR ((old.slug)::text IS DISTINCT FROM (new.slug)::text))) EXECUTE FUNCTION public.f_d_aft_row_upd_on_bpp_patent_patent_opis_bibliograficzn2783();
 
 
 --
 -- Name: bpp_patent d_aft_row_upd_on_bpp_patent_patent_opis_bibliograficzn797c; Type: TRIGGER; Schema: public; Owner: -
 --
 
-CREATE TRIGGER d_aft_row_upd_on_bpp_patent_patent_opis_bibliograficzn797c AFTER UPDATE ON public.bpp_patent FOR EACH ROW WHEN (((old.id IS DISTINCT FROM new.id) OR (old.nie_eksportuj_przez_api IS DISTINCT FROM new.nie_eksportuj_przez_api) OR (old.deleted_at IS DISTINCT FROM new.deleted_at) OR (old.restored_at IS DISTINCT FROM new.restored_at) OR (old.transaction_id IS DISTINCT FROM new.transaction_id) OR (old.tekst_przed_pierwszym_autorem IS DISTINCT FROM new.tekst_przed_pierwszym_autorem) OR (old.tekst_po_ostatnim_autorze IS DISTINCT FROM new.tekst_po_ostatnim_autorze) OR (old.pbn_id IS DISTINCT FROM new.pbn_id) OR (old.slowa_kluczowe_eng IS DISTINCT FROM new.slowa_kluczowe_eng) OR (old.adnotacje IS DISTINCT FROM new.adnotacje) OR (old.informacja_z_id IS DISTINCT FROM new.informacja_z_id) OR (old.status_korekty_id IS DISTINCT FROM new.status_korekty_id) OR (old.informacje IS DISTINCT FROM new.informacje) OR ((old.szczegoly)::text IS DISTINCT FROM (new.szczegoly)::text) OR (old.uwagi IS DISTINCT FROM new.uwagi) OR (old.utworzono IS DISTINCT FROM new.utworzono) OR ((old.strony)::text IS DISTINCT FROM (new.strony)::text) OR ((old.tom)::text IS DISTINCT FROM (new.tom)::text) OR (old.recenzowana IS DISTINCT FROM new.recenzowana) OR (old.rok IS DISTINCT FROM new.rok) OR (old.search_index IS DISTINCT FROM new.search_index) OR (old.tytul_oryginalny_sort IS DISTINCT FROM new.tytul_oryginalny_sort) OR (old.legacy_data IS DISTINCT FROM new.legacy_data) OR (old.impact_factor IS DISTINCT FROM new.impact_factor) OR (old.punkty_kbn IS DISTINCT FROM new.punkty_kbn) OR (old.index_copernicus IS DISTINCT FROM new.index_copernicus) OR (old.punktacja_wewnetrzna IS DISTINCT FROM new.punktacja_wewnetrzna) OR (old.punktacja_snip IS DISTINCT FROM new.punktacja_snip) OR (old.weryfikacja_punktacji IS DISTINCT FROM new.weryfikacja_punktacji) OR ((old.www)::text IS DISTINCT FROM (new.www)::text) OR (old.dostep_dnia IS DISTINCT FROM new.dostep_dnia) OR ((old.public_www)::text IS DISTINCT FROM (new.public_www)::text) OR (old.public_dostep_dnia IS DISTINCT FROM new.public_dostep_dnia) OR (old.tytul_oryginalny IS DISTINCT FROM new.tytul_oryginalny) OR (old.data_zgloszenia IS DISTINCT FROM new.data_zgloszenia) OR ((old.numer_zgloszenia)::text IS DISTINCT FROM (new.numer_zgloszenia)::text) OR (old.data_decyzji IS DISTINCT FROM new.data_decyzji) OR ((old.numer_prawa_wylacznego)::text IS DISTINCT FROM (new.numer_prawa_wylacznego)::text) OR (old.rodzaj_prawa_id IS DISTINCT FROM new.rodzaj_prawa_id) OR (old.wdrozenie IS DISTINCT FROM new.wdrozenie) OR (old.wydzial_id IS DISTINCT FROM new.wydzial_id) OR (old.cached_punkty_dyscyplin IS DISTINCT FROM new.cached_punkty_dyscyplin) OR (old.opis_bibliograficzny_autorzy_cache IS DISTINCT FROM new.opis_bibliograficzny_autorzy_cache) OR (old.opis_bibliograficzny_zapisani_autorzy_cache IS DISTINCT FROM new.opis_bibliograficzny_zapisani_autorzy_cache) OR ((old.slug)::text IS DISTINCT FROM (new.slug)::text))) EXECUTE FUNCTION public.f_d_aft_row_upd_on_bpp_patent_patent_opis_bibliograficzn797c();
+CREATE TRIGGER d_aft_row_upd_on_bpp_patent_patent_opis_bibliograficzn797c AFTER UPDATE ON public.bpp_patent FOR EACH ROW WHEN (((old.id IS DISTINCT FROM new.id) OR (old.nie_eksportuj_przez_api IS DISTINCT FROM new.nie_eksportuj_przez_api) OR (old.deleted_at IS DISTINCT FROM new.deleted_at) OR (old.restored_at IS DISTINCT FROM new.restored_at) OR (old.transaction_id IS DISTINCT FROM new.transaction_id) OR (old.tekst_przed_pierwszym_autorem IS DISTINCT FROM new.tekst_przed_pierwszym_autorem) OR (old.tekst_po_ostatnim_autorze IS DISTINCT FROM new.tekst_po_ostatnim_autorze) OR (old.pbn_id IS DISTINCT FROM new.pbn_id) OR (old.slowa_kluczowe_eng IS DISTINCT FROM new.slowa_kluczowe_eng) OR (old.adnotacje IS DISTINCT FROM new.adnotacje) OR (old.informacja_z_id IS DISTINCT FROM new.informacja_z_id) OR (old.status_korekty_id IS DISTINCT FROM new.status_korekty_id) OR (old.informacje IS DISTINCT FROM new.informacje) OR ((old.szczegoly)::text IS DISTINCT FROM (new.szczegoly)::text) OR (old.uwagi IS DISTINCT FROM new.uwagi) OR (old.utworzono IS DISTINCT FROM new.utworzono) OR ((old.strony)::text IS DISTINCT FROM (new.strony)::text) OR ((old.tom)::text IS DISTINCT FROM (new.tom)::text) OR (old.recenzowana IS DISTINCT FROM new.recenzowana) OR (old.rok IS DISTINCT FROM new.rok) OR (old.search_index IS DISTINCT FROM new.search_index) OR (old.tytul_oryginalny_sort IS DISTINCT FROM new.tytul_oryginalny_sort) OR (old.legacy_data IS DISTINCT FROM new.legacy_data) OR (old.impact_factor IS DISTINCT FROM new.impact_factor) OR (old.punkty_kbn IS DISTINCT FROM new.punkty_kbn) OR (old.index_copernicus IS DISTINCT FROM new.index_copernicus) OR (old.punktacja_wewnetrzna IS DISTINCT FROM new.punktacja_wewnetrzna) OR (old.punktacja_snip IS DISTINCT FROM new.punktacja_snip) OR (old.weryfikacja_punktacji IS DISTINCT FROM new.weryfikacja_punktacji) OR ((old.www)::text IS DISTINCT FROM (new.www)::text) OR (old.dostep_dnia IS DISTINCT FROM new.dostep_dnia) OR ((old.public_www)::text IS DISTINCT FROM (new.public_www)::text) OR (old.public_dostep_dnia IS DISTINCT FROM new.public_dostep_dnia) OR (old.tytul_oryginalny IS DISTINCT FROM new.tytul_oryginalny) OR (old.data_zgloszenia IS DISTINCT FROM new.data_zgloszenia) OR ((old.numer_zgloszenia)::text IS DISTINCT FROM (new.numer_zgloszenia)::text) OR (old.data_decyzji IS DISTINCT FROM new.data_decyzji) OR (old.data_opublikowania IS DISTINCT FROM new.data_opublikowania) OR ((old.numer_prawa_wylacznego)::text IS DISTINCT FROM (new.numer_prawa_wylacznego)::text) OR (old.rodzaj_prawa_id IS DISTINCT FROM new.rodzaj_prawa_id) OR (old.wdrozenie IS DISTINCT FROM new.wdrozenie) OR (old.wydzial_id IS DISTINCT FROM new.wydzial_id) OR (old.uprawnieni IS DISTINCT FROM new.uprawnieni) OR ((old.typ_patentu)::text IS DISTINCT FROM (new.typ_patentu)::text) OR ((old.kraj)::text IS DISTINCT FROM (new.kraj)::text) OR (old.cached_punkty_dyscyplin IS DISTINCT FROM new.cached_punkty_dyscyplin) OR (old.opis_bibliograficzny_autorzy_cache IS DISTINCT FROM new.opis_bibliograficzny_autorzy_cache) OR (old.opis_bibliograficzny_zapisani_autorzy_cache IS DISTINCT FROM new.opis_bibliograficzny_zapisani_autorzy_cache) OR ((old.slug)::text IS DISTINCT FROM (new.slug)::text))) EXECUTE FUNCTION public.f_d_aft_row_upd_on_bpp_patent_patent_opis_bibliograficzn797c();
 
 
 --
 -- Name: bpp_patent d_aft_row_upd_on_bpp_patent_patent_opis_bibliograficzncf12; Type: TRIGGER; Schema: public; Owner: -
 --
 
-CREATE TRIGGER d_aft_row_upd_on_bpp_patent_patent_opis_bibliograficzncf12 AFTER UPDATE ON public.bpp_patent FOR EACH ROW WHEN (((old.id IS DISTINCT FROM new.id) OR (old.nie_eksportuj_przez_api IS DISTINCT FROM new.nie_eksportuj_przez_api) OR (old.deleted_at IS DISTINCT FROM new.deleted_at) OR (old.restored_at IS DISTINCT FROM new.restored_at) OR (old.transaction_id IS DISTINCT FROM new.transaction_id) OR (old.tekst_przed_pierwszym_autorem IS DISTINCT FROM new.tekst_przed_pierwszym_autorem) OR (old.tekst_po_ostatnim_autorze IS DISTINCT FROM new.tekst_po_ostatnim_autorze) OR (old.pbn_id IS DISTINCT FROM new.pbn_id) OR (old.slowa_kluczowe_eng IS DISTINCT FROM new.slowa_kluczowe_eng) OR (old.adnotacje IS DISTINCT FROM new.adnotacje) OR (old.informacja_z_id IS DISTINCT FROM new.informacja_z_id) OR (old.status_korekty_id IS DISTINCT FROM new.status_korekty_id) OR (old.informacje IS DISTINCT FROM new.informacje) OR ((old.szczegoly)::text IS DISTINCT FROM (new.szczegoly)::text) OR (old.uwagi IS DISTINCT FROM new.uwagi) OR (old.utworzono IS DISTINCT FROM new.utworzono) OR ((old.strony)::text IS DISTINCT FROM (new.strony)::text) OR ((old.tom)::text IS DISTINCT FROM (new.tom)::text) OR (old.recenzowana IS DISTINCT FROM new.recenzowana) OR (old.rok IS DISTINCT FROM new.rok) OR (old.search_index IS DISTINCT FROM new.search_index) OR (old.tytul_oryginalny_sort IS DISTINCT FROM new.tytul_oryginalny_sort) OR (old.legacy_data IS DISTINCT FROM new.legacy_data) OR (old.impact_factor IS DISTINCT FROM new.impact_factor) OR (old.punkty_kbn IS DISTINCT FROM new.punkty_kbn) OR (old.index_copernicus IS DISTINCT FROM new.index_copernicus) OR (old.punktacja_wewnetrzna IS DISTINCT FROM new.punktacja_wewnetrzna) OR (old.punktacja_snip IS DISTINCT FROM new.punktacja_snip) OR (old.weryfikacja_punktacji IS DISTINCT FROM new.weryfikacja_punktacji) OR ((old.www)::text IS DISTINCT FROM (new.www)::text) OR (old.dostep_dnia IS DISTINCT FROM new.dostep_dnia) OR ((old.public_www)::text IS DISTINCT FROM (new.public_www)::text) OR (old.public_dostep_dnia IS DISTINCT FROM new.public_dostep_dnia) OR (old.tytul_oryginalny IS DISTINCT FROM new.tytul_oryginalny) OR (old.data_zgloszenia IS DISTINCT FROM new.data_zgloszenia) OR ((old.numer_zgloszenia)::text IS DISTINCT FROM (new.numer_zgloszenia)::text) OR (old.data_decyzji IS DISTINCT FROM new.data_decyzji) OR ((old.numer_prawa_wylacznego)::text IS DISTINCT FROM (new.numer_prawa_wylacznego)::text) OR (old.rodzaj_prawa_id IS DISTINCT FROM new.rodzaj_prawa_id) OR (old.wdrozenie IS DISTINCT FROM new.wdrozenie) OR (old.wydzial_id IS DISTINCT FROM new.wydzial_id) OR (old.cached_punkty_dyscyplin IS DISTINCT FROM new.cached_punkty_dyscyplin) OR (old.opis_bibliograficzny_cache IS DISTINCT FROM new.opis_bibliograficzny_cache) OR (old.opis_bibliograficzny_autorzy_cache IS DISTINCT FROM new.opis_bibliograficzny_autorzy_cache) OR ((old.slug)::text IS DISTINCT FROM (new.slug)::text))) EXECUTE FUNCTION public.f_d_aft_row_upd_on_bpp_patent_patent_opis_bibliograficzncf12();
+CREATE TRIGGER d_aft_row_upd_on_bpp_patent_patent_opis_bibliograficzncf12 AFTER UPDATE ON public.bpp_patent FOR EACH ROW WHEN (((old.id IS DISTINCT FROM new.id) OR (old.nie_eksportuj_przez_api IS DISTINCT FROM new.nie_eksportuj_przez_api) OR (old.deleted_at IS DISTINCT FROM new.deleted_at) OR (old.restored_at IS DISTINCT FROM new.restored_at) OR (old.transaction_id IS DISTINCT FROM new.transaction_id) OR (old.tekst_przed_pierwszym_autorem IS DISTINCT FROM new.tekst_przed_pierwszym_autorem) OR (old.tekst_po_ostatnim_autorze IS DISTINCT FROM new.tekst_po_ostatnim_autorze) OR (old.pbn_id IS DISTINCT FROM new.pbn_id) OR (old.slowa_kluczowe_eng IS DISTINCT FROM new.slowa_kluczowe_eng) OR (old.adnotacje IS DISTINCT FROM new.adnotacje) OR (old.informacja_z_id IS DISTINCT FROM new.informacja_z_id) OR (old.status_korekty_id IS DISTINCT FROM new.status_korekty_id) OR (old.informacje IS DISTINCT FROM new.informacje) OR ((old.szczegoly)::text IS DISTINCT FROM (new.szczegoly)::text) OR (old.uwagi IS DISTINCT FROM new.uwagi) OR (old.utworzono IS DISTINCT FROM new.utworzono) OR ((old.strony)::text IS DISTINCT FROM (new.strony)::text) OR ((old.tom)::text IS DISTINCT FROM (new.tom)::text) OR (old.recenzowana IS DISTINCT FROM new.recenzowana) OR (old.rok IS DISTINCT FROM new.rok) OR (old.search_index IS DISTINCT FROM new.search_index) OR (old.tytul_oryginalny_sort IS DISTINCT FROM new.tytul_oryginalny_sort) OR (old.legacy_data IS DISTINCT FROM new.legacy_data) OR (old.impact_factor IS DISTINCT FROM new.impact_factor) OR (old.punkty_kbn IS DISTINCT FROM new.punkty_kbn) OR (old.index_copernicus IS DISTINCT FROM new.index_copernicus) OR (old.punktacja_wewnetrzna IS DISTINCT FROM new.punktacja_wewnetrzna) OR (old.punktacja_snip IS DISTINCT FROM new.punktacja_snip) OR (old.weryfikacja_punktacji IS DISTINCT FROM new.weryfikacja_punktacji) OR ((old.www)::text IS DISTINCT FROM (new.www)::text) OR (old.dostep_dnia IS DISTINCT FROM new.dostep_dnia) OR ((old.public_www)::text IS DISTINCT FROM (new.public_www)::text) OR (old.public_dostep_dnia IS DISTINCT FROM new.public_dostep_dnia) OR (old.tytul_oryginalny IS DISTINCT FROM new.tytul_oryginalny) OR (old.data_zgloszenia IS DISTINCT FROM new.data_zgloszenia) OR ((old.numer_zgloszenia)::text IS DISTINCT FROM (new.numer_zgloszenia)::text) OR (old.data_decyzji IS DISTINCT FROM new.data_decyzji) OR (old.data_opublikowania IS DISTINCT FROM new.data_opublikowania) OR ((old.numer_prawa_wylacznego)::text IS DISTINCT FROM (new.numer_prawa_wylacznego)::text) OR (old.rodzaj_prawa_id IS DISTINCT FROM new.rodzaj_prawa_id) OR (old.wdrozenie IS DISTINCT FROM new.wdrozenie) OR (old.wydzial_id IS DISTINCT FROM new.wydzial_id) OR (old.uprawnieni IS DISTINCT FROM new.uprawnieni) OR ((old.typ_patentu)::text IS DISTINCT FROM (new.typ_patentu)::text) OR ((old.kraj)::text IS DISTINCT FROM (new.kraj)::text) OR (old.cached_punkty_dyscyplin IS DISTINCT FROM new.cached_punkty_dyscyplin) OR (old.opis_bibliograficzny_cache IS DISTINCT FROM new.opis_bibliograficzny_cache) OR (old.opis_bibliograficzny_autorzy_cache IS DISTINCT FROM new.opis_bibliograficzny_autorzy_cache) OR ((old.slug)::text IS DISTINCT FROM (new.slug)::text))) EXECUTE FUNCTION public.f_d_aft_row_upd_on_bpp_patent_patent_opis_bibliograficzncf12();
 
 
 --
