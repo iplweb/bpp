@@ -94,6 +94,30 @@ class BaseGenerujView(TemplateView):
         return kwargs
 
 
+# Górna granica kolumny ``integer`` w PostgreSQL (klucze główne modeli).
+MAKS_PK = 2147483647
+# Wyłącznie cyfry ASCII: ``str.isdigit()`` i ``\d`` przepuszczają też cyfry
+# Unicode („²" — ``int()`` rzuca ValueError; „١٢" — ``int()`` daje 12, czyli
+# prawdziwy rekord). 10 cyfr wystarcza na cały zakres ``integer``, a przy
+# okazji odcina ValueError z limitu długości konwersji ``int()`` (>4300 cyfr).
+PK_WZORZEC = re.compile(r"[0-9]{1,10}")
+
+
+def _pk_z_parametru(wartosc):
+    """Zwraca pk z ręcznie edytowalnego parametru URL albo ``None``.
+
+    ``None`` = brak wstępnego wyboru; dotyczy też liczby spoza zakresu
+    ``integer`` — taki pk nie może istnieć, więc nie pytamy bazy.
+    """
+    wartosc = wartosc.strip()
+    if not PK_WZORZEC.fullmatch(wartosc):
+        return None
+    pk = int(wartosc)
+    if pk > MAKS_PK:
+        return None
+    return pk
+
+
 class GenerujRaportBase(DetailView):
     template_name = "nowe_raporty/generuj.html"
 
@@ -350,8 +374,11 @@ class RaportFormView(RaportDostepMixin, FormDefaultsMixin, FormView):
             # Szukamy w ``queryset``, nie w ``cfg.model`` — pk podrzucony w URL
             # spoza poziomu nie ma prawa przemycić obiektu, którego formularz
             # i tak by nie przyjął (ta sama zasada co w ``get_object``).
-            pk = self.request.GET.get("obiekt")
-            if pk:
+            # Tylko liczba: ``obiekt`` to ręcznie edytowalny parametr URL,
+            # a ``filter(pk="abc")`` rzuca ValueError (= 500). Śmieć traktujemy
+            # jak nieistniejący pk — formularz bez wstępnego wyboru.
+            pk = _pk_z_parametru(self.request.GET.get("obiekt", ""))
+            if pk is not None:
                 initial["obiekt"] = queryset.filter(pk=pk).first()
 
             if not initial.get("obiekt") and queryset.count() == 1:
@@ -389,7 +416,12 @@ class RaportGenerujView(RaportDostepMixin, GenerujRaportBase):
             # widoczne korzenie), nie z ``cfg.model`` — inaczej generujący URL
             # przyjąłby DOWOLNY pk Jednostki (walidacja jest tylko na polu
             # formularza, a bookmark celuje wprost w URL generowania).
-            obiekt = get_object_or_404(cfg.obiekt_queryset(), pk=self.kwargs["pk"])
+            pk = _pk_z_parametru(self.kwargs["pk"])
+            if pk is None:
+                # Wzorzec w urls.py przepuszcza 10 cyfr — powyżej zakresu
+                # ``integer`` rekord nie może istnieć.
+                raise Http404
+            obiekt = get_object_or_404(cfg.obiekt_queryset(), pk=pk)
             if (
                 self.definicja.poziom == DefinicjaRaportu.POZIOM_AUTOR
                 and obiekt.jest_spoza_uczelni(
