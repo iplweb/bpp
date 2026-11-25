@@ -93,16 +93,13 @@ obiektu „Charakter formalny”, po których można wyszukiwać:
 Dokończmy zapytanie:
 
 ``` python
-(charakter_formalny.skrot = "KSP" or charakter_formalny.skrot = "AC") and punkty_kbn >= 100
+(charakter_formalny.skrot = "KSP" or charakter_formalny.skrot = "AC") and punkty_mnisw >= 100
 ```
 
-!!! note "`punkty_kbn` czy `punkty_mnisw`?"
-    Punkty MNiSW i typ MNiSW mają w zapytaniach po dwie nazwy:
-    dawną (`punkty_kbn`, `typ_kbn`) i nową (`punkty_mnisw`, `typ_mnisw`).
-    Obie znaczą dokładnie to samo i można je mieszać —
-    `punkty_mnisw >= 100` daje ten sam wynik co `punkty_kbn >= 100`,
-    a `typ_mnisw.skrot = "PO"` ten sam co `typ_kbn.skrot = "PO"`.
-    Zapytania zapisane wcześniej działają bez zmian.
+!!! note "Dawne nazwy pól"
+    Dawne nazwy `punkty_kbn` i `typ_kbn` nadal działają i znaczą dokładnie
+    to samo co `punkty_mnisw` i `typ_mnisw` — zapisanych zapytań nie trzeba
+    poprawiać.
 
 Jak widać na zrzucie ekranu poniżej, zadziałało ono:
 
@@ -244,7 +241,7 @@ Oznacza to, że ciąg warunków połączonych `and` jest traktowany jak jedna
 całość:
 
 ``` python
-rok = 2024 and charakter_formalny.skrot = "KSP" and punkty_kbn >= 100
+rok = 2024 and charakter_formalny.skrot = "KSP" and punkty_mnisw >= 100
 ```
 
 To zapytanie wyszuka prace z 2024 roku, z charakterem formalnym „KSP”, czyli
@@ -254,7 +251,7 @@ Dołożenie operatora `or` do takiego ciągu warunków może nie dać dobrych
 efektów:
 
 ``` python
-rok = 2024 or rok = 2025 and charakter_formalny.skrot = "KSP" and punkty_kbn >= 100
+rok = 2024 or rok = 2025 and charakter_formalny.skrot = "KSP" and punkty_mnisw >= 100
 ```
 
 Takie zapytanie znajdzie **wszystkie** rekordy z 2024 roku oraz prace z 2025
@@ -277,7 +274,7 @@ dodawanie. Porównajmy pierwsze zapytanie:
 Na pierwszy rzut oka widać, co trzeba zrobić — dodać nawiasy:
 
 ``` python
-(rok = 2024 or rok = 2025) and charakter_formalny.skrot = "KSP" and punkty_kbn >= 100
+(rok = 2024 or rok = 2025) and charakter_formalny.skrot = "KSP" and punkty_mnisw >= 100
 ```
 
 Analogicznie w przykładzie matematycznym:

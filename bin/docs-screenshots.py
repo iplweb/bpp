@@ -5548,7 +5548,7 @@ def redaktor_wyszukiwanie_redagowanie(page: Page, base: str, out: Path) -> None:
     # 10. the finished, more complex query
     zapytanie(
         '(charakter_formalny.skrot = "KSP" or charakter_formalny.skrot = "AC")'
-        " and punkty_kbn >= 100"
+        " and punkty_mnisw >= 100"
     )
     mark(
         red,
@@ -5585,7 +5585,7 @@ def redaktor_wyszukiwanie_redagowanie(page: Page, base: str, out: Path) -> None:
     # 13. the "Szukaj zapytaniem" page with a query and its result
     q = (
         '(charakter_formalny.skrot = "KSP" or charakter_formalny.skrot = "AC")'
-        " and punkty_kbn >= 100"
+        " and punkty_mnisw >= 100"
     )
     red.goto(f"{base}/bpp/zapytanie/?model=rekord&query={quote(q)}")
     red.wait_for_load_state("networkidle")
