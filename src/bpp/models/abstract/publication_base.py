@@ -74,8 +74,7 @@ class ModelZRokiem(models.Model):
     """Model zawierający pole "Rok" """
 
     rok = YearField(
-        help_text="""Rok uwzględniany przy wyszukiwaniu i raportach
-        KBN/MNiSW)""",
+        help_text="Rok uwzględniany przy wyszukiwaniu i raportach MNiSW/MEiN",
         db_index=True,
         validators=[MinValueValidator(0)],
     )

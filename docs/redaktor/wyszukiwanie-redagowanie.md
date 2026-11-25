@@ -315,7 +315,7 @@ Dla modelu **rekord** dostępne są:
   i linkami "Zobacz" / "Edytuj",
 - **lista** — numerowana lista opisów bibliograficznych,
 - **tabela** — tabela z sumami (impact factor, liczba cytowań, punkty
-  KBN, punktacja wewnętrzna),
+  MNiSW/MEiN, punktacja wewnętrzna),
 - **punktacja z wewnętrzną** / **punktacja sumaryczna** — warianty
   tabeli z innym zestawem kolumn punktowych,
 - **BibTeX** — lista opisów jako brama do eksportu pliku `.bib`,

@@ -136,7 +136,7 @@ class Typ_KBN(NazwaISkrot):
 
     class Meta:
         verbose_name = "typ MNiSW/MEiN"
-        verbose_name_plural = "typy KBN"
+        verbose_name_plural = "typy MNiSW/MEiN"
         ordering = ["nazwa"]
         app_label = "bpp"
 

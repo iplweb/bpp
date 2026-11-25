@@ -114,7 +114,7 @@ class ImportSession(models.Model):
         on_delete=models.SET_NULL,
         null=True,
         blank=True,
-        verbose_name="typ KBN",
+        verbose_name="typ MNiSW/MEiN",
     )
     zrodlo = models.ForeignKey(
         "bpp.Zrodlo",
