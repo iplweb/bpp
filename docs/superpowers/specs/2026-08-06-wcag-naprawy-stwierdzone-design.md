@@ -40,6 +40,11 @@ i raportu bez odbiorcy byłoby produkcją artefaktu, którego nikt nie czyta.
 - 2.5.7 — nawigacja po grafie powiązań
 - 3.1.2 dla tytułu przełożonego (`tytul`) — patrz „Decyzja o polu `jezyk_alt`"
 
+**Korekta (2026-08-07):** 2.1.4 i 2.5.7 nie zostały ostatecznie odroczone —
+domknęła je kolejna iteracja (`2026-08-07-wcag-skrot-i-graf-design.md`).
+Zakres tej iteracji, opisany wyżej, pozostaje bez zmian; nieaktualna jest
+tylko prognoza, że oba kryteria zostaną z niego trwale wyłączone.
+
 **Nie wchodzi (poza tą iteracją):**
 
 - bramka CI z axe-core, baseline, strona wzorników
@@ -499,24 +504,15 @@ miejsce. Zapisujemy je w specyfikacji z 2026-08-05 (nowa sekcja
 „Odroczone niezgodności"), bo to dokument, który przyszły audyt przeczyta
 jako pierwszy; issue na GitHubie by zaginęło.
 
-Każdy wpis zawiera kryterium, stan, uzasadnienie i datę decyzji.
+Każdy wpis zawiera kryterium, stan, uzasadnienie i datę decyzji. Wpisy,
+które przestały być aktualne, zostają z datą domknięcia zamiast zniknąć —
+inaczej nie dałoby się odtworzyć, co i kiedy uznano za niezgodność.
 
-**2.1.4 Character Key Shortcuts (A) — skrót `/`.**
-Handler w `src/django_bpp/templates/base.html:39-49` wiąże `/` na
-`document`, wykluczając jedynie `input`/`textarea`/`select`. Nie spełnia
-żadnego z trzech warunków kryterium (wyłączalny, przemapowywalny, aktywny
-tylko przy focusie). Stan: **niezgodne, świadomie odroczone**. Powód: brak
-nacisku regulacyjnego i brak odbiorcy raportu; wszystkie trzy dopuszczone
-wyjścia mają koszt produktowy (utrata skrótu globalnego albo zbudowanie
-interfejsu preferencji dla użytkownika anonimowego).
-
-**2.5.7 Dragging Movements (AA) — graf powiązań.**
-`src/powiazania_autorow/templates/powiazania_autorow/graf.html`, widok
-publiczny bramkowany per uczelnia (`czy_pokazywac_siec_powiazan`,
-`src/bpp/views/browse.py:245`). Nawigacja wyłącznie przez przeciąganie.
-Stan: **niezgodne, świadomie odroczone**. Powód: koszt nieproporcjonalny do
-pozostałych napraw w tej iteracji, a funkcja jest opcjonalna i w części
-wdrożeń wyłączona.
+**2.1.4 i 2.5.7 — domknięte 2026-08-07.**
+Oba kryteria zostały naprawione w kolejnej iteracji: skrót `/` dostał
+mechanizm wyłączania (localStorage + przełącznik w stopce), graf powiązań —
+przyciski nawigacji i obsługę klawiaturą. Szczegóły:
+`2026-08-07-wcag-skrot-i-graf-design.md`.
 
 **3.1.2 — tytuł przełożony (`tytul`).**
 Stan: **spełnione częściowo**. Oznaczamy tytuł oryginalny; przekład zostaje
