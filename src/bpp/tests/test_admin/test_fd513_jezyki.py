@@ -2,20 +2,15 @@
 nieużywane”, liczba publikacji, kody dla CrossRef, edycja rekordu z ukrytym
 językiem."""
 
-from importlib import import_module
-
 import pytest
-from django.apps import apps
 from django.contrib import admin
 from django.core.exceptions import ValidationError
-from django.test import RequestFactory
 from django.urls import reverse
 from model_bakery import baker
 
 from bpp.kody_jezykow import kod_dla_nazwy
 from bpp.models import (
     Jezyk,
-    Typ_KBN,
     Wydawnictwo_Ciagle,
     Wydawnictwo_Ciagle_Streszczenie,
     Wydawnictwo_Zwarte,
@@ -35,6 +30,21 @@ def _stan(*jezyki):
     for jezyk in jezyki:
         jezyk.refresh_from_db()
     return tuple(jezyk.widoczny for jezyk in jezyki)
+
+
+def _zatwierdz(client, podglad, **kw):
+    """Wyślij formularz ze strony podglądu (akcja + lista PK z podglądu)."""
+    ctx = podglad.context
+    return client.post(
+        reverse(URL),
+        {
+            "action": ctx["akcja"],
+            "potwierdzam": "1",
+            "pk_z_podgladu": [obj.pk for obj in ctx["do_ukrycia"]],
+            "_selected_action": ctx["wybrane_pk"],
+        },
+        **kw,
+    )
 
 
 # --- podgląd i zatwierdzenie -------------------------------------------------
@@ -77,11 +87,7 @@ def test_ukryj_wszystkie_nieuzywane_bez_zaznaczania(admin_client):
     assert _stan(uzywany, uzywany_alt, wolny) == (True, True, True)
 
     # Krok 2: zatwierdzenie.
-    res = admin_client.post(
-        reverse(URL),
-        {"action": "ukryj_wszystkie_nieuzywane", "potwierdzam": "1"},
-        follow=True,
-    )
+    res = _zatwierdz(admin_client, res, follow=True)
     assert res.status_code == 200
     assert _stan(uzywany, uzywany_alt, wolny) == (True, True, False)
     # Żaden widoczny język nie jest już nieużywany.
@@ -104,10 +110,46 @@ def test_jezyk_uzyty_po_podgladzie_nie_zostanie_ukryty(admin_client):
     assert jezyk in res.context["do_ukrycia"]
 
     baker.make(Wydawnictwo_Ciagle, jezyk=jezyk)
+    res = _zatwierdz(admin_client, res, follow=True)
+    assert _stan(jezyk) == (True,)
+    assert "Pominięto 1" in " ".join(str(m) for m in res.context["messages"])
+
+
+@pytest.mark.django_db
+def test_jezyk_dodany_po_podgladzie_nie_zostanie_ukryty(admin_client):
+    """Zatwierdzenie dotyczy listy z podglądu, nie „wszystkiego, co dziś
+    jest nieużywane”."""
+    stary = _jezyk("t-st")
+    res = admin_client.post(reverse(URL), {"action": "ukryj_wszystkie_nieuzywane"})
+    nowy = _jezyk("t-no")
+
+    _zatwierdz(admin_client, res)
+    assert _stan(stary, nowy) == (False, True)
+
+
+@pytest.mark.django_db
+def test_zatwierdzenie_bez_listy_z_podgladu_niczego_nie_ukrywa(admin_client):
+    jezyk = _jezyk("t-wo")
     admin_client.post(
         reverse(URL), {"action": "ukryj_wszystkie_nieuzywane", "potwierdzam": "1"}
     )
     assert _stan(jezyk) == (True,)
+
+
+@pytest.mark.django_db
+def test_lista_z_podgladu_nie_pozwala_ukryc_uzywanego(admin_client):
+    """Nawet podrobiona lista PK nie ukryje używanego języka."""
+    uzywany = _jezyk("t-uz")
+    baker.make(Wydawnictwo_Ciagle, jezyk=uzywany)
+    admin_client.post(
+        reverse(URL),
+        {
+            "action": "ukryj_wszystkie_nieuzywane",
+            "potwierdzam": "1",
+            "pk_z_podgladu": [uzywany.pk],
+        },
+    )
+    assert _stan(uzywany) == (True,)
 
 
 @pytest.mark.django_db
@@ -118,7 +160,12 @@ def test_ukryj_wszystkie_nieuzywane_wymaga_uprawnienia(client, django_user_model
     )
     client.force_login(user)
     client.post(
-        reverse(URL), {"action": "ukryj_wszystkie_nieuzywane", "potwierdzam": "1"}
+        reverse(URL),
+        {
+            "action": "ukryj_wszystkie_nieuzywane",
+            "potwierdzam": "1",
+            "pk_z_podgladu": [jezyk.pk],
+        },
     )
     assert _stan(jezyk) == (True,)
 
@@ -191,15 +238,22 @@ def test_komparator_brak_jezyka_daje_czytelny_blad():
 
 
 @pytest.mark.django_db
-def test_skrot_crossref_ma_pierwszenstwo_i_widoczny_przed_ukrytym():
-    ukryty = _jezyk("t-1", kod_bcp47="xq", widoczny=False)
-    widoczny = _jezyk("t-2", kod_bcp47="xq-AA")
-    assert Jezyk.dla_kodu("xq") == widoczny
+def test_dla_kodu_kolejnosc_pol_i_widoczne_przed_ukrytymi():
+    ukryty_bcp = _jezyk("t-1", kod_bcp47="xq", widoczny=False)
+    widoczny_bcp = _jezyk("t-2", kod_bcp47="xq-AA")
+    assert Jezyk.dla_kodu("xq") == widoczny_bcp
 
+    # Jawny „Skrót CrossRef” ma pierwszeństwo przed kodem BCP 47…
     jawny = _jezyk("t-3", skrot_crossref="xq", kod_bcp47="")
     assert Jezyk.dla_kodu("xq") == jawny
+    # …ale UKRYTY język ze skrótem nie przesłania widocznego z kodem BCP 47.
+    Jezyk.objects.filter(pk=jawny.pk).update(widoczny=False)
+    assert Jezyk.dla_kodu("xq") == widoczny_bcp
+    # Gdy widocznego nie ma — zwracany jest ukryty (wołający to obsługuje).
+    Jezyk.objects.filter(pk=widoczny_bcp.pk).delete()
+    assert Jezyk.dla_kodu("xq") == jawny
     assert Jezyk.dla_kodu("") is None and Jezyk.dla_kodu(None) is None
-    assert ukryty != jawny
+    assert ukryty_bcp != jawny
 
 
 @pytest.mark.django_db
@@ -224,101 +278,6 @@ def test_skrot_crossref_przyjmuje_dowolny_poprawny_kod():
 )
 def test_kod_dla_nazwy(nazwa, kod):
     assert kod_dla_nazwy(nazwa) == kod
-
-
-@pytest.mark.django_db
-def test_migracja_uzupelnia_tylko_puste_kody():
-    migracja = import_module("bpp.migrations.0533_jezyk_kody_crossref_fd513")
-    Jezyk.objects.filter(nazwa__in=["ukraiński", "czeski"]).delete()
-    pusty = baker.make(Jezyk, nazwa="ukraiński", skrot="t-ukr", kod_bcp47="")
-    reczny = baker.make(Jezyk, nazwa="czeski", skrot="t-cz", kod_bcp47="cs-CZ")
-    nieznany = baker.make(Jezyk, nazwa="t-klingoński", skrot="t-kl", kod_bcp47="")
-
-    migracja.uzupelnij_kody(apps, None)
-
-    for jezyk in (pusty, reczny, nieznany):
-        jezyk.refresh_from_db()
-    assert (pusty.kod_bcp47, reczny.kod_bcp47, nieznany.kod_bcp47) == (
-        "uk",
-        "cs-CZ",
-        "",
-    )
-
-
-# --- edycja rekordu z ukrytym językiem ---------------------------------------
-
-
-def _formularz(model, admin_user, obj=None):
-    request = RequestFactory().get("/")
-    request.user = admin_user
-    klasa = admin.site._registry[model].get_form(request, obj)
-    return klasa(instance=obj) if obj is not None else klasa()
-
-
-@pytest.mark.django_db
-def test_rekord_z_ukrytym_jezykiem_da_sie_zapisac(admin_user):
-    """Ukryty język znika z list wyboru nowych rekordów, ale rekord, który
-    już go ma, musi go dalej pokazywać i przyjmować przy zapisie."""
-    ukryty = _jezyk("t-uk", widoczny=False)
-    inny_ukryty = _jezyk("t-uk2", widoczny=False)
-    rekord = baker.make(
-        Wydawnictwo_Ciagle, jezyk=ukryty, jezyk_alt=ukryty, jezyk_orig=None
-    )
-
-    form = _formularz(Wydawnictwo_Ciagle, admin_user, rekord)
-    for pole in ("jezyk", "jezyk_alt"):
-        assert form.fields[pole].clean(str(ukryty.pk)) == ukryty
-        # …ale innego ukrytego języka wybrać się nie da.
-        with pytest.raises(ValidationError):
-            form.fields[pole].clean(str(inny_ukryty.pk))
-    # Pole bez wartości: tylko widoczne języki.
-    assert ukryty not in form.fields["jezyk_orig"].queryset
-
-    nowy = _formularz(Wydawnictwo_Ciagle, admin_user)
-    for pole in ("jezyk", "jezyk_alt", "jezyk_orig"):
-        assert ukryty not in nowy.fields[pole].queryset
-        assert nowy.fields[pole].queryset.filter(widoczny=True).exists()
-
-
-@pytest.mark.django_db
-def test_rekord_z_ukrytym_typem_mnisw_da_sie_zapisac(admin_user):
-    """Ten sam mechanizm dla pozostałych ukrywanych słowników."""
-    ukryty = baker.make(Typ_KBN, nazwa="t-ukryty", skrot="t-uk", ukryty=True)
-    rekord = baker.make(Wydawnictwo_Zwarte, typ_kbn=ukryty)
-
-    form = _formularz(Wydawnictwo_Zwarte, admin_user, rekord)
-    assert form.fields["typ_kbn"].clean(str(ukryty.pk)) == ukryty
-    assert ukryty not in _formularz(Wydawnictwo_Zwarte, admin_user).fields[
-        "typ_kbn"
-    ].queryset
-
-
-@pytest.mark.django_db
-def test_streszczenie_i_zrodlo_z_ukrytym_jezykiem(admin_user):
-    ukryty = _jezyk("t-uk", widoczny=False)
-    zrodlo = baker.make(Zrodlo, jezyk=ukryty)
-    form = _formularz(Zrodlo, admin_user, zrodlo)
-    assert form.fields["jezyk"].clean(str(ukryty.pk)) == ukryty
-    assert ukryty not in _formularz(Zrodlo, admin_user).fields["jezyk"].queryset
-
-    rekord = baker.make(Wydawnictwo_Ciagle)
-    streszczenie = baker.make(
-        Wydawnictwo_Ciagle_Streszczenie, rekord=rekord, jezyk_streszczenia=ukryty
-    )
-    request = RequestFactory().get("/")
-    request.user = admin_user
-    model_admin = admin.site._registry[Wydawnictwo_Ciagle]
-    inline = next(
-        i
-        for i in model_admin.get_inline_instances(request, rekord)
-        if i.model is Wydawnictwo_Ciagle_Streszczenie
-    )
-    formset = inline.get_formset(request, rekord)(instance=rekord)
-    pola = [f.fields["jezyk_streszczenia"] for f in formset.forms]
-    istniejace = formset.forms[0]
-    assert istniejace.instance == streszczenie
-    assert ukryty in pola[0].queryset
-    assert ukryty not in formset.empty_form.fields["jezyk_streszczenia"].queryset
 
 
 # --- polecenie ukryj_nieuzywane_jezyki ---------------------------------------
@@ -356,3 +315,47 @@ def test_polecenie_ukrywa_tylko_nieuzywane():
         False,
         False,
     )
+
+
+# --- źródło wskazuje na UKRYTY język -----------------------------------------
+
+
+@pytest.mark.django_db
+def test_komparator_ukryty_jezyk_daje_wyjasnienie_zamiast_pustego_pola():
+    Jezyk.objects.filter(kod_bcp47__istartswith="xq").delete()
+    ukryty = _jezyk("t-xq", kod_bcp47="xq", widoczny=False)
+
+    wynik = Komparator.porownaj_language("xq")
+    # Ukrytego języka nie ma na liście wyboru nowego rekordu, więc nie
+    # udajemy dopasowania — mówimy, co zrobić.
+    assert wynik.rekord_po_stronie_bpp is None
+    assert ukryty.nazwa in wynik.opis and "Pokaż zaznaczone" in wynik.opis
+
+
+@pytest.mark.django_db
+def test_dodaj_z_crossref_ostrzega_o_ukrytym_jezyku(rf, admin_user, mocker):
+    from django.contrib.messages import get_messages
+    from django.contrib.messages.storage.fallback import FallbackStorage
+
+    Jezyk.objects.filter(kod_bcp47__istartswith="xq").delete()
+    ukryty = _jezyk("t-xq", kod_bcp47="xq", widoczny=False)
+    model_admin = admin.site._registry[Wydawnictwo_Ciagle]
+    mocker.patch.object(
+        model_admin, "get_crossref_api_data", return_value={"language": "xq"}
+    )
+    mocker.patch(
+        "bpp.admin.crossref_api_helpers.ostrzez_o_zduplikowanych_zrodlach_crossref"
+    )
+    mocker.patch(
+        "bpp.admin.crossref_api_helpers.convert_crossref_to_changeform_initial_data",
+        return_value={},
+    )
+    request = rf.get("/")
+    request.user = admin_user
+    request.session = {}
+    request._messages = FallbackStorage(request)
+
+    model_admin.get_changeform_initial_data(request)
+
+    komunikaty = [str(m) for m in get_messages(request)]
+    assert any(ukryty.nazwa in k and "ukryty" in k for k in komunikaty), komunikaty

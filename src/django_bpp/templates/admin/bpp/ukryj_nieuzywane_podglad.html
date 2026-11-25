@@ -56,6 +56,9 @@
       {% for pk in wybrane_pk %}
         <input type="hidden" name="{{ action_checkbox_name }}" value="{{ pk }}">
       {% endfor %}
+      {% for obj in do_ukrycia %}
+        <input type="hidden" name="{{ pole_pk_z_podgladu }}" value="{{ obj.pk }}">
+      {% endfor %}
       <input type="hidden" name="action" value="{{ akcja }}">
       <input type="hidden" name="{{ pole_potwierdzenia }}" value="1">
       <input type="hidden" name="index" value="0">

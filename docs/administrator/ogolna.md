@@ -263,6 +263,10 @@ Na tych listach są cztery akcje:
   wiersza. System pokaże **podgląd**: listę pozycji, które zostaną ukryte
   (żaden rekord na nie nie wskazuje), oraz tych, które pozostaną widoczne,
   bo są używane. Nic się nie zmienia, dopóki nie klikniesz „Tak, ukryj”.
+  Zatwierdzenie dotyczy dokładnie listy z podglądu: pozycja dodana do
+  słownika w międzyczasie nie zostanie ukryta, a pozycja, która po
+  wyświetleniu podglądu zaczęła być używana, zostanie pominięta (komunikat
+  poda, ile takich było).
 - **„Ukryj nieużywane spośród zaznaczonych…”** — to samo, ale tylko dla
   zaznaczonych wierszy; także z podglądem i potwierdzeniem. Można
   bezpiecznie zaznaczyć całą listę — używane pozycje zostaną pominięte.
@@ -279,8 +283,11 @@ wprowadzaniu i redagowaniu rekordów, ale zostaje w bazie i **nie psuje
 istniejących rekordów**: rekord, który już ma ukryty język (albo ukryty typ
 MNiSW), nadal pokazuje go w formularzu i daje się zapisać bez zmiany tej
 wartości. Ukryta pozycja jest wtedy na liście wyboru tylko w tym jednym
-rekordzie. Dotyczy to pól „Język”, „Język alternatywny”, „Język
-oryginalny”, języka streszczenia i dodatkowego tytułu oraz języka źródła.
+rekordzie; innej ukrytej pozycji wybrać się w nim nie da. Dotyczy to pól
+„Język”, „Język alternatywny”, „Język oryginalny”, „Typ MNiSW/MEiN”
+i „Charakter formalny” w wydawnictwach ciągłych i zwartych, pracach
+doktorskich i habilitacyjnych, a także języka streszczenia, dodatkowego
+tytułu i języka źródła.
 
 Każda zmiana trafia do „Historii” pozycji (przycisk „Historia”
 w formularzu słownika) z wpisem „Ukryto nieużywaną pozycję słownika (akcja
@@ -298,22 +305,61 @@ języka co akcja w panelu.
 ## Kody języków a pobieranie danych z CrossRef
 
 Gdy BPP pobiera opis publikacji z CrossRef (formularz „Dodaj z CrossRef
-API”, importer publikacji), język pracy przychodzi jako kod, np. `en`,
-`de`, `uk`. BPP szuka go w słowniku **Dane systemowe → Języki** w dwóch
-polach, w tej kolejności:
+API”, importer publikacji), język pracy przychodzi jako kod dwuliterowy
+(ISO 639-1), np. `en`, `de`, `uk`. BPP szuka go w słowniku **Dane systemowe
+→ Języki** kolejno w:
 
-1. **„Skrót nazwy języka wg API CrossRef”** — dowolny poprawny kod języka
-   (małe litery, np. `de`; dawniej dało się tu wybrać tylko `en`, `es`
-   albo `pl`). Wypełnij tylko wtedy, gdy ma być inny niż kod BCP 47.
-2. **„Kod języka wg BCP 47”** — np. `pl`, `en`, `en-GB`. Region jest
-   pomijany, więc `en-GB` pasuje do `en`.
+1. polu **„Skrót nazwy języka wg API CrossRef”** — dowolny poprawny kod
+   języka małymi literami, np. `de` (dawniej dało się tu wybrać tylko `en`,
+   `es` albo `pl`). Kod musi być unikalny w słowniku;
+2. polu **„Kod języka wg BCP 47”** — np. `pl`, `en`, `en-GB`. Region jest
+   pomijany, więc `en-GB` pasuje do `en`;
+3. języku PBN powiązanym z językiem BPP (kolumna „Pbn uid”) — jego kodzie
+   dwu- lub trzyliterowym. Dzięki temu język dociągnięty z PBN działa od
+   razu, zanim ktokolwiek uzupełni mu kody.
 
-Jeśli kilka języków ma ten sam kod, wybierany jest widoczny. Przy
-aktualizacji BPP kod BCP 47 został uzupełniony dla języków o typowych
-polskich nazwach („niemiecki”, „ukraiński”, „czeski”…), o ile pole było
-puste. Języki, których BPP nie potrafi dopasować do CrossRef, pokaże filtr
-**„kod dla CrossRef: nieustawiony”** na liście języków — wystarczy wpisać
-im kod w polu „Kod języka wg BCP 47”.
+Języki **widoczne mają pierwszeństwo** przed ukrytymi, niezależnie od pola.
+Jeśli kod pasuje wyłącznie do języka ukrytego, pole „Język” nowego rekordu
+zostaje puste (ukrytego języka nie ma na liście wyboru), a system mówi
+dlaczego: „Źródło podaje język „…”, ale jest on ukryty na listach wyboru…”
+— w formularzu „Dodaj z CrossRef API” jako komunikat u góry strony,
+w importerze publikacji pod polem „Język” w kroku weryfikacji. Wystarczy
+pokazać ten język akcją „Pokaż zaznaczone” albo wybrać inny.
+
+### Skąd biorą się kody
+
+Języki założone w BPP na podstawie PBN mają skrót trzyliterowy (ISO 639-2,
+np. `ukr`, `ces`) i taki sam kod trafił automatycznie do pola „Kod języka
+wg BCP 47”. Przy aktualizacji BPP kody zostały uzupełnione jednorazowo;
+to samo można w każdej chwili powtórzyć akcją **„Uzupełnij kody CrossRef
+z PBN (bez zaznaczania)…”** na liście języków — np. po dociągnięciu nowych
+języków z PBN. Akcja najpierw pokazuje **podgląd** (język, stary → nowy
+kod), a zapisuje dopiero po kliknięciu „Tak, uzupełnij kody”. Zasady:
+
+- kod dwuliterowy pochodzi z powiązanego języka PBN, a gdy go brak —
+  z polskiej nazwy języka („węgierski” → `hu`);
+- **„Kod języka wg BCP 47”** jest zmieniany tylko wtedy, gdy jest pusty
+  albo trzyliterowy i taki sam jak skrót języka (czyli wpisał go automat).
+  Kodów wpisanych ręcznie (np. `pt-BR`) akcja nie rusza;
+- **„Skrót nazwy języka wg API CrossRef”** jest wypełniany tylko, gdy jest
+  pusty. Jeżeli ten sam kod pasuje do kilku języków (np. dwa wpisy
+  „czeski”), dostaje go jedyny używany w publikacjach, a gdy to nie
+  rozstrzyga — jedyny widoczny. Gdy nadal nie wiadomo, skrót nie jest
+  nadawany nikomu (podgląd wymienia takie języki w sekcji o kolizjach),
+  a dopasowanie idzie po kodzie BCP 47;
+- każda zmiana trafia do „Historii” języka.
+
+Zmiana kodu BCP 47 z trzyliterowego na dwuliterowy (np. `ukr` → `uk`) jest
+widoczna także poza importem: ten kod trafia do atrybutu `lang` przy
+tytułach obcojęzycznych na stronach publicznych oraz do `xml:lang`
+w eksporcie CERIF/OpenAIRE. Kod dwuliterowy jest tam poprawną (zalecaną
+przez BCP 47) postacią.
+
+Filtr **„dwuliterowy kod dla CrossRef: jest / brak”** na liście języków
+pokazuje, których języków nie da się dopasować do CrossRef. Wiele języków
+nie ma kodu dwuliterowego w ogóle (ISO 639-1 obejmuje ok. 180 języków) —
+dla nich „brak” jest stanem poprawnym; filtr warto łączyć z filtrem
+„używane w rekordach”.
 
 ## Sposób kalkulacji dyscyplin
 

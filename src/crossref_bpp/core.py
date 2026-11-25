@@ -741,6 +741,10 @@ class Komparator:
     @classmethod
     def porownaj_language(cls, wartosc):
         jezyk = Jezyk.dla_kodu(wartosc)
+        if jezyk is not None and not jezyk.widoczny:
+            # Ukrytego języka nie ma na liście wyboru nowego rekordu — pole
+            # zostałoby puste bez wyjaśnienia (FD#513).
+            return WynikPorownania(StatusPorownania.BLAD, jezyk.komunikat_ukryty())
         if jezyk is not None:
             return WynikPorownania(
                 StatusPorownania.DOKLADNE, "określony jezyk", rekordy=[jezyk]

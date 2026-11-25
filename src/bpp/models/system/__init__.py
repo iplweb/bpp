@@ -73,10 +73,10 @@ class Jezyk(NazwaISkrot):
                 "(ISO 639-1), ewentualnie z regionem, np. „en-GB”.",
             )
         ],
-        help_text="Kod języka, pod jakim CrossRef opisuje publikacje w tym "
-        "języku, np. „en”, „de”, „uk”. Wypełnij tylko wtedy, gdy różni się "
-        "od pola „Kod języka wg BCP 47” — gdy to pole jest puste, język "
-        "publikacji z CrossRef jest dopasowywany po kodzie BCP 47.",
+        help_text="Dwuliterowy kod (ISO 639-1), pod jakim CrossRef opisuje "
+        "publikacje w tym języku, np. „en”, „de”, „uk”. Gdy puste, język "
+        "publikacji z CrossRef jest dopasowywany po polu „Kod języka wg "
+        "BCP 47”.",
     )
 
     pbn_uid = models.ForeignKey(
@@ -113,10 +113,16 @@ class Jezyk(NazwaISkrot):
         """Język słownika dla kodu języka z CrossRef (albo z autodetekcji).
 
         Kolejność: „Skrót CrossRef” (jawna decyzja redakcji), potem „Kod
-        języka wg BCP 47”. Region jest pomijany po obu stronach (``en-GB`` ↔
-        ``en``). Gdy kod BCP 47 ma kilka języków, pierwszeństwo ma widoczny
-        (ukryty nie przeszedłby walidacji formularza nowego rekordu), potem
-        niższe ``pk`` — żeby wynik był deterministyczny. Brak → ``None``.
+        języka wg BCP 47”, na końcu język PBN powiązany z językiem BPP
+        (jego kod dwu- albo trzyliterowy) — żeby język dociągnięty z PBN po
+        aktualizacji działał bez ręcznego uzupełniania kodów. Region jest
+        pomijany po obu stronach (``en-GB`` ↔ ``en``). Widoczne języki mają
+        pierwszeństwo przed ukrytymi niezależnie od pola (ukrytego nie ma
+        na liście wyboru nowego rekordu); przy remisie niższe ``pk`` — żeby
+        wynik był deterministyczny. Brak → ``None``.
+
+        Zwrócony język MOŻE być ukryty (``widoczny=False``) — kod wołający
+        decyduje, co wtedy zrobić.
         """
         if not kod:
             return None
@@ -125,20 +131,33 @@ class Jezyk(NazwaISkrot):
         if not podtag:
             return None
 
-        jezyk = (
-            cls.objects.filter(Q(skrot_crossref=kod) | Q(skrot_crossref__iexact=podtag))
-            .order_by("-widoczny", "pk")
-            .first()
+        warunki = (
+            Q(skrot_crossref=kod) | Q(skrot_crossref__iexact=podtag),
+            Q(kod_bcp47__iexact=podtag) | Q(kod_bcp47__istartswith=f"{podtag}-"),
+            Q(pbn_uid__language__contains={"639-1": podtag})
+            | Q(pbn_uid__language__contains={"639-2": podtag})
+            | Q(pbn_uid_id=podtag),
         )
-        if jezyk is not None:
-            return jezyk
+        # Najpierw WIDOCZNE po wszystkich polach, dopiero potem ukryte:
+        # ukryty język ze skrótem CrossRef nie może przesłonić widocznego
+        # z tym samym kodem BCP 47.
+        for widoczny in (True, False):
+            for warunek in warunki:
+                jezyk = (
+                    cls.objects.filter(warunek, widoczny=widoczny)
+                    .order_by("pk")
+                    .first()
+                )
+                if jezyk is not None:
+                    return jezyk
+        return None
 
+    def komunikat_ukryty(self):
+        """Wyjaśnienie dla redaktora, gdy źródło wskazuje na ukryty język."""
         return (
-            cls.objects.filter(
-                Q(kod_bcp47__iexact=podtag) | Q(kod_bcp47__istartswith=f"{podtag}-")
-            )
-            .order_by("-widoczny", "pk")
-            .first()
+            f"Źródło podaje język „{self.nazwa}”, ale jest on ukryty na listach "
+            f"wyboru. Wybierz inny język albo pokaż ten: Dane systemowe → "
+            f"Języki → zaznacz „{self.nazwa}” → akcja „Pokaż zaznaczone”."
         )
 
 

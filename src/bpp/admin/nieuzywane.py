@@ -55,6 +55,8 @@ KOMUNIKAT_POKAZANO = "Pokazano pozycję słownika (akcja masowa)"
 
 AKCJA_WSZYSTKIE = "ukryj_wszystkie_nieuzywane"
 POLE_POTWIERDZENIA = "potwierdzam"
+#: Lista PK pokazana w podglądzie — po zatwierdzeniu zmieniamy NAJWYŻEJ je.
+POLE_PK_Z_PODGLADU = "pk_z_podgladu"
 SZABLON_PODGLADU = "admin/bpp/ukryj_nieuzywane_podglad.html"
 
 
@@ -146,6 +148,7 @@ def _podglad_ukrywania(modeladmin, request, queryset, akcja, tytul):
         "pominiete": list(pominiete),
         "akcja": akcja,
         "pole_potwierdzenia": POLE_POTWIERDZENIA,
+        "pole_pk_z_podgladu": POLE_PK_Z_PODGLADU,
         "wybrane_pk": request.POST.getlist(admin_helpers.ACTION_CHECKBOX_NAME),
         "action_checkbox_name": admin_helpers.ACTION_CHECKBOX_NAME,
         "select_across": request.POST.get("select_across", "0"),
@@ -156,16 +159,26 @@ def _podglad_ukrywania(modeladmin, request, queryset, akcja, tytul):
 def _ukryj_nieuzywane_po_potwierdzeniu(modeladmin, request, queryset):
     model = queryset.model
     pole, wartosc = pole_ukrycia(model)
-    # Używane liczymy w chwili zatwierdzenia, nie podglądu — pozycja, która
-    # w międzyczasie trafiła do jakiegoś rekordu, zostaje widoczna.
-    do_ukrycia = nieuzywane(queryset)
-    pominiete_uzywane = _widoczne(uzywane(queryset)).count()
+    # Zatwierdzenie dotyczy dokładnie tej listy, którą pokazał podgląd —
+    # pozycja dodana do słownika w międzyczasie nie zostanie ukryta „na
+    # ślepo”.
+    z_podgladu = [
+        pk for pk in request.POST.getlist(POLE_PK_Z_PODGLADU) if str(pk).isdigit()
+    ]
+    kandydaci = queryset.filter(pk__in=z_podgladu)
 
+    # „Nieużywana” sprawdzamy ponownie w chwili zmiany, pod blokadą wierszy
+    # — pozycja, która po podglądzie trafiła do jakiegoś rekordu, zostaje.
     updated = zmien_hurtowo_z_historia(
-        request, do_ukrycia, {pole: wartosc}, KOMUNIKAT_UKRYTO_NIEUZYWANE
+        request,
+        kandydaci,
+        {pole: wartosc},
+        KOMUNIKAT_UKRYTO_NIEUZYWANE,
+        warunek_pod_blokada=nieuzywane,
     )
     if updated is None:
         return komunikat_limitu(modeladmin, request, model)
+    pominiete_uzywane = _widoczne(uzywane(kandydaci)).count()
 
     komunikat = (
         f"Ukryto {updated} "
@@ -174,8 +187,10 @@ def _ukryj_nieuzywane_po_potwierdzeniu(modeladmin, request, queryset):
     if pominiete_uzywane:
         komunikat += (
             f" Pominięto {pominiete_uzywane} "
-            f"{ngettext('używaną', 'używanych', pominiete_uzywane)} — "
-            f"wskazują na nie istniejące rekordy."
+            f"{ngettext('pozycję, która', 'pozycji, które', pominiete_uzywane)} "
+            f"po wyświetleniu podglądu "
+            f"{ngettext('zaczęła', 'zaczęły', pominiete_uzywane)} być "
+            f"{ngettext('używana', 'używane', pominiete_uzywane)}."
         )
     if updated:
         komunikat += (
@@ -311,11 +326,14 @@ class UkryjNieuzywaneMixin:
         # standardową listę.
         return admin.ModelAdmin.get_action_choices(self, request, default_choices)
 
+    #: Akcje działające na całym słowniku, bez zaznaczania wierszy.
+    akcje_bez_zaznaczania = (ukryj_wszystkie_nieuzywane,)
+
     def get_actions(self, request):
         actions = super().get_actions(request)
         if self.has_change_permission(request):
             for akcja in (
-                ukryj_wszystkie_nieuzywane,
+                *self.akcje_bez_zaznaczania,
                 ukryj_nieuzywane,
                 ukryj_zaznaczone,
                 pokaz_zaznaczone,
@@ -323,26 +341,26 @@ class UkryjNieuzywaneMixin:
                 actions[akcja.__name__] = self.get_action(akcja)
         return actions
 
-    def _wybrano_akcje_wszystkie(self, request):
+    def _akcja_bez_zaznaczania(self, request):
         if request.method != "POST":
-            return False
+            return None
         akcje = request.POST.getlist("action")
         try:
             wybrana = akcje[int(request.POST.get("index", 0))]
         except (ValueError, IndexError):
             # Niepoprawny formularz akcji — niech obsłuży go Django.
-            return False
-        return wybrana == AKCJA_WSZYSTKIE
+            return None
+        for akcja in self.akcje_bez_zaznaczania:
+            if akcja.__name__ == wybrana:
+                return akcja
+        return None
 
     def changelist_view(self, request, extra_context=None):
-        # „Ukryj wszystkie nieużywane” nie wymaga zaznaczenia czegokolwiek,
+        # Akcje „bez zaznaczania” nie wymagają zaznaczenia czegokolwiek,
         # a Django odrzuca akcję bez zaznaczonych wierszy („Items must be
-        # selected”) — dlatego obsługujemy ją, zanim trafi do Django.
-        if self._wybrano_akcje_wszystkie(request) and self.has_change_permission(
-            request
-        ):
-            odpowiedz = ukryj_wszystkie_nieuzywane(
-                self, request, self.get_queryset(request)
-            )
+        # selected”) — dlatego obsługujemy je, zanim trafią do Django.
+        akcja = self._akcja_bez_zaznaczania(request)
+        if akcja is not None and self.has_change_permission(request):
+            odpowiedz = akcja(self, request, self.get_queryset(request))
             return odpowiedz or HttpResponseRedirect(request.get_full_path())
         return super().changelist_view(request, extra_context)

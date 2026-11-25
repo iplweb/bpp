@@ -390,6 +390,9 @@
                         {{ form.jezyk.label }} *
                     </label>
                     {{ form.jezyk }}
+                    {% if ukryty_jezyk %}
+                        <p class="help-text">{{ ukryty_jezyk.komunikat_ukryty }}</p>
+                    {% endif %}
                 </div>
             </div>
         </div>

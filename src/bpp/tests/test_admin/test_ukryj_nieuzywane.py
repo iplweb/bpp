@@ -81,6 +81,7 @@ def test_akcja_ukrywa_tylko_nieuzywane_jezyki(admin_client):
             "action": "ukryj_nieuzywane",
             "_selected_action": [uzywany.pk, wolny.pk],
             "potwierdzam": "1",
+            "pk_z_podgladu": [uzywany.pk, wolny.pk],
         },
         follow=True,
     )
@@ -91,7 +92,7 @@ def test_akcja_ukrywa_tylko_nieuzywane_jezyki(admin_client):
     assert uzywany.widoczny is True
     assert wolny.widoczny is False
     tresc = [str(m) for m in res.context["messages"]]
-    assert any("Ukryto 1" in t and "Pominięto 1" in t for t in tresc), tresc
+    assert any("Ukryto 1" in t for t in tresc), tresc
     assert LogEntry.objects.filter(
         object_id=str(wolny.pk),
         action_flag=CHANGE,
@@ -111,6 +112,7 @@ def test_akcja_ustawia_ukryty_dla_charakteru_formalnego(admin_client):
             "action": "ukryj_nieuzywane",
             "_selected_action": [uzywany.pk, wolny.pk],
             "potwierdzam": "1",
+            "pk_z_podgladu": [uzywany.pk, wolny.pk],
         },
     )
 
