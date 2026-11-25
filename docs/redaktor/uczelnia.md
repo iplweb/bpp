@@ -35,6 +35,41 @@ rozwagę w edycji ustawień obiektu uczelnia.
     Inni użytkownicy edytujący rekord uczelni ich nie widzą, a zapis
     formularza nie zmienia tych ustawień.
 
+## Wydruki: marginesy, czcionka i orientacja raportu {#wydruki}
+
+Sekcja **„Wydruki”** formularza uczelni decyduje o tym, jak wyglądają
+wydruki stron serwisu — także plik PDF zapisany z okna drukowania
+przeglądarki („Zapisz jako PDF”).
+
+- **Margines górny / dolny / lewy / prawy wydruku** — marginesy kartki na
+  wszystkich wydrukach serwisu, domyślnie `2cm`. Wpisz liczbę z jednostką,
+  z kropką: np. `2cm`, `15mm`, `0.5cm` (zapis z przecinkiem, `0,5cm`, jest
+  przez przeglądarkę pomijany). Mniejszy margines to szerszy wiersz tekstu
+  na kartce. Wydruki sprzed września 2026 miały w praktyce margines
+  `0.5cm` — jeśli wolisz tamten wygląd, wpisz tę wartość we wszystkie
+  cztery pola. Te same marginesy trafiają do eksportu wyników wyszukiwania
+  do Worda.
+- **Wielkość czcionki wydruku wyników wyszukiwania (pt)** — wielkość tekstu
+  raportu z wyszukiwania (lista i tabela) na wydruku, domyślnie `9`
+  (tak drukował się raport przed wrześniem 2026). Dozwolone 6–16; mniejsza
+  czcionka mieści więcej tekstu w wierszu tabeli i zmniejsza liczbę stron.
+- **Orientacja kartki wydruku wyników wyszukiwania** —
+  „wybór w oknie drukowania” (domyślnie: orientację wybiera osoba drukująca),
+  „pionowa (portret)” albo „pozioma (pejzaż)”. Przy ustawieniu pionowym lub
+  poziomym przeglądarka drukuje raport w tej orientacji (niektóre, np.
+  Chrome, chowają wtedy wybór orientacji w oknie drukowania). Ustawienie jest
+  też domyślną orientacją eksportu do Worda — w menu „Eksport” zawsze można
+  wybrać „MS Word (portret)” albo „MS Word (pejzaż)”.
+
+!!! tip "Tabela drukuje się ciasno?"
+    Raport w formie tabeli ma kilka kolumn (IF, PK, charakter, typ), więc
+    przy wąskiej kartce opis pracy łamie się w wiele krótkich wierszy.
+    Najwięcej miejsca daje orientacja pozioma; pomaga też mniejsza czcionka
+    i mniejsze marginesy.
+
+Zmiany obowiązują od razu po zapisaniu formularza (odśwież stronę z wynikami
+przed drukowaniem).
+
 ## Integracja z Web Of Science
 
 Po rozwinięciu sekcji „Clarivate Analytics API” możemy uzupełnić nazwę

@@ -97,7 +97,11 @@ Przycisk **„Drukuj”** otwiera wszystkie wyniki (bez podziału na strony)
 w układzie do druku i od razu okno drukowania przeglądarki — możesz
 wybrać drukarkę albo „Zapisz jako PDF”. Wydruk zawiera tytuł zestawienia
 i — jeśli tak ustawiła uczelnia — parametry zapytania; przyciski i panele
-są pomijane.
+są pomijane. Wielkość czcionki, marginesy i (opcjonalnie) orientację kartki
+ustawia administrator w danych uczelni (patrz
+[Wydruki](../redaktor/uczelnia.md#wydruki)). Jeśli uczelnia nie narzuca
+orientacji, możesz w oknie drukowania wybrać układ poziomy — w raporcie
+w formie tabeli daje on wyraźnie szersze wiersze.
 
 „Drukuj” i „Wyświetl wszystkie” znikają, gdy wyników jest bardzo dużo.
 Próg ustawia uczelnia, osobno dla niezalogowanych (domyślnie 2000 prac)
@@ -107,8 +111,9 @@ nie wyświetla i prosi o zawężenie zapytania.
 ## Eksport {#eksport}
 
 Po zalogowaniu na pasku wyników jest przycisk **„Eksport”** z formatami:
-**CSV**, **XLS: dane**, **XLS: opis bibliograficzny**, **HTML** i **DOCX
-(Word)** (w raporcie BibTeX — **BibTeX (.bib)**). Jednorazowo można pobrać
+**CSV**, **XLS: dane**, **XLS: opis bibliograficzny**, **HTML**, **MS Word
+(portret)** i **MS Word (pejzaż)** — plik Word na kartce A4 pionowej albo
+poziomej (w raporcie BibTeX — **BibTeX (.bib)**). Jednorazowo można pobrać
 do 5000 prac. Krok po kroku: [Jak pobrać listę
 publikacji](pobieranie-listy-publikacji.md).
 
