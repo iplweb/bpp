@@ -375,6 +375,30 @@ przy dużej bazie zawęź lata albo wyszukaj po tytule, DOI lub ISBN.
 Komparatory źródeł i udziałów mają przycisk **Przebuduj** — przelicza
 rozbieżności po pobraniu nowych danych.
 
+### Komparator publikacji PBN — jak porównywane są pola {#komparator-publikacji-pola}
+
+Komparator publikacji porównuje pola tak samo jak
+[„Wzbogać z PBN”](wzbogacanie-rekordu.md) w formularzu rekordu — to jedna
+reguła porównywania, więc oba narzędzia pokazują te same różnice. Dla
+pojedynczej pracy z listy wygodniej użyć „Wzbogać z PBN”: tam wybrane pola
+można od razu przenieść do BPP.
+
+| Pole | Co jest różnicą, a co nie |
+|---|---|
+| Tytuł | znaczniki HTML, encje (`&amp;`) i podwójne odstępy nie są różnicą (po żadnej stronie); wielkość liter jest |
+| Rok, Tom, Numer zeszytu | różnicą jest także wartość wpisana tylko po jednej stronie; tom jest porównywany także dla wydawnictw zwartych |
+| DOI | liczy się sam numer — adres `https://doi.org/…` i wielkość liter nie są różnicą |
+| Strony | zakres stron z PBN; półpauza zamiast łącznika i odstępy wokół niego nie są różnicą |
+| ISSN, ISBN | kreski, odstępy i wielkość znaku kontrolnego „X” nie są różnicą; numer wpisany w BPP w polu e-ISSN / e-ISBN (albo odwrotnie) jest zgodny; numer, który ma tylko jedna strona, jest różnicą — osobno dla „ISSN” i „e-ISSN”, „ISBN” i „e-ISBN” |
+| URL/WWW | adres z PBN wpisany w BPP w którymkolwiek z pól adresu (płatny / wolny dostęp) jest zgodny; końcowy „/” nie jest różnicą; adres w BPP przy braku adresu w PBN jest różnicą |
+| Język | kod języka z PBN jest zamieniany na język ze słownika BPP (język powiązany z językiem PBN w „Dane systemowe → Języki”); kod spoza słownika jest pokazany wprost |
+| Słowa kluczowe | porównywane są zbiory słów — kolejność i wielkość liter nie mają znaczenia; osobno słowa języka głównego („Słowa kluczowe”) i angielskie („Słowa kluczowe (ang.)”); słowa podane w PBN jednym ciągiem są dzielone po przecinku albo średniku |
+| Streszczenie | każde streszczenie z PBN osobno, z nazwą języka: zgodne, gdy rekord ma streszczenie o tym samym tekście (znaczniki HTML bez znaczenia); inne w tym samym języku albo brak w tym języku to różnica |
+
+Liczba autorów, wydawca, konferencja, miejsce wydania, seria i punkty są
+porównywane jak wcześniej. Wartości dłuższe niż 300 znaków (streszczenia)
+są na liście skracane.
+
 ## Komunikat → co zrobić {#komunikaty}
 
 Najczęstsze komunikaty z formularza pracy i z kolejki eksportu (w kolejce
