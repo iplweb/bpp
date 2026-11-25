@@ -315,15 +315,16 @@ def html_export_response(document_html, report_title):
     return response
 
 
-def docx_export_response(document_html, report_title):
+def docx_export_response(document_html, report_title, orientacja=None, marginesy=None):
     """Eksport DOCX — konwersja przez nowe_raporty.docx_export.html_to_docx.
 
     Ścieżka pierwsza (i produkcyjna) to pandoc; przy twardej awarii fallback
     na dockerowy html2docx. DocxConversionError propaguje (500) — nie tłumimy.
+    ``orientacja`` (``portrait``/``landscape``) ustawia kartkę A4 (FD#444).
     """
     from nowe_raporty.docx_export import html_to_docx
 
-    content = html_to_docx(document_html)
+    content = html_to_docx(document_html, orientacja=orientacja, marginesy=marginesy)
     response = HttpResponse(
         content,
         content_type=(
@@ -766,5 +767,35 @@ def document_export_response(
         request=request,
     )
     if export_format == "docx":
-        return docx_export_response(document_html, report_title)
+        orientacja, marginesy = strona_docx_dla_requestu(request)
+        return docx_export_response(
+            document_html, report_title, orientacja=orientacja, marginesy=marginesy
+        )
     return html_export_response(document_html, report_title)
+
+
+def strona_docx_dla_requestu(request):
+    """Orientacja i marginesy kartki eksportu DOCX (FD#444).
+
+    Parametr ``?orientacja=portrait|landscape`` (pozycje „MS Word (portret)”
+    / „MS Word (pejzaż)” w menu eksportu) wygrywa; bez niego obowiązuje
+    ustawienie Uczelni. Pusta orientacja = plik bez zmian strony (zachowanie
+    sprzed FD#444), wtedy marginesów też nie ruszamy.
+    """
+    from bpp.models.uczelnia import ORIENTACJE_WYDRUKU
+
+    uczelnia = Uczelnia.objects.get_for_request(request)
+    orientacja = request.GET.get("orientacja", "")
+    if orientacja not in ORIENTACJE_WYDRUKU:
+        orientacja = getattr(uczelnia, "wydruk_wyszukiwania_orientacja", "") or ""
+    if not orientacja:
+        return None, None
+    marginesy = None
+    if uczelnia is not None:
+        marginesy = {
+            "top": uczelnia.wydruk_margines_gora,
+            "bottom": uczelnia.wydruk_margines_dol,
+            "left": uczelnia.wydruk_margines_lewo,
+            "right": uczelnia.wydruk_margines_prawo,
+        }
+    return orientacja, marginesy

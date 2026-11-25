@@ -331,7 +331,22 @@
       page-break-inside: avoid;
       break-inside: avoid;
     }
+
+    // FD#444: na ekranie `.kol-tekst` ma `overflow-wrap: anywhere`, co
+    // obniża minimalną szerokość kolumny do jednej litery — na kartce A4
+    // tabela ściskała wtedy „Charakter” i „Typ” do kilku znaków i łamała
+    // słowa w środku („czasopi-śmie”). `break-word` łamie tylko ciąg, który
+    // naprawdę nie mieści się w wierszu, a kolumna dostaje szerokość
+    // najdłuższego słowa.
+    .kol-tekst {
+      overflow-wrap: break-word;
+    }
   }
+
+  // Wielkość czcionki i orientację kartki raportu ustawia administrator
+  // w Uczelni (FD#444) — reguły wstawia szablon multiseek/common-results.html
+  // (Uczelnia.css_wydruku_wyszukiwania). NIE ustawiaj tu font-size dla
+  // .multiseek-results-body, bo nadpiszesz ustawienie uczelni.
 
   // ===========================================================================
   // 9. ŁAMANIE STRON

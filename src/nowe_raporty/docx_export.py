@@ -1,4 +1,5 @@
 import logging
+import re
 from collections.abc import Iterable, Mapping
 from pathlib import Path
 from tempfile import NamedTemporaryFile
@@ -182,7 +183,69 @@ def _replace_pagebreak_markers(docx_path: str, marker: str = PAGEBREAK_MARKER) -
     return replacements
 
 
-def html_to_docx(html: str, process_pagebreaks: bool = True) -> bytes:
+# Jednostki długości CSS, które umiemy przenieść na kartkę DOCX (marginesy
+# z ustawień Uczelni są zapisane jak w CSS, np. „2cm”, „15mm”, „0.5in”).
+_CSS_DLUGOSC_RE = re.compile(r"^\s*(\d+(?:\.\d+)?)\s*(cm|mm|in|pt)\s*$", re.I)
+
+
+def dlugosc_css_na_emu(wartosc: str | None):
+    """„2cm” → długość python-docx; nieznany zapis → ``None`` (pomiń).
+
+    Marginesy w Uczelni to wolny tekst wstawiany wprost do CSS — nie wolno
+    tu rzucić wyjątkiem na wartości, którą przeglądarka i tak by zignorowała.
+    """
+    from docx.shared import Cm, Inches, Mm, Pt
+
+    if not wartosc:
+        return None
+    dopasowanie = _CSS_DLUGOSC_RE.match(wartosc)
+    if dopasowanie is None:
+        return None
+    liczba = float(dopasowanie.group(1))
+    jednostka = {"cm": Cm, "mm": Mm, "in": Inches, "pt": Pt}[
+        dopasowanie.group(2).lower()
+    ]
+    return jednostka(liczba)
+
+
+def ustaw_strone_docx(
+    docx_path: str,
+    orientacja: str,
+    marginesy: Mapping[str, str | None] | None = None,
+) -> None:
+    """Ustaw kartkę A4 w orientacji ``portrait``/``landscape`` (FD#444).
+
+    Pandoc i html2docx nie czytają ``@page`` z HTML-a, więc orientację
+    i marginesy dopisujemy do ``w:sectPr`` gotowego pliku. ``marginesy``:
+    klucze ``top``/``bottom``/``left``/``right`` z wartościami jak w CSS.
+    """
+    from docx import Document
+    from docx.enum.section import WD_ORIENT
+    from docx.shared import Mm
+
+    if orientacja not in ("portrait", "landscape"):
+        raise ValueError(f"Nieznana orientacja kartki: {orientacja!r}")
+
+    doc = Document(docx_path)
+    poziomo = orientacja == "landscape"
+    for section in doc.sections:
+        section.orientation = WD_ORIENT.LANDSCAPE if poziomo else WD_ORIENT.PORTRAIT
+        krotszy, dluzszy = Mm(210), Mm(297)
+        section.page_width = dluzszy if poziomo else krotszy
+        section.page_height = krotszy if poziomo else dluzszy
+        for klucz, wartosc in (marginesy or {}).items():
+            dlugosc = dlugosc_css_na_emu(wartosc)
+            if dlugosc is not None:
+                setattr(section, f"{klucz}_margin", dlugosc)
+    doc.save(docx_path)
+
+
+def html_to_docx(
+    html: str,
+    process_pagebreaks: bool = True,
+    orientacja: str | None = None,
+    marginesy: Mapping[str, str | None] | None = None,
+) -> bytes:
     """Convert HTML string to DOCX bytes.
 
     Uses pypandoc as primary converter with the html2docx HTTP service
@@ -193,6 +256,10 @@ def html_to_docx(html: str, process_pagebreaks: bool = True) -> bytes:
     Args:
         html: HTML content to convert
         process_pagebreaks: If True, replace PAGEBREAK_MARKER with real page breaks
+        orientacja: ``"portrait"``/``"landscape"`` — kartka A4 w tej
+            orientacji; ``None`` zostawia ustawienia konwertera
+        marginesy: marginesy kartki jak w CSS (klucze top/bottom/left/right),
+            używane tylko razem z ``orientacja``
 
     Returns:
         DOCX file content as bytes
@@ -224,6 +291,15 @@ def html_to_docx(html: str, process_pagebreaks: bool = True) -> bytes:
             _replace_pagebreak_markers(output_path)
         except Exception as exc:  # noqa: BLE001
             LOGGER.warning("Failed to process pagebreak markers", exc_info=exc)
+
+    # Kartka A4 w zadanej orientacji (FD#444). Bez orientacji plik zostaje
+    # taki, jak wyszedł z konwertera — zachowanie sprzed zmiany.
+    if orientacja:
+        try:
+            ustaw_strone_docx(output_path, orientacja, marginesy)
+        except Exception:
+            Path(output_path).unlink(missing_ok=True)
+            raise
 
     try:
         return Path(output_path).read_bytes()

@@ -25,7 +25,8 @@ wyszukiwarce (**szukaj → szybko**, klawisz `/`) albo wybierz je z listy
 3. Otworzy się formularz wyszukiwania z już wpisanymi warunkami — kliknij
    **„Wyświetl wyniki”**.
 4. Nad listą wyników rozwiń **„Eksport”** i wybierz format:
-    - **DOCX (Word)** — gotowa lista opisów bibliograficznych,
+    - **MS Word (portret)** / **MS Word (pejzaż)** — gotowa lista opisów
+      bibliograficznych na kartce A4 pionowej albo poziomej,
     - **XLS: opis bibliograficzny** — to samo w Excelu,
     - **XLS: dane** / **CSV** — tabela z poszczególnymi polami (rok,
       źródło, punkty…), do własnych zestawień.

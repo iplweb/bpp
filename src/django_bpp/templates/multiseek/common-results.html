@@ -4,6 +4,11 @@
 {% load compress %}
 {% load prace %}
 
+{# FD#444: czcionka i orientacja wydruku raportu z ustawień Uczelni. #}
+{# CSS składa model (liczba z kropką niezależnie od lokalizacji). #}
+{% if uczelnia %}
+    <style id="multiseek-wydruk-uczelni">{{ uczelnia.css_wydruku_wyszukiwania|safe }}</style>
+{% endif %}
 {% include "multiseek/print-logo.html" %}
 {% include "multiseek/title.html" %}
 <div class="multiseek-report-container">

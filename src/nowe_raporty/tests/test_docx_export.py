@@ -1,3 +1,4 @@
+import re
 from pathlib import Path
 
 import pytest
@@ -186,3 +187,58 @@ def test_html2docx_service_propagates_connection_error(monkeypatch, tmp_path):
     with override_settings(HTML2DOCX_URL=SERVICE_URL):
         with pytest.raises(requests.ConnectionError):
             docx_export._convert_using_html2docx_service("<b>x</b>", str(output_path))
+
+
+# --- FD#444: kartka A4 pionowo/poziomo i marginesy z CSS ---
+
+
+def _pusty_docx(tmp_path):
+    from docx import Document
+
+    sciezka = tmp_path / "pusty.docx"
+    Document().save(sciezka)
+    return str(sciezka)
+
+
+def test_fd444_ustaw_strone_docx_pejzaz_a4_i_marginesy(tmp_path):
+    import zipfile
+
+    from nowe_raporty.docx_export import ustaw_strone_docx
+
+    sciezka = _pusty_docx(tmp_path)
+    ustaw_strone_docx(
+        sciezka,
+        "landscape",
+        {"top": "1cm", "bottom": "10mm", "left": "0.5in", "right": "bzdura"},
+    )
+
+    with zipfile.ZipFile(sciezka) as zf:
+        xml = zf.read("word/document.xml").decode("utf-8")
+
+    pgsz = re.search(r"<w:pgSz [^>]*/>", xml).group(0)
+    assert 'w:orient="landscape"' in pgsz
+    assert 'w:w="16838"' in pgsz
+    assert 'w:h="11906"' in pgsz
+    pgmar = re.search(r"<w:pgMar [^>]*/>", xml).group(0)
+    assert 'w:top="567"' in pgmar  # 1 cm
+    assert 'w:bottom="567"' in pgmar  # 10 mm
+    assert 'w:left="720"' in pgmar  # 0.5 in
+
+
+def test_fd444_ustaw_strone_docx_nieznana_orientacja(tmp_path):
+    from nowe_raporty.docx_export import ustaw_strone_docx
+
+    with pytest.raises(ValueError):
+        ustaw_strone_docx(_pusty_docx(tmp_path), "ukosna")
+
+
+def test_fd444_dlugosc_css_na_emu():
+    from docx.shared import Cm, Pt
+
+    from nowe_raporty.docx_export import dlugosc_css_na_emu
+
+    assert dlugosc_css_na_emu("2cm") == Cm(2)
+    assert dlugosc_css_na_emu(" 12 PT ") == Pt(12)
+    assert dlugosc_css_na_emu("0,5cm") is None
+    assert dlugosc_css_na_emu("") is None
+    assert dlugosc_css_na_emu(None) is None

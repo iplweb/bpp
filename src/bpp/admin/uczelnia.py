@@ -382,6 +382,8 @@ class UczelniaAdmin(
                     "wydruk_margines_dol",
                     "wydruk_margines_lewo",
                     "wydruk_margines_prawo",
+                    "wydruk_wyszukiwania_czcionka",
+                    "wydruk_wyszukiwania_orientacja",
                 ),
             },
         ),

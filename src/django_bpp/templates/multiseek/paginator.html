@@ -114,9 +114,16 @@
                         <i class="fi-download"></i> HTML
                     </a>
                 </li>
+                {# FD#444: kartka A4 pionowo albo poziomo — orientację #}
+                {# dopisuje do pliku nowe_raporty.docx_export. #}
                 <li>
-                    <a href="{{ multiseek_export_docx_url }}{% if print_removed %}?print-removed=1{% endif %}">
-                        <i class="fi-download"></i> DOCX (Word)
+                    <a href="{{ multiseek_export_docx_url }}?orientacja=portrait{% if print_removed %}&print-removed=1{% endif %}">
+                        <i class="fi-download"></i> MS Word (portret)
+                    </a>
+                </li>
+                <li>
+                    <a href="{{ multiseek_export_docx_url }}?orientacja=landscape{% if print_removed %}&print-removed=1{% endif %}">
+                        <i class="fi-download"></i> MS Word (pejzaż)
                     </a>
                 </li>
                 {% endif %}

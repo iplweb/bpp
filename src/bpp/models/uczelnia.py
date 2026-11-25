@@ -2,6 +2,7 @@
 Struktura uczelni.
 """
 
+from decimal import Decimal
 from typing import TYPE_CHECKING, Union
 
 from autoslug import AutoSlugField
@@ -32,6 +33,29 @@ from .fields import OpcjaWyswietlaniaField
 
 if TYPE_CHECKING:
     import pbn_api  # noqa
+
+
+# Orientacja kartki wydruku — wartości to słowa kluczowe CSS ``@page size``
+# i jednocześnie wartości parametru ``orientacja`` eksportu DOCX. Pusta
+# wartość = bez ``size`` w ``@page``: orientację wybiera się w oknie drukowania
+# przeglądarki (zachowanie sprzed FD#444).
+ORIENTACJA_WYDRUKU_PRZEGLADARKA = ""
+ORIENTACJA_WYDRUKU_PIONOWA = "portrait"
+ORIENTACJA_WYDRUKU_POZIOMA = "landscape"
+ORIENTACJE_WYDRUKU = (ORIENTACJA_WYDRUKU_PIONOWA, ORIENTACJA_WYDRUKU_POZIOMA)
+ORIENTACJA_WYDRUKU_CHOICES = [
+    (ORIENTACJA_WYDRUKU_PRZEGLADARKA, "wybór w oknie drukowania"),
+    (ORIENTACJA_WYDRUKU_PIONOWA, "pionowa (portret)"),
+    (ORIENTACJA_WYDRUKU_POZIOMA, "pozioma (pejzaż)"),
+]
+
+WYDRUK_MARGINES_HELP_TEXT = (
+    "Margines kartki na wydrukach stron serwisu (także PDF zapisany "
+    "z przeglądarki) i w eksporcie DOCX wyników wyszukiwania. Podaj liczbę "
+    "z jednostką, np. 2cm, 15mm, 0.5cm (kropka, nie przecinek). Mniejszy "
+    "margines = szerszy tekst na kartce; 0.5cm odpowiada wyglądowi wydruków "
+    "sprzed września 2026."
+)
 
 
 class UczelniaManager(BppSoftDeleteManager):
@@ -929,22 +953,76 @@ class Uczelnia(
         "Margines górny wydruku",
         max_length=10,
         default="2cm",
+        help_text=WYDRUK_MARGINES_HELP_TEXT,
     )
     wydruk_margines_dol = models.CharField(
         "Margines dolny wydruku",
         max_length=10,
         default="2cm",
+        help_text=WYDRUK_MARGINES_HELP_TEXT,
     )
     wydruk_margines_lewo = models.CharField(
         "Margines lewy wydruku",
         max_length=10,
         default="2cm",
+        help_text=WYDRUK_MARGINES_HELP_TEXT,
     )
     wydruk_margines_prawo = models.CharField(
         "Margines prawy wydruku",
         max_length=10,
         default="2cm",
+        help_text=WYDRUK_MARGINES_HELP_TEXT,
     )
+    # FD#444: wydruk wyników wyszukiwania (raport z „Wyszukiwania") ma
+    # własną wielkość czcionki i orientację kartki. Domyślne 9 pt to rozmiar,
+    # w jakim raport drukował się przed przebudową stylów wydruku (wrzesień
+    # 2026) — po niej tekst w tabeli miał 10,5 pt i łamał się w wąskich
+    # kolumnach.
+    wydruk_wyszukiwania_czcionka = models.DecimalField(
+        "Wielkość czcionki wydruku wyników wyszukiwania (pt)",
+        max_digits=3,
+        decimal_places=1,
+        default=Decimal("9.0"),
+        validators=[
+            MinValueValidator(Decimal("6.0")),
+            MaxValueValidator(Decimal("16.0")),
+        ],
+        help_text="Wielkość tekstu raportu z wyszukiwania (lista i tabela) na "
+        "wydruku i w PDF-ie zapisanym z przeglądarki, w punktach "
+        "typograficznych. Mniejsza czcionka mieści więcej tekstu w wierszu "
+        "tabeli. Dozwolone 6–16; dotychczasowy wygląd raportu: 9.",
+    )
+    wydruk_wyszukiwania_orientacja = models.CharField(
+        "Orientacja kartki wydruku wyników wyszukiwania",
+        max_length=10,
+        choices=ORIENTACJA_WYDRUKU_CHOICES,
+        default=ORIENTACJA_WYDRUKU_PRZEGLADARKA,
+        blank=True,
+        help_text="Pozioma (pejzaż) daje szerszy wiersz tabeli. Przy "
+        "ustawieniu „wybór w oknie drukowania” orientację wybiera osoba "
+        "drukująca. Ustawienie dotyczy też domyślnej orientacji eksportu "
+        "DOCX; w menu eksportu można zawsze wybrać wersję pionową albo "
+        "poziomą.",
+    )
+
+    def css_wydruku_wyszukiwania(self):
+        """Reguły ``@media print`` dla raportu z wyszukiwania (FD#444).
+
+        Zwraca czysty CSS (bez znacznika ``<style>``). Liczba formatowana
+        z kropką niezależnie od lokalizacji — szablon z ``USE_L10N`` wstawiłby
+        przecinek („9,0pt”), którego przeglądarka nie rozumie.
+        """
+        rozmiar = format(Decimal(self.wydruk_wyszukiwania_czcionka).normalize(), "f")
+        reguly = []
+        orientacja = self.wydruk_wyszukiwania_orientacja
+        if orientacja in ORIENTACJE_WYDRUKU:
+            reguly.append(f"@page {{ size: A4 {orientacja}; }}")
+        reguly.append(
+            ".multiseek-results-body, .multiseek-results-body p, "
+            ".multiseek-results-body td, .multiseek-results-body li "
+            f"{{ font-size: {rozmiar}pt !important; }}"
+        )
+        return f"@media print {{ {' '.join(reguly)} }}"
 
     objects = UczelniaManager()
 

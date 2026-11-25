@@ -1063,3 +1063,153 @@ def test_multiseek_export_html_print_removed_nie_crashuje(
 
     assert response.status_code == 200
     assert response["Content-Type"] == "text/html; charset=utf-8"
+
+
+# --- FD#444: czcionka/orientacja wydruku raportu i DOCX pionowo/poziomo ---
+
+
+def _docx_document_xml(content: bytes) -> str:
+    import zipfile
+
+    with zipfile.ZipFile(io.BytesIO(content)) as zf:
+        return zf.read("word/document.xml").decode("utf-8")
+
+
+@pytest.mark.django_db
+def test_fd444_wydruk_ma_czcionke_z_uczelni_domyslnie_9pt(
+    logged_in_client, multiseek_export_rekord
+):
+    """Wydruk raportu bierze wielkość czcionki z Uczelni (domyślnie 9 pt —
+    rozmiar sprzed przebudowy stylów wydruku), bez wymuszania orientacji."""
+    _set_multiseek_title_filter(logged_in_client, report_type=TABLE_REPORT_TYPE)
+
+    content = logged_in_client.get(reverse("live-results")).content.decode("utf-8")
+
+    styl = re.search(
+        r'<style id="multiseek-wydruk-uczelni">(.*?)</style>', content, re.S
+    )
+    assert styl is not None
+    assert "font-size: 9pt" in styl.group(1)
+    assert "@page" not in styl.group(1)
+
+
+@pytest.mark.django_db
+def test_fd444_wydruk_pejzaz_i_czcionka_ulamkowa(
+    logged_in_client, multiseek_export_rekord, jednostka
+):
+    uczelnia = jednostka.uczelnia
+    uczelnia.wydruk_wyszukiwania_czcionka = Decimal("10.5")
+    uczelnia.wydruk_wyszukiwania_orientacja = "landscape"
+    uczelnia.save()
+    _set_multiseek_title_filter(logged_in_client, report_type=TABLE_REPORT_TYPE)
+
+    with translation.override("pl"):
+        content = logged_in_client.get(reverse("live-results")).content.decode(
+            "utf-8"
+        )
+
+    # Kropka, nie „10,5pt” z lokalizacji — tego przeglądarka nie zrozumie.
+    assert "font-size: 10.5pt" in content
+    assert "@page { size: A4 landscape; }" in content
+
+
+def test_fd444_css_wydruku_wyszukiwania_bez_bazy():
+    from bpp.models import Uczelnia
+
+    uczelnia = Uczelnia(
+        wydruk_wyszukiwania_czcionka=Decimal("9.0"),
+        wydruk_wyszukiwania_orientacja="portrait",
+    )
+    css = uczelnia.css_wydruku_wyszukiwania()
+
+    assert css.startswith("@media print {")
+    assert "@page { size: A4 portrait; }" in css
+    assert "font-size: 9pt !important" in css
+
+
+@pytest.mark.django_db
+def test_fd444_menu_eksportu_ma_word_portret_i_pejzaz(
+    logged_in_client, multiseek_export_rekord
+):
+    _set_multiseek_title_filter(logged_in_client, report_type=LIST_REPORT_TYPE)
+
+    content = logged_in_client.get(reverse("live-results")).content.decode("utf-8")
+
+    docx = reverse("multiseek-export", kwargs={"export_format": "docx"})
+    assert f"{docx}?orientacja=portrait" in content
+    assert f"{docx}?orientacja=landscape" in content
+    assert "MS Word (portret)" in content
+    assert "MS Word (pejzaż)" in content
+
+
+@pytest.mark.django_db
+def test_fd444_eksport_docx_przekazuje_orientacje_i_marginesy(
+    logged_in_client, multiseek_export_rekord, jednostka, monkeypatch
+):
+    wywolania = []
+
+    def fake_html_to_docx(html, **kw):
+        wywolania.append(kw)
+        return b"DOCXSENTINEL"
+
+    monkeypatch.setattr("nowe_raporty.docx_export.html_to_docx", fake_html_to_docx)
+    uczelnia = jednostka.uczelnia
+    uczelnia.wydruk_margines_lewo = "0.5cm"
+    uczelnia.save()
+    _set_multiseek_title_filter(logged_in_client, report_type=LIST_REPORT_TYPE)
+    url = reverse("multiseek-export", kwargs={"export_format": "docx"})
+
+    logged_in_client.get(url + "?orientacja=landscape")
+    logged_in_client.get(url)  # bez parametru i bez ustawienia: jak dawniej
+    logged_in_client.get(url + "?orientacja=<script>")  # śmieć = jak brak
+
+    assert wywolania[0]["orientacja"] == "landscape"
+    assert wywolania[0]["marginesy"]["left"] == "0.5cm"
+    assert wywolania[1] == {"orientacja": None, "marginesy": None}
+    assert wywolania[2] == {"orientacja": None, "marginesy": None}
+
+
+@pytest.mark.django_db
+def test_fd444_eksport_docx_domyslna_orientacja_z_uczelni(
+    logged_in_client, multiseek_export_rekord, jednostka, monkeypatch
+):
+    wywolania = []
+    monkeypatch.setattr(
+        "nowe_raporty.docx_export.html_to_docx",
+        lambda html, **kw: wywolania.append(kw) or b"DOCXSENTINEL",
+    )
+    uczelnia = jednostka.uczelnia
+    uczelnia.wydruk_wyszukiwania_orientacja = "landscape"
+    uczelnia.save()
+    _set_multiseek_title_filter(logged_in_client, report_type=LIST_REPORT_TYPE)
+    url = reverse("multiseek-export", kwargs={"export_format": "docx"})
+
+    logged_in_client.get(url)
+    logged_in_client.get(url + "?orientacja=portrait")
+
+    assert wywolania[0]["orientacja"] == "landscape"
+    assert wywolania[1]["orientacja"] == "portrait"
+
+
+@pytest.mark.skipif(not _pandoc_available(), reason="pandoc niedostępny")
+@pytest.mark.django_db
+def test_fd444_eksport_docx_pejzaz_ma_orient_landscape_w_sectpr(
+    logged_in_client, multiseek_export_rekord
+):
+    _set_multiseek_title_filter(logged_in_client, report_type=TABLE_REPORT_TYPE)
+    url = reverse("multiseek-export", kwargs={"export_format": "docx"})
+
+    poziomo = _docx_document_xml(
+        logged_in_client.get(url + "?orientacja=landscape").content
+    )
+    pionowo = _docx_document_xml(
+        logged_in_client.get(url + "?orientacja=portrait").content
+    )
+
+    pgsz_poziomo = re.search(r"<w:pgSz [^>]*/>", poziomo).group(0)
+    assert 'w:orient="landscape"' in pgsz_poziomo
+    # A4 poziomo: szerokość 297 mm (16838 twipów), wysokość 210 mm.
+    assert 'w:w="1683' in pgsz_poziomo
+    pgsz_pionowo = re.search(r"<w:pgSz [^>]*/>", pionowo).group(0)
+    assert 'w:orient="landscape"' not in pgsz_pionowo
+    assert 'w:h="1683' in pgsz_pionowo
