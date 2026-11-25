@@ -389,7 +389,11 @@ Do czasu zakończenia lista pokazuje poprzednie wyniki. Zmiany wprowadzone
 w BPP i dane pobrane z PBN po przeliczeniu pojawią się dopiero po kolejnym
 przeliczeniu. Lista jest stronicowana, a filtry (lata, typ, wyszukiwana
 fraza, wybór porównywanych pól) i eksport do XLSX obejmują całość wyników,
-nie jedną stronę. Przeliczenie niczego nie wysyła do PBN.
+nie jedną stronę. Przeliczenie niczego nie wysyła do PBN. Jeśli dane
+którejś pracy mają w PBN nietypową postać, nad listą pojawia się „Nie udało
+się porównać: N” — pozostałe prace i pola są porównane. Przeliczanie
+przerwane (np. restartem serwera) strona rozpoznaje po kilku minutach bez
+postępu i pozwala uruchomić je ponownie; dotychczasowe wyniki zostają.
 Komparatory źródeł i udziałów mają przycisk **Przebuduj** — przelicza
 rozbieżności po pobraniu nowych danych.
 

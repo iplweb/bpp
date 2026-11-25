@@ -18,14 +18,20 @@
             <p><strong>Postęp:</strong>
                 {{ info.current|default:0|intcomma }} / {{ info.total|default:0|intcomma }} prac
             </p>
-            {% if info.stats %}
-                <p><strong>Prace z różnicami:</strong> {{ info.stats.with_differences|default:0|intcomma }}</p>
-            {% endif %}
         {% else %}
             <p>Oczekiwanie na rozpoczęcie…</p>
         {% endif %}
 
         <p><em>Status odświeża się automatycznie co 5 sekund.</em></p>
+    </div>
+
+{% elif porzucone %}
+    <div class="callout alert">
+        <h4><span class="fi-x"></span> Przeliczanie zostało przerwane</h4>
+        <p>
+            Zadanie od kilku minut nie zgłasza postępu (np. po restarcie serwera).
+            Wróć do listy i uruchom przeliczanie ponownie — dotychczasowe wyniki zostały zachowane.
+        </p>
     </div>
 
 {% elif error %}

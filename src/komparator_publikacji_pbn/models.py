@@ -87,7 +87,21 @@ class KomparatorPublikacjiMeta(models.Model):
     task_id = models.CharField(max_length=64, blank=True, default="")
     liczba_prac = models.PositiveIntegerField(default=0)
     liczba_z_roznicami = models.PositiveIntegerField(default=0)
+    #: Ile prac w pokazywanych wynikach nie dało się porównać w co najmniej
+    #: jednym polu (błąd porównania nie przerywa przeliczenia).
+    liczba_bledow = models.PositiveIntegerField(default=0)
+    #: Pierwszy taki błąd („pole: opis”) — do pokazania na liście.
+    przyklad_bledu = models.TextField(blank=True, default="")
     ostatni_blad = models.TextField(blank=True, default="")
+
+    # Przeliczenie w toku. Właścicielem jest zadanie, którego numer przebiegu
+    # stoi w ``przebieg_w_toku``; co paczkę odświeża ``ostatni_postep``.
+    # Brak postępu przez ``core.PORZUCONE_PO_MINUTACH`` = przebieg porzucony
+    # (np. worker zabity) i można uruchomić następny.
+    przebieg_w_toku = models.PositiveIntegerField(null=True, blank=True)
+    ostatni_postep = models.DateTimeField(null=True, blank=True)
+    postep_biezacy = models.PositiveIntegerField(default=0)
+    postep_razem = models.PositiveIntegerField(default=0)
 
     class Meta:
         verbose_name = "Metadane komparatora publikacji"

@@ -109,10 +109,9 @@ def test_ponowne_przeliczenie_podmienia_wyniki():
     praca.save()
     core.przelicz()
 
-    assert list(z_tytulem.values_list("tytul", flat=True)) == ["Praca 0002"]
-    assert RoznicaPublikacjiPBN.objects.count() <= 2
-    przebiegi = set(RoznicaPublikacjiPBN.objects.values_list("przebieg", flat=True))
-    assert przebiegi == {KomparatorPublikacjiMeta.get_instance().przebieg}
+    przebieg = KomparatorPublikacjiMeta.get_instance().przebieg
+    biezace = z_tytulem.filter(przebieg=przebieg)
+    assert list(biezace.values_list("tytul", flat=True)) == ["Praca 0002"]
 
 
 @pytest.mark.django_db
@@ -145,8 +144,10 @@ def test_widok_pokazuje_poprzednie_wyniki_gdy_przeliczenie_sie_wywroci():
     assert RoznicaPublikacjiPBN.objects.filter(przebieg=przebieg).count() == 1
 
     core.przelicz()
-    assert RoznicaPublikacjiPBN.objects.count() == 2
-    assert KomparatorPublikacjiMeta.get_instance().status == "completed"
+    meta = KomparatorPublikacjiMeta.get_instance()
+    assert meta.status == "completed"
+    assert RoznicaPublikacjiPBN.objects.filter(przebieg=meta.przebieg).count() == 2
+    assert not RoznicaPublikacjiPBN.objects.filter(rekord_id=10**6).exists()
 
 
 @pytest.mark.django_db
@@ -257,39 +258,38 @@ def test_eksport_xlsx_obejmuje_calosc_nie_jedna_strone(admin_client):
 
     response = admin_client.get(URL, {"export": "xlsx", "fields": "title"})
 
-    arkusz = load_workbook(BytesIO(response.content)).active
+    arkusz = load_workbook(BytesIO(b"".join(response.streaming_content))).active
     wiersze = list(arkusz.iter_rows(min_row=2, values_only=True))
     assert len(wiersze) == NA_STRONE + 7
     assert {w[5] for w in wiersze} == {"Tytuł"}
     assert {w[4] for w in wiersze} == {2023}
 
 
+ZLEC = "komparator_publikacji_pbn.tasks.porownaj_publikacje_task.apply_async"
+
+
 @pytest.mark.django_db
 def test_przycisk_przelicz_uruchamia_zadanie_i_prowadzi_do_postepu(
     admin_client, swieze_dane_pbn
 ):
-    with mock.patch(
-        "komparator_publikacji_pbn.tasks.porownaj_publikacje_task.delay"
-    ) as delay:
-        delay.return_value.id = "zadanie-1"
+    with mock.patch(ZLEC) as zlec:
         response = admin_client.post(URL_PRZELICZ)
 
-    assert response.status_code == 302
-    assert response["Location"].endswith("/status/zadanie-1/")
     meta = KomparatorPublikacjiMeta.get_instance()
-    assert (meta.status, meta.task_id) == ("running", "zadanie-1")
+    assert meta.status == "running" and meta.task_id
+    zlec.assert_called_once_with(task_id=meta.task_id)
+    assert response.status_code == 302
+    assert response["Location"].endswith(f"/status/{meta.task_id}/")
 
-    # drugi klik w trakcie: bez drugiego zadania, od razu do postępu
-    with mock.patch(
-        "komparator_publikacji_pbn.tasks.porownaj_publikacje_task.delay"
-    ) as delay:
+    # drugi klik w trakcie: bez drugiego zadania, od razu do postępu pierwszego
+    with mock.patch(ZLEC) as zlec:
         response = admin_client.post(URL_PRZELICZ)
-    delay.assert_not_called()
-    assert response["Location"].endswith("/status/zadanie-1/")
+    zlec.assert_not_called()
+    assert response["Location"].endswith(f"/status/{meta.task_id}/")
 
     tresc = admin_client.get(URL).content.decode()
     assert "Trwa przeliczanie porównania" in tresc
-    assert "/status/zadanie-1/" in tresc
+    assert f"/status/{meta.task_id}/" in tresc
 
 
 @pytest.mark.django_db
@@ -312,29 +312,52 @@ def test_przelicz_wymaga_swiezych_danych_pbn_post_i_uprawnien(admin_client, clie
     assert KomparatorPublikacjiMeta.get_instance().status == "idle"
 
 
+URL_STATUS = "/komparator-publikacji-pbn/2022-2025/status/{}/"
+
+
+def _stan(**pola):
+    KomparatorPublikacjiMeta.get_instance()
+    KomparatorPublikacjiMeta.objects.filter(pk=1).update(**pola)
+
+
 @pytest.mark.django_db
 def test_strona_postepu_pokazuje_pasek_i_po_zakonczeniu_wraca_na_liste(admin_client):
-    url = "/komparator-publikacji-pbn/2022-2025/status/zadanie-1/"
-    wynik = mock.Mock()
-    wynik.ready.return_value = False
-    wynik.info = {"current": 50, "total": 200, "progress": 25, "stats": {}}
+    url = URL_STATUS.format("zadanie-1")
+    _stan(
+        status="running",
+        task_id="zadanie-1",
+        przebieg_w_toku=1,
+        ostatni_postep=timezone.now(),
+        postep_biezacy=50,
+        postep_razem=200,
+    )
 
-    with mock.patch("komparator_publikacji_pbn.views.AsyncResult", return_value=wynik):
-        strona = admin_client.get(url).content.decode()
-        fragment = admin_client.get(url, headers={"HX-Request": "true"})
+    strona = admin_client.get(url).content.decode()
+    fragment = admin_client.get(url, headers={"HX-Request": "true"})
 
     assert 'hx-trigger="every 5s"' in strona
     assert 'role="progressbar"' in strona and "width: 25%" in strona
+    assert fragment.status_code == 200
     assert "50 / 200 prac" in fragment.content.decode()
     assert "<html" not in fragment.content.decode()
 
-    wynik.ready.return_value = True
-    wynik.failed.return_value = False
-    wynik.result = {"stats": {"processed": 200, "with_differences": 12}}
-    with mock.patch("komparator_publikacji_pbn.views.AsyncResult", return_value=wynik):
-        koniec = admin_client.get(url, headers={"HX-Request": "true"})
+    _stan(status="completed", przebieg_w_toku=None, liczba_prac=200)
+    koniec = admin_client.get(url, headers={"HX-Request": "true"})
 
     assert koniec["HX-Redirect"] == "/komparator-publikacji-pbn/2022-2025/"
+
+
+@pytest.mark.django_db
+def test_strona_postepu_cudzego_lub_zastapionego_zadania_wraca_na_liste(
+    admin_client,
+):
+    _stan(status="running", task_id="nowe", ostatni_postep=timezone.now())
+
+    odpowiedz = admin_client.get(URL_STATUS.format("stare"))
+    htmx = admin_client.get(URL_STATUS.format("stare"), headers={"HX-Request": "1"})
+
+    assert odpowiedz.status_code == 302
+    assert htmx["HX-Redirect"] == "/komparator-publikacji-pbn/2022-2025/"
 
 
 @pytest.mark.django_db
@@ -343,10 +366,7 @@ def test_blad_uruchomienia_zadania_nie_blokuje_kolejnej_proby(
 ):
     """Gdy zadania nie da się zlecić (np. broker nie działa), komparator nie
     zostaje w stanie „trwa przeliczanie”."""
-    with mock.patch(
-        "komparator_publikacji_pbn.tasks.porownaj_publikacje_task.delay",
-        side_effect=ConnectionError("broker nie działa"),
-    ):
+    with mock.patch(ZLEC, side_effect=ConnectionError("broker nie działa")):
         response = admin_client.post(URL_PRZELICZ, follow=True)
 
     tresc = response.content.decode()

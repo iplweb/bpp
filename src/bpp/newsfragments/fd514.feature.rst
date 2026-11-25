@@ -11,3 +11,9 @@ wyniki. Przeliczenie korzysta wyłącznie z lokalnej kopii danych pobranych
 z PBN — niczego do PBN nie wysyła — i wymaga aktualnych danych (strona
 „Pobieranie z PBN”). Zaznaczenie pola „Słowa kluczowe” nie kończy się już
 błędem serwera.
+Prace, których dane w PBN mają nietypową postać, nie przerywają przeliczania:
+pozostałe pola i prace są porównywane, a nad listą pojawia się informacja
+„Nie udało się porównać: N” z przykładem. Naraz działa jedno przeliczanie;
+jeśli zostanie przerwane (np. przez restart serwera), po kilku minutach bez
+postępu strona pokazuje „Ostatnie przeliczanie zostało przerwane” i przycisk
+„Przelicz porównanie” wraca — dotychczasowe wyniki zostają.

@@ -1,13 +1,12 @@
-import io
 import logging
-from datetime import timedelta
+import tempfile
+import uuid
 
-from celery.result import AsyncResult
 from django.contrib import messages
 from django.contrib.admin.views.decorators import staff_member_required
-from django.core.cache import cache
-from django.db.models import Q
-from django.http import HttpResponse
+from django.db import transaction
+from django.db.models import Exists, OuterRef, Q
+from django.http import FileResponse, HttpResponse
 from django.shortcuts import redirect, render
 from django.urls import reverse
 from django.utils import timezone
@@ -17,6 +16,7 @@ from django.utils.http import urlencode
 from django.views import View
 from django.views.generic import ListView
 from openpyxl import Workbook
+from openpyxl.cell import WriteOnlyCell
 from openpyxl.styles import Alignment, Font, PatternFill
 
 from bpp.models import Wydawnictwo_Ciagle, Wydawnictwo_Zwarte
@@ -26,8 +26,8 @@ from import_common.normalization import normalize_isbn, normalize_issn
 from pbn_api.models import Publication
 from pbn_downloader_app.freshness import is_pbn_publications_data_fresh
 
+from .core import przeliczanie_porzucone, przeliczanie_w_toku
 from .models import KomparatorPublikacjiMeta, RoznicaPublikacjiPBN
-from .tasks import KLUCZ_POSTEPU
 
 # All available comparison fields
 COMPARISON_FIELDS = {
@@ -60,10 +60,6 @@ RODZAJE_PRAC = {
     RoznicaPublikacjiPBN.TYP_ZWARTE: Wydawnictwo_Zwarte,
 }
 
-#: Po tylu godzinach „przeliczanie w toku” uznajemy za porzucone (np. worker
-#: zabity w trakcie) i pozwalamy uruchomić je ponownie.
-PRZELICZANIE_PORZUCONE_PO_GODZINACH = 6
-
 DEFAULT_FIELDS = ["title", "year", "doi", "isbn", "issn", "url", "authors"]
 SESSION_KEY = "komparator_publikacji_filters"
 
@@ -81,22 +77,14 @@ def _get_default_filters(request):
     }
 
 
-def przeliczanie_w_toku(meta):
-    """Czy trwa przeliczenie uruchomione niedawno (nie porzucone)."""
-    if meta.status != KomparatorPublikacjiMeta.STATUS_RUNNING:
-        return False
-    if meta.rozpoczeto is None:
-        return False
-    granica = timezone.now() - timedelta(hours=PRZELICZANIE_PORZUCONE_PO_GODZINACH)
-    return meta.rozpoczeto > granica
-
-
 def _parse_year(value, default):
-    """Parse year string to int, returning default on failure."""
+    """Rok z filtra jako ``int``; puste pole, nie-liczba albo liczba spoza
+    zakresu lat (0–9999, żeby nie wyjść poza typ kolumny) → ``default``."""
     try:
-        return int(value) if value else default
-    except ValueError:
+        rok = int(value)
+    except (ValueError, TypeError):
         return default
+    return rok if 0 <= rok <= 9999 else default
 
 
 @method_decorator(staff_member_required, name="dispatch")
@@ -151,16 +139,33 @@ class PublicationComparisonView(ListView):
         self._filters = filters
         return filters
 
+    def _lata(self):
+        """``(rok_od, rok_do)`` faktycznie użyte do filtrowania: liczby
+        z filtra, a gdy pole jest puste albo nie jest rokiem — lata okresu."""
+        filters = self._get_filters()
+        okres_od, okres_do = lata_okresu(self.request)
+        return (
+            _parse_year(filters["year_min"], okres_od),
+            _parse_year(filters["year_max"], okres_do),
+        )
+
     def _wiersze(self):
         """Gotowe wyniki ostatniego przeliczenia zawężone filtrami (queryset
         ``RoznicaPublikacjiPBN``). Porównanie liczy zadanie w tle — tu jest
         tylko odczyt, więc lista obejmuje wszystkie prace z zakresu lat."""
         filters = self._get_filters()
-        okres_od, okres_do = lata_okresu(self.request)
-        year_min = _parse_year(filters["year_min"], okres_od)
-        year_max = _parse_year(filters["year_max"], okres_do)
+        year_min, year_max = self._lata()
+
+        # Praca skasowana w BPP po przeliczeniu nie liczy się do wyników
+        # (inaczej „Znaleziono: N” i eksport obejmowałyby nieistniejące).
+        istnieje = Q()
+        for typ, model in RODZAJE_PRAC.items():
+            istnieje |= Q(
+                Exists(model.objects.filter(pk=OuterRef("rekord_id"))), typ=typ
+            )
 
         queryset = RoznicaPublikacjiPBN.objects.filter(
+            istnieje,
             przebieg=KomparatorPublikacjiMeta.get_instance().przebieg,
             rok__gte=year_min,
             rok__lte=year_max,
@@ -370,7 +375,8 @@ class PublicationComparisonView(ListView):
         if pub_type != "ciagle" or not hasattr(bpp_pub, "strony"):
             return
         bpp_pages = bpp_pub.strony or ""
-        pbn_pages = pbn_pub.value_or_none("object", "pages") or ""
+        # PBN podaje tu także liczbę stron (int) — bez ``str`` porównanie padało.
+        pbn_pages = str(pbn_pub.value_or_none("object", "pages") or "")
         if bpp_pages.strip() != pbn_pages.strip():
             differences.append(
                 {"field": "Strony", "bpp_value": bpp_pages, "pbn_value": pbn_pages}
@@ -434,7 +440,8 @@ class PublicationComparisonView(ListView):
             return
         bpp_issue = bpp_pub.nr_zeszytu if hasattr(bpp_pub, "nr_zeszytu") else ""
         bpp_issue = bpp_issue or ""
-        pbn_issue = pbn_pub.value_or_none("object", "issue") or ""
+        # PBN podaje numer zeszytu także liczbą — bez ``str`` porównanie padało.
+        pbn_issue = str(pbn_pub.value_or_none("object", "issue") or "")
         if bpp_issue.strip() != pbn_issue.strip():
             differences.append(
                 {
@@ -467,7 +474,17 @@ class PublicationComparisonView(ListView):
         # bez tej zamiany porównanie kończyło się błędem (AttributeError).
         bpp_keywords = ", ".join(tag.name for tag in bpp_pub.slowa_kluczowe.all())
         pbn_keywords = pbn_pub.value_or_none("object", "keywords") or ""
+        if isinstance(pbn_keywords, dict):
+            # PBN trzyma słowa kluczowe wg języka: {"pol": [...], "eng": [...]}.
+            # Minimalnie, żeby porównanie nie padało — spłaszczamy do listy;
+            # właściwe porównanie per język: wspólny silnik (FD#517).
+            pbn_keywords = [
+                slowo
+                for slowa in pbn_keywords.values()
+                for slowo in (slowa if isinstance(slowa, list) else [slowa])
+            ]
         if isinstance(pbn_keywords, list):
+            pbn_keywords = [str(slowo) for slowo in pbn_keywords]
             pbn_keywords = ", ".join(pbn_keywords)
         if bpp_keywords.strip() != pbn_keywords.strip():
             differences.append(
@@ -603,12 +620,11 @@ class PublicationComparisonView(ListView):
         enabled_fields = set(self._get_filters()["enabled_fields"])
         wiersze = self._wiersze()
 
-        # Create workbook
-        wb = Workbook()
-        ws = wb.active
-        ws.title = "Porównanie publikacji BPP-PBN"
+        # Skoroszyt w trybie „tylko zapis”: wiersze idą od razu do pliku,
+        # zamiast rosnąć w pamięci procesu WWW (setki MB przy dużej bazie).
+        wb = Workbook(write_only=True)
+        ws = wb.create_sheet("Porównanie publikacji BPP-PBN")
 
-        # Headers
         headers = [
             "Typ",
             "ID BPP",
@@ -619,18 +635,24 @@ class PublicationComparisonView(ListView):
             "Wartość BPP",
             "Wartość PBN",
         ]
-        ws.append(headers)
+        # W tym trybie szerokości kolumn trzeba podać przed pierwszym wierszem.
+        for litera, szerokosc in zip(
+            "ABCDEFGH", (22, 10, 28, 50, 8, 22, 50, 50), strict=True
+        ):
+            ws.column_dimensions[litera].width = szerokosc
 
-        # Style headers
         header_font = Font(bold=True, color="FFFFFF")
         header_fill = PatternFill(
             start_color="366092", end_color="366092", fill_type="solid"
         )
-        for col in range(1, len(headers) + 1):
-            cell = ws.cell(row=1, column=col)
+        naglowek = []
+        for tekst in headers:
+            cell = WriteOnlyCell(ws, value=tekst)
             cell.font = header_font
             cell.fill = header_fill
             cell.alignment = Alignment(horizontal="center")
+            naglowek.append(cell)
+        ws.append(naglowek)
 
         # Add data: wszystkie prace z wybranego zakresu (nie jedna strona),
         # prosto z tabeli wyników — bez zapytań na pracę.
@@ -654,27 +676,20 @@ class PublicationComparisonView(ListView):
                     )
                 )
 
-        from bpp.util import auto_fit_columns
-
-        auto_fit_columns(ws)
-
-        # Save to bytes buffer
-        buffer = io.BytesIO()
-        from bpp.util import sanitize_xlsx_workbook
-
-        sanitize_xlsx_workbook(wb)
-        wb.save(buffer)
-        buffer.seek(0)
-
-        # Create response
-        response = HttpResponse(
-            buffer.getvalue(),
-            content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        # Wartości są sanityzowane wiersz po wierszu (``sanitize_xlsx_row``).
+        # Plik idzie przez plik tymczasowy i jest wysyłany strumieniowo —
+        # gotowy skoroszyt też nie jest trzymany w pamięci.
+        plik = tempfile.TemporaryFile()
+        wb.save(plik)
+        plik.seek(0)
+        return FileResponse(
+            plik,
+            as_attachment=True,
+            filename="komparator_publikacji_bpp_pbn.xlsx",
+            content_type=(
+                "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+            ),
         )
-        response["Content-Disposition"] = (
-            'attachment; filename="komparator_publikacji_bpp_pbn.xlsx"'
-        )
-        return response
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
@@ -686,6 +701,7 @@ class PublicationComparisonView(ListView):
         meta = KomparatorPublikacjiMeta.get_instance()
         context["meta"] = meta
         context["przeliczanie_w_toku"] = przeliczanie_w_toku(meta)
+        context["przeliczanie_porzucone"] = przeliczanie_porzucone(meta)
 
         filters = self._get_filters()
 
@@ -693,6 +709,8 @@ class PublicationComparisonView(ListView):
         context["publication_type"] = filters["publication_type"]
         context["year_min"] = filters["year_min"]
         context["year_max"] = filters["year_max"]
+        # Lata faktycznie użyte (nagłówek): surowe pola filtra mogą być puste.
+        context["rok_od_listy"], context["rok_do_listy"] = self._lata()
         context["enabled_fields"] = filters["enabled_fields"]
         context["all_fields"] = COMPARISON_FIELDS
 
@@ -725,74 +743,121 @@ class PrzeliczView(View):
     http_method_names = ["post"]
 
     def post(self, request):
-        meta = KomparatorPublikacjiMeta.get_instance()
-        if przeliczanie_w_toku(meta) and meta.task_id:
-            messages.info(request, "Przeliczanie już trwa — poniżej jego postęp.")
-            return redirect(
-                "komparator_publikacji_pbn:task_status", task_id=meta.task_id
-            )
-
         pbn_data_fresh, pbn_stale_message, _ = is_pbn_publications_data_fresh()
-        if not pbn_data_fresh:
-            messages.error(
-                request,
-                f"Nie można przeliczyć porównania: {pbn_stale_message}. "
-                "Pobierz aktualne dane z PBN.",
+
+        # Sprawdzenie „czy już trwa” i zajęcie komparatora pod blokadą wiersza
+        # stanu — dwa kliknięcia naraz nie uruchomią dwóch przeliczeń.
+        with transaction.atomic():
+            KomparatorPublikacjiMeta.get_instance()
+            meta = KomparatorPublikacjiMeta.objects.select_for_update().get(pk=1)
+            if przeliczanie_w_toku(meta):
+                messages.info(request, "Przeliczanie już trwa — poniżej jego postęp.")
+                return redirect(
+                    "komparator_publikacji_pbn:task_status", task_id=meta.task_id
+                )
+            if not pbn_data_fresh:
+                messages.error(
+                    request,
+                    f"Nie można przeliczyć porównania: {pbn_stale_message}. "
+                    "Pobierz aktualne dane z PBN.",
+                )
+                return redirect("komparator_publikacji_pbn:comparison_list")
+
+            task_id = str(uuid.uuid4())
+            meta.status = KomparatorPublikacjiMeta.STATUS_RUNNING
+            meta.rozpoczeto = meta.ostatni_postep = timezone.now()
+            meta.task_id = task_id
+            meta.ostatni_blad = ""
+            # Porzucony przebieg (np. zabity worker) przestaje być właścicielem.
+            meta.przebieg_w_toku = None
+            meta.postep_biezacy = meta.postep_razem = 0
+            meta.save(
+                update_fields=[
+                    "status",
+                    "rozpoczeto",
+                    "ostatni_postep",
+                    "task_id",
+                    "ostatni_blad",
+                    "przebieg_w_toku",
+                    "postep_biezacy",
+                    "postep_razem",
+                ]
             )
-            return redirect("komparator_publikacji_pbn:comparison_list")
 
         from .tasks import porownaj_publikacje_task
 
-        meta.status = KomparatorPublikacjiMeta.STATUS_RUNNING
-        meta.rozpoczeto = timezone.now()
-        meta.ostatni_blad = ""
-        meta.task_id = ""
-        meta.save()
         try:
-            task = porownaj_publikacje_task.delay()
+            porownaj_publikacje_task.apply_async(task_id=task_id)
         except Exception as e:
             # Np. niedostępny broker: bez tego status „w trakcie” blokowałby
             # ponowne uruchomienie, choć żadne zadanie nie ruszyło.
             logger.exception("Nie udało się uruchomić przeliczania komparatora")
-            meta.status = KomparatorPublikacjiMeta.STATUS_ERROR
-            meta.ostatni_blad = f"Nie udało się uruchomić zadania w tle: {e}"
-            meta.save()
-            messages.error(request, meta.ostatni_blad)
+            opis = f"Nie udało się uruchomić zadania w tle: {e}"
+            KomparatorPublikacjiMeta.objects.filter(pk=1, task_id=task_id).update(
+                status=KomparatorPublikacjiMeta.STATUS_ERROR, ostatni_blad=opis
+            )
+            messages.error(request, opis)
             return redirect("komparator_publikacji_pbn:comparison_list")
-        KomparatorPublikacjiMeta.objects.filter(pk=meta.pk).update(task_id=task.id)
 
-        return redirect("komparator_publikacji_pbn:task_status", task_id=task.id)
+        return redirect("komparator_publikacji_pbn:task_status", task_id=task_id)
 
 
 @method_decorator(staff_member_required, name="dispatch")
 class TaskStatusView(View):
-    """Postęp przeliczania z odświeżaniem HTMX (wzorem komparatora źródeł)."""
+    """Postęp przeliczania z odświeżaniem HTMX (wzorem komparatora źródeł).
+
+    Stan czytamy z wiersza stanu komparatora (znak życia zapisywany co
+    paczkę), nie z backendu wyników Celery — dzięki temu strona rozpoznaje
+    też przeliczenie porzucone (worker zabity w trakcie).
+    """
+
+    def _na_liste(self, request):
+        adres = reverse("komparator_publikacji_pbn:comparison_list")
+        if request.headers.get("HX-Request"):
+            response = HttpResponse(status=200)
+            response["HX-Redirect"] = adres
+            return response
+        return redirect(adres)
 
     def get(self, request, task_id):
-        task = AsyncResult(task_id)
-        context = {"task_id": task_id, "task_ready": task.ready()}
+        meta = KomparatorPublikacjiMeta.get_instance()
+        if meta.task_id != task_id:
+            # Nieznane albo zastąpione zadanie — aktualny stan jest na liście.
+            messages.info(
+                request,
+                "To przeliczanie zostało zastąpione nowszym albo już nie "
+                "istnieje — poniżej aktualny stan.",
+            )
+            return self._na_liste(request)
 
-        if not task.ready():
-            info = task.info if isinstance(task.info, dict) else None
-            # Zapas na wypadek braku backendu wyników: postęp z cache.
-            context["info"] = info or cache.get(KLUCZ_POSTEPU.format(task_id=task_id))
-        elif task.failed():
-            context["error"] = str(task.info)
+        context = {"task_id": task_id, "task_ready": True}
+        if przeliczanie_w_toku(meta):
+            context["task_ready"] = False
+            if meta.postep_razem:
+                context["info"] = {
+                    "current": meta.postep_biezacy,
+                    "total": meta.postep_razem,
+                    "progress": int(meta.postep_biezacy * 100 / meta.postep_razem),
+                }
+        elif meta.status == KomparatorPublikacjiMeta.STATUS_ERROR:
+            context["error"] = meta.ostatni_blad
+        elif przeliczanie_porzucone(meta):
+            context["porzucone"] = True
         else:
-            stats = (task.result or {}).get("stats", {})
             messages.success(
                 request,
-                f"Porównywanie zakończone. Porównano prac: "
-                f"{stats.get('processed', 0)}, z różnicami: "
-                f"{stats.get('with_differences', 0)}.",
+                f"Porównywanie zakończone. Porównano prac: {meta.liczba_prac}, "
+                f"z różnicami: {meta.liczba_z_roznicami}.",
             )
-            adres = reverse("komparator_publikacji_pbn:comparison_list")
-            if request.headers.get("HX-Request"):
-                response = HttpResponse(status=200)
-                response["HX-Redirect"] = adres
-                return response
-            return redirect(adres)
+            return self._na_liste(request)
 
         if request.headers.get("HX-Request"):
-            return render(request, "komparator_publikacji_pbn/_progress.html", context)
+            # Stan końcowy (błąd, przerwane): kod 286 każe HTMX przestać
+            # odpytywać — strona nie kręci się w nieskończoność.
+            return render(
+                request,
+                "komparator_publikacji_pbn/_progress.html",
+                context,
+                status=200 if not context["task_ready"] else 286,
+            )
         return render(request, "komparator_publikacji_pbn/task_status.html", context)

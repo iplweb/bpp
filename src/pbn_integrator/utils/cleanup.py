@@ -42,6 +42,11 @@ def clear_publications():
     # reset/reimport całej integracji PBN (nie per-uczelnia akcja użytkownika),
     # więc kasujemy WSZYSTKIE wiersze SentData niezależnie od tagu uczelni.
     clear_match_publications()
+    # Wyniki komparatora publikacji wskazują kluczem obcym na ``Publication``,
+    # a ``_raw_delete`` niżej omija kaskadę — kasujemy je najpierw.
+    from komparator_publikacji_pbn.core import wyczysc_wyniki
+
+    wyczysc_wyniki()
     for model in [OswiadczenieInstytucji, PublikacjaInstytucji, Publication, SentData]:
         model.objects.all()._raw_delete(MODELE_Z_PBN_UID[0].objects.db)
 

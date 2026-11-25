@@ -129,6 +129,6 @@ def test_eksport_xlsx_respektuje_okres_i_adres_jest_zakodowany(admin_client, pra
 
     response = admin_client.get(url + "?export=xlsx&year_min=2026&year_max=2030")
     assert response.status_code == 200
-    arkusz = load_workbook(BytesIO(response.content)).active
+    arkusz = load_workbook(BytesIO(b"".join(response.streaming_content))).active
     lata = {wiersz[4] for wiersz in arkusz.iter_rows(min_row=2, values_only=True)}
     assert lata == {2027}

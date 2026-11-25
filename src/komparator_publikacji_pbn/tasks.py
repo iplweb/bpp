@@ -15,10 +15,10 @@ def porownaj_publikacje_task(self):
     """Porównuje wszystkie prace powiązane z PBN z lokalną kopią danych PBN.
 
     Postęp raportuje przez cache i ``update_state`` Celery (jak
-    ``pbn_komparator_zrodel.tasks.porownaj_zrodla_task``).
+    ``pbn_komparator_zrodel.tasks.porownaj_zrodla_task``) oraz — w
+    ``core.przelicz`` — w wierszu stanu komparatora (znak życia).
     """
-    from .core import przelicz
-    from .models import KomparatorPublikacjiMeta
+    from .core import PrzeliczanieJuzTrwa, PrzeliczaniePrzejete, przelicz
 
     cache_key = KLUCZ_POSTEPU.format(task_id=self.request.id)
 
@@ -34,12 +34,15 @@ def porownaj_publikacje_task(self):
 
     try:
         stats = przelicz(progress_callback=progress_callback)
+    except (PrzeliczanieJuzTrwa, PrzeliczaniePrzejete) as e:
+        # Komparator liczy inny przebieg — to zadanie nie ma nic do zrobienia
+        # i nie rusza ani wyników, ani stanu.
+        logger.warning("Komparator publikacji PBN: zadanie pominięte (%r)", e)
+        return {"status": "SKIPPED", "message": "Trwa inne przeliczenie"}
     except Exception as e:
+        # Stan „błąd” zapisał już ``przelicz`` (``core.oznacz_blad``).
         logger.exception("Błąd podczas porównywania publikacji z PBN")
         cache.set(cache_key, {"status": "FAILURE", "message": str(e)}, 3600)
-        KomparatorPublikacjiMeta.objects.filter(pk=1).update(
-            status=KomparatorPublikacjiMeta.STATUS_ERROR, ostatni_blad=str(e)
-        )
         raise
 
     cache.set(cache_key, {"status": "SUCCESS", "stats": stats}, 3600)

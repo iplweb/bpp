@@ -20,7 +20,7 @@
 <div class="row">
     <div class="large-12 columns">
         <h1>Komparator publikacji PBN</h1>
-        <p class="lead">Porównanie danych publikacji między BPP a PBN API — publikacje z lat {{ year_min }}–{{ year_max }}</p>
+        <p class="lead">Porównanie danych publikacji między BPP a PBN API — publikacje z lat {{ rok_od_listy }}–{{ rok_do_listy }}</p>
     </div>
 </div>
 
@@ -105,6 +105,13 @@
                     </a>
                 {% endif %}
             {% else %}
+                {% if przeliczanie_porzucone %}
+                    <p class="text-alert">
+                        <strong>Ostatnie przeliczanie zostało przerwane</strong>
+                        (rozpoczęte {{ meta.rozpoczeto|date:"Y-m-d H:i" }}, bez postępu od {{ meta.ostatni_postep|date:"Y-m-d H:i" }}).
+                        Poniższe wyniki pochodzą z poprzedniego zakończonego przeliczenia — uruchom przeliczanie ponownie.
+                    </p>
+                {% endif %}
                 {% if meta.ostatnie_uruchomienie %}
                     <p>
                         <strong>Stan na {{ meta.ostatnie_uruchomienie|date:"Y-m-d H:i" }}.</strong>
@@ -116,6 +123,14 @@
                         <strong>Porównanie nie było jeszcze przeliczane.</strong>
                         Kliknij „Przelicz porównanie” — BPP porówna w tle wszystkie prace powiązane z PBN
                         z lokalną kopią danych PBN (nic nie jest wysyłane do PBN).
+                    </p>
+                {% endif %}
+                {% if meta.ostatnie_uruchomienie and meta.liczba_bledow %}
+                    <p class="text-alert">
+                        <strong>Nie udało się porównać: {{ meta.liczba_bledow }}</strong>
+                        (prace, w których co najmniej jedno pole ma w PBN dane w nieobsługiwanej postaci;
+                        pozostałe pola tych prac zostały porównane). Przykład: {{ meta.przyklad_bledu }}.
+                        Szczegóły są w logu serwera.
                     </p>
                 {% endif %}
                 {% if meta.status == "error" %}
