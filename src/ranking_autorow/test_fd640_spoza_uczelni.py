@@ -9,7 +9,11 @@ from ranking_autorow.views import RankingAutorow
 
 
 @pytest.fixture
-def ranking_z_obcym(uczelnia_z_obca_jednostka, obca_jednostka, jednostka):
+def ranking_z_obcym(
+    uczelnia_z_obca_jednostka, obca_jednostka, jednostka, typy_odpowiedzialnosci
+):
+    # typy_odpowiedzialnosci PRZED dodaj_autora: słowniki z post_migrate
+    # bywają wyczyszczone przez TRUNCATE wcześniejszych testów transakcyjnych.
     # Domyślnie (``Jednostka.wchodzi_do_rankingu_autorow=True``) obca jednostka
     # wchodzi do widoku sum rankingu — redakcja rzadko to odznacza. Fixture
     # testów ma tę flagę wyłączoną, co maskowało wyciek.
@@ -33,9 +37,7 @@ def _ranking(rf, **get):
 
 @pytest.mark.django_db
 @pytest.mark.parametrize("rozbij", ["True", "False"])
-def test_fd640_ranking_pomija_autora_spoza_uczelni(
-    rf, ranking_z_obcym, typy_odpowiedzialnosci, rozbij
-):
+def test_fd640_ranking_pomija_autora_spoza_uczelni(rf, ranking_z_obcym, rozbij):
     nasz, obcy = ranking_z_obcym
     autorzy = {
         row.autor.pk for row in _ranking(rf, rozbij_na_jednostki=rozbij).get_queryset()
@@ -45,9 +47,7 @@ def test_fd640_ranking_pomija_autora_spoza_uczelni(
 
 
 @pytest.mark.django_db
-def test_fd640_eksport_rankingu_bez_autora_spoza_uczelni(
-    admin_client, ranking_z_obcym, typy_odpowiedzialnosci
-):
+def test_fd640_eksport_rankingu_bez_autora_spoza_uczelni(admin_client, ranking_z_obcym):
     url = reverse("bpp:ranking-autorow", args=(2022, 2022))
     res = admin_client.get(url, {"bez_nieaktualnych": "False", "_export": "csv"})
     assert res.status_code == 200

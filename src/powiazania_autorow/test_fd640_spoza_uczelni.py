@@ -10,8 +10,14 @@ from powiazania_autorow.models import AuthorConnection
 
 
 @pytest.fixture
-def para_autorow(uczelnia_z_obca_jednostka, obca_jednostka, jednostka):
-    """Autor uczelni i obcy współautor jednej punktowanej pracy."""
+def para_autorow(
+    uczelnia_z_obca_jednostka, obca_jednostka, jednostka, typy_odpowiedzialnosci
+):
+    """Autor uczelni i obcy współautor jednej punktowanej pracy.
+
+    ``typy_odpowiedzialnosci`` musi być gotowe PRZED ``dodaj_autora``:
+    słowniki z post_migrate bywają wyczyszczone przez TRUNCATE wcześniejszych
+    testów transakcyjnych na tym samym workerze."""
     nasz = baker.make(Autor, imiona="Jan", nazwisko="Nasz")
     Autor_Jednostka.objects.create(autor=nasz, jednostka=jednostka)
     obcy = baker.make(Autor, imiona="Ewa", nazwisko="Obca")
@@ -27,9 +33,7 @@ def para_autorow(uczelnia_z_obca_jednostka, obca_jednostka, jednostka):
 
 
 @pytest.mark.django_db
-def test_fd640_dane_json_obcy_sasiad_bez_sum(
-    client, para_autorow, typy_odpowiedzialnosci
-):
+def test_fd640_dane_json_obcy_sasiad_bez_sum(client, para_autorow):
     nasz, obcy = para_autorow
     url = reverse("bpp:browse_autor_powiazania_dane", args=[nasz.pk])
     data = client.get(url).json()
@@ -51,9 +55,7 @@ def test_fd640_dane_json_obcy_sasiad_bez_sum(
 
 
 @pytest.mark.django_db
-def test_fd640_dane_json_obcy_jako_centrum_bez_sum(
-    client, para_autorow, typy_odpowiedzialnosci
-):
+def test_fd640_dane_json_obcy_jako_centrum_bez_sum(client, para_autorow):
     nasz, obcy = para_autorow
     url = reverse("bpp:browse_autor_powiazania_dane", args=[obcy.pk])
     resp = client.get(url)
@@ -66,9 +68,7 @@ def test_fd640_dane_json_obcy_jako_centrum_bez_sum(
 
 
 @pytest.mark.django_db
-def test_fd640_siec_json_obcy_wezel_bez_sum(
-    client, para_autorow, typy_odpowiedzialnosci
-):
+def test_fd640_siec_json_obcy_wezel_bez_sum(client, para_autorow):
     nasz, obcy = para_autorow
     url = reverse("bpp:browse_autor_powiazania_siec", args=[nasz.pk])
     data = client.get(url).json()
