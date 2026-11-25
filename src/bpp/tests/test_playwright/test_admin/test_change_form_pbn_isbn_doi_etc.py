@@ -42,6 +42,10 @@ def potwierdz_odpowiednik_po_doi(admin_page: Page, wydawnictwo):
         expect(komunikat).to_contain_text("Znaleziono po: DOI")
     else:
         expect(komunikat).to_contain_text("wybierz właściwy")
+        # Podpowiedź, co zrobić, żeby BPP wstawiło rekord samo.
+        expect(admin_page.locator("#id_pobierz_z_pbn_podpowiedz")).to_contain_text(
+            "Charakter formalny"
+        )
         admin_page.locator(".pobierz-z-pbn-wybierz").first.click()
 
 

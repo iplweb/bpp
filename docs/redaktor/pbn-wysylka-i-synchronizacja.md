@@ -231,7 +231,12 @@ BPP wstawia rekord bez pytania tylko wtedy, gdy nie ma żadnej wątpliwości:
 
 W każdym innym przypadku — także gdy rodzaju nie da się ustalić (np. nowe
 wydawnictwo zwarte bez wybranego charakteru formalnego) — rekord trafia na
-listę do wyboru. Rekordy **usunięte w PBN** są pomijane. Przycisk niczego
+listę do wyboru. Jeżeli jedyną przeszkodą jest nieustalony rodzaj pracy,
+pod listą zobaczysz podpowiedź 💡: **„Wybierz »Charakter formalny«, żeby BPP
+mogło samo wstawić pasujący rekord”** (wybierz charakter i kliknij przycisk
+ponownie) albo — gdy charakter jest wybrany, ale nie jest ani książką, ani
+rozdziałem — wyjaśnienie, że w takim przypadku rekord zawsze wybierasz
+ręcznie. Rekordy **usunięte w PBN** są pomijane. Przycisk niczego
 nie zapisuje — zmiana
 trafia do bazy dopiero, gdy zapiszesz pracę. Gdy praca **ma już**
 odpowiednik w PBN, przycisku nie ma (wraca po wyczyszczeniu pola).
@@ -279,7 +284,7 @@ Raport dzieli prace na grupy:
 | Grupa | Co się stało |
 |---|---|
 | ✅ Znaleziono i ustawiono odpowiednik | praca dostała odpowiednik (w raporcie: po czym); w **Historii** pracy jest wpis „PBN UID ustawiony automatycznie (grupowo) po: …” |
-| 👉 Do ręcznego wyboru | kilku kandydatów albo dopasowanie niepewne (inny tytuł, inny albo nieustalony rodzaj rekordu — np. ISBN lub DOI książki przy rozdziale; praca zmieniona w trakcie wyszukiwania) — **niczego nie ustawiono**; otwórz pracę z raportu i wybierz przyciskiem „Pobierz z PBN” |
+| 👉 Do ręcznego wyboru | kilku kandydatów albo dopasowanie niepewne (inny tytuł, inny albo nieustalony rodzaj rekordu — np. ISBN lub DOI książki przy rozdziale; praca zmieniona w trakcie wyszukiwania) — **niczego nie ustawiono**; otwórz pracę z raportu i wybierz przyciskiem „Pobierz z PBN”. Gdy jedynym powodem jest charakter formalny, który nie mówi, czy praca jest książką, czy rozdziałem, raport to dopisuje |
 | ⚠️ Odpowiednik przypisany do innego rekordu | znaleziony rekord PBN ma już inna praca w BPP (także w koszu) — to zwykle duplikat; niczego nie ustawiono |
 | ❌ Nie znaleziono odpowiednika | PBN nie zna pracy pod sprawdzonymi identyfikatorami |
 | ✏️ Brak danych do wyszukania | praca nie ma DOI, adresu WWW ani ISBN — uzupełnij |

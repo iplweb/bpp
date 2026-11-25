@@ -561,3 +561,63 @@ def test_niedostepny_pbn_jedna_proba_i_wynik_z_lokalnej_kopii(
     zgloszenie.assert_not_called()
     assert res["status"] == BRAK
     assert res["uwaga"] == KOMUNIKAT_NIEDOSTEPNY
+
+
+# --- podpowiedź: automat zatrzymał się tylko na nieustalonym rodzaju ---------
+
+
+@pytest.mark.django_db
+def test_podpowiedz_gdy_brakuje_tylko_charakteru_formalnego(admin_client, uczelnia):
+    """Nowe wydawnictwo zwarte bez wybranego charakteru: rekord znaleziony
+    po DOI nie jest wstawiany sam, a redaktor dowiaduje się dlaczego
+    i co zrobić."""
+    from bpp.views.api.pbn_odpowiednik import (
+        PODPOWIEDZ_INNY_CHARAKTER,
+        PODPOWIEDZ_WYBIERZ_CHARAKTER,
+    )
+
+    _publikacja(doi=DOI, type="BOOK")
+    inny = baker.make("bpp.Charakter_Formalny", charakter_ogolny="xxx")
+    ksiazka = baker.make("bpp.Charakter_Formalny", charakter_ogolny="ksi")
+
+    bez = _post(admin_client, "api_get_pbn_by_identifiers", doi=DOI)
+    z_innym = _post(
+        admin_client, "api_get_pbn_by_identifiers", doi=DOI, charakter_formalny=inny.pk
+    )
+    z_ksiazka = _post(
+        admin_client,
+        "api_get_pbn_by_identifiers",
+        doi=DOI,
+        charakter_formalny=ksiazka.pk,
+    )
+
+    assert bez["status"] == DO_WYBORU
+    assert bez["podpowiedz"] == PODPOWIEDZ_WYBIERZ_CHARAKTER
+    assert "Charakter formalny" in bez["podpowiedz"]
+    assert z_innym["status"] == DO_WYBORU
+    assert z_innym["podpowiedz"] == PODPOWIEDZ_INNY_CHARAKTER
+    # Po wybraniu charakteru rekord wstawia się sam — bez podpowiedzi.
+    assert (z_ksiazka["status"], z_ksiazka["id"]) == (PEWNY, UID_1)
+    assert "podpowiedz" not in z_ksiazka
+
+
+@pytest.mark.django_db
+def test_bez_podpowiedzi_gdy_wybor_jest_reczny_z_innego_powodu(admin_client, uczelnia):
+    """Kilka rekordów albo inny tytuł — wybranie charakteru nic by nie dało,
+    więc nie obiecujemy tego redaktorowi."""
+    _publikacja(UID_1, isbn=ISBN, title="Rozdział A", type="CHAPTER")
+    _publikacja(UID_2, isbn=ISBN, title="Rozdział B", type="CHAPTER")
+
+    kilka = _post(
+        admin_client, "api_get_pbn_by_identifiers", isbn=ISBN, tytul_oryginalny="Inny"
+    )
+    sprzeczny = _post(
+        admin_client,
+        "api_get_pbn_by_identifiers",
+        isbn=ISBN,
+        tytul_oryginalny="Rozdział A",
+        model="ciagle",
+    )
+
+    assert kilka["status"] == DO_WYBORU and "podpowiedz" not in kilka
+    assert sprzeczny["status"] == DO_WYBORU and "podpowiedz" not in sprzeczny

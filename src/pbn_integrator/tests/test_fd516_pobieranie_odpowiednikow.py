@@ -495,3 +495,38 @@ def test_zlecenia_w_toku_nie_da_sie_ponowic(
     delay.assert_not_called()
     zlecenie.refresh_from_db()
     assert zlecenie.rozpoczeto is not None and zlecenie.zakonczono is None
+
+
+@pytest.mark.django_db
+def test_raport_wyjasnia_reczny_wybor_z_powodu_charakteru_formalnego(
+    zwarte_maker, admin_user, uczelnia
+):
+    """Praca o charakterze innym niż książka/rozdział: jedyną przeszkodą
+    jest nieustalony rodzaj — raport mówi to wprost."""
+    from bpp.views.api.pbn_odpowiednik import PODPOWIEDZ_INNY_CHARAKTER
+
+    _publikacja_pbn(UID_1, title="Raport", doi="10.5555/raport", type="BOOK")
+    _publikacja_pbn(UID_2, title="Cała książka", isbn="9780128195178", type="BOOK")
+    inna = zwarte_maker(
+        tytul_oryginalny="Raport",
+        doi="10.5555/raport",
+        www="",
+        isbn="",
+        charakter_formalny=_charakter("xxx"),
+    )
+    rozdzial = zwarte_maker(
+        tytul_oryginalny="Rozdział pierwszy",
+        isbn="978-0-12-819517-8",
+        doi=None,
+        www="",
+        charakter_formalny=_charakter("roz"),
+    )
+
+    zlecenie = po.wykonaj(_zlecenie(admin_user, [inna, rozdzial], uczelnia=uczelnia))
+
+    opisy = {w["pk"]: w for w in zlecenie.wyniki}
+    assert opisy[inna.pk]["grupa"] == po.G_DO_WYBORU
+    assert PODPOWIEDZ_INNY_CHARAKTER in opisy[inna.pk]["opis"]
+    # Rozdział z ISBN-em książki: powód jest inny, bez tej podpowiedzi.
+    assert opisy[rozdzial.pk]["grupa"] == po.G_DO_WYBORU
+    assert PODPOWIEDZ_INNY_CHARAKTER not in opisy[rozdzial.pk]["opis"]

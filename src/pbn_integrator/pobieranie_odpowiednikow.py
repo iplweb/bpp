@@ -23,6 +23,7 @@ from bpp.views.api.pbn_odpowiednik import (
     BLEDY_POLACZENIA,
     BRAK,
     DO_WYBORU,
+    PODPOWIEDZ_INNY_CHARAKTER,
     PUSTE,
     SerwerPBN,
     rodzaj_rekordu,
@@ -231,11 +232,10 @@ def przetworz_publikacje(obj, serwer, uzytkownik):
     if wynik.status == BRAK:
         return _wpis(obj, G_NIE_ZNALEZIONO, sprawdzono)
     if wynik.status == DO_WYBORU:
-        return _wpis(
-            obj,
-            G_DO_WYBORU,
-            f"po: {wynik.po_czym} — kandydaci: {_opis_kandydatow(wynik.uidy)}",
-        )
+        opis = f"po: {wynik.po_czym} — kandydaci: {_opis_kandydatow(wynik.uidy)}"
+        if wynik.tylko_brak_rodzaju:
+            opis += f". {PODPOWIEDZ_INNY_CHARAKTER}"
+        return _wpis(obj, G_DO_WYBORU, opis)
     return _ustaw_odpowiednik_publikacji(obj, wynik.uid, wynik.po_czym, uzytkownik)
 
 

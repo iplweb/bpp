@@ -129,6 +129,10 @@
                         if (data.status === "do_wyboru") {
                             pokaz("👉", data.komunikat);
                             pokazKandydatow(kandydaci);
+                            if (data.podpowiedz) {
+                                komunikat.append($("<p id='id_pobierz_z_pbn_" +
+                                    "podpowiedz'/>").text("💡 " + data.podpowiedz));
+                            }
                         } else {
                             pokaz("ℹ️", data.komunikat);
                         }

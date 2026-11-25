@@ -67,6 +67,16 @@ KOMUNIKAT_AUTORYZACJA = (
     "serwer PBN, zaloguj się do PBN (menu PBN → autoryzuj) i spróbuj ponownie."
 )
 
+PODPOWIEDZ_WYBIERZ_CHARAKTER = (
+    "Wybierz „Charakter formalny”, żeby BPP mogło samo wstawić pasujący "
+    "rekord — bez niego nie wiadomo, czy praca jest książką, czy rozdziałem."
+)
+PODPOWIEDZ_INNY_CHARAKTER = (
+    "BPP nie wstawia rekordu samo, bo charakter formalny tej pracy nie mówi, "
+    "czy to książka, czy rozdział, więc nie da się potwierdzić rodzaju "
+    "rekordu w PBN. Wybierz rekord ręcznie."
+)
+
 #: Wyjątki oznaczające „nie da się odpytać serwera PBN w imieniu użytkownika”.
 BRAK_AUTORYZACJI = (WillNotExportError, NeedsPBNAuthorisationException)
 
@@ -171,6 +181,9 @@ class Odpowiednik:
     sprawdzono: list = field(default_factory=list)
     #: Powód, dla którego nie odpytano serwera PBN (sprawdzono tylko lokalnie).
     bez_serwera: str = ""
+    #: Jedyną przeszkodą dla automatu był NIEUSTALONY rodzaj rekordu BPP —
+    #: gdyby był znany (i zgodny z PBN), rekord zostałby wskazany na pewno.
+    tylko_brak_rodzaju: bool = False
 
     @property
     def uid(self):
@@ -281,6 +294,16 @@ def _bez_ponowien(klient, timeout):
         )
 
     transport._make_get_request_with_retry = jedna_proba
+
+
+def _pewny_przy_znanym_rodzaju(szukacz, uidy, tytul):
+    """Czy przy którymkolwiek rodzaju rekordu BPP dokładnie jeden z ``uidy``
+    byłby pewny — tzn. czy automat zatrzymał się WYŁĄCZNIE na tym, że
+    rodzaju pracy nie da się ustalić."""
+    return any(
+        len(_pewne_i_reszta(szukacz, uidy, tytul, rodzaj)[0]) == 1
+        for rodzaj in ZGODNE_RODZAJE
+    )
 
 
 class SerwerPBN:
@@ -437,6 +460,9 @@ def znajdz_odpowiednik_publikacji(
         if (pewne or reszta) and do_wyboru is None:
             # Zgodne tytułem na początek; obcinamy dopiero listę do pokazania.
             do_wyboru = ((pewne + reszta)[:MAX_KANDYDATOW], opis)
+            wynik.tylko_brak_rodzaju = not rodzaj and _pewny_przy_znanym_rodzaju(
+                szukacz, uidy, tytul
+            )
 
     if do_wyboru is not None:
         wynik.status = DO_WYBORU
@@ -597,7 +623,14 @@ class PobierzOdpowiednikPublikacjiView(PobierzZPBNBase):
             for uid in uidy
         ]
         uwaga = wynik.bez_serwera if wynik.status in (BRAK, DO_WYBORU) else ""
-        return _odpowiedz(wynik.status, wynik.komunikat, kandydaci, uwaga)
+        odp = _odpowiedz(wynik.status, wynik.komunikat, kandydaci, uwaga)
+        if wynik.tylko_brak_rodzaju:
+            odp["podpowiedz"] = (
+                PODPOWIEDZ_INNY_CHARAKTER
+                if self.pole("charakter_formalny")
+                else PODPOWIEDZ_WYBIERZ_CHARAKTER
+            )
+        return odp
 
 
 class PobierzOdpowiednikAutoraView(PobierzZPBNBase):
