@@ -66,10 +66,11 @@ class Wiersz:
 
     @property
     def token(self):
-        """Skrót wartości ze źródła — zatwierdzenie przenosi dokładnie to, co
-        redaktor widział na podglądzie (dane źródła mogły się zmienić)."""
+        """Skrót obu wartości z podglądu — zatwierdzenie przenosi dokładnie
+        to, co redaktor widział: jeśli w międzyczasie zmieniły się dane
+        w źródle ALBO rekord (inny redaktor), pole jest pomijane."""
         return hashlib.sha1(
-            self.zrodlo.encode("utf-8"), usedforsecurity=False
+            f"{self.zrodlo}\x00{self.bpp}".encode(), usedforsecurity=False
         ).hexdigest()[:12]
 
     @property
@@ -230,59 +231,147 @@ def _znajdz_licencje(adres):
 
 #: Limit długości jednego słowa kluczowego (``taggit.Tag.name``).
 MAKSYMALNA_DLUGOSC_SLOWA = 100
+#: Limit długości słowa w polu „Słowa kluczowe -- język angielski”.
+MAKSYMALNA_DLUGOSC_SLOWA_ENG = 255
 
 
 def _slowa(lista):
     return {reguly.odstepy(s).casefold() for s in lista if reguly.odstepy(s)}
 
 
-def _wiersz_slow_kluczowych(rekord, slowa):
-    if not hasattr(rekord, "slowa_kluczowe"):
-        return None
-    slowa = [reguly.odstepy(s) for s in slowa or [] if reguly.odstepy(s)]
-    # ``.all()``, nie ``.names()`` — korzysta z ``prefetch_related`` (komparator
-    # porównuje tysiące prac). Słowa angielskie rekord trzyma w osobnym polu;
-    # źródła podają wszystkie języki razem.
-    obecne = sorted(
-        {
-            *(tag.name for tag in rekord.slowa_kluczowe.all()),
-            *(getattr(rekord, "slowa_kluczowe_eng", None) or ()),
-        },
-        key=str.casefold,
-    )
-    if not slowa and not obecne:
+def _czyste(slowa):
+    """Słowa bez pustych i powtórzeń (bez względu na wielkość liter)."""
+    wynik, widziane = [], set()
+    for slowo in slowa or []:
+        slowo = reguly.odstepy(slowo)
+        if slowo and slowo.casefold() not in widziane:
+            widziane.add(slowo.casefold())
+            wynik.append(slowo)
+    return wynik
+
+
+def _wiersz_slow(klucz, etykieta, ze_zrodla, obecne, limit, dopisz):
+    """Wiersz porównania zbioru słów kluczowych.
+
+    Zgodne = te same słowa (kolejność i wielkość liter bez znaczenia).
+    Przeniesienie DOPISUJE brakujące słowa (``dopisz(rekord, brakujace)``)
+    — słów wpisanych tylko w BPP nie usuwa."""
+    ze_zrodla = _czyste(ze_zrodla)
+    obecne = sorted(_czyste(obecne), key=str.casefold)
+    if not ze_zrodla and not obecne:
         return None
     wiersz = Wiersz(
-        klucz="slowa_kluczowe",
-        etykieta="Słowa kluczowe",
+        klucz=klucz,
+        etykieta=etykieta,
         status=ZGODNE,
-        zrodlo=", ".join(slowa) or PUSTE,
+        zrodlo=", ".join(ze_zrodla) or PUSTE,
         bpp=", ".join(obecne) or PUSTE,
-        po_zapisie=True,
     )
-    if not slowa:
+    if not ze_zrodla:
         wiersz.status = BRAK_W_ZRODLE
         return wiersz
-    if _slowa(slowa) == _slowa(obecne):
+    if _slowa(ze_zrodla) == _slowa(obecne):
         return wiersz
     wiersz.status = ROZNE if obecne else BRAK_W_BPP
-    wiersz.zmiana = _zmiana(wiersz.status, wiersz.bpp, wiersz.zrodlo)
-    if wiersz.status == ROZNE:
-        wiersz.uwaga = "Przeniesienie zastąpi słowa kluczowe rekordu tymi ze źródła."
-
-    za_dlugie = [x for x in slowa if len(x) > MAKSYMALNA_DLUGOSC_SLOWA]
-    if za_dlugie:
+    brakujace = [x for x in ze_zrodla if x.casefold() not in _slowa(obecne)]
+    if not brakujace:
         wiersz.uwaga = (
-            "Tych słów kluczowych nie da się zapisać w BPP — najdłuższe ma "
-            f"ponad {MAKSYMALNA_DLUGOSC_SLOWA} znaków."
+            "Rekord ma wszystkie słowa ze źródła i dodatkowe własne — nie ma "
+            "czego przenosić."
         )
         return wiersz
+    wiersz.zmiana = format_html("<ins>{}</ins>", ", ".join(brakujace))
+    za_dlugie = [x for x in brakujace if len(x) > limit]
+    if za_dlugie:
+        wiersz.uwaga = (
+            f"Tych słów nie da się zapisać w BPP — słowo kluczowe może mieć "
+            f"najwyżej {limit} znaków, a w źródle jest dłuższe (zwykle kilka "
+            "słów sklejonych w jedno). Wpisz je ręcznie w formularzu rekordu."
+        )
+        return wiersz
+    if obecne:
+        wiersz.uwaga = (
+            "Przeniesienie dopisze brakujące słowa; słowa wpisane w BPP zostaną."
+        )
 
-    def zastosuj(r, slowa=slowa):
-        r.slowa_kluczowe.set(slowa)
+    def zastosuj(r, brakujace=brakujace):
+        dopisz(r, brakujace)
 
     wiersz.zastosuj = zastosuj
     return wiersz
+
+
+def _tagi(rekord):
+    # ``.all()``, nie ``.names()`` — korzysta z ``prefetch_related``
+    # (komparator porównuje tysiące prac).
+    return [tag.name for tag in rekord.slowa_kluczowe.all()]
+
+
+def _dopisz_tagi(rekord, slowa):
+    rekord.slowa_kluczowe.add(*slowa)
+
+
+def _dopisz_slowa_eng(rekord, slowa):
+    rekord.slowa_kluczowe_eng = [*(rekord.slowa_kluczowe_eng or []), *slowa]
+
+
+def _wiersze_slow_kluczowych(rekord, publikacja):
+    """Słowa kluczowe. Rekord trzyma je w dwóch polach: „Słowa kluczowe”
+    (język główny) i „Słowa kluczowe -- język angielski”.
+
+    Źródło z podziałem na języki (PBN): angielskie porównujemy i zapisujemy
+    w polu angielskim, pozostałe w głównym — tak samo jak import z PBN.
+    Źródło bez podziału (CrossRef): jedna lista porównywana ze wszystkimi
+    słowami rekordu; brakujące trafiają do pola głównego."""
+    if not hasattr(rekord, "slowa_kluczowe"):
+        return
+    ma_eng = hasattr(rekord, "slowa_kluczowe_eng")
+    eng = list(rekord.slowa_kluczowe_eng or []) if ma_eng else []
+    wg_jezyka = publikacja.extra.get("slowa_kluczowe_wg_jezyka")
+    if wg_jezyka is None or not ma_eng:
+        wiersz = _wiersz_slow(
+            "slowa_kluczowe",
+            "Słowa kluczowe",
+            publikacja.keywords,
+            [*_tagi(rekord), *eng],
+            MAKSYMALNA_DLUGOSC_SLOWA,
+            _dopisz_tagi,
+        )
+        if wiersz is not None:
+            wiersz.po_zapisie = True
+            yield wiersz
+        return
+    angielskie = [
+        s for kod, slowa in wg_jezyka.items() if _angielski(kod) for s in slowa
+    ]
+    pozostale = [
+        s for kod, slowa in wg_jezyka.items() if not _angielski(kod) for s in slowa
+    ]
+    wiersz = _wiersz_slow(
+        "slowa_kluczowe",
+        "Słowa kluczowe",
+        pozostale,
+        _tagi(rekord),
+        MAKSYMALNA_DLUGOSC_SLOWA,
+        _dopisz_tagi,
+    )
+    if wiersz is not None:
+        wiersz.po_zapisie = True
+        yield wiersz
+    wiersz = _wiersz_slow(
+        "slowa_kluczowe_eng",
+        "Słowa kluczowe (język angielski)",
+        angielskie,
+        eng,
+        MAKSYMALNA_DLUGOSC_SLOWA_ENG,
+        _dopisz_slowa_eng,
+    )
+    if wiersz is not None:
+        yield wiersz
+
+
+def _angielski(kod_jezyka):
+    return str(kod_jezyka or "").lower() in ("eng", "en")
 
 
 def _wiersze_streszczen(rekord, publikacja, znajdz_jezyk):
@@ -414,8 +503,8 @@ POLA = {
         _znajdz_licencje,
         "Tej licencji nie ma w słowniku licencji otwartego dostępu BPP.",
     ),
-    "slowa_kluczowe": lambda rekord, p, _jezyk: _wiersz_slow_kluczowych(
-        rekord, p.keywords
+    "slowa_kluczowe": lambda rekord, p, _jezyk: list(
+        _wiersze_slow_kluczowych(rekord, p)
     ),
     "streszczenie": lambda rekord, p, jezyk: list(
         _wiersze_streszczen(rekord, p, jezyk)
@@ -450,11 +539,15 @@ def zastosuj(rekord, wiersze, wybrane):
     """
     po_kluczu = {w.klucz: w for w in wiersze}
     przeniesione, pominiete = [], []
+    obsluzone = set()
     for wybor in wybrane:
         klucz, _, token = str(wybor).partition(":")
         wiersz = po_kluczu.get(klucz)
-        if wiersz is None:
+        # Każde pole najwyżej raz — powtórzona wartość w formularzu nie może
+        # np. dodać tego samego streszczenia dwa razy.
+        if wiersz is None or klucz in obsluzone:
             continue
+        obsluzone.add(klucz)
         if not wiersz.mozna_przeniesc or wiersz.token != token:
             pominiete.append(wiersz)
             continue

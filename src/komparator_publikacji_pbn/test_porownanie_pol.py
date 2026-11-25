@@ -229,7 +229,9 @@ def test_doi(para_ciagle, bpp, pbn, rozni_sie):
         ("978-83-01-00000-1", "", "978-83-01-00000-2", True),
         ("", "", "9788301000001", True),
         ("978-83-01-00000-1", "", "", True),
-        ("83-01-00000-x", "", "83-01-00000-X", True),
+        # BYŁO: różnica. JEST: zgodne — znak kontrolny „X” bez rozróżniania
+        # wielkości liter.
+        ("83-01-00000-x", "", "83-01-00000-X", False),
     ],
 )
 def test_isbn_ksiazki(para_zwarte, isbn, e_isbn, pbn, rozni_sie):
@@ -428,21 +430,38 @@ def test_streszczenie(para_ciagle):
 def test_slowa_kluczowe(para_ciagle):
     """BYŁO: włączenie pola „Słowa kluczowe” kończyło się wyjątkiem
     (słowa kluczowe rekordu to tagi, nie tekst). JEST: porównanie zbiorów
-    słów, bez względu na kolejność i wielkość liter; słowa angielskie rekordu
-    (osobne pole) liczą się razem z polskimi."""
+    słów, bez względu na kolejność i wielkość liter — osobno słowa języka
+    głównego i angielskie (rekord trzyma je w dwóch polach, PBN w podziale
+    na języki)."""
     rekord, ustaw = para_ciagle
     slowa = {"pol": ["Chemia", "kryształy"], "eng": ["crystals"]}
-    bpp, pbn = _roznice(ustaw(keywords=slowa), "ciagle", ["keywords"])["Słowa kluczowe"]
-    assert bpp == ""
-    assert set(pbn.split(", ")) == {"Chemia", "kryształy", "crystals"}
-    rekord.slowa_kluczowe.set(["kryształy", "chemia"])
-    rekord.slowa_kluczowe_eng = ["crystals"]
-    assert _roznice(ustaw(keywords=slowa), "ciagle", ["keywords"]) == {}
-    rekord.slowa_kluczowe_eng = []
-    assert "Słowa kluczowe" in _roznice(ustaw(keywords=slowa), "ciagle", ["keywords"])
-    assert _roznice(ustaw(), "ciagle", ["keywords"]) == {
-        "Słowa kluczowe": ("chemia, kryształy", "")
+    assert _roznice(ustaw(keywords=slowa), "ciagle", ["keywords"]) == {
+        "Słowa kluczowe": ("", "Chemia, kryształy"),
+        "Słowa kluczowe (ang.)": ("", "crystals"),
     }
+    rekord.slowa_kluczowe.set(["kryształy", "chemia"])
+    rekord.slowa_kluczowe_eng = ["Crystals"]
+    assert _roznice(ustaw(keywords=slowa), "ciagle", ["keywords"]) == {}
+    # Angielskie słowo wpisane w polu języka głównego to nie to samo.
+    rekord.slowa_kluczowe.set(["kryształy", "chemia", "crystals"])
+    rekord.slowa_kluczowe_eng = []
+    assert set(_roznice(ustaw(keywords=slowa), "ciagle", ["keywords"])) == {
+        "Słowa kluczowe",
+        "Słowa kluczowe (ang.)",
+    }
+    # Słowa tylko w BPP.
+    rekord.slowa_kluczowe.set(["chemia"])
+    assert _roznice(ustaw(), "ciagle", ["keywords"]) == {
+        "Słowa kluczowe": ("chemia", "")
+    }
+    # PBN podaje słowa jednym ciągiem — są dzielone.
+    assert "Słowa kluczowe" not in _roznice(
+        ustaw(keywords={"pol": ["chemia"], "eng": []}), "ciagle", ["keywords"]
+    )
+    rekord.slowa_kluczowe.set(["chemia", "sól"])
+    assert (
+        _roznice(ustaw(keywords={"pol": "chemia; sól"}), "ciagle", ["keywords"]) == {}
+    )
 
 
 def test_tylko_wlaczone_pola_sa_porownywane(para_ciagle):

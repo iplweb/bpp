@@ -34,10 +34,11 @@ def tekst(wartosc) -> str:
 
 
 def numer(wartosc) -> str:
-    """ISSN / ISBN bez kresek, kropek i odstępów."""
+    """ISSN / ISBN bez kresek, kropek i odstępów; znak kontrolny „X” bez
+    rozróżniania wielkości liter."""
     if not isinstance(wartosc, str):
         return ""
-    return normalize_isbn(wartosc) or ""
+    return (normalize_isbn(wartosc) or "").upper()
 
 
 def doi(wartosc) -> str:

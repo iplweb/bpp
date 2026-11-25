@@ -23,8 +23,8 @@ def test_numer_pusty(wartosc):
     assert reguly.numer(wartosc) == ""
 
 
-def test_numer_rozroznia_wielkosc_litery_kontrolnej():
-    assert reguly.numer("83-01-00000-x") != reguly.numer("83-01-00000-X")
+def test_numer_znak_kontrolny_bez_rozrozniania_wielkosci_liter():
+    assert reguly.numer("1234-567x") == reguly.numer("1234-567X") == "1234567X"
 
 
 @pytest.mark.parametrize(

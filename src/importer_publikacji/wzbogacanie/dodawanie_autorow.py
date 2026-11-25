@@ -53,13 +53,45 @@ def rekord_sesji(session):
     return model.objects.filter(pk=cel["object_id"]).first()
 
 
-def utworz_sesje(user, uczelnia, rekord, nazwa_zrodla, identyfikator, osoby, powrot):
+def _sesje_rekordu(rekord, user):
+    """Niedokończone sesje dodawania autorów użytkownika dla rekordu."""
+    return ImportSession.objects.filter(
+        created_by=user,
+        status=ImportSession.Status.SOURCE_MATCHED,
+        **{
+            f"matched_data__{KLUCZ}__content_type_id": (
+                ContentType.objects.get_for_model(rekord).pk
+            ),
+            f"matched_data__{KLUCZ}__object_id": rekord.pk,
+        },
+    )
+
+
+def usun_sesje(rekord, user, pk=None):
+    """Usuń niedokończone sesje dodawania autorów użytkownika dla rekordu
+    (jedną, gdy podano ``pk``). Zwykłych sesji importu nie dotyka."""
+    sesje = _sesje_rekordu(rekord, user)
+    if pk is not None:
+        sesje = sesje.filter(pk=pk) if str(pk).isdigit() else sesje.none()
+    sesje.delete()
+
+
+def utworz_sesje(
+    user, uczelnia, rekord, nazwa_zrodla, identyfikator, osoby, powrot, porzuc=""
+):
     """Sesja importera na kroku „Autorzy” z osobami ``osoby`` (słowniki
     dostawcy: ``family``/``given``/``orcid``/``pbn_uid``), dopasowanymi
-    automatycznie tak jak przy imporcie."""
+    automatycznie tak jak przy imporcie.
+
+    Wcześniejsze, porzucone sesje tego użytkownika dla tego rekordu są
+    usuwane — na liście sesji importera nie zostają śmieci, a lista
+    brakujących osób jest zawsze aktualna. ``porzuc`` — adres, pod który
+    krok „Autorzy” wysyła „Wróć do porównania bez dodawania”."""
     from bpp.models import Patent, Wydawnictwo_Zwarte
 
     from ..views.authors import _auto_match_authors
+
+    usun_sesje(rekord, user)
 
     session = ImportSession.objects.create(
         created_by=user,
@@ -80,6 +112,7 @@ def utworz_sesje(user, uczelnia, rekord, nazwa_zrodla, identyfikator, osoby, pow
                 "content_type_id": ContentType.objects.get_for_model(rekord).pk,
                 "object_id": rekord.pk,
                 "powrot": powrot,
+                "porzuc": porzuc,
             }
         },
         charakter_formalny=getattr(rekord, "charakter_formalny", None),
@@ -130,14 +163,33 @@ def _waliduj(session, rekord):
         )
 
 
-def dodaj_autorow_do_rekordu(session, user):
+def _sprawdz_dostep(request, rekord):
+    """Przy potwierdzaniu jeszcze raz to samo, co sprawdza widok „Wzbogać
+    z …”: rekord w zakresie uczelni użytkownika, prawo zmiany, nie w koszu
+    (od otwarcia kroku „Autorzy” mogło się to zmienić)."""
+    from django.contrib import admin
+
+    model_admin = admin.site._registry.get(type(rekord))
+    if model_admin is None:
+        raise ValidationError("Tego rodzaju rekordu nie można tu zmieniać.")
+    widziany = model_admin.get_object(request, str(rekord.pk))
+    if widziany is None or not model_admin.has_change_permission(request, widziany):
+        raise ValidationError("Nie masz uprawnień do zmiany tego rekordu.")
+    if getattr(widziany, "deleted_at", None) is not None:
+        raise ValidationError(
+            "Rekord jest w koszu — przywróć go z kosza, zanim dodasz autorów."
+        )
+
+
+def dodaj_autorow_do_rekordu(session, user, request=None):
     """Dodaj dopasowanych autorów sesji do jej rekordu, z wpisem w historii.
 
     Zwraca ``(rekord, lista nazw dodanych autorów)``. ``ValidationError`` —
     gdy autorów nie da się dodać (tekst dla redaktora); nic nie jest wtedy
-    zapisane."""
+    zapisane. ``request`` (gdy podany) — ponowne sprawdzenie uprawnień."""
     from ..dyscypliny import przypisz_brakujace_dyscypliny
     from ..views.publikacja import _add_authors_to_record
+    from .blokada import zablokuj_rekord
 
     rekord = rekord_sesji(session)
     if rekord is None:
@@ -145,28 +197,31 @@ def dodaj_autorow_do_rekordu(session, user):
             "Rekord, do którego miały trafić autorzy, już nie istnieje — "
             "anuluj tę sesję."
         )
-    _waliduj(session, rekord)
+    if request is not None:
+        _sprawdz_dostep(request, rekord)
     nazwa = session.provider_name
-    with (
-        transaction.atomic(),
-        zmiana_rekordu(user, rekord, "") as zmiana,
-    ):
-        przed = set(rekord.autorzy_set.values_list("pk", flat=True))
-        przypisz_brakujace_dyscypliny(session, rekord, user)
-        _add_authors_to_record(session, rekord)
-        dodani = [
-            str(wa.autor)
-            for wa in rekord.autorzy_set.exclude(pk__in=przed)
-            .select_related("autor")
-            .order_by("kolejnosc", "pk")
-        ]
-        if dodani:
-            zmiana.komentarz = (
-                f"Dodano autorów z {nazwa} (kreator importera publikacji): "
-                f"{', '.join(dodani)}"
-            )
-        else:
-            zmiana.pomin = True
+    with transaction.atomic():
+        # Blokada rekordu przed jakimkolwiek zapisem (patrz ``blokada``);
+        # walidacja już pod blokadą — lista autorów nie zmieni się pod ręką.
+        zablokuj_rekord(rekord)
+        _waliduj(session, rekord)
+        with zmiana_rekordu(user, rekord, "") as zmiana:
+            przed = set(rekord.autorzy_set.values_list("pk", flat=True))
+            przypisz_brakujace_dyscypliny(session, rekord, user)
+            _add_authors_to_record(session, rekord)
+            dodani = [
+                str(wa.autor)
+                for wa in rekord.autorzy_set.exclude(pk__in=przed)
+                .select_related("autor")
+                .order_by("kolejnosc", "pk")
+            ]
+            if dodani:
+                zmiana.komentarz = (
+                    f"Dodano autorów z {nazwa} (kreator importera publikacji): "
+                    f"{', '.join(dodani)}"
+                )
+            else:
+                zmiana.pomin = True
     return rekord, dodani
 
 
@@ -176,7 +231,7 @@ def potwierdz(request, session, pokaz_krok_autorow):
     krok „Autorzy” z komunikatem."""
     powrot = session.matched_data[KLUCZ].get("powrot") or "/"
     try:
-        _rekord, dodani = dodaj_autorow_do_rekordu(session, request.user)
+        _rekord, dodani = dodaj_autorow_do_rekordu(session, request.user, request)
     except ValidationError as e:
         return pokaz_krok_autorow(request, session, error=" ".join(e.messages))
     if dodani:

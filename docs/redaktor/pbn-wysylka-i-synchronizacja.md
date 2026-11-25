@@ -389,10 +389,10 @@ można od razu przenieść do BPP.
 | Rok, Tom, Numer zeszytu | różnicą jest także wartość wpisana tylko po jednej stronie; tom jest porównywany także dla wydawnictw zwartych |
 | DOI | liczy się sam numer — adres `https://doi.org/…` i wielkość liter nie są różnicą |
 | Strony | zakres stron z PBN; półpauza zamiast łącznika i odstępy wokół niego nie są różnicą |
-| ISSN, ISBN | kreski i odstępy nie są różnicą; numer wpisany w BPP w polu e-ISSN / e-ISBN (albo odwrotnie) jest zgodny; numer, który ma tylko jedna strona, jest różnicą — osobno dla „ISSN” i „e-ISSN”, „ISBN” i „e-ISBN” |
+| ISSN, ISBN | kreski, odstępy i wielkość znaku kontrolnego „X” nie są różnicą; numer wpisany w BPP w polu e-ISSN / e-ISBN (albo odwrotnie) jest zgodny; numer, który ma tylko jedna strona, jest różnicą — osobno dla „ISSN” i „e-ISSN”, „ISBN” i „e-ISBN” |
 | URL/WWW | adres z PBN wpisany w BPP w którymkolwiek z pól adresu (płatny / wolny dostęp) jest zgodny; końcowy „/” nie jest różnicą |
 | Język | kod języka z PBN jest zamieniany na język ze słownika BPP (język powiązany z językiem PBN w „Dane systemowe → Języki”); kod spoza słownika jest pokazany wprost |
-| Słowa kluczowe | porównywane są zbiory słów — kolejność i wielkość liter nie mają znaczenia; słowa polskie i angielskie rekordu liczą się razem |
+| Słowa kluczowe | porównywane są zbiory słów — kolejność i wielkość liter nie mają znaczenia; osobno słowa języka głównego („Słowa kluczowe”) i angielskie („Słowa kluczowe (ang.)”); słowa podane w PBN jednym ciągiem są dzielone po przecinku albo średniku |
 | Streszczenie | zgodne, gdy streszczenie z PBN jest wśród streszczeń rekordu (znaczniki HTML bez znaczenia) |
 
 Liczba autorów, wydawca, konferencja, miejsce wydania, seria i punkty są

@@ -73,7 +73,16 @@
             „{{ wzbogacany.rekord|default:"(rekord usunięty)" }}”. Nowy rekord nie powstanie.
             Dopasuj każdą osobę (autor, jednostka, dyscyplina) i kliknij
             „Dodaj autorów do rekordu”. Osobę, której nie chcesz dodawać, usuń z listy.
-            {% if wzbogacany.powrot %}<a href="{{ wzbogacany.powrot }}">Wróć do porównania bez dodawania</a>{% endif %}
+            {% if wzbogacany.porzuc %}
+                {# Powrót usuwa tę sesję — nie zostaje na liście sesji importera. #}
+                <form method="post" action="{{ wzbogacany.porzuc }}" style="display:inline">
+                    {% csrf_token %}
+                    <input type="hidden" name="porzuc" value="{{ session.pk }}">
+                    <button type="submit" class="button tiny hollow secondary" style="margin: 0 0 0 0.5rem;">Wróć do porównania bez dodawania</button>
+                </form>
+            {% elif wzbogacany.powrot %}
+                <a href="{{ wzbogacany.powrot }}">Wróć do porównania bez dodawania</a>
+            {% endif %}
         </div>
     {% endif %}
 

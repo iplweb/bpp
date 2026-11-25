@@ -73,6 +73,7 @@ ETYKIETY_SILNIKA = {
     "strony": "Strony",
     "nr_zeszytu": "Numer zeszytu",
     "slowa_kluczowe": "Słowa kluczowe",
+    "slowa_kluczowe_eng": "Słowa kluczowe (ang.)",
     "jezyk": "Język",
 }
 
