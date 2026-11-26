@@ -15,6 +15,8 @@ from bpp.models import (
 from bpp.util import zaloguj_polkniety_wyjatek
 from pbn_api.models import Publication
 from pbn_integrator.importer import importuj_publikacje_po_pbn_uid_id
+from pbn_integrator.importer.helpers import importuj_z_wersji
+from pbn_integrator.importer.wersje import WersjePrzypieteNaProfilu
 from pbn_integrator.utils import (
     pobierz_publikacje_z_instytucji,
     pobierz_publikacje_z_instytucji_v2,
@@ -277,47 +279,60 @@ class PublicationImporter(ImportStepBase):
         imported_count = 0
         failed_count = 0
 
-        # Use pbar with callback to properly show subtask progress
-        for i, pbn_publication in enumerate(
-            pbar(
-                chciane,
-                count=total,
-                label="Importowanie publikacji do bazy",
-                callback=import_callback,
-            )
-        ):
-            # Check cancellation every 10 publications
-            if i % 10 == 0:
-                if self.check_cancelled():
-                    self.log(
-                        "warning",
-                        f"Import anulowany po {imported_count} publikacjach",
-                    )
-                    raise CancelledException("Import został anulowany")
+        # Rekord powstaje z wersji PRZYPIĘTEJ na profilu instytucji, nie z
+        # bieżącej w repozytorium PBN (tę mógł zmienić ktoś spoza uczelni).
+        # Gdy przypiętej brak — bieżąca, z jawnym wpisem w logu sesji (FD#511).
+        wersje = WersjePrzypieteNaProfilu(self.uczelnia)
+        with importuj_z_wersji(wersje):
+            # Use pbar with callback to properly show subtask progress
+            for i, pbn_publication in enumerate(
+                pbar(
+                    chciane,
+                    count=total,
+                    label="Importowanie publikacji do bazy",
+                    callback=import_callback,
+                )
+            ):
+                # Check cancellation every 10 publications
+                if i % 10 == 0:
+                    if self.check_cancelled():
+                        self.log(
+                            "warning",
+                            f"Import anulowany po {imported_count} publikacjach",
+                        )
+                        raise CancelledException("Import został anulowany")
 
-            try:
-                ret = importuj_publikacje_po_pbn_uid_id(
-                    pbn_publication.mongoId,
-                    client=self.client,
-                    default_jednostka=self.default_jednostka,
-                    rodzaj_periodyk=rodzaj_periodyk,
-                    dyscypliny_cache=dyscypliny_cache,
-                    domyslny_jezyk=self.default_jezyk,
-                )
-                if ret:
-                    imported_count += 1
-            except Exception as e:
-                zaloguj_polkniety_wyjatek(
-                    f"Nie udało się zaimportować publikacji {pbn_publication.mongoId}",
-                    logger=logger,
-                    do_monitoringu=False,  # zgłoszenie już w handle_error
-                )
-                failed_count += 1
-                self.handle_error(
-                    e,
-                    f"Nie udało się zaimportować publikacji {pbn_publication.mongoId}",
-                )
-                # Continue with next publication
+                try:
+                    ret = importuj_publikacje_po_pbn_uid_id(
+                        pbn_publication.mongoId,
+                        client=self.client,
+                        default_jednostka=self.default_jednostka,
+                        rodzaj_periodyk=rodzaj_periodyk,
+                        dyscypliny_cache=dyscypliny_cache,
+                        domyslny_jezyk=self.default_jezyk,
+                    )
+                    if ret:
+                        imported_count += 1
+                except Exception as e:
+                    zaloguj_polkniety_wyjatek(
+                        f"Nie udało się zaimportować publikacji {pbn_publication.mongoId}",
+                        logger=logger,
+                        do_monitoringu=False,  # zgłoszenie już w handle_error
+                    )
+                    failed_count += 1
+                    self.handle_error(
+                        e,
+                        f"Nie udało się zaimportować publikacji {pbn_publication.mongoId}",
+                    )
+                    # Continue with next publication
+
+        podsumowanie_wersji = wersje.podsumowanie()
+        if podsumowanie_wersji:
+            self.log(
+                "warning" if wersje.z_biezacej else "info",
+                podsumowanie_wersji,
+                {"wersja_biezaca_zamiast_przypietej": wersje.z_biezacej},
+            )
 
         self.log(
             "info",

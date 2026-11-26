@@ -232,6 +232,10 @@ synchronizacji prac przez redaktora:
   **pustej bazy** przy wdrożeniu systemu (słowniki, autorzy, wszystkie
   publikacje z lokalnej kopii danych PBN). Nie uruchamiaj go, żeby „dociągnąć”
   kilka prac — do tego służy uzgadnianie.
+  Prace z profilu instytucji importuje — tak jak uzgadnianie —
+  **z wersji przypiętej na profilu instytucji**; gdy profil nie wskazuje
+  wersji albo wskazanej wersji nie ma w pobranych danych, bierze wersję
+  bieżącą i zapisuje w logu sesji importu ostrzeżenie z listą takich prac.
 - **pobieranie danych z PBN** — pobiera dane na potrzeby **deduplikatorów
   i komparatorów** (osoby, źródła, oświadczenia, publikacje instytucji).
   Nie zmienia rekordów BPP i nie jest źródłem danych dla uzgadniania:
