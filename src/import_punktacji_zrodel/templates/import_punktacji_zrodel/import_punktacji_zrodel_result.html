@@ -10,12 +10,18 @@
     <p>
         Przetworzono wierszy: <strong>{{ total }}</strong>,
         do aktualizacji: <strong>{{ do_aktualizacji }}</strong>,
-        niedopasowanych: <strong>{{ niedopasowane }}</strong>{% if duplikaty %},
+        niedopasowanych: <strong>{{ niedopasowane }}</strong>{% if do_rozstrzygniecia %},
+        do rozstrzygnięcia: <strong>{{ do_rozstrzygniecia }}</strong>{% endif %}{% if duplikaty %},
         duplikatów: <strong>{{ duplikaty }}</strong>{% endif %}.
     </p>
     {% if byl_dry_run %}
         <p>To był <strong>podgląd</strong> — nic nie zapisano do bazy. Zatwierdzić
             zapis możesz na stronie pełnych wyników.</p>
+        {% if do_rozstrzygniecia %}
+            <p>Część wierszy pasuje do kilku źródeł — na stronie wyników
+                wybierz właściwe źródło albo pomiń wiersz. Bez decyzji te
+                wiersze nie zostaną zapisane.</p>
+        {% endif %}
     {% endif %}
     <a href="{% url 'import_punktacji_zrodel:importpunktacjizrodel-results' operation.pk %}"
        class="button">

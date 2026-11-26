@@ -23,6 +23,17 @@ def _jedyny(kandydaci: list[Zrodlo]) -> Zrodlo | None:
     return kandydaci[0] if len(kandydaci) == 1 else None
 
 
+def _kandydaci_po_issn(numery: list[str]) -> list[Zrodlo]:
+    """Źródła mające którykolwiek ze znormalizowanych ``numery`` w polu
+    ``issn`` albo ``e_issn`` (adnotowane ``_issn_norm``/``_e_issn_norm``)."""
+    return list(
+        Zrodlo.objects.annotate(
+            _issn_norm=issn_norm_expr("issn"),
+            _e_issn_norm=issn_norm_expr("e_issn"),
+        ).filter(Q(_issn_norm__in=numery) | Q(_e_issn_norm__in=numery))
+    )
+
+
 def _try_match_zrodlo_by_issn(issn: str | None, e_issn: str | None) -> Zrodlo | None:
     """Próbuje jednoznacznie dopasować źródło po ISSN lub e-ISSN.
 
@@ -45,12 +56,7 @@ def _try_match_zrodlo_by_issn(issn: str | None, e_issn: str | None) -> Zrodlo | 
     if not numery:
         return None
 
-    kandydaci = list(
-        Zrodlo.objects.annotate(
-            _issn_norm=issn_norm_expr("issn"),
-            _e_issn_norm=issn_norm_expr("e_issn"),
-        ).filter(Q(_issn_norm__in=numery) | Q(_e_issn_norm__in=numery))
-    )
+    kandydaci = _kandydaci_po_issn(numery)
 
     if issn is not None:
         result = _jedyny([z for z in kandydaci if z._issn_norm == issn])
@@ -222,3 +228,49 @@ def matchuj_zrodlo(
                 return result
 
     return None
+
+
+#: Ile najwyżej kandydatów zwraca ``kandydaci_zrodla`` — lista jest pokazywana
+#: człowiekowi do wyboru, więc dłuższa i tak nie ma sensu.
+MAX_KANDYDATOW_ZRODLA = 20
+
+
+def kandydaci_zrodla(
+    tytul: str | None, issn: str | None = None, e_issn: str | None = None
+) -> tuple[list[Zrodlo], str]:
+    """WSZYSTKIE źródła pasujące do wiersza importu — do pokazania człowiekowi.
+
+    ``matchuj_zrodlo`` przy kilku trafieniach zwraca ``None`` (nie zgaduje),
+    przez co wołający nie odróżni „brak źródła” od „kilka pasujących”. Ta
+    funkcja używa tych samych reguł, ale oddaje listę kandydatów:
+
+    1. ISSN/e-ISSN (jak ``_try_match_zrodlo_by_issn``): jednoznaczne trafienie
+       → jedno źródło; kilka źródeł z tym numerem → wszystkie.
+    2. Dopiero gdy numer nic nie dał — tytuł, dokładnie (bez dopasowania
+       rozmytego), ignorując wielkość liter i znaki diakrytyczne, w polach
+       ``nazwa`` i ``skrot`` (``zrodla_po_tytule_bez_diakrytykow``).
+
+    Zwraca ``(kandydaci, sposob)``; ``sposob`` to ``"ISSN"``, ``"tytuł"``
+    albo ``""`` przy braku trafień.
+    """
+    jedyne = _try_match_zrodlo_by_issn(issn, e_issn)
+    if jedyne is not None:
+        return [jedyne], "ISSN"
+
+    numery = [
+        n for n in (_normalize_issn_value(issn), _normalize_issn_value(e_issn)) if n
+    ]
+    if numery:
+        po_issn = _kandydaci_po_issn(numery)[:MAX_KANDYDATOW_ZRODLA]
+        if po_issn:
+            return po_issn, "ISSN"
+
+    if not tytul or not isinstance(tytul, str):
+        return [], ""
+    po_tytule = zrodla_po_tytule_bez_diakrytykow(
+        normalize_tytul_zrodla(tytul), ("nazwa", "skrot")
+    )
+    if po_tytule is None:
+        return [], ""
+    kandydaci = list(po_tytule.order_by("nazwa", "pk")[:MAX_KANDYDATOW_ZRODLA])
+    return kandydaci, "tytuł" if kandydaci else ""

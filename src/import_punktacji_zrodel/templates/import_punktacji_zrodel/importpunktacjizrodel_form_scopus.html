@@ -1,0 +1,27 @@
+{% extends "base.html" %}
+{% load crispy_forms_tags %}
+{% block title %}Import CiteScore (Scopus) — nowy{% endblock %}
+{% block breadcrumbs %}
+    {{ block.super }}
+    <li><a href="{% url "import_punktacji_zrodel:index" %}">import punktacji źródeł</a></li>
+    <li class="current">nowy import CiteScore (Scopus)</li>
+{% endblock %}
+{% block content %}
+  <h1>Import CiteScore (Scopus) — nowy import</h1>
+  <p>Wczytaj plik XLSX wyeksportowany z listy źródeł serwisu Scopus (kolumny
+     „Source title”, „CiteScore”, „Highest percentile”). Jeśli plik ma kolumny
+     ISSN / E-ISSN, źródła są dopasowywane najpierw po nich, a dopiero potem
+     po tytule. Plik nie zawiera roku — podaj go poniżej.</p>
+  <p>Najpierw zobaczysz <strong>podgląd</strong>: co się zmieni, które wiersze
+     wymagają Twojej decyzji (kilka pasujących źródeł) i których czasopism nie
+     ma w BPP. Zapis następuje dopiero po zatwierdzeniu.</p>
+  <div class="callout secondary" style="font-size: .85rem">
+    <h6><i class="fi-info"></i> Informacja prawna — dane z baz zewnętrznych (Scopus)</h6>
+    <p>Program <strong>nie zawiera</strong> danych serwisu Scopus i
+       <strong>nie pobiera ich automatycznie</strong> — przetwarzane są
+       wyłącznie pliki wgrane przez użytkownika. Korzystanie z tych danych
+       odbywa się na odpowiedzialność użytkownika i zgodnie z warunkami
+       licencyjnymi obowiązującymi jego instytucję.</p>
+  </div>
+  {% crispy form %}
+{% endblock %}

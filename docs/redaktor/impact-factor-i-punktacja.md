@@ -137,6 +137,124 @@ Import zmienia w tym wierszu **tylko** IF i kwartyl WoS. Pozostałe pola
 (punkty MNiSW, kwartyl Scopus…) zostają bez zmian, a gdy wiersza za ten rok
 jeszcze nie było, BPP go tworzy z zerami w pozostałych polach.
 
+### CiteScore i najwyższy percentyl (Scopus) {#citescore}
+
+W tej samej tabeli **„Punktacja źródła”**, tuż przed kwartylami, są dwie
+kolumny na wskaźniki z serwisu Scopus. Obie są opcjonalne. Można je wpisać
+ręcznie albo [wczytać z pliku Scopus](#import-citescore); import z pliku JCR
+ich nie dotyczy:
+
+- **„CiteScore”** — liczba nieujemna z jednym miejscem po przecinku, np.
+  `7,3` (przecinek i kropka działają tak samo). Wartość ujemna albo z dwoma
+  miejscami po przecinku nie zostanie zapisana.
+- **„CiteScore (najwyższy percentyl)”** — liczba całkowita od 0 do 100.
+
+Z percentyla BPP **podpowiada kwartyl Scopus**. Jeśli w wierszu danego roku
+pole **„Kwartyl w SCOPUS”** jest ustawione na „brak”, to przy zapisie
+zostanie wypełnione według tabeli:
+
+| Najwyższy percentyl | Kwartyl w SCOPUS |
+|---|---|
+| 75–100 | Q1 |
+| 50–74 | Q2 |
+| 25–49 | Q3 |
+| 0–24 | Q4 |
+
+Kwartyl wybrany ręcznie ma pierwszeństwo: BPP nigdy go nie nadpisuje, także
+wtedy, gdy później zmienisz percentyl. Żeby kwartyl przeliczył się na nowo,
+ustaw go na „brak” i zapisz źródło. Dopóki percentyl jest wpisany, pusty
+kwartyl Scopus zostanie przy zapisie uzupełniony — jeśli ma zostać pusty,
+usuń też percentyl.
+
+### Import CiteScore z pliku Scopus {#import-citescore}
+
+Zamiast wpisywać wartości ręcznie, możesz wczytać plik wyeksportowany
+z listy źródeł serwisu Scopus (zakładka „Sources”, eksport do Excela).
+Potrzebne jest konto w grupie „wprowadzanie danych”.
+
+1. Menu **operacje** → **import punktacji źródeł** → przycisk **„Nowy
+   import CiteScore (Scopus)”**.
+2. Wypełnij formularz i kliknij **„Wczytaj i pokaż podgląd”**:
+
+    - **Rok** — obowiązkowy. Plik Scopus nie zawiera roku, więc BPP nie ma
+      skąd go wziąć. Jeden plik = jeden rok.
+    - **Importuj CiteScore i najwyższy percentyl** — domyślnie zaznaczone.
+    - **Importuj SNIP** — domyślnie odznaczone. Po zaznaczeniu kolumna
+      „SNIP” pliku trafia do pola „Punktacja SNIP”.
+    - **Nadpisz istniejące** — domyślnie odznaczone: wartość już wpisana
+      przy źródle za ten rok zostaje, nawet gdy w pliku jest inna. Puste
+      pola są uzupełniane zawsze.
+    - **Plik** — XLSX (albo CSV) z kolumnami „Source title”, „CiteScore”
+      i „Highest percentile”. Z komórki percentyla (np. `99.0%`, pozycja
+      w kategorii, nazwa kategorii) BPP bierze samą liczbę i zaokrągla ją
+      do całości. Pozostałe kolumny są pomijane.
+
+3. BPP dopasowuje każdy wiersz do źródła:
+
+    - jeśli plik ma kolumny **ISSN / E-ISSN** — najpierw po nich (myślniki
+      i wielkość liter nie mają znaczenia),
+    - w pozostałych przypadkach po **tytule**: musi być identyczny
+      z nazwą albo skrótem źródła w BPP, bez względu na wielkość liter
+      i znaki diakrytyczne („Vedelem Tudomany” pasuje do „Védelem
+      Tudomány”). BPP **nie zgaduje** po podobnych tytułach.
+
+4. Strona wyników to **podgląd — nic nie jest jeszcze zapisane**. Wiersze
+   dzielą się na:
+
+    | Grupa | Co oznacza |
+    |---|---|
+    | **Do aktualizacji** | Dopasowane jednoznacznie; w kolumnie „Rezultat” widać wartość obecną i nową, np. „CiteScore: brak → 7.3”, „Kwartyl Scopus: brak → Q1 (z percentyla)” |
+    | **Do rozstrzygnięcia** | BPP nie wie, którego źródła dotyczy wiersz — patrz niżej |
+    | **Niedopasowane** | Takiego czasopisma nie ma w BPP. Listę pobierzesz przyciskiem **„Pobierz listę niedopasowanych”** (plik CSV). BPP **nie tworzy** nowych źródeł |
+
+5. Rozstrzygnij wiersze sporne (filtr **„tylko do rozstrzygnięcia”**),
+   a potem kliknij **„Zatwierdź i zapisz do bazy”**.
+
+#### Kilka pasujących źródeł {#kilka-pasujacych-zrodel}
+
+Wiersz trafia do grupy **„Do rozstrzygnięcia”** w dwóch sytuacjach:
+
+- **w BPP jest kilka źródeł o tym tytule** (albo z tym ISSN) — np. dwa
+  czasopisma o tej samej nazwie różnych wydawców albo niescalony duplikat,
+- **kilka wierszy pliku pasuje do tego samego źródła** — np. Scopus ma
+  osobne pozycje dla wersji drukowanej i elektronicznej.
+
+Przy takim wierszu BPP pokazuje listę kandydatów: nazwę, ISSN i E-ISSN,
+wydawcę, liczbę prac w tym źródle oraz odnośnik **„(otwórz)”** do
+formularza źródła. Zaznacz właściwe źródło albo **„pomiń ten wiersz”**
+i kliknij **„Zapisz wybór”**. Po wyborze w kolumnie „Rezultat” pojawi się
+podgląd zmian dla wybranego źródła; decyzję możesz zmienić aż do
+zatwierdzenia.
+
+- Wiersz **bez decyzji nie jest zapisywany** — także po zatwierdzeniu.
+  Pozostałe wiersze zapisują się normalnie.
+- Jedno źródło może dostać wartości tylko z jednego wiersza. Jeśli
+  wskażesz źródło przypisane już do innego wiersza, BPP odmówi i poda
+  jego numer — najpierw pomiń tamten wiersz.
+- Dwa źródła o tej samej nazwie to często duplikat. Warto go scalić
+  (**deduplikator źródeł**) i powtórzyć import.
+
+#### Co zapisuje import
+
+- Tylko wiersz **podanego roku** w tabeli „Punktacja źródła”; gdy go nie
+  ma, BPP go tworzy. Inne lata i inne kolumny (IF, punkty MNiSW, kwartyl
+  WoS…) zostają bez zmian.
+- **Kwartyl Scopus** — według tej samej reguły co przy wpisywaniu ręcznym:
+  pusty zostaje uzupełniony z percentyla, wpisany wcześniej zostaje (także
+  z zaznaczonym „Nadpisz istniejące”).
+- Każde zmienione źródło dostaje wpis w **historii zmian** („Import
+  CiteScore (Scopus) za rok …” z listą zmienionych wartości i nazwiskiem
+  osoby, która zatwierdziła import).
+
+Po zapisie strona wyników prowadzi przyciskiem **„rozbieżności kwartyla
+Scopus za …”** do [kroku 4b](#krok-4b), gdzie przeniesiesz kwartyle na
+prace.
+
+!!! note "CiteScore zostaje przy źródle"
+    Publikacje nie mają pól CiteScore, więc przyciski z kroku 4a i strona
+    rozbieżności z kroku 4b ich nie przenoszą. Na prace trafia — jak dotąd —
+    sam **kwartyl Scopus**, także ten podpowiedziany z percentyla.
+
 ## Krok 4a. Jeden rekord: przyciski w formularzu pracy {#krok-4a}
 
 Gdy poprawiasz pojedynczy artykuł, otwórz go w module redagowania
