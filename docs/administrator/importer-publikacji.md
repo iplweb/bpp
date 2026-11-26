@@ -85,6 +85,12 @@ Dostawca **BibTeX** umożliwia import publikacji na podstawie wklejonego kodu Bi
   (przyciskiem „Importuj”, tym samym kreatorem) albo pomija. Lista pokazuje
   postęp („Zaimportowano X z Y”) i można do niej wrócić z „Importy w toku /
   ostatnie”.
+- **Wiele DOI naraz:** osobny ekran **„Import wielu DOI”** przyjmuje listę
+  numerów DOI (do 50 w jednym zleceniu; limit zmienia ustawienie
+  `IMPORTER_WIELE_DOI_LIMIT`), pobiera dane z CrossRef w tle i pokazuje dla
+  każdego DOI, czy praca jest już w BPP i w PBN. Rekordy powstają dopiero
+  po przejściu kreatora przez redaktora — opis w
+  [instrukcji redaktora](../redaktor/importer-publikacji.md#import-wielu-doi-naraz).
 
 - **Mapowanie typów BibTeX na typy CrossRef:**
 

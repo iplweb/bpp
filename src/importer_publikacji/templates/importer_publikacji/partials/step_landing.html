@@ -36,6 +36,17 @@
                 <span class="tile-desc">{{ p.landing_caption }}</span>
             </a>
         {% endfor %}
+        {# Import wielu DOI naraz (FD#483) — osobny ekran, nie dostawca danych. #}
+        <a class="tile-card"
+           id="tile-wiele-doi"
+           href="{% url 'importer_publikacji:wiele-doi' %}"
+           hx-get="{% url 'importer_publikacji:wiele-doi' %}"
+           hx-target="#importer-wizard"
+           hx-push-url="true">
+            <span class="tile-icon fi-list"></span>
+            <span class="tile-title">Import wielu DOI</span>
+            <span class="tile-desc">Wklej listę numerów DOI — dane pobiorą się w tle, a każdą pracę sprawdzisz w kreatorze.</span>
+        </a>
     </div>
 </div>
 

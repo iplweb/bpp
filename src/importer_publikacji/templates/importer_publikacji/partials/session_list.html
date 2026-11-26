@@ -120,6 +120,10 @@
                 {{ filter_form.rekord }}
             </div>
             <div class="cell shrink">
+                <label for="{{ filter_form.paczka.id_for_label }}">{{ filter_form.paczka.label }}</label>
+                {{ filter_form.paczka }}
+            </div>
+            <div class="cell shrink">
                 <button type="button"
                         class="button small {% if tylko_bledy %}alert{% else %}alert hollow{% endif %}"
                         id="session-filter-tylko-bledy"
@@ -160,6 +164,12 @@
                         </td>
                         <td>
                             {{ s.normalized_data.title|default:""|truncatechars:60 }}
+                            {% if s.batch_entry %}
+                                <br>
+                                <small class="session-paczka">
+                                    <a href="{% url 'importer_publikacji:batch-detail' batch_id=s.batch_entry.parent_id %}">paczka nr {{ s.batch_entry.parent_id }}</a>
+                                </small>
+                            {% endif %}
                         </td>
                         <td>
                             {% if s.normalized_data.doi %}

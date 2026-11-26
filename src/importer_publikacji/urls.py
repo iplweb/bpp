@@ -129,6 +129,16 @@ urlpatterns = [
         name="zgloszenie-wybierz",
     ),
     path(
+        "wiele-doi/",
+        views.WieleDoiView.as_view(),
+        name="wiele-doi",
+    ),
+    path(
+        "batch/<int:batch_id>/wznow/",
+        views.BatchResumeView.as_view(),
+        name="batch-resume",
+    ),
+    path(
         "batch/<int:batch_id>/",
         views.MultipleWorksImportDetailView.as_view(),
         name="batch-detail",

@@ -634,6 +634,13 @@ class MultipleWorksImport(models.Model):
         return f"{self.provider_name}: paczka #{self.pk}"
 
     @property
+    def jest_lista_doi(self) -> bool:
+        """Paczka z ekranu „Import wielu DOI” (FD#483): wpisy to numery DOI,
+        a dane pobiera zadanie w tle. Paczki BibTeX mają dostawcę „BibTeX”
+        i import każdego wpisu startuje ręcznie."""
+        return self.provider_name == "CrossRef"
+
+    @property
     def progress(self) -> dict:
         entries = list(self.entries.select_related("session"))
         imported = sum(1 for e in entries if e.status == EntryStatus.IMPORTED)
@@ -662,6 +669,8 @@ class MultipleWorksImportEntry(models.Model):
         verbose_name="paczka",
     )
     order = models.PositiveIntegerField("kolejność", default=0)
+    # Dla paczek z listy DOI (FD#483) pole trzyma numer DOI — to po prostu
+    # identyfikator przekazywany dostawcy przy tworzeniu sesji importu.
     raw_bibtex = models.TextField("pojedynczy wpis BibTeX")
     title = models.TextField("tytuł (podgląd)", blank=True, default="")
     parse_error = models.TextField("błąd parsowania", blank=True, default="")
@@ -673,6 +682,16 @@ class MultipleWorksImportEntry(models.Model):
         blank=True,
         related_name="batch_entry",
         verbose_name="sesja importu",
+    )
+    sprawdzenie = models.JSONField(
+        "wynik sprawdzenia w BPP i PBN",
+        default=dict,
+        blank=True,
+        help_text=(
+            "Wypełniane przy imporcie wielu DOI: rekordy BPP wyglądające na "
+            "tę samą pracę (klucz „bpp”) i wynik zapytania PBN o DOI "
+            "(klucz „pbn”). Stan z chwili pobrania danych."
+        ),
     )
 
     class Meta:

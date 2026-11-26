@@ -110,6 +110,7 @@ from .steps import (
     _source_initial_from_session,
     _verify_context,
 )
+from .wiele_doi import BatchResumeView, WieleDoiView
 from .wizard import (
     AuthorCandidatesModalView,
     AuthorCreateNewView,
@@ -172,6 +173,7 @@ __all__ = [
     "AuthorsView",
     "BatchEntryImportView",
     "BatchEntrySkipView",
+    "BatchResumeView",
     "CancelView",
     "CreateUnmatchedAuthorsView",
     "CreateView",
@@ -187,6 +189,7 @@ __all__ = [
     "SessionListView",
     "SourceView",
     "VerifyView",
+    "WieleDoiView",
     # Funkcje (pakiet wystawia je z prefixem _ — patrz docstring modułu)
     "_add_authors_to_record",
     "_auto_match_authors",

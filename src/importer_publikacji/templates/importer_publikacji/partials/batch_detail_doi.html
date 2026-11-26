@@ -1,0 +1,195 @@
+{# Ekran zbiorczy paczki z „Importu wielu DOI” (FD#483). #}
+{# Dopóki trwa pobieranie w tle, fragment odświeża się sam co 5 sekund. #}
+{# Celem podmiany jest ten element (nie #importer-wizard), żeby strona #}
+{# nie przewijała się przy każdym odświeżeniu. #}
+<div id="paczka-doi"
+     {% if odswiezaj %}
+         hx-get="{{ url_paczki }}"
+         hx-trigger="every 5s"
+         hx-swap="outerHTML"
+     {% endif %}>
+
+    <div class="callout primary">
+        <h4>Import wielu DOI — paczka nr {{ batch.pk }}</h4>
+        <p id="paczka-doi-podsumowanie">
+            Pozycji: <strong>{{ lacznie }}</strong>.
+            Pobrano dane: <strong>{{ liczniki.pobrano }}</strong>.
+            {% if liczniki.bledy %}
+                Błędy: <strong>{{ liczniki.bledy }}</strong>.
+            {% endif %}
+            Już w BPP: <strong>{{ liczniki.w_bpp }}</strong>.
+            W PBN: <strong>{{ liczniki.w_pbn }}</strong>.
+            Utworzono rekordów:
+            <strong>{{ progress.imported }} z {{ progress.total }}</strong>{% if progress.skipped %}
+            (+{{ progress.skipped }} pominiętych){% endif %}.
+        </p>
+        {% if odswiezaj %}
+            <p id="paczka-doi-trwa">
+                <span class="fi-loop"></span>
+                Trwa pobieranie danych w tle{% if czekajace %} — w kolejce: {{ czekajace }}{% endif %}.
+                Lista odświeża się sama; możesz też zamknąć tę stronę
+                i wrócić później.
+            </p>
+        {% endif %}
+        <p>
+            <a href="{% url 'importer_publikacji:sessions' %}?paczka={{ batch.pk }}">
+                Pokaż sesje importu tej paczki na liście „Sesje importu”
+            </a>
+            |
+            <a href="{% url 'importer_publikacji:wiele-doi' %}">
+                Nowa lista DOI
+            </a>
+        </p>
+    </div>
+
+    {% if przerwane %}
+        <div class="callout warning" id="paczka-doi-przerwane">
+            <p>
+                Pobieranie w tle zostało przerwane — {{ czekajace }}
+                pozycji z listy nie ma jeszcze pobranych danych.
+            </p>
+            <form method="post"
+                  action="{% url 'importer_publikacji:batch-resume' batch_id=batch.pk %}">
+                {% csrf_token %}
+                <button type="submit" class="button small">
+                    <span class="fi-refresh"></span>
+                    Wznów pobieranie
+                </button>
+            </form>
+        </div>
+    {% endif %}
+
+    <table class="stack hover" id="paczka-doi-tabela">
+        <thead>
+            <tr>
+                <th>#</th>
+                <th>DOI / tytuł</th>
+                <th>Pobieranie</th>
+                <th>W BPP</th>
+                <th>W PBN</th>
+                <th>Akcja</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for w in wiersze %}
+                <tr data-stan="{{ w.kod }}">
+                    <td>{{ forloop.counter }}</td>
+                    <td>
+                        <strong>{{ w.entry.raw_bibtex }}</strong>
+                        {% if w.tytul %}
+                            <br>{{ w.tytul|truncatechars:160 }}
+                        {% endif %}
+                    </td>
+                    <td>
+                        <span class="label {{ w.klasa }}">{{ w.etykieta }}</span>
+                        {% if w.komunikat_bledu %}
+                            <br><small>{{ w.komunikat_bledu }}</small>
+                        {% endif %}
+                        {% if w.kod == "niepoprawny" %}
+                            <br><small>{{ w.entry.parse_error }}</small>
+                        {% endif %}
+                    </td>
+                    <td>
+                        {% if w.kod == "niepoprawny" %}
+                        {% elif w.w_bpp %}
+                            <span class="label alert">już jest w BPP</span>
+                            {% for p in w.w_bpp %}
+                                <br>
+                                <small>
+                                    [{{ p.metoda }}]
+                                    {% if p.url %}
+                                        <a href="{{ p.url }}" target="_blank">{{ p.tytul|truncatechars:80 }}</a>
+                                    {% else %}
+                                        {{ p.tytul|truncatechars:80 }}
+                                    {% endif %}
+                                </small>
+                            {% endfor %}
+                        {% elif w.entry.sprawdzenie %}
+                            nie znaleziono
+                        {% elif w.session %}
+                            <small>nie sprawdzono</small>
+                        {% endif %}
+                    </td>
+                    <td>
+                        {% if w.kod == "niepoprawny" %}
+                        {% elif w.pbn.stan == "jest" %}
+                            <span class="label warning">jest w PBN</span>
+                            <br>
+                            <small>
+                                {% if w.pbn.url %}
+                                    <a href="{{ w.pbn.url }}" target="_blank">pokaż w PBN</a> |
+                                {% endif %}
+                                <a href="{% url 'importer_publikacji:index' %}?provider=PBN&amp;identifier={{ w.pbn.mongo_id|urlencode }}"
+                                   target="_blank">importuj z PBN</a>
+                            </small>
+                        {% elif w.pbn.stan == "brak" %}
+                            nie znaleziono
+                        {% elif w.pbn.stan == "nie_sprawdzono" %}
+                            <small title="{{ w.pbn.komunikat }}">nie sprawdzono: {{ w.pbn.komunikat }}</small>
+                        {% elif w.session %}
+                            <small>nie sprawdzono</small>
+                        {% endif %}
+                    </td>
+                    <td>
+                        {% if w.kod == "pobrano" or w.kod == "w_kreatorze" or w.kod == "tworzenie" %}
+                            <a class="button tiny"
+                               href="{{ w.session.get_continue_url }}">
+                                <span class="fi-fast-forward"></span>
+                                Otwórz w kreatorze
+                            </a>
+                        {% elif w.kod == "zakonczono" %}
+                            {% if w.session.created_record %}
+                                <a class="button tiny success"
+                                   href="{{ w.session.created_record.get_absolute_url }}">
+                                    <span class="fi-check"></span>
+                                    Zobacz pracę
+                                </a>
+                            {% endif %}
+                        {% elif w.kod == "blad" %}
+                            <form method="post"
+                                  action="{% url 'importer_publikacji:task-retry' session_id=w.session.pk %}"
+                                  style="display:inline">
+                                {% csrf_token %}
+                                <button type="submit" class="button tiny alert">
+                                    <span class="fi-refresh"></span>
+                                    Ponów
+                                </button>
+                            </form>
+                        {% elif w.kod == "nie_pobrano" or w.kod == "anulowano" %}
+                            <form method="post"
+                                  action="{% url 'importer_publikacji:batch-entry-import' entry_id=w.entry.pk %}"
+                                  style="display:inline">
+                                {% csrf_token %}
+                                <button type="submit" class="button tiny">
+                                    <span class="fi-play"></span>
+                                    Pobierz
+                                </button>
+                            </form>
+                        {% endif %}
+                        {% if w.kod == "pominiety" %}
+                            <form method="post"
+                                  action="{% url 'importer_publikacji:batch-entry-skip' entry_id=w.entry.pk %}"
+                                  style="display:inline">
+                                {% csrf_token %}
+                                <button type="submit" class="button tiny hollow">
+                                    <span class="fi-refresh"></span>
+                                    Przywróć
+                                </button>
+                            </form>
+                        {% elif w.kod != "zakonczono" and w.kod != "pobieranie" and w.kod != "tworzenie" %}
+                            <form method="post"
+                                  action="{% url 'importer_publikacji:batch-entry-skip' entry_id=w.entry.pk %}"
+                                  style="display:inline">
+                                {% csrf_token %}
+                                <button type="submit" class="button tiny hollow">
+                                    <span class="fi-x"></span>
+                                    Pomiń
+                                </button>
+                            </form>
+                        {% endif %}
+                    </td>
+                </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>

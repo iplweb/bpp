@@ -77,6 +77,10 @@ Importer otworzysz na dwa sposoby:
         importujesz osobno przyciskiem **„Importuj”** (tym samym
         kreatorem co niżej) albo pomijasz.
 
+    !!! tip "Wiele DOI naraz"
+        Listę numerów DOI wkleisz na ekranie **„Import wielu DOI”** —
+        patrz [Import wielu DOI naraz](#import-wielu-doi-naraz).
+
 3. **Weryfikacja danych publikacji.** Na górze widać, co importer odczytał
    (tytuł, DOI, źródło, tom, numer, strony, liczba autorów). Sprawdź te
    dane, a poniżej uzupełnij pola z gwiazdką:
@@ -291,6 +295,76 @@ Przerwany import możesz w każdej chwili dokończyć (**„Powrót do listy”*
 potem **„Importy w toku / ostatnie”**) albo porzucić przyciskiem
 **„Anuluj import”**.
 
+## Import wielu DOI naraz
+
+Gdy masz listę numerów DOI (np. kilkadziesiąt prac z jednego roku), nie
+musisz wklejać ich pojedynczo. Kafelek **„Import wielu DOI”** na stronie
+głównej importera (albo odnośnik **„Zaimportuj wiele DOI naraz”** na ekranie
+importu po DOI) otwiera ekran z jednym polem **„Lista numerów DOI”**.
+
+1. **Wklej listę** — po jednym DOI w linii — i kliknij **„Pobierz dane”**.
+   Przyjmowany jest sam numer (`10.1234/abcd.2025.17`), adres
+   (`https://doi.org/10.1234/abcd.2025.17`) i zapis `doi:10.1234/…`.
+   Puste linie i powtórzenia są pomijane, wielkość liter nie ma znaczenia.
+   Jedno zlecenie może zawierać najwyżej **50 różnych DOI** — dłuższą listę
+   podziel na części; przy przekroczeniu limitu importer niczego nie
+   zaczyna, tylko prosi o podział.
+
+2. **Poczekaj na pobranie danych.** Otworzy się ekran **„Import wielu DOI —
+   paczka nr …”** z tabelą: jeden wiersz na jedno DOI. Dane pobierają się
+   w tle, kolejno, z bazy CrossRef; tabela odświeża się sama co kilka
+   sekund. Możesz zamknąć stronę i wrócić później — lista paczek jest pod
+   polem na ekranie „Import wielu DOI” (**„Ostatnie listy DOI”**).
+
+3. **Przeczytaj statusy.** Dla każdego DOI widać:
+    - kolumna **„Pobieranie”**: *W kolejce*, *Trwa pobieranie*, **Pobrano**
+      albo **Błąd pobierania** (z opisem — np. CrossRef nie zna tego DOI);
+      po rozpoczęciu pracy w kreatorze: *Pobrano — Zweryfikowano*,
+      *Pobrano — Dopasowano autorów* itd., a na końcu **Utworzono rekord**,
+    - kolumna **„W BPP”**: czerwona etykieta **„już jest w BPP”**
+      z odnośnikiem do istniejącego rekordu, gdy w bazie jest praca o tym
+      samym DOI (oznaczenie *[DOI]*) albo identycznym tytule (*[tytuł]*),
+    - kolumna **„W PBN”**: etykieta **„jest w PBN”** z odnośnikami
+      **„pokaż w PBN”** i **„importuj z PBN”**, gdy PBN zna pracę o tym DOI.
+      *„nie sprawdzono”* oznacza, że PBN nie odpowiedział albo uczelnia nie
+      ma skonfigurowanego dostępu do PBN.
+
+    Linia, w której nie było numeru DOI, też jest na liście — ze statusem
+    **„Nie rozpoznano DOI”**; nic nie znika po cichu.
+
+4. **Przejdź każdą pracę w kreatorze.** Przycisk **„Otwórz w kreatorze”**
+   otwiera zwykły import tej pracy — te same kroki co wyżej (weryfikacja,
+   źródło, autorzy, punktacja, „Sprawdź w PBN”, przegląd). Poprawiasz dane
+   i dopiero na końcu klikasz **„Utwórz publikację”**. **Importer nie
+   tworzy żadnego rekordu sam** — bez Twojego kliknięcia praca zostaje
+   tylko na liście. Po utworzeniu rekordu przycisk **„Wróć do paczki”**
+   prowadzi z powrotem do tabeli.
+
+5. **Prace, których nie chcesz importować** (np. te „już w BPP”) oznacz
+   przyciskiem **„Pomiń”** — można to cofnąć przyciskiem **„Przywróć”**.
+   Przy błędzie pobierania jest przycisk **„Ponów”**. Nagłówek paczki
+   pokazuje, ile rekordów już utworzono („Utworzono rekordów: 3 z 12”).
+
+Wszystkie prace z paczki są też zwykłymi pozycjami na liście **„Sesje
+importu”** — odnośnik **„Pokaż sesje importu tej paczki…”** otwiera tę
+listę z filtrem **„Nr paczki”**, który można łączyć z pozostałymi filtrami
+(np. „Tylko błędy importu”).
+
+!!! note "Co warto wiedzieć"
+    - Dane pochodzą z CrossRef. DOI zarejestrowane w innej agencji (np.
+      część DOI nadawanych przez DataCite) skończą się „Błędem
+      pobierania” — taką pracę zaimportuj osobno przez **Pozostałe strony
+      WWW**, **BibTeX** albo, jeśli jest w PBN, odnośnikiem „importuj
+      z PBN”.
+    - Kolumny „W BPP” i „W PBN” pokazują stan z chwili pobrania danych.
+      Kreator i tak sprawdza duplikaty w kroku weryfikacji i ma własny
+      krok „Sprawdź w PBN”.
+    - „importuj z PBN” otwiera osobny, pojedynczy import z PBN (w nowej
+      karcie). Pozycję w paczce możesz wtedy pominąć.
+    - Jeśli pobieranie w tle się zatrzyma (np. w trakcie aktualizacji
+      systemu), po kilku minutach nad tabelą pojawi się przycisk
+      **„Wznów pobieranie”**.
+
 ## Lista „Sesje importu”: filtry i zapamiętany widok
 
 Przycisk **„Importy w toku / ostatnie”** otwiera listę **„Sesje importu”**.
@@ -314,6 +388,9 @@ Nad tabelą są filtry: **„Data od”**, **„Data do”**, **„Tytuł”**, 
   (strona publikacji w BPP) i **„Edytuj”** (moduł redagowania). Jeśli
   utworzoną publikację później usunięto, w kolumnie widać „usunięty”,
   a import nadal liczy się jako „Z rekordem”.
+- **„Nr paczki”** — zostawia importy z jednej paczki („Import wielu
+  DOI” albo wielu wpisów BibTeX). Numer paczki widać pod tytułem pracy
+  („paczka nr 12”); odnośnik otwiera ekran tej paczki.
 
 Przycisk **„Reset”** czyści filtry (sortowanie zostaje). Kliknięcie
 nagłówka kolumny zmienia sortowanie.

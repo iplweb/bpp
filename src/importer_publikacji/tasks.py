@@ -422,3 +422,104 @@ def _enqueue_pbn_export(request_user, record, uczelnia):
 
     request_stub = _PbnRequestStub(request_user, uczelnia=uczelnia)
     sprobuj_utworzyc_zlecenie_eksportu_do_PBN_gui(request_stub, record)
+
+
+def _zajmij_wpis_paczki(entry_id, batch, user_id, task_id):
+    """Utwórz sesję importu dla wpisu paczki DOI, jeśli nikt go nie zajął.
+
+    Blokada wiersza chroni przed dwiema sesjami dla jednego wpisu, gdy
+    redaktor w tym samym czasie pominął wpis albo wystartował go ręcznie.
+    Zwraca sesję albo ``None``, gdy wpis nie wymaga już pobierania.
+    """
+    from .models import MultipleWorksImportEntry
+
+    with transaction.atomic():
+        entry = (
+            MultipleWorksImportEntry.objects.select_for_update()
+            .filter(pk=entry_id)
+            .first()
+        )
+        if (
+            entry is None
+            or entry.session_id is not None
+            or entry.skipped
+            or entry.parse_error
+        ):
+            return None
+        session = ImportSession.objects.create(
+            created_by_id=user_id,
+            uczelnia=batch.uczelnia,
+            provider_name=batch.provider_name,
+            identifier=entry.raw_bibtex,
+            status=ImportSession.Status.FETCHING,
+            raw_data={},
+            normalized_data={},
+            celery_task_id=task_id,
+        )
+        entry.session = session
+        entry.save(update_fields=["session"])
+        return session
+
+
+@shared_task
+def pobierz_paczke_doi_task(batch_id, request_user_id):
+    """Pobierz dane dla wszystkich oczekujących wpisów paczki DOI (FD#483).
+
+    Wpisy idą KOLEJNO: dla każdego powstaje zwykła sesja importu i w tym
+    samym procesie wykonuje się ``fetch_session_task`` — dokładnie ta sama
+    ścieżka, co przy imporcie pojedynczego DOI. Sesje powstają tuż przed
+    pobraniem (a nie wszystkie naraz), żeby watchdog ``is_stalled()`` nie
+    uznał za martwe tych, które dopiero czekają na swoją kolej.
+
+    Błąd pobierania jednego DOI nie przerywa pozostałych:
+    ``fetch_session_task`` sam zapisuje błąd na sesji (status „Błąd
+    importu”) i zgłasza go do monitoringu, a tutaj trafia on do logu z
+    pełnym tracebackiem.
+
+    Zadanie NIE tworzy rekordów publikacji — kończy na statusie „Pobrano
+    dane”; resztę robi redaktor w kreatorze.
+    """
+    from celery import uuid
+    from django.utils import timezone
+
+    from .models import MultipleWorksImport, MultipleWorksImportEntry
+    from .wiele_doi import klient_pbn, sprawdz_w_pbn, znajdz_w_bpp
+
+    batch = MultipleWorksImport.objects.get(pk=batch_id)
+    client = klient_pbn(batch.uczelnia)
+
+    oczekujace = list(
+        batch.entries.filter(session__isnull=True, skipped=False, parse_error="")
+        .order_by("order", "pk")
+        .values_list("pk", flat=True)
+    )
+    for entry_id in oczekujace:
+        task_id = uuid()
+        session = _zajmij_wpis_paczki(entry_id, batch, request_user_id, task_id)
+        if session is None:
+            continue
+
+        wynik = fetch_session_task.apply(
+            args=(session.pk, request_user_id), task_id=task_id, throw=False
+        )
+        if wynik.failed():
+            logger.error(
+                "Import wielu DOI: nie udało się pobrać danych dla DOI %s "
+                "(paczka %s, sesja importu %s). Pozostałe DOI są pobierane dalej.",
+                session.identifier,
+                batch_id,
+                session.pk,
+                exc_info=wynik.result,
+            )
+
+        session.refresh_from_db()
+        doi = session.identifier
+        pobrano = session.status == ImportSession.Status.FETCHED
+        MultipleWorksImportEntry.objects.filter(pk=entry_id).update(
+            sprawdzenie={
+                "bpp": znajdz_w_bpp(doi, session if pobrano else None),
+                "pbn": sprawdz_w_pbn(client, batch.uczelnia, doi),
+            }
+        )
+        # Znak życia dla ekranu zbiorczego (patrz wiele_doi.pobieranie_przerwane).
+        MultipleWorksImport.objects.filter(pk=batch_id).update(modified=timezone.now())

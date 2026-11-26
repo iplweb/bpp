@@ -38,6 +38,8 @@ STEP_LANDING = "importer_publikacji/partials/step_landing.html"
 INDEX = "importer_publikacji/index.html"
 SESSIONS_PARTIAL = "importer_publikacji/partials/session_list.html"
 BATCH_DETAIL = "importer_publikacji/partials/batch_detail.html"
+BATCH_DETAIL_DOI = "importer_publikacji/partials/batch_detail_doi.html"
+STEP_WIELE_DOI = "importer_publikacji/partials/step_wiele_doi.html"
 BREADCRUMBS_OOB = "importer_publikacji/partials/_breadcrumbs_oob.html"
 
 # Sortowanie listy sesji: pole ORM → etykieta kolumny (w komunikacie
@@ -68,6 +70,7 @@ SESSIONS_FILTER_KEYS = (
     "status",
     "etap_bledu",
     "rekord",
+    "paczka",
     "created_by",
     "modified_by",
 )
@@ -228,6 +231,7 @@ _SESSIONS_SIMPLE_FILTERS = {
     "created_by": "created_by",
     "modified_by": "modified_by",
     "etap_bledu": "last_failed_stage",
+    "paczka": "batch_entry__parent_id",
 }
 # Filtr „Rekord wynikowy”: wartość → ``created_record_id__isnull``.
 _SESSIONS_REKORD_ISNULL = {"jest": False, "brak": True}
@@ -267,7 +271,7 @@ def _sessions_queryset(request, params=None):
     if params is None:
         params = request.GET
     qs = ImportSession.objects.select_related(
-        "created_by", "modified_by", "created_record_content_type"
+        "created_by", "modified_by", "created_record_content_type", "batch_entry"
     ).prefetch_related("created_record")
     # Izolacja multi-host: redaktor widzi tylko sesje swojej uczelni (uwaga #3).
     qs = scope_import_do_uczelni(qs, request)
