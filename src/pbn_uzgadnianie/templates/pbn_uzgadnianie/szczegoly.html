@@ -1,0 +1,221 @@
+{% extends "base.html" %}
+
+{% block title %}Uzgodnienie z PBN {{ przebieg.rok_od }}–{{ przebieg.rok_do }} - {{ block.super }}{% endblock %}
+
+{% block breadcrumbs %}
+    {{ block.super }}
+    <li><a href="{% url "pbn_uzgadnianie:main" %}">Uzgodnij z PBN</a></li>
+    <li class="current">{{ przebieg.rok_od }}–{{ przebieg.rok_do }}</li>
+{% endblock %}
+
+{% block content %}
+    <div class="row">
+        <div class="large-12 columns">
+            <h1>Uzgodnienie z PBN, lata {{ przebieg.rok_od }}–{{ przebieg.rok_do }}</h1>
+            <p>
+                <strong>{{ przebieg.get_tryb_display }}</strong>,
+                stan: <strong id="uzgodnienie-status">{{ przebieg.get_status_display }}</strong>,
+                uruchomiono {{ przebieg.utworzono|date:"Y-m-d H:i" }}{% if przebieg.user %} ({{ przebieg.user }}){% endif %}.
+                {% if przebieg.na_podstawie_id and przebieg.na_podstawie.to_podglad %}
+                    Wykonanie
+                    <a href="{% url "pbn_uzgadnianie:szczegoly" przebieg.na_podstawie_id %}">podglądu</a>.
+                {% endif %}
+            </p>
+
+            {% if przebieg.aktywne %}
+                <div class="callout warning" id="uzgodnienie-postep"
+                     data-url="{% url "pbn_uzgadnianie:stan" przebieg.pk %}">
+                    <p><span id="uzgodnienie-etap">{{ przebieg.etap|default:"Oczekuje na uruchomienie…" }}</span></p>
+                    <div class="progress" role="progressbar" aria-valuemin="0" aria-valuemax="100"
+                         aria-valuenow="{{ przebieg.postep }}">
+                        <div class="progress-meter" id="uzgodnienie-pasek" style="width: {{ przebieg.postep }}%"></div>
+                    </div>
+                    <form method="post" action="{% url "pbn_uzgadnianie:anuluj" przebieg.pk %}">
+                        {% csrf_token %}
+                        <button type="submit" class="button alert small">Anuluj</button>
+                    </form>
+                </div>
+                <script>
+                    (function () {
+                        var blok = document.getElementById("uzgodnienie-postep");
+                        function odswiez() {
+                            fetch(blok.dataset.url, {credentials: "same-origin"})
+                                .then(function (r) { return r.json(); })
+                                .then(function (stan) {
+                                    if (!stan.aktywne) { window.location.reload(); return; }
+                                    document.getElementById("uzgodnienie-etap").textContent =
+                                        stan.etap || "Oczekuje na uruchomienie…";
+                                    document.getElementById("uzgodnienie-pasek").style.width = stan.postep + "%";
+                                    window.setTimeout(odswiez, 3000);
+                                })
+                                .catch(function () { window.setTimeout(odswiez, 10000); });
+                        }
+                        window.setTimeout(odswiez, 3000);
+                    })();
+                </script>
+            {% else %}
+                {% if przebieg.blad %}
+                    <div class="callout alert"><p><span class="fi-alert"></span> {{ przebieg.blad }}</p></div>
+                {% endif %}
+
+                {% if przebieg.status == "anulowane" or przebieg.status == "blad" %}
+                    <div class="callout warning">
+                        {% if przebieg.to_podglad %}
+                            <p>Podgląd został przerwany — niczego nie zmieniono.</p>
+                        {% else %}
+                            <p>Przebieg został przerwany. Zmiany wykonane do tego momentu są zapisane
+                                (lista poniżej); ponowne uruchomienie dokończy resztę i niczego nie zdubluje.</p>
+                        {% endif %}
+                    </div>
+                {% endif %}
+
+                {% if mozna_wykonac %}
+                    <div class="callout primary">
+                        {% if ile_zmian %}
+                            <p>To jest <strong>podgląd</strong> — w BPP nic się jeszcze nie zmieniło.
+                                Wykonanie zrobi dokładnie to, co widać poniżej
+                                (zmian w rekordach BPP: <strong>{{ ile_zmian }}</strong>).</p>
+                            <form method="post" action="{% url "pbn_uzgadnianie:wykonaj" przebieg.pk %}">
+                                {% csrf_token %}
+                                <button type="submit" class="button success">
+                                    <span class="fi-check"></span> Wykonaj ten podgląd
+                                </button>
+                            </form>
+                        {% else %}
+                            <p>To jest <strong>podgląd</strong>. Nie ma nic do utworzenia ani do powiązania —
+                                poniżej jest tylko raport różnic.</p>
+                        {% endif %}
+                    </div>
+                {% endif %}
+
+                {% if dane %}
+                    <div class="callout {% if dane.stare and not przebieg.to_pobranie %}warning{% else %}secondary{% endif %}" id="dane-z-pbn">
+                        <p>{% if przebieg.to_pobranie %}Pobrano z PBN:{% else %}Przebieg pracował na danych z PBN:{% endif %}</p>
+                        <ul>
+                            {% for zrodlo in dane.zrodla %}
+                                <li>{{ zrodlo.nazwa }} — pobrane <strong>{{ zrodlo.opis }}</strong></li>
+                            {% endfor %}
+                        </ul>
+                        {% if dane.stare and not przebieg.to_pobranie %}
+                            <p><span class="fi-alert"></span> Dane są starsze niż {{ dane.godzin }} godz. —
+                                zmian wprowadzonych w PBN później ten raport nie uwzględnia. Odśwież je przyciskiem
+                                „Pobierz dane z PBN” na stronie <a href="{% url "pbn_uzgadnianie:main" %}">uzgodnij z PBN</a>.</p>
+                        {% endif %}
+                    </div>
+                {% endif %}
+
+                {% if przebieg.to_pobranie %}
+                    {% if przebieg.status == "zakonczone" %}
+                        <p>Na profilu instytucji w PBN jest <strong>{{ ile_na_profilu }}</strong> prac,
+                            w tym <strong>{{ ile_w_latach }}</strong> z lat {{ przebieg.rok_od }}–{{ przebieg.rok_do }}.
+                            {% if not ile_na_profilu %}<strong>PBN nie zwrócił żadnej pracy z profilu instytucji</strong> —
+                                sprawdź autoryzację w PBN i identyfikator instytucji w ustawieniach uczelni.{% endif %}</p>
+                        {% if bledy_pobierania %}
+                            <div class="callout alert">
+                                <p>Części danych nie udało się pobrać ({{ bledy_pobierania|length }}):</p>
+                                <ul>
+                                    {% for blad in bledy_pobierania %}
+                                        <li>{{ blad.etap }}{% if blad.pbn_uid %}, praca {{ blad.pbn_uid }}{% endif %}: {{ blad.opis }}</li>
+                                    {% endfor %}
+                                </ul>
+                            </div>
+                        {% endif %}
+                        <p><a class="button" href="{% url "pbn_uzgadnianie:main" %}">Przejdź do uzgadniania</a></p>
+                    {% endif %}
+                {% else %}
+                <p>
+                    <a class="button secondary" href="{% url "pbn_uzgadnianie:raport_xlsx" przebieg.pk %}">
+                        <span class="fi-download"></span> Pobierz raport (XLSX)
+                    </a>
+                </p>
+
+                {% for grupa in grupy %}
+                    <h3>
+                        {% if przebieg.to_podglad and grupa.zmienia %}Do wykonania: {% endif %}{{ grupa.etykieta }}
+                        <span class="label {% if grupa.zmienia %}success{% else %}secondary{% endif %}">{{ grupa.wpisy|length }}</span>
+                    </h3>
+                    {% if grupa.duplikaty %}
+                        <p>Nic nie zostało scalone. Do scalania służy
+                            <a href="{% url "deduplikator_publikacji:duplicate_publications" %}">deduplikator publikacji</a>
+                            (menu „redagowanie”).</p>
+                    {% endif %}
+                    {% if grupa.zwinieta %}
+                        <p>Te prace są zgodne po obu stronach — pełna lista jest w raporcie XLSX.</p>
+                    {% else %}
+                        <table>
+                            <thead>
+                            <tr>
+                                <th>Praca w PBN</th>
+                                <th>Rekord w BPP</th>
+                                <th>Szczegóły</th>
+                            </tr>
+                            </thead>
+                            <tbody>
+                            {% for wpis in grupa.wpisy %}
+                                <tr>
+                                    <td>
+                                        {% if wpis.pbn_uid %}
+                                            {{ wpis.pbn_tytul }}{% if wpis.pbn_rok %} ({{ wpis.pbn_rok }}){% endif %}
+                                            <br/>
+                                            <a href="{{ wpis.pbn_url }}" target="_blank" rel="noopener">
+                                                <small>{{ wpis.pbn_uid }}</small></a>
+                                        {% else %}—{% endif %}
+                                    </td>
+                                    <td>
+                                        {% if wpis.bpp_pk %}
+                                            {{ wpis.bpp_tytul|striptags }} ({{ wpis.bpp_rok }})
+                                            {% if wpis.bpp_url %}
+                                                <br/><a href="{{ wpis.bpp_url }}" target="_blank" rel="noopener">
+                                                <small>otwórz rekord</small></a>
+                                            {% endif %}
+                                        {% else %}—{% endif %}
+                                    </td>
+                                    <td>
+                                        {% if wpis.roznice_wiersze %}
+                                            <p><strong>Ten sam PBN UID po obu stronach:</strong> {{ wpis.pbn_uid }}</p>
+                                            <table class="uzgodnienie-roznice">
+                                                <thead>
+                                                <tr><th>Pole</th><th>W BPP</th><th>W PBN</th></tr>
+                                                </thead>
+                                                <tbody>
+                                                {% for r in wpis.roznice_wiersze %}
+                                                    <tr>
+                                                        <td>{{ r.pole }}</td>
+                                                        <td>{{ r.bpp_html }}</td>
+                                                        <td>{{ r.pbn_html }}</td>
+                                                    </tr>
+                                                {% endfor %}
+                                                </tbody>
+                                            </table>
+                                        {% endif %}
+                                        {% if wpis.blizniak %}
+                                            Drugi rekord w BPP (powiązany z PBN):
+                                            {{ wpis.blizniak.bpp_tytul|striptags }} ({{ wpis.blizniak.bpp_rok }})
+                                            {% if wpis.blizniak.bpp_url %}
+                                                — <a href="{{ wpis.blizniak.bpp_url }}" target="_blank" rel="noopener">otwórz rekord</a>
+                                            {% endif %}<br/>
+                                        {% endif %}
+                                        {% if wpis.dopasowanie %}Dopasowano po: {{ wpis.dopasowanie }}.<br/>{% endif %}
+                                        {% if wpis.wysylka %}Wysyłka z BPP: {{ wpis.wysylka }}.<br/>{% endif %}
+                                        {% if wpis.dyscypliny_opis %}Dyscypliny: {{ wpis.dyscypliny_opis }}.<br/>{% endif %}
+                                        {% if wpis.powod %}{{ wpis.powod }}<br/>{% endif %}
+                                        {% if wpis.uwaga %}{{ wpis.uwaga }}<br/>{% endif %}
+                                        {% if wpis.wersja %}<small>Wersja z PBN: {{ wpis.wersja }}</small>{% endif %}
+                                    </td>
+                                </tr>
+                            {% endfor %}
+                            </tbody>
+                        </table>
+                    {% endif %}
+                {% empty %}
+                    {% if przebieg.status == "zakonczone" %}
+                        <p>W pobranych danych nie ma prac z lat {{ przebieg.rok_od }}–{{ przebieg.rok_do }} na profilu
+                            instytucji w PBN, a w BPP nie ma rekordów z tych lat do wykazania. Jeśli spodziewasz się
+                            tu prac, sprawdź datę pobrania danych powyżej i pobierz je ponownie.</p>
+                    {% endif %}
+                {% endfor %}
+                {% endif %}
+            {% endif %}
+        </div>
+    </div>
+{% endblock %}

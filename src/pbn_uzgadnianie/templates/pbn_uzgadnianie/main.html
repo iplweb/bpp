@@ -1,0 +1,129 @@
+{% extends "base.html" %}
+
+{% block title %}Uzgodnij z PBN - {{ block.super }}{% endblock %}
+
+{% block breadcrumbs %}
+    {{ block.super }}
+    <li class="current">Uzgodnij z PBN</li>
+{% endblock %}
+
+{% block content %}
+    <div class="row">
+        <div class="large-12 columns">
+            <h1>Uzgodnij z PBN</h1>
+            <p class="lead">Jedna operacja: uzupełnienie w BPP prac, które są na profilu instytucji w PBN,
+                i raport różnic — na danych pobranych z PBN.</p>
+
+            <div class="callout secondary">
+                <p><strong>Co operacja robi sama:</strong></p>
+                <ul>
+                    <li>tworzy w BPP rekordy prac, które są na profilu instytucji w PBN, a których w BPP nie ma
+                        (z wersji przypiętej na profilu instytucji, z dyscyplinami z oświadczeń),</li>
+                    <li>wiąże pracę z PBN z istniejącym rekordem BPP, gdy zgadza się DOI albo ISBN książki
+                        (zamiast tworzyć duplikat).</li>
+                </ul>
+                <p><strong>Czego nie robi:</strong> nie zmienia ani nie kasuje istniejących rekordów BPP,
+                    nie zmienia w nich autorów ani dyscyplin, niczego nie wysyła do PBN. Różnice pokazuje w raporcie.
+                    Sama też <strong>nie pobiera danych z PBN</strong> — pracuje na tych, które pobierzesz
+                    przyciskiem „Pobierz dane z PBN”.</p>
+            </div>
+
+            <h3>Dane z PBN, na których pracuje uzgadnianie</h3>
+            {% if dane %}
+                <div class="callout {% if dane.stare %}warning{% else %}success{% endif %}" id="dane-z-pbn">
+                    <p>Pobrane dla lat <strong>{{ pobranie.rok_od }}–{{ pobranie.rok_do }}</strong>:</p>
+                    <ul>
+                        {% for zrodlo in dane.zrodla %}
+                            <li>{{ zrodlo.nazwa }} — pobrane <strong>{{ zrodlo.opis }}</strong></li>
+                        {% endfor %}
+                    </ul>
+                    {% if dane.stare %}
+                        <p><span class="fi-alert"></span> <strong>Dane są starsze niż {{ dane.godzin }} godz.</strong>
+                            Zmian wprowadzonych w PBN po tej dacie uzgadnianie nie zobaczy.
+                            Odśwież je przyciskiem „Pobierz dane z PBN” poniżej — albo uruchom uzgadnianie
+                            na tych danych, jeśli wiesz, że w PBN nic się nie zmieniło.</p>
+                    {% endif %}
+                </div>
+            {% else %}
+                <div class="callout warning" id="dane-z-pbn">
+                    <p><span class="fi-alert"></span> <strong>Nie ma jeszcze pobranych danych z PBN.</strong>
+                        Wpisz lata i kliknij „Pobierz dane z PBN” — dopiero potem uzgadnianie ma na czym pracować.</p>
+                </div>
+            {% endif %}
+
+            {% if powod_blokady %}
+                <div class="callout alert">
+                    <p><span class="fi-alert"></span> {{ powod_blokady }}</p>
+                </div>
+            {% elif aktywny %}
+                <div class="callout warning">
+                    <p>Uzgadnianie już trwa:
+                        <a href="{% url "pbn_uzgadnianie:szczegoly" aktywny.pk %}">zobacz postęp</a>.</p>
+                </div>
+            {% else %}
+                <form method="post" action="{% url "pbn_uzgadnianie:start" %}">
+                    {% csrf_token %}
+                    <div class="grid-x grid-margin-x">
+                        <div class="cell medium-2">
+                            <label>{{ form.rok_od.label }} {{ form.rok_od }}</label>
+                        </div>
+                        <div class="cell medium-2">
+                            <label>{{ form.rok_do.label }} {{ form.rok_do }}</label>
+                        </div>
+                    </div>
+                    {% if swiezy_profil %}
+                        <p>
+                            <label>
+                                <input type="checkbox" name="caly_profil">
+                                Przy pobieraniu pobierz ponownie także listę prac z profilu instytucji
+                                (trwa najdłużej). Zaznacz, jeśli od ostatniego pobrania <strong>dodawano lub
+                                usuwano prace na profilu instytucji w PBN</strong> — bez tego system odświeży
+                                tylko dane prac i oświadczenia dla wybranych lat.
+                            </label>
+                        </p>
+                    {% endif %}
+                    <button type="submit" name="tryb" value="pobranie" class="button secondary">
+                        <span class="fi-download"></span> Pobierz dane z PBN
+                    </button>
+                    <button type="submit" name="tryb" value="podglad" class="button">
+                        <span class="fi-magnifying-glass"></span> Pokaż, co się zmieni
+                    </button>
+                    <button type="submit" name="tryb" value="wykonanie" class="button success"
+                            onclick="return confirm('Uzgodnić z PBN teraz? Brakujące prace zostaną utworzone w BPP.');">
+                        <span class="fi-check"></span> Uzgodnij teraz
+                    </button>
+                </form>
+            {% endif %}
+
+            <h3>Ostatnie przebiegi</h3>
+            {% if przebiegi %}
+                <table>
+                    <thead>
+                    <tr>
+                        <th>Uruchomiono</th>
+                        <th>Lata</th>
+                        <th>Tryb</th>
+                        <th>Stan</th>
+                        <th>Kto</th>
+                        <th></th>
+                    </tr>
+                    </thead>
+                    <tbody>
+                    {% for przebieg in przebiegi %}
+                        <tr>
+                            <td>{{ przebieg.utworzono|date:"Y-m-d H:i" }}</td>
+                            <td>{{ przebieg.rok_od }}–{{ przebieg.rok_do }}</td>
+                            <td>{{ przebieg.get_tryb_display }}</td>
+                            <td>{{ przebieg.get_status_display }}</td>
+                            <td>{{ przebieg.user|default:"" }}</td>
+                            <td><a href="{% url "pbn_uzgadnianie:szczegoly" przebieg.pk %}">raport</a></td>
+                        </tr>
+                    {% endfor %}
+                    </tbody>
+                </table>
+            {% else %}
+                <p>Nie było jeszcze żadnego uzgadniania.</p>
+            {% endif %}
+        </div>
+    </div>
+{% endblock %}

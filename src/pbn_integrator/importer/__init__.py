@@ -35,6 +35,7 @@ from .helpers import (
     przetworz_slowa_kluczowe,
     przetworz_tytuly,
     ustaw_jezyk_oryginalny,
+    wersja_do_importu,
 )
 
 # Re-export publisher handling
@@ -106,7 +107,7 @@ def importuj_publikacje_po_pbn_uid_id(
     if pbn_publication.status == DELETED:
         return None
 
-    cv = pbn_publication.current_version
+    cv = wersja_do_importu(pbn_publication)
 
     # Bramka minimum-viable-record: bez wersji bieżącej / obiektu nie ma z czego
     # tworzyć rekordu.

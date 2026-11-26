@@ -33,6 +33,7 @@ from .helpers import (
     przetworz_slowa_kluczowe,
     przetworz_tytuly,
     skonsumuj_nieobsluzone_klucze,
+    wersja_do_importu,
 )
 from .publishers import sciagnij_i_zapisz_wydawce
 
@@ -119,7 +120,7 @@ def importuj_rozdzial(
     if ret is not None and not force:
         return ret
 
-    pbn_json = pbn_publication.current_version["object"]
+    pbn_json = wersja_do_importu(pbn_publication)["object"]
     orig_pbn_json = copy.deepcopy(pbn_json)  # noqa
     pbn_book_id = pbn_json.pop("book")["id"]
     wydawnictwo_nadrzedne = znajdz_ksiazke_nadrzedna(pbn_book_id)
