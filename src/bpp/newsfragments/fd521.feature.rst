@@ -1,0 +1,11 @@
+Raporty: pole zapytania w formularzu źródła danych (moduł redagowania →
+**Raporty** → **Źródła danych**) jest teraz edytorem. Zapytanie jest
+kolorowane (nazwy pól, operatory, wartości, parametry w klamrach), a przycisk
+**„Formatuj”** rozbija długie zapytanie na wiersze według ``and``/``or``
+i nawiasów — zmienia wyłącznie układ, treść zapytania zostaje ta sama. Dla
+języka DjangoQL edytor podpowiada w trakcie pisania pola wybranego modelu
+(po wpisaniu np. ``charakter_formalny.`` — pola charakteru formalnego) oraz
+wartości; zmiana **„Podstawowego modelu”** od razu zmienia podpowiedzi. Dla
+języka django-dsl pod polem jest rozwijana lista **„Dostępne pola”**
+i **„Skróty”** — kliknięcie nazwy wstawia ją do zapytania. Wcześniej było to
+zwykłe pole tekstowe, a literówkę w nazwie pola widać było dopiero po zapisie.

@@ -9,11 +9,82 @@ które edytuje się w module redagowania, w menu **Raporty**:
 - **Raporty** — szablon raportu i jego sekcje („Składowe raportu”); każda
   sekcja łączy jedno źródło danych z jedną tabelą.
 
+Model, z którego raport bierze dane, wybiera się **tylko raz — w źródle
+danych** (pole „Podstawowy model”). Tabela i sekcja raportu nie mają własnego
+pola modelu: tabela stosuje się do modelu źródła danych, z którym została
+połączona w sekcji raportu.
+
 To, komu i w którym miejscu menu raport się pokazuje, ustawia się osobno
 w **Raporty w menu strony**.
 
 Definicje raportów może zmieniać superużytkownik oraz osoby z grupy
 „raporty” (zob. [Grupy uprawnień](../administrator/grupy-uprawnien.md)).
+
+## Źródło danych: model i zapytanie {#zrodlo-danych-model-i-zapytanie}
+
+Moduł redagowania → **Raporty** → **Źródła danych** → **Dodaj** albo wybierz
+istniejące źródło.
+
+### Podstawowy model {#podstawowy-model}
+
+Lista zawiera model, z którego buduje się raporty: **rekord** — wszystkie
+publikacje (wydawnictwa ciągłe i zwarte, patenty, prace doktorskie
+i habilitacyjne). Przy dodawaniu nowego źródła danych jest on od razu wybrany.
+Po autorze, jednostce, charakterze formalnym itd. filtruje się w zapytaniu,
+w ramach rekordu (np. `autorzy.autor`, skrót `autor`).
+
+Źródło danych zapisane wcześniej z innym modelem działa bez zmian — jego model
+pozostaje na liście w formularzu tego źródła i można je normalnie edytować.
+
+### Edytor zapytania {#edytor-zapytania}
+
+Pole **Query** jest edytorem:
+
+- **Kolorowanie składni** — nazwy pól, operatory, `and`/`or`, wartości
+  i parametry szablonu (`{{ obiekt.pk }}`, `{% if … %}`) mają różne kolory.
+  Znak, którego język zapytań nie zna, jest podkreślony falką.
+- **„Formatuj”** — przycisk pod polem. Rozbija zapytanie na wiersze: każdy
+  warunek łączony przez `and`/`or` w osobnym wierszu, dłuższe grupy w nawiasach
+  z wcięciem. Formatowanie zmienia wyłącznie odstępy i podział na wiersze;
+  wartości w cudzysłowach i parametry szablonu zostają nietknięte, więc
+  zapytanie wybiera te same prace co przed formatowaniem. Zapytania
+  z niedomkniętym cudzysłowem albo nawiasem nie da się sformatować — pod polem
+  pojawia się komunikat, a tekst zostaje bez zmian.
+- **Podpowiadanie (język DjangoQL)** — w trakcie pisania edytor pokazuje pod
+  kursorem listę pól wybranego modelu, potem operatory i wartości. Po wpisaniu
+  nazwy powiązania i kropki, np. `charakter_formalny.`, lista pokazuje pola
+  powiązanego obiektu (`nazwa`, `skrot`…). Podpowiedź wybiera się strzałkami
+  i klawiszem Enter albo kliknięciem; Esc zamyka listę. Poza listą Enter
+  wstawia nowy wiersz.
+- **Lista pól (język django-dsl)** — pod polem jest rozwijana lista
+  **„Dostępne pola”** oraz **„Skróty”** (np. `autor`, `jednostka`,
+  `charakter`); kliknięcie nazwy wstawia ją w miejscu kursora.
+
+Zmiana **„Podstawowego modelu”** albo **„Query language”** od razu przełącza
+podpowiedzi i kolorowanie — nie trzeba zapisywać formularza. Poprawność
+zapytania jest, jak dotąd, sprawdzana przy zapisie.
+
+## Tabela nie ma własnego modelu {#tabela-bez-modelu}
+
+Formularz tabeli (**Raporty** → **Tabele**) nie zawiera pola „Podstawowy
+model”. Pole **„Nazwa atrybutu”** kolumny jest sprawdzane względem modelu
+źródła danych, z którym tabela jest użyta w raporcie; dla tabeli, która nie
+jest jeszcze podpięta do żadnego raportu — względem modelu **rekord**.
+
+Kolejność ma znaczenie tylko w jednym, rzadkim przypadku: gdy tabela ma
+służyć źródłu danych o **innym** modelu niż rekord (takie źródła mogły zostać
+z wcześniejszych wersji). Nowa tabela, niepodpięta jeszcze do raportu, jest
+sprawdzana względem rekordu, więc nazwy atrybutów istniejące tylko w tamtym
+modelu zostaną odrzucone. Wtedy: załóż tabelę bez kolumn, wybierz ją w polu
+**Tabela** sekcji raportu korzystającej z tego źródła danych, zapisz raport
+i dopiero potem dodaj kolumny.
+
+Także „Składowe raportu” nie mają pola modelu. Sekcja z **„Dane z”**
+ustawionym na „wszystkie rekordy oprócz pasujących do źródeł danych raportu”
+(w domyślnych raportach „4.3. Inne”) pokazuje po prostu wszystko, czego nie
+wybrało żadne źródło danych tego raportu.
+
+Tabele i raporty założone wcześniej działają bez zmian.
 
 ## Zmiana etykiety kolumny {#zmiana-etykiety-kolumny}
 

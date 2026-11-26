@@ -61,3 +61,16 @@ def test_adminy_laduja_skrypt_po_widzecie():
             i for i, js in enumerate(skrypty) if SKRYPT_ESCAPOWANIA_PODPOWIEDZI in js
         )
         assert widzet < skrypt, type(model_admin).__name__
+
+
+def test_admin_zrodel_danych_laduje_skrypt_po_widzecie():
+    # Edytor zapytania źródła danych raportu (FD#521) korzysta z tego samego
+    # widżetu podpowiedzi co wyszukiwarki w adminie.
+    from flexible_reports.models import Datasource
+
+    skrypty = [str(js) for js in admin.site._registry[Datasource].media._js]
+    widzet = next(i for i, js in enumerate(skrypty) if WIDZET in js)
+    skrypt = next(
+        i for i, js in enumerate(skrypty) if SKRYPT_ESCAPOWANIA_PODPOWIEDZI in js
+    )
+    assert widzet < skrypt

@@ -99,10 +99,16 @@ class BppDSLQueryBackend(fr.DSLQueryBackend):
 
 
 class BppDjangoQLQueryBackend(fr.DjangoQLQueryBackend):
-    def _schema(self):
+    def get_schema_class(self):
+        # Hak ``flexible_reports``: z tego samego schematu korzysta edytor
+        # zapytań w formularzu źródła danych (podpowiadanie pól — FD#521),
+        # więc podpowiada dokładnie to, co przechodzi walidację.
         from bpp.djangoql_schema import BppQLSchema
 
         return BppQLSchema
+
+    def _schema(self):
+        return self.get_schema_class()
 
     def filter_queryset(self, base_queryset, query, context=None):
         from djangoql.exceptions import DjangoQLError

@@ -5,6 +5,11 @@ from flexible_reports.admin.datasource import DatasourceAdmin
 from flexible_reports.admin.report import ReportAdmin
 from flexible_reports.models import Datasource, Report
 
+from bpp.admin.helpers.djangoql import (
+    SKRYPT_ESCAPOWANIA_PODPOWIEDZI,
+    WIDZET_PODPOWIEDZI,
+)
+
 from . import ikony
 from .models import DefinicjaRaportu, utworz_definicje_dla
 from .powrot import adres_powrotu
@@ -70,6 +75,16 @@ class BppDatasourceAdmin(DatasourceAdmin):
     """
 
     change_form_template = "admin/nowe_raporty/datasource_change_form.html"
+
+    @property
+    def media(self):
+        # Edytor zapytania ładuje widżet podpowiedzi DjangoQL; podpowiadane
+        # nazwy z bazy mają być tekstem, nie HTML-em. Widżet wymieniony razem
+        # ze skryptem, bo Django zachowuje kolejność tylko w obrębie jednej
+        # listy, a skrypt musi iść PO widżecie.
+        return super().media + forms.Media(
+            js=[WIDZET_PODPOWIEDZI, SKRYPT_ESCAPOWANIA_PODPOWIEDZI]
+        )
 
     def change_view(self, request, object_id, form_url="", extra_context=None):
         extra_context = {

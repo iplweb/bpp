@@ -65,3 +65,23 @@ def test_podpowiedzi_w_szukaj_zapytaniem(
     admin_page.keyboard.type('charakter_formalny__rel = "Zly')
 
     _sprawdz_ze_znacznik_jest_tekstem(admin_page)
+
+
+def test_podpowiedzi_w_edytorze_zrodla_danych_raportu(
+    channels_live_server, admin_page: Page, charakter_ze_znacznikiem
+):
+    # Edytor zapytania źródła danych (FD#521) — ten sam widżet podpowiedzi.
+    admin_page.goto(
+        channels_live_server.url + "/admin/flexible_reports/datasource/add/"
+    )
+    wait_for_page_load(admin_page)
+    admin_page.wait_for_selector(
+        "#id_dsl_query[data-fr-query-editor=on]", timeout=10000
+    )
+    admin_page.wait_for_selector(".fr-query-hints:not([hidden])", timeout=10000)
+    admin_page.select_option("#id_query_language", "djangoql")
+
+    admin_page.click("#id_dsl_query")
+    admin_page.keyboard.type('charakter_formalny__rel = "Zly')
+
+    _sprawdz_ze_znacznik_jest_tekstem(admin_page)

@@ -660,6 +660,17 @@ PROJECT_ROOT = BASE_DIR
 
 MULTISEEK_REGISTRY = "bpp.multiseek_registry"
 
+# FD#522: modele do wyboru w polu „Podstawowy model” źródła danych raportu
+# (Raporty → Źródła danych), w tej kolejności; pierwszy jest domyślny. Bez
+# tego ustawienia lista zawiera wszystkie modele w bazie (kilkaset pozycji).
+# Źródłem danych raportów jest realnie Rekord (po autorach filtruje się
+# w ramach Rekordu); gdy powstanie raport po samych autorach, wystarczy
+# dopisać tu model. To filtr formularza: źródła danych zapisane wcześniej
+# z innym modelem działają dalej i dają się edytować.
+FLEXIBLE_REPORTS_BASE_MODELS = [
+    "bpp.Rekord",
+]
+
 AUTOSLUG_SLUGIFY_FUNCTION = slugify_function
 
 LOGIN_REDIRECT_URL = "/"

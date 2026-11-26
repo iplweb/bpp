@@ -178,7 +178,11 @@ def _utworz_raport(rdef, tabela):
                 position=pozycja,
                 data_from=DATA_FROM_EXCEPT_CATCHALL,
                 datasource=None,
-                base_model=_rekord_ct(),
+                # FD#524: bez modelu — sekcja pokazuje wszystko, czego nie
+                # wybrało żadne źródło danych raportu (flexible-reports
+                # >= 0.6.0). Raporty założone wcześniej mają tu zapisany
+                # Rekord i działają identycznie; seed ich nie rusza.
+                base_model=None,
                 table=tabela,
             )
         else:
