@@ -59,7 +59,9 @@ Note: The script requires `expect` to be installed on the system.
   (gitignored, osobno dla każdego `-m`); podsumowanie `xdist-memory` na końcu
   przebiegu pokazuje rachunek. Na Linuksie test leci pod `systemd-run ...
   MemoryMax` (`bin/memory_guard.sh`), żeby przekroczenie zabiło pytest, a nie
-  zamroziło maszynę; na macOS zamiast tego watchdog pluginu. Nadpisanie:
+  zamroziło maszynę; scope trafia do `pytest.slice` (ten sam, którego używa
+  plugin [pytest-systemd-slice](https://github.com/mpasternak/pytest-systemd-slice),
+  więc plugin nie przenosi przebiegu i limit zostaje w mocy); na macOS zamiast tego watchdog pluginu. Nadpisanie:
   `XDIST_N=6`; wyłączenie limitu: `XDIST_GUARD=`; wyłączenie pluginu:
   `XDIST_MEMORY=`.
 - `make xdist-bench` - Benchmark liczby workerów na TEJ maszynie

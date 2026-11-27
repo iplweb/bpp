@@ -18,4 +18,8 @@ avail=$(awk '/^MemAvailable:/ { print int($2 / 1024) }' /proc/meminfo)
 limit=$((avail - reserve))
 [ "$limit" -lt 1024 ] && limit=1024
 
-echo "systemd-run --user --scope -q -p MemoryMax=${limit}M -p MemorySwapMax=0"
+# --slice=pytest.slice: ten sam slice, którego używa plugin pytest-systemd-slice
+# (jeśli jest zainstalowany, widzi, że pytest już tam jest, i go nie przenosi —
+# inaczej wyprowadziłby przebieg z tego scope'a razem z jego MemoryMax). Bez
+# pluginu systemd po prostu tworzy taki slice; limity slice'a + MemoryMax scope'a.
+echo "systemd-run --user --scope -q --slice=pytest.slice -p MemoryMax=${limit}M -p MemorySwapMax=0"
