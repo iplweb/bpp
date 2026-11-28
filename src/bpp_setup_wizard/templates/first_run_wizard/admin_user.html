@@ -1,7 +1,7 @@
 {# Override pakietowego first_run_wizard/admin_user.html — BPP-styled, #}
 {# spójny wizualnie z bpp_setup_wizard/uczelnia_setup.html (drugi krok). #}
 {% extends "bare.html" %}
-{% load static %}
+{% load static bpp_setup_wizard %}
 
 {% block skip_link %}{% endblock %}
 
@@ -15,7 +15,7 @@
 
 {% block body %}
     <div class="bpp-setup-wizard">
-        {% include "bpp_setup_wizard/_postep.html" with numer=1 %}
+        {% postep_kreatora "admin" %}
         <div class="bpp-setup-wizard__header">
             <div class="bpp-setup-wizard__icon">
                 <span class="fi-torso"></span>

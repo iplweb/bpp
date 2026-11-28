@@ -10,9 +10,13 @@ class BppSetupWizardConfig(AppConfig):
         from first_run_wizard import registry
         from first_run_wizard.registry import StepAlreadyRegistered
 
-        from bpp_setup_wizard.steps import PbnSetupStep, UczelniaSetupStep
+        from bpp_setup_wizard.steps import (
+            DaneDemoSetupStep,
+            PbnSetupStep,
+            UczelniaSetupStep,
+        )
 
-        for step in (UczelniaSetupStep(), PbnSetupStep()):
+        for step in (DaneDemoSetupStep(), UczelniaSetupStep(), PbnSetupStep()):
             try:
                 registry.register(step)
             except StepAlreadyRegistered:

@@ -149,3 +149,20 @@ class PbnSetupForm(forms.ModelForm):
     class Meta:
         model = Uczelnia
         fields = ["pbn_api_root", "pbn_app_name", "pbn_app_token"]
+
+
+class DaneDemoForm(forms.Form):
+    """Krok „Dane demonstracyjne”: wybór motywu (ścieżka „Tak”)."""
+
+    motyw = forms.ChoiceField(
+        label="Motyw danych demo",
+        widget=forms.RadioSelect,
+    )
+
+    def __init__(self, *args, **kwargs):
+        from bpp_setup_wizard.dane_demo import MOTYW_DOMYSLNY, motywy
+
+        super().__init__(*args, **kwargs)
+        self.motywy = motywy()
+        self.fields["motyw"].choices = [(k, nazwa) for k, nazwa, _ in self.motywy]
+        self.fields["motyw"].initial = MOTYW_DOMYSLNY

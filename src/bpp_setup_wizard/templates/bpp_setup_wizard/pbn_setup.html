@@ -1,5 +1,5 @@
 {% extends "bare.html" %}
-{% load static %}
+{% load static bpp_setup_wizard %}
 
 {% block skip_link %}{% endblock %}
 
@@ -13,7 +13,7 @@
 
 {% block body %}
     <div class="bpp-setup-wizard">
-        {% include "bpp_setup_wizard/_postep.html" with numer=3 %}
+        {% postep_kreatora "pbn" %}
         <div class="bpp-setup-wizard__header">
             <div class="bpp-setup-wizard__icon">
                 <span class="fi-link"></span>
