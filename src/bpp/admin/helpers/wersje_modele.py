@@ -123,6 +123,7 @@ MODELE_BEZ_HISTORII = {
     "rozbieznosci.rozbieznosclog": "log rozbieżności",
     # Wyniki zadań, obliczeń i skanów (odtwarzalne).
     "bpp.wersja_przeliczenia": "wynik przeliczenia",
+    "bpp_setup_wizard.generowaniedanychdemo": "zadanie w tle",
     "deduplikator_autorow.duplicatecandidate": "wynik skanu duplikatów",
     "deduplikator_autorow.duplicatescanrun": "wynik skanu duplikatów",
     "deduplikator_publikacji.publicationduplicatecandidate": "wynik skanu",
