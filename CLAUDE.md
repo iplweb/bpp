@@ -241,14 +241,28 @@ uv run pytest
 make tests-without-playwright    # fast, no browser tests
 ```
 
-**Full-suite runs: never hard-code `-n 16` (or any large `-n`).** Use
-`make tests-without-playwright` — it sizes xdist workers from free RAM via
-`--xdist-memory`. If you must call pytest directly, use at most `-n 6`.
-Each worker takes ~600–800 MB plus its own Postgres container, and all
-Claude sessions on the dev box share one tmux cgroup capped at 20 GB:
-a 16-worker run throttles every other session to a standstill.
-(These numbers assume the current 29 GB RAM dev box — revisit them, and the
-tmux slice limit, after a RAM upgrade.)
+**Duże przebiegi testów — najpierw sprawdź maszynę, nie zgaduj.**
+
+- Pełna suita: `make tests-without-playwright` — liczbę workerów dobiera
+  `--xdist-memory` z wolnego RAM-u. Nie wpisuj na sztywno dużego `-n`; gdy
+  wołasz pytest bezpośrednio, dobierz `-n` do tego, co widzisz na maszynie.
+- Przed czymś ciężkim sprawdź stan: `pytest-busy` (jeśli jest: kto już
+  testuje, wolny RAM, obciążenie, sugerowane `-n`; `--per-worker 650` bez
+  Playwrighta), `free -g`, `nproc`, `uptime`, `docker ps`. Liczby w tym pliku
+  się starzeją, maszyna mówi prawdę.
+- Skala: worker ~600–800 MB (z Playwrightem ~1,1 GB) + 2–3 GB na kontener PG.
+  Zmierzone na 64 GB / 32 wątkach przy `-n 16`: bez Playwrighta ~10 GB
+  i 90 s, Playwright ~17 GB i 45 s.
+- Na maszynach z pluginami pytest-systemd-slice i pytest-busy każdy pytest
+  ląduje w `pytest.slice` (limit w % RAM, niższy priorytet CPU/IO), a
+  równoległe przebiegi z `-n` czekają na siebie („pytest-busy: waiting…”).
+  Nie obchodź tego (`--busy=off`) — czekający przebieg puść w tle i rób
+  w tym czasie co innego. `make tests*` wkłada pytest do tego samego
+  slice'a przez `bin/memory_guard.sh`.
+- Inne ciężkie polecenia (`make assets`, skrypty na dużych dumpach) też
+  zamykaj w limicie: `systemd-run --user --scope -q --slice=pytest.slice
+  -p MemoryMax=8G -- <polecenie>`. Podgląd: `systemd-cgtop`,
+  `systemctl --user status pytest.slice`.
 
 ```bash
 

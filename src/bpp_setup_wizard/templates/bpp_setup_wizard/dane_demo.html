@@ -1,0 +1,270 @@
+{% extends "bare.html" %}
+{% load static bpp_setup_wizard %}
+
+{% block skip_link %}{% endblock %}
+
+{% block title %}{{ title }} - Konfiguracja początkowa{% endblock %}
+
+{% block extrahead %}
+    {{ block.super }}
+    <link rel="stylesheet"
+          href="{% static 'bpp_setup_wizard/css/bpp_setup_wizard.css' %}">
+    {% if tryb == "postep" %}
+        {# Bez JavaScriptu strona postępu odświeża się sama co 10 s. #}
+        <noscript><meta http-equiv="refresh" content="10"></noscript>
+    {% endif %}
+{% endblock %}
+
+{% block body %}
+    <div class="bpp-setup-wizard">
+        {% if tryb == "postep" or tryb == "blad" %}
+            {% postep_kreatora "generowanie" sciezka="demo" %}
+        {% elif tryb == "motyw" %}
+            {% postep_kreatora "dane_demo" sciezka="demo" %}
+        {% else %}
+            {% postep_kreatora "dane_demo" %}
+        {% endif %}
+
+        <div class="bpp-setup-wizard__header">
+            <div class="bpp-setup-wizard__icon">
+                <span class="fi-database"></span>
+            </div>
+            <h1 class="bpp-setup-wizard__header-title">
+                {% if tryb == "postep" %}Generowanie danych demo{% elif tryb == "blad" %}Generowanie danych demo nie powiodło się{% else %}{{ title }}{% endif %}
+            </h1>
+            <p class="bpp-setup-wizard__header-subtitle">
+                {% if tryb == "postep" %}
+                    To potrwa kilka minut — możesz zostawić tę stronę otwartą
+                {% else %}
+                    Przykładowa uczelnia z autorami i publikacjami do wypróbowania BPP
+                {% endif %}
+            </p>
+        </div>
+
+        {% if poprzedni_blad %}
+            <div class="bpp-setup-wizard__form-errors" role="alert">
+                <h3 class="bpp-setup-wizard__form-errors-title">
+                    <span class="fi-alert"></span> Poprzednia próba generowania danych demo nie powiodła się
+                </h3>
+                <p>{{ poprzedni_blad.ostatnia_linia_bledu }}</p>
+                <p>Częściowo utworzone dane zostały usunięte — możesz spróbować
+                    ponownie albo skonfigurować własną uczelnię.</p>
+            </div>
+        {% endif %}
+
+        {% if tryb == "pytanie" or tryb == "motyw" %}
+            <div class="bpp-setup-wizard__pbn-note bpp-setup-wizard__demo-ostrzezenie">
+                <span class="fi-alert"></span>
+                <strong>Uwaga:</strong> dane demo są <strong>fikcyjne</strong> —
+                służą wyłącznie do testów, szkoleń i pokazów. Nie mieszaj ich
+                z prawdziwą bibliografią: na instalacji, która ma prowadzić
+                rzeczywistą bibliografię uczelni, wybierz „Nie”.
+            </div>
+        {% endif %}
+
+        {% if tryb == "pytanie" %}
+            <div class="bpp-setup-wizard__question">
+                <h3 class="bpp-setup-wizard__question-title">
+                    Utworzyć dane demo?
+                </h3>
+                <p class="bpp-setup-wizard__info-text">
+                    BPP może od razu wypełnić bazę przykładową uczelnią
+                    (wydziały, jednostki, ok. {{ liczba_autorow }} autorów
+                    i {{ liczba_prac }} publikacji). Konfiguracja PBN nie jest
+                    wtedy potrzebna.
+                </p>
+                <div class="bpp-setup-wizard__choices">
+                    <a href="{{ url_tak }}" class="bpp-setup-wizard__choice">
+                        <span class="fi-check"></span> Tak, utwórz dane demo
+                    </a>
+                    <form method="post" action="{{ url_pytania }}">
+                        {% csrf_token %}
+                        <input type="hidden" name="akcja" value="nie">
+                        <button type="submit" class="bpp-setup-wizard__choice">
+                            <span class="fi-x"></span> Nie, skonfiguruję własną uczelnię
+                        </button>
+                    </form>
+                </div>
+            </div>
+
+        {% elif tryb == "motyw" %}
+            {% include "bpp_setup_wizard/_bledy_formularza.html" %}
+
+            <form method="post" action="{{ url_tak }}#bledy-formularza"
+                  class="bpp-setup-wizard__form-generuj" novalidate>
+                {% csrf_token %}
+                <input type="hidden" name="akcja" value="generuj">
+
+                <fieldset class="bpp-setup-wizard__form-section">
+                    <legend class="bpp-setup-wizard__form-section-title">
+                        Wybierz motyw
+                    </legend>
+                    <div class="bpp-setup-wizard__motywy">
+                        {% for klucz, nazwa, opis in form.motywy %}
+                            <label class="bpp-setup-wizard__motyw"
+                                   for="id_motyw_{{ forloop.counter0 }}">
+                                <input type="radio"
+                                       name="motyw"
+                                       value="{{ klucz }}"
+                                       id="id_motyw_{{ forloop.counter0 }}"
+                                       {% if form.motyw.value == klucz %}checked{% endif %}>
+                                <span class="bpp-setup-wizard__motyw-nazwa">{{ nazwa }}</span>
+                                {% if opis %}
+                                    <span class="bpp-setup-wizard__motyw-opis">{{ opis }}</span>
+                                {% endif %}
+                            </label>
+                        {% endfor %}
+                    </div>
+                </fieldset>
+
+                <button type="submit" class="bpp-setup-wizard__submit-btn">
+                    <span class="fi-play"></span> Utwórz dane demo
+                </button>
+            </form>
+            <p class="bpp-setup-wizard__back">
+                <a href="{{ url_pytania }}">&larr; Wróć do pytania</a>
+            </p>
+            <script>
+                {# Blokada podwójnego wysłania; serwer i tak uruchomi generowanie tylko raz. #}
+                document.querySelector(".bpp-setup-wizard__form-generuj")
+                    .addEventListener("submit", function (ev) {
+                        var btn = ev.target.querySelector("button[type=submit]");
+                        if (btn.disabled) { ev.preventDefault(); return; }
+                        btn.disabled = true;
+                    });
+            </script>
+
+        {% elif tryb == "postep" %}
+            <div class="bpp-setup-wizard__info">
+                <h3 class="bpp-setup-wizard__info-title">
+                    <span class="fi-info"></span> Motyw: {{ operacja.motyw }}
+                </h3>
+                <p class="bpp-setup-wizard__info-text">
+                    Dane powstają w tle. Zamknięcie tej strony nie przerywa
+                    generowania — po powrocie zobaczysz aktualny postęp.
+                    Po zakończeniu przejdziesz do BPP.
+                </p>
+            </div>
+
+            <div class="bpp-setup-wizard__generowanie" id="postep-generowania"
+                 data-url="{{ url_postepu }}">
+                <div class="bpp-setup-wizard__pasek"
+                     role="progressbar"
+                     aria-label="Postęp generowania danych demo"
+                     aria-valuemin="0" aria-valuemax="100"
+                     aria-valuenow="{{ operacja.percent }}">
+                    <div class="bpp-setup-wizard__pasek-wypelnienie"
+                         style="width: {{ operacja.percent }}%"></div>
+                </div>
+                <p class="bpp-setup-wizard__pasek-procent">
+                    <span data-procent>{{ operacja.percent }}</span>%
+                </p>
+                <p class="bpp-setup-wizard__pasek-opis" aria-live="polite" data-opis>
+                    {{ operacja.status_text|default:"Oczekiwanie na uruchomienie…" }}
+                </p>
+                <p class="bpp-setup-wizard__pbn-note" data-zawieszone hidden>
+                    <span class="fi-alert"></span>
+                    Postęp nie zmienił się od dłuższego czasu. Sprawdź, czy
+                    działa worker Celery (usługa przetwarzania w tle) —
+                    generowanie wznowi się dopiero, gdy worker przyjmie zadanie.
+                </p>
+                <p class="bpp-setup-wizard__pbn-note" data-brak-polaczenia hidden>
+                    <span class="fi-alert"></span>
+                    Brak połączenia z serwerem — ponawiam…
+                </p>
+                <div class="bpp-setup-wizard__auto-configured" data-gotowe hidden>
+                    <h5 class="bpp-setup-wizard__auto-configured-title">
+                        <span class="fi-check"></span> Dane demo gotowe
+                    </h5>
+                    <p class="bpp-setup-wizard__auto-configured-text">
+                        Za chwilę przejdziesz do BPP.
+                        <a href="/" data-link-dalej>Przejdź teraz</a>
+                    </p>
+                </div>
+            </div>
+            <script>
+                (function () {
+                    var box = document.getElementById("postep-generowania");
+                    var pasek = box.querySelector("[role=progressbar]");
+                    var wypelnienie = box.querySelector(".bpp-setup-wizard__pasek-wypelnienie");
+                    function pokaz(sel, widoczny) {
+                        box.querySelector(sel).hidden = !widoczny;
+                    }
+                    function odpytaj() {
+                        fetch(box.dataset.url, {
+                            credentials: "same-origin",
+                            headers: {"Accept": "application/json"}
+                        }).then(function (r) {
+                            if (!r.ok) { throw new Error("HTTP " + r.status); }
+                            return r.json();
+                        }).then(function (d) {
+                            pokaz("[data-brak-polaczenia]", false);
+                            if (d.stan === "FINISHED_OK") {
+                                wypelnienie.style.width = "100%";
+                                pasek.setAttribute("aria-valuenow", "100");
+                                box.querySelector("[data-procent]").textContent = "100";
+                                box.querySelector("[data-opis]").textContent = d.opis;
+                                box.querySelector("[data-link-dalej]").href = d.url_dalej;
+                                pokaz("[data-gotowe]", true);
+                                setTimeout(function () {
+                                    window.location.href = d.url_dalej;
+                                }, 1500);
+                                return;
+                            }
+                            if (!d.w_toku) {
+                                // Błąd albo przerwanie — serwer pokaże właściwy ekran.
+                                window.location.href = d.url_kroku || window.location.href;
+                                return;
+                            }
+                            wypelnienie.style.width = d.procent + "%";
+                            pasek.setAttribute("aria-valuenow", d.procent);
+                            box.querySelector("[data-procent]").textContent = d.procent;
+                            if (d.opis) {
+                                box.querySelector("[data-opis]").textContent = d.opis;
+                            }
+                            pokaz("[data-zawieszone]", d.zawieszone);
+                            setTimeout(odpytaj, 2000);
+                        }).catch(function () {
+                            pokaz("[data-brak-polaczenia]", true);
+                            setTimeout(odpytaj, 5000);
+                        });
+                    }
+                    setTimeout(odpytaj, 1000);
+                })();
+            </script>
+
+        {% elif tryb == "blad" %}
+            <div class="bpp-setup-wizard__form-errors" role="alert">
+                <h3 class="bpp-setup-wizard__form-errors-title">
+                    <span class="fi-alert"></span> Generowanie przerwał błąd
+                </h3>
+                <p>{{ operacja.ostatnia_linia_bledu|default:"Nieznany błąd." }}</p>
+            </div>
+
+            <div class="bpp-setup-wizard__info">
+                <h3 class="bpp-setup-wizard__info-title">
+                    <span class="fi-info"></span> Co dalej
+                </h3>
+                <p class="bpp-setup-wizard__info-text">
+                    Nie udało się automatycznie usunąć częściowo utworzonych
+                    danych demo, więc zostały w bazie. Możesz przejść dalej
+                    i korzystać z BPP z niepełnymi danymi demo albo usunąć je
+                    poleceniem:
+                </p>
+                <pre class="bpp-setup-wizard__polecenie">python src/manage.py cleanup_demo_data --manifest {{ operacja.manifest|default:"<plik manifestu>" }} --yes-i-am-sure --confirm-db &lt;nazwa bazy&gt;</pre>
+                <p class="bpp-setup-wizard__info-text">
+                    Szczegóły błędu są w logu workera Celery oraz w panelu
+                    administracyjnym (operacja „generowanie danych demo”).
+                </p>
+            </div>
+
+            <form method="post" action="{{ url_pytania }}">
+                {% csrf_token %}
+                <input type="hidden" name="akcja" value="dalej">
+                <button type="submit" class="bpp-setup-wizard__submit-btn">
+                    <span class="fi-arrow-right"></span> Przejdź dalej
+                </button>
+            </form>
+        {% endif %}
+    </div>
+{% endblock %}

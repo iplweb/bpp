@@ -5,9 +5,9 @@ gdy bieżący request ma do niego dostęp. Kroki „Dane uczelni" i „Integracj
 z PBN" wymagają superusera, więc anonim (np. z nieważną sesją po resecie
 bazy) albo zwykły użytkownik dostawał niedokonfigurowaną stronę główną.
 
-BPP: dopóki kreator nie jest skończony (admin + uczelnia + odpowiedź o PBN),
-nikt nie widzi strony — kto nie ma dostępu do kolejnego kroku, trafia na
-logowanie admina, a po zalogowaniu z powrotem do kreatora.
+BPP: dopóki kreator nie jest skończony (admin + dane demo albo uczelnia
+i odpowiedź o PBN), nikt nie widzi strony — kto nie ma dostępu do kolejnego
+kroku, trafia na logowanie admina, a po zalogowaniu z powrotem do kreatora.
 """
 
 from __future__ import annotations

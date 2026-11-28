@@ -135,6 +135,7 @@ nav:
       - Duplikaty publikacji: redaktor/duplikaty-publikacji.md
       - "Raporty: tabele, kolumny i źródła danych": redaktor/raporty-tabele-i-zrodla-danych.md
   - Instrukcja administratora:
+      - Pierwsze uruchomienie: administrator/pierwsze-uruchomienie.md
       - Konfiguracja ogólna: administrator/ogolna.md
       - Konfigurator wyglądu: administrator/konfigurator-wygladu.md
       - Importer publikacji: administrator/importer-publikacji.md

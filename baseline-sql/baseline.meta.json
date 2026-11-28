@@ -1,11 +1,12 @@
 {
-  "git_sha": "8160bcf7632a7776acda00171be3b8f78991e5bb",
+  "git_sha": "3744e53f2600911e0dab9ed21bb6b5f004a58cce",
   "last_migration": {
     "admin": "0003_logentry_add_action_flag_choices",
     "admin_dashboard": "0001_initial",
     "auth": "0012_alter_user_first_name_max_length",
     "axes": "0010_accessattemptexpiration",
     "bpp": "0532_patent_pola_fd449",
+    "bpp_setup_wizard": "0001_initial",
     "cerif_export": "0001_odpieta_przynaleznosc",
     "channels_broadcast": "0001_initial",
     "constance": "0003_drop_pickle",
