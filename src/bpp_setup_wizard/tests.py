@@ -1,5 +1,7 @@
 """Tests for the BPP-specific wizard steps (Uczelnia + PBN).
 
+Krok „Dane demonstracyjne” testuje ``test_dane_demo.py``.
+
 The generic admin-user step and middleware are tested in the
 django-first-run-wizard package itself; this module covers only the
 BPP-side glue.
@@ -19,30 +21,6 @@ from bpp_setup_wizard.steps import UczelniaSetupStep
 # not similar to username, not in common-password list, not all numeric).
 # Not a real credential.
 _TEST_PASSWORD = "wizard-test-pass-min8"  # pragma: allowlist secret  # noqa: S105
-
-
-@pytest.fixture(autouse=True)
-def enable_first_run_wizard_middleware(settings):
-    """Re-enable the first-run wizard middleware for tests in this module.
-
-    `settings/test.py` strips it from MIDDLEWARE globally; we want it
-    back for these specific tests of the wizard flow.
-    """
-    middleware = list(settings.MIDDLEWARE)
-    if "bpp_setup_wizard.middleware.BppFirstRunWizardMiddleware" not in middleware:
-        try:
-            auth_index = middleware.index(
-                "django.contrib.auth.middleware.AuthenticationMiddleware"
-            )
-            middleware.insert(
-                auth_index + 1,
-                "bpp_setup_wizard.middleware.BppFirstRunWizardMiddleware",
-            )
-        except ValueError:
-            middleware.insert(
-                0, "bpp_setup_wizard.middleware.BppFirstRunWizardMiddleware"
-            )
-        settings.MIDDLEWARE = middleware
 
 
 @pytest.mark.django_db
@@ -92,7 +70,8 @@ def test_uczelnia_setup_form_display(admin_user):
     # FD#499: krok „Dane uczelni" nie zawiera pól PBN.
     assert "Środowisko PBN" not in content
     assert 'name="pbn_app_token"' not in content
-    assert "Krok 2 z 3" in content
+    # Ścieżka „bez danych demo”: admin → dane demo → uczelnia → PBN.
+    assert "Krok 3 z 4" in content
 
 
 @pytest.mark.django_db
@@ -179,7 +158,7 @@ def test_admin_user_page_is_bpp_branded_and_hides_skip_link():
     assert response.status_code == 200
     body = response.content.decode("utf-8")
     assert "bpp-setup-wizard" in body, "expected BPP-styled wrapper class"
-    assert "Krok 1 z 3" in body
+    assert "Krok 1 z 4" in body
     assert "Przejdź do głównej zawartości" not in body, (
         "skip-link from bare.html should be suppressed on wizard pages "
         "(empty {% block skip_link %}{% endblock %} override)"
@@ -198,10 +177,26 @@ def test_uczelnia_setup_page_hides_skip_link(admin_user):
 
 
 @pytest.mark.django_db
-def test_middleware_redirects_logged_in_admin_to_uczelnia_setup(admin_user):
-    """End-to-end: admin user exists, no Uczelnia → middleware redirects
-    to /setup/step/uczelnia/."""
+def test_middleware_redirects_logged_in_admin_to_dane_demo(admin_user):
+    """Admin istnieje, uczelni brak → middleware prowadzi do pytania
+    o dane demo (krok 2)."""
     Uczelnia.objects.all().delete()
+    client = Client()
+    client.force_login(admin_user)
+
+    response = client.get("/")
+    assert response.status_code == 302
+    assert response.url == reverse("bpp_setup_wizard:dane_demo")
+
+
+@pytest.mark.django_db
+def test_middleware_redirects_logged_in_admin_to_uczelnia_setup(admin_user):
+    """End-to-end: admin user exists, no Uczelnia, odpowiedź „nie” na dane
+    demo → middleware redirects to /setup/step/uczelnia/."""
+    from bpp_setup_wizard.models import KreatorDanychDemo
+
+    Uczelnia.objects.all().delete()
+    KreatorDanychDemo.objects.update_or_create(pk=1, defaults={"odpowiedz": "nie"})
     client = Client()
     client.force_login(admin_user)
 
@@ -250,8 +245,8 @@ def test_admin_user_post_via_bpp_override_creates_superuser():
 @pytest.mark.django_db
 def test_full_happy_path_empty_db_to_live_site():
     """E2E na pustej bazie: anonimowy GET / → admin_user form → POST →
-    middleware → uczelnia form → POST → krok PBN → „uzupełnię później" →
-    site live (brak redirectu setup).
+    middleware → pytanie o dane demo → „Nie” → uczelnia form → POST → krok
+    PBN → „uzupełnię później" → site live (brak redirectu setup).
 
     Jeden Django test Client utrzymuje session przez całą ścieżkę,
     weryfikujemy że wszystkie redirecty i obie strony BPP-styled formularzy
@@ -294,7 +289,16 @@ def test_full_happy_path_empty_db_to_live_site():
     assert User.objects.filter(username="e2eadmin", is_superuser=True).exists()
 
     # 4) Po stworzeniu admina + automatycznym loginie, GET / przekierowuje
-    # do uczelnia (admin jest superuser, więc ma access do tego stepu).
+    # do pytania o dane demo; „Nie” prowadzi do kroku uczelni.
+    dane_demo_url = reverse("bpp_setup_wizard:dane_demo")
+    response = client.get("/")
+    assert response.status_code == 302
+    assert response.url == dane_demo_url
+    response = client.get(dane_demo_url)
+    assert response.status_code == 200
+    assert "Utworzyć dane demo?" in response.content.decode("utf-8")
+    response = client.post(dane_demo_url, {"akcja": "nie"})
+    assert response.status_code == 302
     response = client.get("/")
     assert response.status_code == 302
     assert response.url == uczelnia_url
@@ -327,7 +331,7 @@ def test_full_happy_path_empty_db_to_live_site():
     # w tle nie zamyka kreatora, a GET / dalej prowadzi do kroku PBN.
     response = client.get(response.url)
     assert response.status_code == 200
-    assert "Krok 3 z 3" in response.content.decode("utf-8")
+    assert "Krok 4 z 4" in response.content.decode("utf-8")
     client.get("/apple-touch-icon.png")
     response = client.get("/")
     assert response.status_code == 302
@@ -590,13 +594,12 @@ def _login_url(next_url):
 def test_anonim_bez_uczelni_trafia_na_logowanie_do_kreatora(admin_user):
     """Admin istnieje, uczelni brak, sesja nieważna (np. po resecie bazy):
     zamiast niedokonfigurowanej strony głównej — logowanie admina, a po nim
-    krok „Dane uczelni"."""
+    pierwszy niedokończony krok (pytanie o dane demo)."""
     Uczelnia.objects.all().delete()
-    uczelnia_url = reverse("first_run_wizard:step", kwargs={"name": "uczelnia"})
 
     response = Client().get("/")
     assert response.status_code == 302
-    assert response.url == _login_url(uczelnia_url)
+    assert response.url == _login_url(reverse("bpp_setup_wizard:dane_demo"))
 
 
 @pytest.mark.django_db

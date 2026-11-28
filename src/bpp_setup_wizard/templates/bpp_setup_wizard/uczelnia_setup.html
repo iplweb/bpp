@@ -1,5 +1,5 @@
 {% extends "bare.html" %}
-{% load static crispy_forms_tags %}
+{% load static crispy_forms_tags bpp_setup_wizard %}
 
 {% block skip_link %}{% endblock %}
 
@@ -13,7 +13,7 @@
 
 {% block body %}
     <div class="bpp-setup-wizard">
-        {% include "bpp_setup_wizard/_postep.html" with numer=2 %}
+        {% postep_kreatora "uczelnia" %}
         <div class="bpp-setup-wizard__header">
             <div class="bpp-setup-wizard__icon">
                 <span class="fi-foundation"></span>

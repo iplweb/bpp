@@ -11,6 +11,14 @@ uv run python src/manage.py create_demo_data \
     --yes-i-am-sure --confirm-db <NAZWA_BAZY>
 ```
 
+Z przeglądarki: kreator pierwszego uruchomienia (pusta baza) pyta
+„Utworzyć dane demo?” i generuje je w tle w tej samej skali — patrz
+[Pierwsze uruchomienie](../administrator/pierwsze-uruchomienie.md)
+i `src/bpp_setup_wizard/README.md`. Nowy motyw dopisz też do
+`OPISY_MOTYWOW` w `src/bpp_setup_wizard/dane_demo.py` (pilnuje tego test),
+a nowy pasek postępu (`desc=` w `make_progress`) — do `ETAPY_GENERATORA`
+w tym samym pliku, żeby pasek kreatora nie stał w miejscu.
+
 ## Motywy (`--motyw`)
 
 - `realistyczny` (domyślny) — polskie dane akademickie

@@ -253,7 +253,7 @@
         font-size: 14px;
     }
 
-    // Pasek postępu („Krok N z 3", FD#499)
+    // Pasek postępu („Krok N z M", FD#499)
     &__progress {
         margin-bottom: 30px;
     }
@@ -275,7 +275,7 @@
 
     &__progress-item {
         flex: 1;
-        list-style: none; // Foundation numeruje <li> w <ol>; numer jest w „Krok N z 3"
+        list-style: none; // Foundation numeruje <li> w <ol>; numer jest w „Krok N z M"
         text-align: center;
         font-size: 13px;
         color: var(--bpp-tekst-przygaszony, #888);
@@ -338,5 +338,101 @@
         text-align: center;
         margin-top: 15px;
         font-size: 14px;
+    }
+
+    // Pytanie o dane demo: „Nie” jest przyciskiem formularza (POST), a „Tak”
+    // linkiem — oba wyglądają tak samo.
+    &__choices form {
+        margin: 0;
+    }
+
+    button#{&}__choice {
+        width: 100%;
+        background: transparent;
+        cursor: pointer;
+    }
+
+    &__demo-ostrzezenie {
+        margin: 0 0 30px 0;
+        font-size: 14px;
+    }
+
+    // Wybór motywu danych demo
+    &__motywy {
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+    }
+
+    &__motyw {
+        display: grid;
+        grid-template-columns: auto 1fr;
+        column-gap: 10px;
+        align-items: baseline;
+        padding: 12px 15px;
+        border: 2px solid var(--bpp-ramka, #e0e0e0);
+        border-radius: 4px;
+        cursor: pointer;
+
+        &:has(input:checked) {
+            border-color: #0a7cb8;
+            background: var(--bpp-tlo-pow-2, #f8f9fa);
+        }
+
+        input {
+            margin: 0;
+        }
+    }
+
+    &__motyw-nazwa {
+        font-weight: bold;
+        color: var(--bpp-tekst, #333);
+    }
+
+    &__motyw-opis {
+        grid-column: 2;
+        font-size: 13px;
+        color: var(--bpp-tekst-przygaszony, #666);
+    }
+
+    // Postęp generowania danych demo
+    &__generowanie {
+        margin-bottom: 30px;
+    }
+
+    &__pasek {
+        height: 24px;
+        background: var(--bpp-ramka, #e0e0e0);
+        border-radius: 12px;
+        overflow: hidden;
+    }
+
+    &__pasek-wypelnienie {
+        height: 100%;
+        background: #0a7cb8;
+        transition: width 0.5s ease;
+    }
+
+    &__pasek-procent {
+        text-align: center;
+        font-size: 22px;
+        font-weight: bold;
+        color: var(--bpp-akcent, #0a7cb8);
+        margin: 10px 0 0 0;
+    }
+
+    &__pasek-opis {
+        text-align: center;
+        color: var(--bpp-tekst-przygaszony, #666);
+        min-height: 1.5em;
+    }
+
+    &__polecenie {
+        white-space: pre-wrap;
+        word-break: break-all;
+        font-size: 12px;
+        padding: 10px;
+        background: var(--bpp-tlo-pow-2, #f8f9fa);
+        border-radius: 4px;
     }
 }
